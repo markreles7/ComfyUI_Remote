@@ -1,0 +1,167 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - link "LTX REMOTE" [ref=e3] [cursor=pointer]:
+      - /url: /
+    - generic [ref=e6]:
+      - navigation "Navigazione principale" [ref=e7]:
+        - link "Crea guidata" [ref=e8] [cursor=pointer]:
+          - /url: /guided-create.html
+        - link "Genera" [ref=e9] [cursor=pointer]:
+          - /url: /
+        - link "Image Studio" [ref=e10] [cursor=pointer]:
+          - /url: /studio.html
+        - link "Video Studio" [ref=e11] [cursor=pointer]:
+          - /url: /video-studio.html
+        - link "Guida" [ref=e12] [cursor=pointer]:
+          - /url: /workflow-guide.html
+        - link "Generazioni" [ref=e13] [cursor=pointer]:
+          - /url: /generations.html
+      - generic [ref=e14]: Connessione…
+  - main [ref=e16]:
+    - generic [ref=e17]:
+      - generic [ref=e18]:
+        - paragraph [ref=e19]: COMFYUI / IMAGE + VIDEO + UPSCALE
+        - heading [level=1] [ref=e20]:
+          - text: Crea, trasformae
+          - emphasis [ref=e21]: dirigi.
+      - generic [ref=e22]:
+        - paragraph [ref=e23]: Il tuo studio generativo remoto. Crea immagini, modifica reference, ingrandisci foto e dirigi video usando la macchina di casa.
+        - link "Non sai quale workflow usare? Inizia dalla Crea guidata →" [ref=e24] [cursor=pointer]:
+          - /url: /guided-create.html
+          - text: Non sai quale workflow usare?
+          - generic [ref=e25]: Inizia dalla Crea guidata →
+    - generic [ref=e26]:
+      - generic [ref=e27]:
+        - generic [ref=e28]:
+          - generic [ref=e29]: "01"
+          - generic [ref=e30]:
+            - heading "Nuova generazione" [level=2] [ref=e31]
+            - paragraph [ref=e32]: Configura la tua sequenza
+        - group "Tipo di generazione" [ref=e33]:
+          - button "▶ Video LTX 2.3" [ref=e34] [cursor=pointer]:
+            - generic [ref=e35]: ▶
+            - generic [ref=e36]: Video
+            - generic [ref=e37]: LTX 2.3
+          - button "◆ Immagine Flux / Qwen / Z-Image" [ref=e38] [cursor=pointer]:
+            - generic [ref=e39]: ◆
+            - generic [ref=e40]: Immagine
+            - generic [ref=e41]: Flux / Qwen / Z-Image
+          - button "↗ Upscaling AI / RTX" [ref=e42] [cursor=pointer]:
+            - generic [ref=e43]: ↗
+            - generic [ref=e44]: Upscaling
+            - generic [ref=e45]: AI / RTX
+        - generic [ref=e46]:
+          - generic [ref=e47]: Workflow
+          - combobox "Workflow" [ref=e48] [cursor=pointer]
+          - paragraph
+        - generic [ref=e49]:
+          - generic [ref=e50]:
+            - generic [ref=e51]: Fotogramma iniziale
+            - generic [ref=e52]:
+              - button "↗ Trascina o scegli un’immagine PNG, JPG o WebP · max 30 MB" [ref=e53] [cursor=pointer]
+              - generic [ref=e54]: ↗
+              - strong [ref=e55]: Trascina o scegli un’immagine
+              - generic [ref=e56]: PNG, JPG o WebP · max 30 MB
+          - generic [ref=e57]:
+            - generic [ref=e58]:
+              - generic [ref=e59]: Prompt positivo
+              - generic [ref=e60]:
+                - button "✦ IA + Genera" [ref=e61] [cursor=pointer]
+                - generic [ref=e62]: "0"
+            - textbox "Prompt positivo" [ref=e63]:
+              - /placeholder: Descrivi scena, movimento, camera, luce e atmosfera…
+            - paragraph [ref=e64]: LM Studio locale · il modello viene scaricato dopo il prompt
+        - generic [ref=e65]:
+          - generic [ref=e66]:
+            - generic [ref=e67]: Prompt negativo
+            - generic [ref=e68]: "0"
+          - textbox "Prompt negativo" [ref=e69]:
+            - /placeholder: Artefatti o risultati da evitare…
+        - generic [ref=e70]:
+          - generic [ref=e71]:
+            - generic [ref=e72]: Risoluzione
+            - combobox "Risoluzione" [ref=e73] [cursor=pointer]:
+              - option "360p · Veloce"
+              - option "480p · Bilanciata" [selected]
+              - option "720p · Alta"
+          - generic [ref=e74]:
+            - generic [ref=e75]: Orientamento
+            - combobox "Orientamento" [ref=e76] [cursor=pointer]:
+              - option "Orizzontale" [selected]
+              - option "Verticale"
+          - generic [ref=e77]:
+            - generic [ref=e78]: Durata
+            - generic [ref=e79]:
+              - spinbutton "Durata" [ref=e80]: "10"
+              - generic [ref=e81]: sec
+            - paragraph [ref=e82]: 24 FPS fissi
+          - generic [ref=e83]:
+            - generic [ref=e84]: Seed
+            - generic [ref=e85]:
+              - textbox "Seed" [ref=e86]:
+                - /placeholder: Random
+              - button "↻" [ref=e87] [cursor=pointer]
+        - group "Qualità" [ref=e88]:
+          - generic [ref=e90]:
+            - radio "Anteprima Rapida · 1 passaggio" [checked] [ref=e91]
+            - generic [ref=e92]:
+              - generic [ref=e93]: Anteprima
+              - generic [ref=e94]: Rapida · 1 passaggio
+          - generic [ref=e95]:
+            - radio "Massima Finale · 2 passaggi" [ref=e96]
+            - generic [ref=e97]:
+              - generic [ref=e98]: Massima
+              - generic [ref=e99]: Finale · 2 passaggi
+        - generic [ref=e102]:
+          - generic [ref=e103]:
+            - paragraph [ref=e104]: SCENE INTEGRATION
+            - heading "Integra soggetto e scena" [level=3] [ref=e105]
+            - paragraph [ref=e106]: Analizza luce, colore, camera, profondità, movimento e texture prima della generazione.
+          - generic [ref=e107]:
+            - checkbox "Abilita" [ref=e108]
+            - generic [ref=e109]: Abilita
+        - generic [ref=e110]:
+          - generic [ref=e111]:
+            - generic [ref=e112]:
+              - paragraph [ref=e113]: MODEL ADD-ONS
+              - heading "LoRA" [level=3] [ref=e114]
+              - paragraph [ref=e115]: Applica una o più LoRA in sequenza al workflow selezionato.
+            - generic [ref=e116]: 0 attive
+          - button "＋ Aggiungi LoRA" [ref=e117] [cursor=pointer]
+          - paragraph [ref=e118]: Nessuna LoRA applicata. Puoi aggiungerne quante ne servono.
+        - button "Avvia generazione →" [ref=e119] [cursor=pointer]:
+          - generic [ref=e120]: Avvia generazione
+          - generic [ref=e121]: →
+        - alert [ref=e122]
+      - complementary [ref=e123]:
+        - generic [ref=e124]:
+          - generic [ref=e125]:
+            - generic [ref=e126]: "02"
+            - generic [ref=e127]:
+              - heading "In lavorazione" [level=2] [ref=e128]
+              - paragraph [ref=e129]: Stato in tempo reale
+          - generic [ref=e130]:
+            - paragraph [ref=e133]: Nessuna generazione attiva
+            - text: Il prossimo lavoro apparirà qui
+        - generic [ref=e134]:
+          - generic [ref=e135]:
+            - generic [ref=e136]: "03"
+            - generic [ref=e137]:
+              - heading "Sistema" [level=2] [ref=e138]
+              - paragraph [ref=e139]: Gestione memoria ComfyUI
+          - generic [ref=e140]:
+            - button "Cache Svuota" [ref=e141] [cursor=pointer]:
+              - generic [ref=e142]: Cache
+              - text: Svuota
+            - button "Models Scarica" [ref=e143] [cursor=pointer]:
+              - generic [ref=e144]: Models
+              - text: Scarica
+            - button "VRAM Libera" [ref=e145] [cursor=pointer]:
+              - generic [ref=e146]: VRAM
+              - text: Libera
+            - button "RAM Libera" [ref=e147] [cursor=pointer]:
+              - generic [ref=e148]: RAM
+              - text: Libera
+          - button "Pulizia completa" [ref=e149] [cursor=pointer]
+          - paragraph [ref=e150]
+  - status

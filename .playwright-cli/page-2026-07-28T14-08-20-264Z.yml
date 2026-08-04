@@ -1,0 +1,130 @@
+- generic [ref=f2e1]:
+  - banner [ref=f2e2]:
+    - link "LTX REMOTE" [ref=f2e3] [cursor=pointer]:
+      - /url: /
+    - generic [ref=f2e6]:
+      - navigation "Navigazione principale" [ref=f2e7]:
+        - link "Genera" [ref=f2e8] [cursor=pointer]:
+          - /url: /
+        - link "Image Studio" [ref=f2e9] [cursor=pointer]:
+          - /url: /studio.html
+        - link "Video Studio" [ref=f2e10] [cursor=pointer]:
+          - /url: /video-studio.html
+        - link "Guida" [ref=f2e11] [cursor=pointer]:
+          - /url: /workflow-guide.html
+        - link "Generazioni" [ref=f2e12] [cursor=pointer]:
+          - /url: /generations.html
+      - generic [ref=f2e13]: ComfyUI online
+  - main [ref=f2e15]:
+    - generic [ref=f2e17]:
+      - paragraph [ref=f2e18]: GENERAZIONE / CONTROL / KEYFRAME / RETAKE / EXTEND / HDR
+      - heading [level=1] [ref=f2e19]:
+        - text: Entra nella
+        - emphasis [ref=f2e20]: scena.
+      - paragraph [ref=f2e21]: Sostituisci un interprete oppure aggiungi un nuovo personaggio con azioni, dialoghi e risposte sincronizzate.
+    - generic [ref=f2e22]:
+      - generic [ref=f2e23]:
+        - generic [ref=f2e24]:
+          - generic [ref=f2e25]: "01"
+          - generic [ref=f2e26]:
+            - heading "Nuovo progetto video" [level=2] [ref=f2e27]
+            - paragraph [ref=f2e28]: Workflow guidato a stadi, con preflight delle dipendenze
+        - group "Workflow" [ref=f2e29]:
+          - generic [ref=f2e31]:
+            - radio "Actor Replacement Viso o corpo, recitazione e audio originali" [ref=f2e32]
+            - generic [ref=f2e33]:
+              - generic [ref=f2e34]: Actor Replacement
+              - generic [ref=f2e35]: Viso o corpo, recitazione e audio originali
+          - generic [ref=f2e36]:
+            - radio "Interactive Scene Nuovo personaggio, copione e risposte" [ref=f2e37]
+            - generic [ref=f2e38]:
+              - generic [ref=f2e39]: Interactive Scene
+              - generic [ref=f2e40]: Nuovo personaggio, copione e risposte
+          - generic [ref=f2e41]:
+            - radio "Control Studio Canny, posa o profondità con Union Control" [ref=f2e42]
+            - generic [ref=f2e43]:
+              - generic [ref=f2e44]: Control Studio
+              - generic [ref=f2e45]: Canny, posa o profondità con Union Control
+          - generic [ref=f2e46]:
+            - radio "Keyframe 2–4 immagini, tempi e forza indipendenti" [ref=f2e47]
+            - generic [ref=f2e48]:
+              - generic [ref=f2e49]: Keyframe
+              - generic [ref=f2e50]: 2–4 immagini, tempi e forza indipendenti
+          - generic [ref=f2e51]:
+            - radio "Retake Rigenera una clip mantenendo scena e audio" [ref=f2e52]
+            - generic [ref=f2e53]:
+              - generic [ref=f2e54]: Retake
+              - generic [ref=f2e55]: Rigenera una clip mantenendo scena e audio
+          - generic [ref=f2e56]:
+            - radio "Extend Prolunga dal frame finale e accoda la clip" [ref=f2e57]
+            - generic [ref=f2e58]:
+              - generic [ref=f2e59]: Extend
+              - generic [ref=f2e60]: Prolunga dal frame finale e accoda la clip
+          - generic [ref=f2e61]:
+            - radio "HDR IC-LoRA Highlight, ombre ed EXR opzionale" [checked] [active] [ref=f2e62]
+            - generic [ref=f2e63]:
+              - generic [ref=f2e64]: HDR IC-LoRA
+              - generic [ref=f2e65]: Highlight, ombre ed EXR opzionale
+          - generic [ref=f2e66]:
+            - radio "Temporal ×2 FPS doppi o slow motion fluido" [ref=f2e67]
+            - generic [ref=f2e68]:
+              - generic [ref=f2e69]: Temporal ×2
+              - generic [ref=f2e70]: FPS doppi o slow motion fluido
+        - status [ref=f2e71]:
+          - generic [ref=f2e176]: ✓
+          - generic [ref=f2e177]:
+            - generic [ref=f2e178]: HDR IC-LoRA pronto
+            - paragraph [ref=f2e179]: Usa la pipeline IC-LoRA ufficiale, separata da DaSiWa.
+        - generic [ref=f2e72]:
+          - generic [ref=f2e73]: Nome progetto
+          - textbox "Nome progetto" [ref=f2e74]:
+            - /placeholder: Es. Scena film · inserimento John
+        - generic [ref=f2e180]:
+          - generic [ref=f2e181]:
+            - generic [ref=f2e182]: Video sorgente
+            - generic [ref=f2e183]:
+              - button "HDR Carica il video" [ref=f2e184] [cursor=pointer]
+              - generic [ref=f2e185]: HDR
+              - strong [ref=f2e186]: Carica il video
+          - generic [ref=f2e187]:
+            - generic [ref=f2e188]:
+              - generic [ref=f2e189]: Esposizione
+              - spinbutton "Esposizione" [ref=f2e190]: "7.1"
+            - generic [ref=f2e191]:
+              - checkbox "Salva anche sequenza EXR" [ref=f2e192]
+              - text: Salva anche sequenza EXR
+          - generic [ref=f2e193]:
+            - generic [ref=f2e194]: Direzione HDR
+            - textbox "Direzione HDR" [ref=f2e195]: Natural cinematic HDR footage with recovered highlights and clean shadow detail.
+        - generic [ref=f2e114]:
+          - generic [ref=f2e115]:
+            - paragraph [ref=f2e116]: Identity e Style LoRA
+            - paragraph [ref=f2e117]: Puoi concatenare più LoRA LTX 2.3 con forza indipendente.
+          - button "＋ LoRA" [ref=f2e118] [cursor=pointer]
+        - group [ref=f2e119]:
+          - generic "Impostazioni avanzate qualità, maschera e seed" [ref=f2e120] [cursor=pointer]
+        - button "Crea progetto Video Studio→" [ref=f2e121] [cursor=pointer]
+        - alert
+      - complementary [ref=f2e122]:
+        - generic [ref=f2e123]:
+          - generic [ref=f2e124]:
+            - generic [ref=f2e125]: "02"
+            - generic [ref=f2e126]:
+              - heading "Progetti video" [level=2] [ref=f2e127]
+              - paragraph [ref=f2e128]: Sostituzione, scena e LipDub
+          - article [ref=f2e196]:
+            - generic [ref=f2e197]:
+              - generic [ref=f2e198]:
+                - heading "Scena 1 - Fallout" [level=3] [ref=f2e199]
+                - generic [ref=f2e200]: Actor Replacement Studio
+              - generic [ref=f2e201]: Completato
+            - paragraph [ref=f2e202]: La persona nella reference sostituisce l'attore a sinistra, che inizia a camminare quando l'attore a destra si avvicina a lui.
+            - generic [ref=f2e205]:
+              - generic [ref=f2e206]: Sostituzione tracciata
+              - generic [ref=f2e207]: Completato
+            - button "Applica / correggi dialogo e LipDub" [ref=f2e209] [cursor=pointer]
+        - generic [ref=f2e130]:
+          - paragraph [ref=f2e131]: PIPELINE CONSIGLIATA
+          - heading "Lavora uno shot alla volta" [level=3] [ref=f2e132]
+          - paragraph [ref=f2e133]: Se nei 10 secondi c’è uno stacco di montaggio, dividi prima la clip. Tracking, identità e lip-sync saranno molto più stabili.
+  - status

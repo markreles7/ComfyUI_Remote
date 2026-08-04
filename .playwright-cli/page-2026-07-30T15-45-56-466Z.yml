@@ -1,0 +1,1145 @@
+- generic [active] [ref=f2e1]:
+  - banner [ref=f2e2]:
+    - link "LTX REMOTE" [ref=f2e3] [cursor=pointer]:
+      - /url: /
+    - generic [ref=f2e6]:
+      - navigation "Navigazione principale" [ref=f2e7]:
+        - link "Crea guidata" [ref=f2e8] [cursor=pointer]:
+          - /url: /guided-create.html
+        - link "Genera" [ref=f2e9] [cursor=pointer]:
+          - /url: /
+        - link "Image Studio" [ref=f2e10] [cursor=pointer]:
+          - /url: /studio.html
+        - link "Video Studio" [ref=f2e11] [cursor=pointer]:
+          - /url: /video-studio.html
+        - link "Guida" [ref=f2e12] [cursor=pointer]:
+          - /url: /workflow-guide.html
+        - link "Generazioni" [ref=f2e13] [cursor=pointer]:
+          - /url: /generations.html
+      - generic [ref=f2e14]: ComfyUI online
+  - main [ref=f2e16]:
+    - generic [ref=f2e18]:
+      - paragraph [ref=f2e19]: MANUALE OPERATIVO / WORKFLOW E MOTORI
+      - heading [level=1] [ref=f2e20]:
+        - text: Scegli il percorso
+        - emphasis [ref=f2e21]: giusto.
+      - paragraph [ref=f2e22]: Scopri quando usare ogni workflow, cosa preparare e le impostazioni da cui partire.
+    - generic [ref=f2e23]:
+      - complementary "Indice workflow" [ref=f2e24]:
+        - generic [ref=f2e25]:
+          - generic [ref=f2e26]: Trova un workflow
+          - searchbox "Trova un workflow" [ref=f2e27]
+        - navigation [ref=f2e28]:
+          - link "01 Scene Integration Engine Integrazione scena" [ref=f2e29] [cursor=pointer]:
+            - /url: "#sceneIntegration"
+            - generic [ref=f2e30]: "01"
+            - generic [ref=f2e31]: Scene Integration Engine
+            - generic [ref=f2e32]: Integrazione scena
+          - link "02 Editor Guidato Editing visuale" [ref=f2e33] [cursor=pointer]:
+            - /url: "#guidedEdit"
+            - generic [ref=f2e34]: "02"
+            - generic [ref=f2e35]: Editor Guidato
+            - generic [ref=f2e36]: Editing visuale
+          - link "03 Storyboard Director Sequenza" [ref=f2e37] [cursor=pointer]:
+            - /url: "#storyboard"
+            - generic [ref=f2e38]: "03"
+            - generic [ref=f2e39]: Storyboard Director
+            - generic [ref=f2e40]: Sequenza
+          - link "04 LTX First / Last Frame Animazione" [ref=f2e41] [cursor=pointer]:
+            - /url: "#firstLast"
+            - generic [ref=f2e42]: "04"
+            - generic [ref=f2e43]: LTX First / Last Frame
+            - generic [ref=f2e44]: Animazione
+          - link "05 Character & Location Bible Continuità" [ref=f2e45] [cursor=pointer]:
+            - /url: "#bible"
+            - generic [ref=f2e46]: "05"
+            - generic [ref=f2e47]: Character & Location Bible
+            - generic [ref=f2e48]: Continuità
+          - link "06 Perfect Image Studio Pipeline completa" [ref=f2e49] [cursor=pointer]:
+            - /url: "#perfect"
+            - generic [ref=f2e50]: "06"
+            - generic [ref=f2e51]: Perfect Image Studio
+            - generic [ref=f2e52]: Pipeline completa
+          - link "07 Actor Replacement Studio Video Studio" [ref=f2e53] [cursor=pointer]:
+            - /url: "#videoActorReplacement"
+            - generic [ref=f2e54]: "07"
+            - generic [ref=f2e55]: Actor Replacement Studio
+            - generic [ref=f2e56]: Video Studio
+          - link "08 Interactive Scene Studio Video Studio" [ref=f2e57] [cursor=pointer]:
+            - /url: "#videoInteractiveScene"
+            - generic [ref=f2e58]: "08"
+            - generic [ref=f2e59]: Interactive Scene Studio
+            - generic [ref=f2e60]: Video Studio
+          - link "09 LTX Control Studio Video Studio" [ref=f2e61] [cursor=pointer]:
+            - /url: "#videoControlStudio"
+            - generic [ref=f2e62]: "09"
+            - generic [ref=f2e63]: LTX Control Studio
+            - generic [ref=f2e64]: Video Studio
+          - link "10 Keyframe Interpolation Video Studio" [ref=f2e65] [cursor=pointer]:
+            - /url: "#videoKeyframeInterpolation"
+            - generic [ref=f2e66]: "10"
+            - generic [ref=f2e67]: Keyframe Interpolation
+            - generic [ref=f2e68]: Video Studio
+          - link "11 Retake Video Studio" [ref=f2e69] [cursor=pointer]:
+            - /url: "#videoRetake"
+            - generic [ref=f2e70]: "11"
+            - generic [ref=f2e71]: Retake
+            - generic [ref=f2e72]: Video Studio
+          - link "12 Extend Video Studio" [ref=f2e73] [cursor=pointer]:
+            - /url: "#videoExtend"
+            - generic [ref=f2e74]: "12"
+            - generic [ref=f2e75]: Extend
+            - generic [ref=f2e76]: Video Studio
+          - link "13 HDR IC-LoRA Video Studio" [ref=f2e77] [cursor=pointer]:
+            - /url: "#videoHdr"
+            - generic [ref=f2e78]: "13"
+            - generic [ref=f2e79]: HDR IC-LoRA
+            - generic [ref=f2e80]: Video Studio
+          - link "14 Temporal Upscaler 2× Video Studio" [ref=f2e81] [cursor=pointer]:
+            - /url: "#videoTemporalUpscale"
+            - generic [ref=f2e82]: "14"
+            - generic [ref=f2e83]: Temporal Upscaler 2×
+            - generic [ref=f2e84]: Video Studio
+      - generic [ref=f2e85]:
+        - generic [ref=f2e86]:
+          - paragraph [ref=f2e87]: SCELTA RAPIDA
+          - heading "Da dove parto?" [level=2] [ref=f2e88]
+          - generic [ref=f2e89]:
+            - link "Modifico una foto reale Smartphone Photo Editor →" [ref=f2e90] [cursor=pointer]:
+              - /url: "#smartphone"
+              - generic [ref=f2e91]: Modifico una foto reale
+              - generic [ref=f2e92]: Smartphone Photo Editor →
+            - link "Creo una sequenza Storyboard Director →" [ref=f2e93] [cursor=pointer]:
+              - /url: "#storyboard"
+              - generic [ref=f2e94]: Creo una sequenza
+              - generic [ref=f2e95]: Storyboard Director →
+            - link "Animo due frame LTX First / Last Frame →" [ref=f2e96] [cursor=pointer]:
+              - /url: "#firstLast"
+              - generic [ref=f2e97]: Animo due frame
+              - generic [ref=f2e98]: LTX First / Last Frame →
+            - link "Creo un master da zero Perfect Image Studio →" [ref=f2e99] [cursor=pointer]:
+              - /url: "#perfect"
+              - generic [ref=f2e100]: Creo un master da zero
+              - generic [ref=f2e101]: Perfect Image Studio →
+            - link "Sostituisco un attore Actor Replacement →" [ref=f2e102] [cursor=pointer]:
+              - /url: "#videoActorReplacement"
+              - generic [ref=f2e103]: Sostituisco un attore
+              - generic [ref=f2e104]: Actor Replacement →
+            - link "Entro nella scena Interactive Scene →" [ref=f2e105] [cursor=pointer]:
+              - /url: "#videoInteractiveScene"
+              - generic [ref=f2e106]: Entro nella scena
+              - generic [ref=f2e107]: Interactive Scene →
+        - generic [ref=f2e108]:
+          - article [ref=f2e109]:
+            - generic [ref=f2e110]:
+              - generic [ref=f2e111]:
+                - paragraph [ref=f2e112]: 01 / Integrazione scena
+                - heading "Scene Integration Engine" [level=2] [ref=f2e113]
+                - paragraph [ref=f2e114]: Analizza una scena sorgente una sola volta e ne riusa colore, luce, camera, profondità, nitidezza, grana e movimento per integrare meglio nuovi elementi.
+              - generic [ref=f2e115]: Sperimentale
+            - generic [ref=f2e116]:
+              - generic [ref=f2e117]:
+                - heading "Ideale per" [level=3] [ref=f2e118]
+                - list [ref=f2e119]:
+                  - listitem [ref=f2e120]: Inserimenti realistici in fotografie
+                  - listitem [ref=f2e121]: Editing con più reference
+                  - listitem [ref=f2e122]: Video-to-video e personaggi aggiunti
+                  - listitem [ref=f2e123]: Coerenza fra scene e retake
+              - generic [ref=f2e124]:
+                - heading "Cosa preparare" [level=3] [ref=f2e125]
+                - list [ref=f2e126]:
+                  - listitem [ref=f2e127]: Foto o video originale
+                  - listitem [ref=f2e128]: Preset Fast, Bilanciato o Massimo
+                  - listitem [ref=f2e129]: Workflow e modello con cui generare
+                  - listitem [ref=f2e130]: Maschera o reference quando richieste dall’editing
+            - generic [ref=f2e131]:
+              - heading "Come usarlo" [level=3] [ref=f2e132]
+              - list [ref=f2e133]:
+                - listitem [ref=f2e134]:
+                  - generic [ref=f2e135]:
+                    - generic [ref=f2e136]: Attiva il motore
+                    - paragraph [ref=f2e137]: Apri Scene Integration nel workflow scelto e abilitalo.
+                - listitem [ref=f2e138]:
+                  - generic [ref=f2e139]:
+                    - generic [ref=f2e140]: Analizza la sorgente
+                    - paragraph [ref=f2e141]: Carica l’originale. Fast usa analisi CPU; Bilanciato aggiunge depth e segmentazione; Massimo aggiunge tracking video quando disponibile.
+                - listitem [ref=f2e142]:
+                  - generic [ref=f2e143]:
+                    - generic [ref=f2e144]: Controlla il profilo
+                    - paragraph [ref=f2e145]: Verifica direzione luce, palette, prospettiva, profondità e avvisi. Puoi esportare e riusare il profilo.
+                - listitem [ref=f2e146]:
+                  - generic [ref=f2e147]:
+                    - generic [ref=f2e148]: Genera normalmente
+                    - paragraph [ref=f2e149]: Il motore traduce il profilo solo nei controlli supportati da Qwen, Klein, LTX o dal workflow generico.
+                - listitem [ref=f2e150]:
+                  - generic [ref=f2e151]:
+                    - generic [ref=f2e152]: Valuta e correggi
+                    - paragraph [ref=f2e153]: Dopo il risultato assegna punteggi separati e applica al massimo le iterazioni selettive configurate; l’upscale resta successivo al compositing.
+            - generic [ref=f2e154]:
+              - heading "Impostazioni consigliate" [level=3] [ref=f2e155]
+              - generic [ref=f2e156]:
+                - generic [ref=f2e157]:
+                  - generic [ref=f2e158]: Fast Preview
+                  - generic [ref=f2e159]: Analisi rapida
+                  - paragraph [ref=f2e160]: Ideale per prove e macchine occupate; usa proxy locali e fallback dichiarati.
+                - generic [ref=f2e161]:
+                  - generic [ref=f2e162]: Balanced
+                  - generic [ref=f2e163]: Depth + segmentazione
+                  - paragraph [ref=f2e164]: Scelta consigliata per l’editing fotografico.
+                - generic [ref=f2e165]:
+                  - generic [ref=f2e166]: Maximum
+                  - generic [ref=f2e167]: Tracking e 3 correzioni
+                  - paragraph [ref=f2e168]: Per video o master finali; richiede più VRAM e tempo.
+                - generic [ref=f2e169]:
+                  - generic [ref=f2e170]: Grana
+                  - generic [ref=f2e171]: Auto
+                  - paragraph [ref=f2e172]: Applicata per ultima, dopo armonizzazione e compositing.
+            - complementary [ref=f2e173]:
+              - text: Esempio prompt
+              - paragraph [ref=f2e174]: Analizza la foto della piscina, poi aggiungi la persona nella zona mascherata conservando prospettiva, luce solare, riflessi, profondità, nitidezza e grana della scena originale.
+            - generic [ref=f2e175]:
+              - heading "Accorgimenti" [level=3] [ref=f2e176]
+              - list [ref=f2e177]:
+                - listitem [ref=f2e178]: Se Depth/segmentazione sono in coda puoi continuare con Fast Preview.
+                - listitem [ref=f2e179]: I controlli non supportati dal modello vengono mostrati come fallback, mai simulati come se fossero reali.
+                - listitem [ref=f2e180]: Apri il pannello Scene Integration nella generazione per punteggi, confidenza, maschera e mappa differenze.
+            - link "Usa questo workflow" [ref=f2e182] [cursor=pointer]:
+              - /url: /studio.html
+              - text: Usa questo workflow
+              - generic [ref=f2e183]: →
+          - article [ref=f2e184]:
+            - generic [ref=f2e185]:
+              - generic [ref=f2e186]:
+                - paragraph [ref=f2e187]: 02 / Editing visuale
+                - heading "Editor Guidato" [level=2] [ref=f2e188]
+                - paragraph [ref=f2e189]: Un unico editor per aggiungere, rimuovere, sostituire o trasformare elementi indicando area, posizione, interazione, profondità e reference.
+              - generic [ref=f2e190]: Consigliato
+            - generic [ref=f2e191]:
+              - generic [ref=f2e192]:
+                - heading "Ideale per" [level=3] [ref=f2e193]
+                - list [ref=f2e194]:
+                  - listitem [ref=f2e195]: Inserimento realistico di persone, animali o oggetti
+                  - listitem [ref=f2e196]: Rimozioni e sostituzioni localizzate
+                  - listitem [ref=f2e197]: Cambio sfondo, stile o illuminazione
+              - generic [ref=f2e198]:
+                - heading "Cosa preparare" [level=3] [ref=f2e199]
+                - list [ref=f2e200]:
+                  - listitem [ref=f2e201]: Fotografia principale
+                  - listitem [ref=f2e202]: Area o riquadro della modifica
+                  - listitem [ref=f2e203]: Istruzione in linguaggio naturale
+                  - listitem [ref=f2e204]: Reference facoltative per identità, posa e stile
+                  - listitem [ref=f2e205]: Sketch, contorni o Depth facoltativi
+            - generic [ref=f2e206]:
+              - heading "Come usarlo" [level=3] [ref=f2e207]
+              - list [ref=f2e208]:
+                - listitem [ref=f2e209]:
+                  - generic [ref=f2e210]:
+                    - generic [ref=f2e211]: Scegli l’azione
+                    - paragraph [ref=f2e212]: Indica se vuoi aggiungere una persona, animale o oggetto, rimuovere, sostituire, modificare, cambiare sfondo, stile o luce.
+                - listitem [ref=f2e213]:
+                  - generic [ref=f2e214]:
+                    - generic [ref=f2e215]: Descrivi spazio e azione
+                    - paragraph [ref=f2e216]: Spiega dove deve trovarsi il soggetto, cosa sta facendo, davanti o dietro a cosa e come interagisce con l’ambiente.
+                - listitem [ref=f2e217]:
+                  - generic [ref=f2e218]:
+                    - generic [ref=f2e219]: Indica l’area
+                    - paragraph [ref=f2e220]: Traccia un riquadro per posizione e dimensione; usa il pennello per includere ombre, riflessi, acqua e punti di contatto.
+                - listitem [ref=f2e221]:
+                  - generic [ref=f2e222]:
+                    - generic [ref=f2e223]: Aggiungi le reference
+                    - paragraph [ref=f2e224]: Usa una foto per identità, una per posa o abito e una per stile/location. Una guida Canny, sketch o Depth rende la geometria più rigida.
+                - listitem [ref=f2e225]:
+                  - generic [ref=f2e226]:
+                    - generic [ref=f2e227]: Confronta e rifinisci
+                    - paragraph [ref=f2e228]: Scegli la proposta più naturale, passa allo stadio qualità e applica upscale soltanto al master approvato.
+            - generic [ref=f2e229]:
+              - heading "Impostazioni consigliate" [level=3] [ref=f2e230]
+              - generic [ref=f2e231]:
+                - generic [ref=f2e232]:
+                  - generic [ref=f2e233]: Modello
+                  - generic [ref=f2e234]: BigLove Gwen 2 MXFP8
+                  - paragraph [ref=f2e235]: Preset dedicato Qwen Image Edit per istruzioni e reference.
+                - generic [ref=f2e236]:
+                  - generic [ref=f2e237]: Riquadro + maschera
+                  - generic [ref=f2e238]: Grow 32 · Feather 24
+                  - paragraph [ref=f2e239]: Il riquadro fissa scala e posizione; la sfumatura integra i bordi.
+                - generic [ref=f2e240]:
+                  - generic [ref=f2e241]: Guida strutturale
+                  - generic [ref=f2e242]: Automatico o 0,60–0,85
+                  - paragraph [ref=f2e243]: Valori più alti seguono più rigidamente linee e sketch.
+                - generic [ref=f2e244]:
+                  - generic [ref=f2e245]: Alternative
+                  - generic [ref=f2e246]: 2–3
+                  - paragraph [ref=f2e247]: Consente di scegliere composizione e anatomia senza saturare la coda.
+            - complementary [ref=f2e248]:
+              - text: Esempio prompt
+              - paragraph [ref=f2e249]: Aggiungi la donna adulta della reference alla mia destra dentro la piscina. È immersa fino alla vita, mi guarda e appoggia la mano sulla mia spalla. Mantieni identici il mio volto, corpo e posa; crea occlusione dell’acqua, riflessi, increspature, prospettiva e luce coerenti.
+            - generic [ref=f2e250]:
+              - heading "Accorgimenti" [level=3] [ref=f2e251]
+              - list [ref=f2e252]:
+                - listitem [ref=f2e253]: Per una persona nell’acqua maschera anche la superficie che deve reagire.
+                - listitem [ref=f2e254]: Il riquadro stabilisce dove e quanto grande; una reference di posa stabilisce cosa sta facendo.
+                - listitem [ref=f2e255]: Scrivi sempre ciò che non deve cambiare.
+            - link "Usa questo workflow" [ref=f2e257] [cursor=pointer]:
+              - /url: /studio.html?workflow=guidedEdit
+              - text: Usa questo workflow
+              - generic [ref=f2e258]: →
+          - article [ref=f2e259]:
+            - generic [ref=f2e260]:
+              - generic [ref=f2e261]:
+                - paragraph [ref=f2e262]: 03 / Sequenza
+                - heading "Storyboard Director" [level=2] [ref=f2e263]
+                - paragraph [ref=f2e264]: Crea 2–4 immagini consecutive condividendo personaggi, location, look e prompt globale.
+              - generic [ref=f2e265]: Guidato
+            - generic [ref=f2e266]:
+              - generic [ref=f2e267]:
+                - heading "Ideale per" [level=3] [ref=f2e268]
+                - list [ref=f2e269]:
+                  - listitem [ref=f2e270]: Previsualizzazione
+                  - listitem [ref=f2e271]: Sequenze da animare con LTX
+                  - listitem [ref=f2e272]: Narrazione coerente
+              - generic [ref=f2e273]:
+                - heading "Cosa preparare" [level=3] [ref=f2e274]
+                - list [ref=f2e275]:
+                  - listitem [ref=f2e276]: Prompt globale
+                  - listitem [ref=f2e277]: Descrizione separata di ogni shot
+                  - listitem [ref=f2e278]: Immagine master e reference facoltative
+            - generic [ref=f2e279]:
+              - heading "Come usarlo" [level=3] [ref=f2e280]
+              - list [ref=f2e281]:
+                - listitem [ref=f2e282]:
+                  - generic [ref=f2e283]:
+                    - generic [ref=f2e284]: Definisci la continuità
+                    - paragraph [ref=f2e285]: Nel prompt globale fissa personaggio, abito, luogo, luce, palette e formato.
+                - listitem [ref=f2e286]:
+                  - generic [ref=f2e287]:
+                    - generic [ref=f2e288]: Descrivi gli shot
+                    - paragraph [ref=f2e289]: Per ogni immagine cambia soprattutto azione e camera, senza riscrivere l’identità.
+                - listitem [ref=f2e290]:
+                  - generic [ref=f2e291]:
+                    - generic [ref=f2e292]: Approva la sequenza
+                    - paragraph [ref=f2e293]: Confronta gli shot e rigenera soltanto quelli incoerenti.
+                - listitem [ref=f2e294]:
+                  - generic [ref=f2e295]:
+                    - generic [ref=f2e296]: Anima
+                    - paragraph [ref=f2e297]: Usa coppie adiacenti come first/last frame per le transizioni LTX 2.3.
+            - generic [ref=f2e298]:
+              - heading "Impostazioni consigliate" [level=3] [ref=f2e299]
+              - generic [ref=f2e300]:
+                - generic [ref=f2e301]:
+                  - generic [ref=f2e302]: Shot
+                  - generic [ref=f2e303]: 3 come partenza
+                  - paragraph [ref=f2e304]: Establishing, medium, close-up formano una sequenza leggibile.
+                - generic [ref=f2e305]:
+                  - generic [ref=f2e306]: BigLove Klein
+                  - generic [ref=f2e307]: BF16 qualità unica
+                  - paragraph [ref=f2e308]: Preferibile per fotorealismo e resa fotografica.
+                - generic [ref=f2e309]:
+                  - generic [ref=f2e310]: BigLove Gwen
+                  - generic [ref=f2e311]: MXFP8 qualità unica
+                  - paragraph [ref=f2e312]: Preferibile quando reference, istruzioni e continuità semantica sono prioritarie.
+                - generic [ref=f2e313]:
+                  - generic [ref=f2e314]: Comportamento
+                  - generic [ref=f2e315]: Conservativo
+                  - paragraph [ref=f2e316]: Aiuta la continuità fra immagini.
+                - generic [ref=f2e317]:
+                  - generic [ref=f2e318]: Seed
+                  - generic [ref=f2e319]: Fisso
+                  - paragraph [ref=f2e320]: Rende più ripetibili le iterazioni.
+            - complementary [ref=f2e321]:
+              - text: Esempio prompt
+              - paragraph [ref=f2e322]: Stessa donna adulta, costume rosso e piscina mediterranea al tramonto; realismo da smartphone, luce e palette costanti in tutti gli shot.
+            - generic [ref=f2e323]:
+              - heading "Accorgimenti" [level=3] [ref=f2e324]
+              - list [ref=f2e325]:
+                - listitem [ref=f2e326]: Evita salti estremi di lente o lato camera fra due frame da animare.
+                - listitem [ref=f2e327]: La Bible del personaggio può diventare la reference master.
+            - link "Usa questo workflow" [ref=f2e329] [cursor=pointer]:
+              - /url: /studio.html?workflow=storyboard
+              - text: Usa questo workflow
+              - generic [ref=f2e330]: →
+          - article [ref=f2e331]:
+            - generic [ref=f2e332]:
+              - generic [ref=f2e333]:
+                - paragraph [ref=f2e334]: 04 / Animazione
+                - heading "LTX First / Last Frame" [level=2] [ref=f2e335]
+                - paragraph [ref=f2e336]: Genera con LTX 2.3 il movimento che collega due fotogrammi approvati.
+              - generic [ref=f2e337]: Video
+            - generic [ref=f2e338]:
+              - generic [ref=f2e339]:
+                - heading "Ideale per" [level=3] [ref=f2e340]
+                - list [ref=f2e341]:
+                  - listitem [ref=f2e342]: Animare storyboard
+                  - listitem [ref=f2e343]: Transizioni controllate
+                  - listitem [ref=f2e344]: Movimenti camera e soggetto
+              - generic [ref=f2e345]:
+                - heading "Cosa preparare" [level=3] [ref=f2e346]
+                - list [ref=f2e347]:
+                  - listitem [ref=f2e348]: Primo frame
+                  - listitem [ref=f2e349]: Ultimo frame
+                  - listitem [ref=f2e350]: Prompt del movimento
+                  - listitem [ref=f2e351]: Durata, camera e intensità
+            - generic [ref=f2e352]:
+              - heading "Come usarlo" [level=3] [ref=f2e353]
+              - list [ref=f2e354]:
+                - listitem [ref=f2e355]:
+                  - generic [ref=f2e356]:
+                    - generic [ref=f2e357]: Scegli frame compatibili
+                    - paragraph [ref=f2e358]: Soggetto, ambiente e prospettiva devono poter evolvere senza salti impossibili.
+                - listitem [ref=f2e359]:
+                  - generic [ref=f2e360]:
+                    - generic [ref=f2e361]: Descrivi il movimento
+                    - paragraph [ref=f2e362]: Spiega cosa si muove, come reagisce l’ambiente e cosa fa la camera.
+                - listitem [ref=f2e363]:
+                  - generic [ref=f2e364]:
+                    - generic [ref=f2e365]: Parti leggero
+                    - paragraph [ref=f2e366]: Prova 480p e intensità media; passa a 720p dopo aver approvato il moto.
+            - generic [ref=f2e367]:
+              - heading "Impostazioni consigliate" [level=3] [ref=f2e368]
+              - generic [ref=f2e369]:
+                - generic [ref=f2e370]:
+                  - generic [ref=f2e371]: Durata
+                  - generic [ref=f2e372]: 4–6 secondi
+                  - paragraph [ref=f2e373]: Intervallo gestibile per una singola azione.
+                - generic [ref=f2e374]:
+                  - generic [ref=f2e375]: Risoluzione bozza
+                  - generic [ref=f2e376]: 480p
+                  - paragraph [ref=f2e377]: Più rapida e meno esposta a OOM.
+                - generic [ref=f2e378]:
+                  - generic [ref=f2e379]: Intensità
+                  - generic [ref=f2e380]: Media
+                  - paragraph [ref=f2e381]: Buon equilibrio fra dinamica e stabilità.
+            - complementary [ref=f2e382]:
+              - text: Esempio prompt
+              - paragraph [ref=f2e383]: La donna entra lentamente in piscina, l’acqua forma increspature naturali; lieve dolly in, movimenti fluidi, illuminazione e identità costanti.
+            - generic [ref=f2e384]:
+              - heading "Accorgimenti" [level=3] [ref=f2e385]
+              - list [ref=f2e386]:
+                - listitem [ref=f2e387]: Un’azione principale per clip è più stabile.
+                - listitem [ref=f2e388]: Frame troppo diversi richiedono più invenzione e possono creare morphing.
+            - link "Usa questo workflow" [ref=f2e390] [cursor=pointer]:
+              - /url: /studio.html?workflow=firstLast
+              - text: Usa questo workflow
+              - generic [ref=f2e391]: →
+          - article [ref=f2e392]:
+            - generic [ref=f2e393]:
+              - generic [ref=f2e394]:
+                - paragraph [ref=f2e395]: 05 / Continuità
+                - heading "Character & Location Bible" [level=2] [ref=f2e396]
+                - paragraph [ref=f2e397]: Produce viste di riferimento coerenti di un personaggio o di una location per i workflow successivi.
+              - generic [ref=f2e398]: Preparazione
+            - generic [ref=f2e399]:
+              - generic [ref=f2e400]:
+                - heading "Ideale per" [level=3] [ref=f2e401]
+                - list [ref=f2e402]:
+                  - listitem [ref=f2e403]: Identità ricorrenti
+                  - listitem [ref=f2e404]: Location multi-inquadratura
+                  - listitem [ref=f2e405]: Reference master per storyboard
+              - generic [ref=f2e406]:
+                - heading "Cosa preparare" [level=3] [ref=f2e407]
+                - list [ref=f2e408]:
+                  - listitem [ref=f2e409]: Immagine di partenza
+                  - listitem [ref=f2e410]: Descrizione invarianti
+                  - listitem [ref=f2e411]: Elenco delle viste richieste
+            - generic [ref=f2e412]:
+              - heading "Come usarlo" [level=3] [ref=f2e413]
+              - list [ref=f2e414]:
+                - listitem [ref=f2e415]:
+                  - generic [ref=f2e416]:
+                    - generic [ref=f2e417]: Definisci gli invarianti
+                    - paragraph [ref=f2e418]: Elenca volto, corporatura, abito, materiali, architettura e palette che non devono cambiare.
+                - listitem [ref=f2e419]:
+                  - generic [ref=f2e420]:
+                    - generic [ref=f2e421]: Genera viste pulite
+                    - paragraph [ref=f2e422]: Crea frontale, profili, tre quarti e figura intera oppure viste della location.
+                - listitem [ref=f2e423]:
+                  - generic [ref=f2e424]:
+                    - generic [ref=f2e425]: Riusa il master
+                    - paragraph [ref=f2e426]: Seleziona le migliori viste come reference negli editor e nello Storyboard Director.
+            - generic [ref=f2e427]:
+              - heading "Impostazioni consigliate" [level=3] [ref=f2e428]
+              - generic [ref=f2e429]:
+                - generic [ref=f2e430]:
+                  - generic [ref=f2e431]: Comportamento
+                  - generic [ref=f2e432]: Conservativo
+                  - paragraph [ref=f2e433]: Evita derive d’identità.
+                - generic [ref=f2e434]:
+                  - generic [ref=f2e435]: Viste
+                  - generic [ref=f2e436]: Una per riga
+                  - paragraph [ref=f2e437]: Ogni output ha un obiettivo chiaro.
+                - generic [ref=f2e438]:
+                  - generic [ref=f2e439]: Upscale
+                  - generic [ref=f2e440]: Dopo la selezione
+                  - paragraph [ref=f2e441]: Non spendere tempo sulle viste scartate.
+            - complementary [ref=f2e442]:
+              - text: Esempio prompt
+              - paragraph [ref=f2e443]: Mantieni identici volto, capelli, corporatura e costume rosso; genera viste fotografiche frontale, profilo, tre quarti e figura intera.
+            - generic [ref=f2e444]:
+              - heading "Accorgimenti" [level=3] [ref=f2e445]
+              - list [ref=f2e446]:
+                - listitem [ref=f2e447]: Usa descrizioni concrete e ripetibili.
+                - listitem [ref=f2e448]: Non cambiare contemporaneamente posa, abito e illuminazione.
+            - link "Usa questo workflow" [ref=f2e450] [cursor=pointer]:
+              - /url: /studio.html?workflow=bible
+              - text: Usa questo workflow
+              - generic [ref=f2e451]: →
+          - article [ref=f2e452]:
+            - generic [ref=f2e453]:
+              - generic [ref=f2e454]:
+                - paragraph [ref=f2e455]: 06 / Pipeline completa
+                - heading "Perfect Image Studio" [level=2] [ref=f2e456]
+                - paragraph [ref=f2e457]: Orchestra una pipeline BigLove a qualità unica, conserva le reference d’identità fra gli stadi e conclude con refine e upscale.
+              - generic [ref=f2e458]: Qualità
+            - generic [ref=f2e459]:
+              - generic [ref=f2e460]:
+                - heading "Ideale per" [level=3] [ref=f2e461]
+                - list [ref=f2e462]:
+                  - listitem [ref=f2e463]: Composizioni con più identità
+                  - listitem [ref=f2e464]: Immagine master da animare
+                  - listitem [ref=f2e465]: Selezione guidata e rifinitura
+              - generic [ref=f2e466]:
+                - heading "Cosa preparare" [level=3] [ref=f2e467]
+                - list [ref=f2e468]:
+                  - listitem [ref=f2e469]: Prompt completo
+                  - listitem [ref=f2e470]: Immagine sorgente facoltativa
+                  - listitem [ref=f2e471]: Reference e LoRA facoltative
+                  - listitem [ref=f2e472]: Preset Speed, Quality o MAX
+            - generic [ref=f2e473]:
+              - heading "Come usarlo" [level=3] [ref=f2e474]
+              - list [ref=f2e475]:
+                - listitem [ref=f2e476]:
+                  - generic [ref=f2e477]:
+                    - generic [ref=f2e478]: Scegli la famiglia
+                    - paragraph [ref=f2e479]: BigLove Gwen privilegia identità e reference; BigLove Klein privilegia velocità e realismo.
+                - listitem [ref=f2e480]:
+                  - generic [ref=f2e481]:
+                    - generic [ref=f2e482]: Crea le proposte
+                    - paragraph [ref=f2e483]: Gwen MXFP8 o Klein BF16 generano direttamente in qualità unica.
+                - listitem [ref=f2e484]:
+                  - generic [ref=f2e485]:
+                    - generic [ref=f2e486]: Seleziona
+                    - paragraph [ref=f2e487]: Approva la proposta con miglior geometria, luce e leggibilità prima del refine.
+                - listitem [ref=f2e488]:
+                  - generic [ref=f2e489]:
+                    - generic [ref=f2e490]: Rifinisci
+                    - paragraph [ref=f2e491]: Lo stadio qualità mantiene lo stesso modello e conserva collegate le reference originali.
+                - listitem [ref=f2e492]:
+                  - generic [ref=f2e493]:
+                    - generic [ref=f2e494]: Produci il master
+                    - paragraph [ref=f2e495]: Applica l’upscale scelto e conserva anche lo stadio precedente.
+            - generic [ref=f2e496]:
+              - heading "Impostazioni consigliate" [level=3] [ref=f2e497]
+              - generic [ref=f2e498]:
+                - generic [ref=f2e499]:
+                  - generic [ref=f2e500]: Speed
+                  - generic [ref=f2e501]: Qualità unica + upscale semplice
+                  - paragraph [ref=f2e502]: Per esplorare prompt e composizione senza cambiare modello.
+                - generic [ref=f2e503]:
+                  - generic [ref=f2e504]: BigLove Gwen
+                  - generic [ref=f2e505]: MXFP8
+                  - paragraph [ref=f2e506]: Scelta consigliata quando devono rimanere riconoscibili due persone.
+                - generic [ref=f2e507]:
+                  - generic [ref=f2e508]: BigLove Klein
+                  - generic [ref=f2e509]: BF16
+                  - paragraph [ref=f2e510]: Scelta consigliata per resa fotografica.
+                - generic [ref=f2e511]:
+                  - generic [ref=f2e512]: Quality
+                  - generic [ref=f2e513]: Pipeline equilibrata
+                  - paragraph [ref=f2e514]: Scelta consigliata per la maggior parte dei master.
+                - generic [ref=f2e515]:
+                  - generic [ref=f2e516]: MAX
+                  - generic [ref=f2e517]: Tutti gli stadi
+                  - paragraph [ref=f2e518]: Per il risultato approvato; richiede più tempo e VRAM.
+                - generic [ref=f2e519]:
+                  - generic [ref=f2e520]: Upscale
+                  - generic [ref=f2e521]: SeedVR2 3B
+                  - paragraph [ref=f2e522]: Buon equilibrio fra dettaglio e fedeltà.
+            - complementary [ref=f2e523]:
+              - text: Esempio prompt
+              - paragraph [ref=f2e524]: Fotografia editoriale realistica di una villa mediterranea con piscina al tramonto, luce naturale, materiali credibili, composizione cinematografica ma resa non artificiale.
+            - generic [ref=f2e525]:
+              - heading "Accorgimenti" [level=3] [ref=f2e526]
+              - list [ref=f2e527]:
+                - listitem [ref=f2e528]: Per editing di una foto esistente preferisci Smartphone Photo Editor.
+                - listitem [ref=f2e529]: Non usare MAX finché prompt e composizione non sono definitivi.
+                - listitem [ref=f2e530]: Conserva lo stadio pre-upscale per confronti e animazione.
+            - link "Usa questo workflow" [ref=f2e532] [cursor=pointer]:
+              - /url: /studio.html?workflow=perfect
+              - text: Usa questo workflow
+              - generic [ref=f2e533]: →
+          - article [ref=f2e534]:
+            - generic [ref=f2e535]:
+              - generic [ref=f2e536]:
+                - paragraph [ref=f2e537]: 07 / Video Studio
+                - heading "Actor Replacement Studio" [level=2] [ref=f2e538]
+                - paragraph [ref=f2e539]: Sostituisce il viso o l’intero corpo di un attore cercando di conservare recitazione, movimento, camera e audio.
+              - generic [ref=f2e540]: Avanzato
+            - generic [ref=f2e541]:
+              - generic [ref=f2e542]:
+                - heading "Ideale per" [level=3] [ref=f2e543]
+                - list [ref=f2e544]:
+                  - listitem [ref=f2e545]: Face replacement con performance originale
+                  - listitem [ref=f2e546]: Sostituzione completa dell’interprete
+                  - listitem [ref=f2e547]: Rifinitura successiva con LipDub
+              - generic [ref=f2e548]:
+                - heading "Cosa preparare" [level=3] [ref=f2e549]
+                - list [ref=f2e550]:
+                  - listitem [ref=f2e551]: Clip di uno shot continuo
+                  - listitem [ref=f2e552]: Reference in primo piano della nuova identità
+                  - listitem [ref=f2e553]: Selezione del volto per numero, clic o pennello
+                  - listitem [ref=f2e554]: Trascrizione del dialogo opzionale
+            - generic [ref=f2e555]:
+              - heading "Come usarlo" [level=3] [ref=f2e556]
+              - list [ref=f2e557]:
+                - listitem [ref=f2e558]:
+                  - generic [ref=f2e559]:
+                    - generic [ref=f2e560]: Prepara lo shot
+                    - paragraph [ref=f2e561]: Dividi la clip in corrispondenza degli stacchi di montaggio e limita ogni progetto a un’inquadratura continua.
+                - listitem [ref=f2e562]:
+                  - generic [ref=f2e563]:
+                    - generic [ref=f2e564]: Scegli il motore
+                    - paragraph [ref=f2e565]: Face Swap sostituisce soltanto il volto senza maschera. Per testa, capelli o corpo, Tracked Inpaint usa SAM3 per creare e seguire automaticamente la maschera.
+                - listitem [ref=f2e566]:
+                  - generic [ref=f2e567]:
+                    - generic [ref=f2e568]: Seleziona l’attore
+                    - paragraph [ref=f2e569]: Scegli il volto contando da sinistra, clicca direttamente sulla persona oppure dipingi grossolanamente la zona nel primo fotogramma.
+                - listitem [ref=f2e570]:
+                  - generic [ref=f2e571]:
+                    - generic [ref=f2e572]: Esegui la sostituzione
+                    - paragraph [ref=f2e573]: Controlla identità, capelli, mani, occlusioni e contatto con gli oggetti prima dello stadio successivo.
+                - listitem [ref=f2e574]:
+                  - generic [ref=f2e575]:
+                    - generic [ref=f2e576]: Applica LipDub
+                    - paragraph [ref=f2e577]: Usa la trascrizione per recuperare o correggere movimento labiale e sincronizzazione del dialogo.
+            - generic [ref=f2e578]:
+              - heading "Impostazioni consigliate" [level=3] [ref=f2e579]
+              - generic [ref=f2e580]:
+                - generic [ref=f2e581]:
+                  - generic [ref=f2e582]: Solo viso
+                  - generic [ref=f2e583]: Dilation 8–12
+                  - paragraph [ref=f2e584]: Include i bordi senza coinvolgere inutilmente capelli e ambiente.
+                - generic [ref=f2e585]:
+                  - generic [ref=f2e586]: Testa e capelli
+                  - generic [ref=f2e587]: Dilation 14–18
+                  - paragraph [ref=f2e588]: SAM3 segue la testa mentre LTX ricostruisce anche acconciatura e contorni.
+                - generic [ref=f2e589]:
+                  - generic [ref=f2e590]: Corpo completo
+                  - generic [ref=f2e591]: Dilation 18–28
+                  - paragraph [ref=f2e592]: Copre abito, arti, ombre e aree di contatto.
+                - generic [ref=f2e593]:
+                  - generic [ref=f2e594]: Durata
+                  - generic [ref=f2e595]: Massimo 10 s per shot
+                  - paragraph [ref=f2e596]: Riduce derive temporali e cambi d’identità.
+                - generic [ref=f2e597]:
+                  - generic [ref=f2e598]: Fallback
+                  - generic [ref=f2e599]: Identity LoRA obbligatoria
+                  - paragraph [ref=f2e600]: Una semplice foto non codifica l’identità nel motore globale.
+            - complementary [ref=f2e601]:
+              - text: Esempio prompt
+              - paragraph [ref=f2e602]: Sostituisci soltanto il volto dell’uomo a sinistra con la mia identità. Conserva esattamente movimenti, espressioni, tempi della bocca, luce, camera e audio originali.
+            - generic [ref=f2e603]:
+              - heading "Accorgimenti" [level=3] [ref=f2e604]
+              - list [ref=f2e605]:
+                - listitem [ref=f2e606]: "Per Solo viso usa Face Swap: conserva meglio recitazione e labiale."
+                - listitem [ref=f2e607]: Controlla l’anteprima SAM3 numerata; la maschera video manuale è soltanto un fallback avanzato.
+                - listitem [ref=f2e608]: Mani davanti al volto e forti rotazioni possono richiedere una correzione con pennello sul primo frame.
+            - link "Usa questo workflow" [ref=f2e610] [cursor=pointer]:
+              - /url: /video-studio.html?workflow=actorReplacement
+              - text: Usa questo workflow
+              - generic [ref=f2e611]: →
+          - article [ref=f2e612]:
+            - generic [ref=f2e613]:
+              - generic [ref=f2e614]:
+                - paragraph [ref=f2e615]: 08 / Video Studio
+                - heading "Interactive Scene Studio" [level=2] [ref=f2e616]
+                - paragraph [ref=f2e617]: Anima un keyframe composito con un nuovo personaggio, azioni, battute ordinate, sguardi e risposte degli altri attori.
+              - generic [ref=f2e618]: Regia generativa
+            - generic [ref=f2e619]:
+              - generic [ref=f2e620]:
+                - heading "Ideale per" [level=3] [ref=f2e621]
+                - list [ref=f2e622]:
+                  - listitem [ref=f2e623]: Aggiungerti come nuovo personaggio
+                  - listitem [ref=f2e624]: Conversazioni multi-personaggio
+                  - listitem [ref=f2e625]: Nuova interpretazione di una scena
+              - generic [ref=f2e626]:
+                - heading "Cosa preparare" [level=3] [ref=f2e627]
+                - list [ref=f2e628]:
+                  - listitem [ref=f2e629]: Keyframe con tutti i personaggi già posizionati
+                  - listitem [ref=f2e630]: Descrizione visiva di ogni persona
+                  - listitem [ref=f2e631]: Regia e azioni
+                  - listitem [ref=f2e632]: Copione ordinato con tono e sguardi
+            - generic [ref=f2e633]:
+              - heading "Come usarlo" [level=3] [ref=f2e634]
+              - list [ref=f2e635]:
+                - listitem [ref=f2e636]:
+                  - generic [ref=f2e637]:
+                    - generic [ref=f2e638]: Crea il master
+                    - paragraph [ref=f2e639]: Inserisciti prima nel fotogramma con Multi-Reference Composer o Smartphone Photo Editor.
+                - listitem [ref=f2e640]:
+                  - generic [ref=f2e641]:
+                    - generic [ref=f2e642]: Assegna le identità
+                    - paragraph [ref=f2e643]: Descrivi posizione, abito e ruolo di ogni persona nel reference sheet.
+                - listitem [ref=f2e644]:
+                  - generic [ref=f2e645]:
+                    - generic [ref=f2e646]: Scrivi il copione
+                    - paragraph [ref=f2e647]: Ordina le battute e indica per ciascuna chi parla, il tono e verso chi guarda.
+                - listitem [ref=f2e648]:
+                  - generic [ref=f2e649]:
+                    - generic [ref=f2e650]: Genera e correggi
+                    - paragraph [ref=f2e651]: Controlla turni di parola e identità; usa LipDub per rifinire o riscrivere il dialogo.
+            - generic [ref=f2e652]:
+              - heading "Impostazioni consigliate" [level=3] [ref=f2e653]
+              - generic [ref=f2e654]:
+                - generic [ref=f2e655]:
+                  - generic [ref=f2e656]: Personaggi
+                  - generic [ref=f2e657]: 2–3 per shot
+                  - paragraph [ref=f2e658]: Conversazioni più affollate aumentano sovrapposizioni e scambi d’identità.
+                - generic [ref=f2e659]:
+                  - generic [ref=f2e660]: Battute
+                  - generic [ref=f2e661]: Brevi e alternate
+                  - paragraph [ref=f2e662]: Lasciano tempo a sguardi, pause e reazioni.
+                - generic [ref=f2e663]:
+                  - generic [ref=f2e664]: Camera
+                  - generic [ref=f2e665]: Statica o movimento leggero
+                  - paragraph [ref=f2e666]: Aiuta continuità e leggibilità del dialogo.
+                - generic [ref=f2e667]:
+                  - generic [ref=f2e668]: Durata
+                  - generic [ref=f2e669]: 6–10 secondi
+                  - paragraph [ref=f2e670]: Adatta a una breve interazione con una risposta.
+            - complementary [ref=f2e671]:
+              - text: Esempio prompt
+              - paragraph [ref=f2e672]: "John al centro chiede con tono amichevole: «Posso unirmi a voi?». L’attore a sinistra lo guarda, sorride e risponde: «Certo, vieni qui». L’attrice ascolta e reagisce naturalmente."
+            - generic [ref=f2e673]:
+              - heading "Accorgimenti" [level=3] [ref=f2e674]
+              - list [ref=f2e675]:
+                - listitem [ref=f2e676]: Solo il personaggio nominato deve muovere le labbra durante la propria battuta.
+                - listitem [ref=f2e677]: Prepara il keyframe con ombre, scala e profondità già corrette.
+                - listitem [ref=f2e678]: Per dialoghi lunghi usa più shot e montali nella schermata Generazioni.
+            - link "Usa questo workflow" [ref=f2e680] [cursor=pointer]:
+              - /url: /video-studio.html?workflow=interactiveScene
+              - text: Usa questo workflow
+              - generic [ref=f2e681]: →
+          - article [ref=f2e682]:
+            - generic [ref=f2e683]:
+              - generic [ref=f2e684]:
+                - paragraph [ref=f2e685]: 09 / Video Studio
+                - heading "LTX Control Studio" [level=2] [ref=f2e686]
+                - paragraph [ref=f2e687]: Trasferisce bordi, posa o profondità da un video guida mantenendo look e identità della reference.
+              - generic [ref=f2e688]: Controllato
+            - generic [ref=f2e689]:
+              - generic [ref=f2e690]:
+                - heading "Ideale per" [level=3] [ref=f2e691]
+                - list [ref=f2e692]:
+                  - listitem [ref=f2e693]: Coreografie e pose precise
+                  - listitem [ref=f2e694]: Camera e composizione controllate
+                  - listitem [ref=f2e695]: Movimento guidato
+              - generic [ref=f2e696]:
+                - heading "Cosa preparare" [level=3] [ref=f2e697]
+                - list [ref=f2e698]:
+                  - listitem [ref=f2e699]: Video guida
+                  - listitem [ref=f2e700]: Reference visiva
+                  - listitem [ref=f2e701]: Prompt del risultato
+                  - listitem [ref=f2e702]: Tipo e forza del controllo
+            - generic [ref=f2e703]:
+              - heading "Come usarlo" [level=3] [ref=f2e704]
+              - list [ref=f2e705]:
+                - listitem [ref=f2e706]:
+                  - generic [ref=f2e707]:
+                    - generic [ref=f2e708]: Scegli la guida
+                    - paragraph [ref=f2e709]: Usa Canny per contorni e camera, Pose per il corpo, Depth per volumi e distanze.
+                - listitem [ref=f2e710]:
+                  - generic [ref=f2e711]:
+                    - generic [ref=f2e712]: Carica la reference
+                    - paragraph [ref=f2e713]: Fissa identità, abito e look nel frame iniziale.
+                - listitem [ref=f2e714]:
+                  - generic [ref=f2e715]:
+                    - generic [ref=f2e716]: Regola la forza
+                    - paragraph [ref=f2e717]: Parti da 0,85 e riduci se il video diventa rigido.
+                - listitem [ref=f2e718]:
+                  - generic [ref=f2e719]:
+                    - generic [ref=f2e720]: Verifica la clip
+                    - paragraph [ref=f2e721]: Controlla flicker, anatomia, occlusioni e coerenza dell’identità.
+            - generic [ref=f2e722]:
+              - heading "Impostazioni consigliate" [level=3] [ref=f2e723]
+              - generic [ref=f2e724]:
+                - generic [ref=f2e725]:
+                  - generic [ref=f2e726]: Canny
+                  - generic [ref=f2e727]: 0,75–0,9
+                  - paragraph [ref=f2e728]: Contorni e composizione.
+                - generic [ref=f2e729]:
+                  - generic [ref=f2e730]: Pose
+                  - generic [ref=f2e731]: 0,8–1
+                  - paragraph [ref=f2e732]: Prestazione corporea.
+                - generic [ref=f2e733]:
+                  - generic [ref=f2e734]: Depth
+                  - generic [ref=f2e735]: 0,7–0,9
+                  - paragraph [ref=f2e736]: Spazio e geometria.
+                - generic [ref=f2e737]:
+                  - generic [ref=f2e738]: Motore
+                  - generic [ref=f2e739]: LTX Dev ufficiale
+                  - paragraph [ref=f2e740]: Union Control non usa DaSiWa.
+            - complementary [ref=f2e741]:
+              - text: Esempio prompt
+              - paragraph [ref=f2e742]: Mantieni la donna della reference; trasferisci esattamente posa, traiettoria e camera dal video guida, con movimento naturale e identità stabile.
+            - generic [ref=f2e743]:
+              - heading "Accorgimenti" [level=3] [ref=f2e744]
+              - list [ref=f2e745]:
+                - listitem [ref=f2e746]: Il video guida deve avere uno shot continuo.
+                - listitem [ref=f2e747]: Canny troppo forte può copiare dettagli indesiderati.
+            - link "Usa questo workflow" [ref=f2e749] [cursor=pointer]:
+              - /url: /video-studio.html?workflow=controlStudio
+              - text: Usa questo workflow
+              - generic [ref=f2e750]: →
+          - article [ref=f2e751]:
+            - generic [ref=f2e752]:
+              - generic [ref=f2e753]:
+                - paragraph [ref=f2e754]: 10 / Video Studio
+                - heading "Keyframe Interpolation" [level=2] [ref=f2e755]
+                - paragraph [ref=f2e756]: Collega da due a quattro immagini in una sola azione continua, con tempo e aderenza per ogni keyframe.
+              - generic [ref=f2e757]: Regia
+            - generic [ref=f2e758]:
+              - generic [ref=f2e759]:
+                - heading "Ideale per" [level=3] [ref=f2e760]
+                - list [ref=f2e761]:
+                  - listitem [ref=f2e762]: Storyboard animati
+                  - listitem [ref=f2e763]: Traiettorie temporali precise
+                  - listitem [ref=f2e764]: Transizioni multi-stadio
+              - generic [ref=f2e765]:
+                - heading "Cosa preparare" [level=3] [ref=f2e766]
+                - list [ref=f2e767]:
+                  - listitem [ref=f2e768]: 2–4 keyframe ordinati
+                  - listitem [ref=f2e769]: Tempi
+                  - listitem [ref=f2e770]: Forze
+                  - listitem [ref=f2e771]: Prompt di movimento
+            - generic [ref=f2e772]:
+              - heading "Come usarlo" [level=3] [ref=f2e773]
+              - list [ref=f2e774]:
+                - listitem [ref=f2e775]:
+                  - generic [ref=f2e776]:
+                    - generic [ref=f2e777]: Ordina i frame
+                    - paragraph [ref=f2e778]: Il primo è a 0 s e l’ultimo alla durata finale.
+                - listitem [ref=f2e779]:
+                  - generic [ref=f2e780]:
+                    - generic [ref=f2e781]: Posiziona gli intermedi
+                    - paragraph [ref=f2e782]: Assegna tempi crescenti e lascia spazio sufficiente a ogni transizione.
+                - listitem [ref=f2e783]:
+                  - generic [ref=f2e784]:
+                    - generic [ref=f2e785]: Descrivi il moto
+                    - paragraph [ref=f2e786]: Indica azione, camera e reazioni fisiche tra tutti i frame.
+                - listitem [ref=f2e787]:
+                  - generic [ref=f2e788]:
+                    - generic [ref=f2e789]: Fai una bozza
+                    - paragraph [ref=f2e790]: Approva il movimento a 480p prima del passaggio 720p.
+            - generic [ref=f2e791]:
+              - heading "Impostazioni consigliate" [level=3] [ref=f2e792]
+              - generic [ref=f2e793]:
+                - generic [ref=f2e794]:
+                  - generic [ref=f2e795]: Keyframe
+                  - generic [ref=f2e796]: 2–4
+                  - paragraph [ref=f2e797]: Più frame aumentano controllo ma anche vincoli.
+                - generic [ref=f2e798]:
+                  - generic [ref=f2e799]: Forza
+                  - generic [ref=f2e800]: 0,85–1
+                  - paragraph [ref=f2e801]: Aderenza al fotogramma.
+                - generic [ref=f2e802]:
+                  - generic [ref=f2e803]: Durata
+                  - generic [ref=f2e804]: 4–8 s
+                  - paragraph [ref=f2e805]: Una singola azione leggibile.
+                - generic [ref=f2e806]:
+                  - generic [ref=f2e807]: Modello
+                  - generic [ref=f2e808]: DaSiWa o LTX 2.3
+                  - paragraph [ref=f2e809]: DaSiWa è disponibile qui.
+            - complementary [ref=f2e810]:
+              - text: Esempio prompt
+              - paragraph [ref=f2e811]: La persona si alza, cammina verso la piscina e si siede sul bordo; dolly lento, identità, luce e geometria costanti.
+            - generic [ref=f2e812]:
+              - heading "Accorgimenti" [level=3] [ref=f2e813]
+              - list [ref=f2e814]:
+                - listitem [ref=f2e815]: Evita keyframe geometricamente incompatibili.
+                - listitem [ref=f2e816]: Non mettere due keyframe allo stesso tempo.
+            - link "Usa questo workflow" [ref=f2e818] [cursor=pointer]:
+              - /url: /video-studio.html?workflow=keyframeInterpolation
+              - text: Usa questo workflow
+              - generic [ref=f2e819]: →
+          - article [ref=f2e820]:
+            - generic [ref=f2e821]:
+              - generic [ref=f2e822]:
+                - paragraph [ref=f2e823]: 11 / Video Studio
+                - heading "Retake" [level=2] [ref=f2e824]
+                - paragraph [ref=f2e825]: Rigenera una clip video-to-video per correggere o cambiare un elemento conservando audio e struttura.
+              - generic [ref=f2e826]: Editing
+            - generic [ref=f2e827]:
+              - generic [ref=f2e828]:
+                - heading "Ideale per" [level=3] [ref=f2e829]
+                - list [ref=f2e830]:
+                  - listitem [ref=f2e831]: Correzione di una clip
+                  - listitem [ref=f2e832]: Cambio locale o stilistico
+                  - listitem [ref=f2e833]: Seconda interpretazione
+              - generic [ref=f2e834]:
+                - heading "Cosa preparare" [level=3] [ref=f2e835]
+                - list [ref=f2e836]:
+                  - listitem [ref=f2e837]: Clip sorgente
+                  - listitem [ref=f2e838]: Istruzione di modifica
+                  - listitem [ref=f2e839]: Modello LTX
+                  - listitem [ref=f2e840]: Forza editing
+            - generic [ref=f2e841]:
+              - heading "Come usarlo" [level=3] [ref=f2e842]
+              - list [ref=f2e843]:
+                - listitem [ref=f2e844]:
+                  - generic [ref=f2e845]:
+                    - generic [ref=f2e846]: Carica lo shot
+                    - paragraph [ref=f2e847]: Usa una clip continua e breve.
+                - listitem [ref=f2e848]:
+                  - generic [ref=f2e849]:
+                    - generic [ref=f2e850]: Descrivi il delta
+                    - paragraph [ref=f2e851]: Indica cosa cambia e cosa deve restare identico.
+                - listitem [ref=f2e852]:
+                  - generic [ref=f2e853]:
+                    - generic [ref=f2e854]: Regola la forza
+                    - paragraph [ref=f2e855]: Parti da 0,65–0,8.
+                - listitem [ref=f2e856]:
+                  - generic [ref=f2e857]:
+                    - generic [ref=f2e858]: Confronta
+                    - paragraph [ref=f2e859]: Controlla audio, identità e continuità.
+            - generic [ref=f2e860]:
+              - heading "Impostazioni consigliate" [level=3] [ref=f2e861]
+              - generic [ref=f2e862]:
+                - generic [ref=f2e863]:
+                  - generic [ref=f2e864]: Forza
+                  - generic [ref=f2e865]: 0,65–0,8
+                  - paragraph [ref=f2e866]: Bilancia modifica e fedeltà.
+                - generic [ref=f2e867]:
+                  - generic [ref=f2e868]: Modello
+                  - generic [ref=f2e869]: DaSiWa
+                  - paragraph [ref=f2e870]: Preselezionato per l’editing.
+                - generic [ref=f2e871]:
+                  - generic [ref=f2e872]: Durata
+                  - generic [ref=f2e873]: Uguale alla sorgente
+                  - paragraph [ref=f2e874]: Mantiene il timing.
+                - generic [ref=f2e875]:
+                  - generic [ref=f2e876]: Audio
+                  - generic [ref=f2e877]: Originale
+                  - paragraph [ref=f2e878]: Viene conservato.
+            - complementary [ref=f2e879]:
+              - text: Esempio prompt
+              - paragraph [ref=f2e880]: Mantieni camera, attori, recitazione e audio; sostituisci soltanto il cielo con un tramonto realistico coerente con i riflessi.
+            - generic [ref=f2e881]:
+              - heading "Accorgimenti" [level=3] [ref=f2e882]
+              - list [ref=f2e883]:
+                - listitem [ref=f2e884]: Scrivi esplicitamente cosa non deve cambiare.
+                - listitem [ref=f2e885]: Per maschere precise usa Actor Replacement o Inpaint.
+            - link "Usa questo workflow" [ref=f2e887] [cursor=pointer]:
+              - /url: /video-studio.html?workflow=retake
+              - text: Usa questo workflow
+              - generic [ref=f2e888]: →
+          - article [ref=f2e889]:
+            - generic [ref=f2e890]:
+              - generic [ref=f2e891]:
+                - paragraph [ref=f2e892]: 12 / Video Studio
+                - heading "Extend" [level=2] [ref=f2e893]
+                - paragraph [ref=f2e894]: Estrae il frame finale, genera nuovi secondi e accoda automaticamente immagini e audio alla clip originale.
+              - generic [ref=f2e895]: Continuazione
+            - generic [ref=f2e896]:
+              - generic [ref=f2e897]:
+                - heading "Ideale per" [level=3] [ref=f2e898]
+                - list [ref=f2e899]:
+                  - listitem [ref=f2e900]: Prolungare uno shot
+                  - listitem [ref=f2e901]: Continuare camera e azione
+                  - listitem [ref=f2e902]: Creare raccordi
+              - generic [ref=f2e903]:
+                - heading "Cosa preparare" [level=3] [ref=f2e904]
+                - list [ref=f2e905]:
+                  - listitem [ref=f2e906]: Clip originale
+                  - listitem [ref=f2e907]: Descrizione di ciò che accade dopo
+                  - listitem [ref=f2e908]: Secondi aggiuntivi
+                  - listitem [ref=f2e909]: Modello LTX
+            - generic [ref=f2e910]:
+              - heading "Come usarlo" [level=3] [ref=f2e911]
+              - list [ref=f2e912]:
+                - listitem [ref=f2e913]:
+                  - generic [ref=f2e914]:
+                    - generic [ref=f2e915]: Carica la clip
+                    - paragraph [ref=f2e916]: L’ultimo frame diventa la condizione iniziale.
+                - listitem [ref=f2e917]:
+                  - generic [ref=f2e918]:
+                    - generic [ref=f2e919]: Descrivi la continuazione
+                    - paragraph [ref=f2e920]: Riprendi direzione, velocità e azione.
+                - listitem [ref=f2e921]:
+                  - generic [ref=f2e922]:
+                    - generic [ref=f2e923]: Genera breve
+                    - paragraph [ref=f2e924]: Aggiungi 3–6 secondi per volta.
+                - listitem [ref=f2e925]:
+                  - generic [ref=f2e926]:
+                    - generic [ref=f2e927]: Verifica il raccordo
+                    - paragraph [ref=f2e928]: Controlla il punto di giunzione e l’audio.
+            - generic [ref=f2e929]:
+              - heading "Impostazioni consigliate" [level=3] [ref=f2e930]
+              - generic [ref=f2e931]:
+                - generic [ref=f2e932]:
+                  - generic [ref=f2e933]: Estensione
+                  - generic [ref=f2e934]: 3–6 s
+                  - paragraph [ref=f2e935]: Riduce la deriva.
+                - generic [ref=f2e936]:
+                  - generic [ref=f2e937]: Risoluzione
+                  - generic [ref=f2e938]: 480p
+                  - paragraph [ref=f2e939]: Prima bozza stabile.
+                - generic [ref=f2e940]:
+                  - generic [ref=f2e941]: Modello
+                  - generic [ref=f2e942]: DaSiWa o LTX
+                  - paragraph [ref=f2e943]: Entrambi supportati.
+                - generic [ref=f2e944]:
+                  - generic [ref=f2e945]: Audio
+                  - generic [ref=f2e946]: Originale + generato
+                  - paragraph [ref=f2e947]: Viene concatenato.
+            - complementary [ref=f2e948]:
+              - text: Esempio prompt
+              - paragraph [ref=f2e949]: La camera continua il lento dolly in; i soggetti mantengono posizione e sguardo, poi la donna si volta naturalmente verso la piscina.
+            - generic [ref=f2e950]:
+              - heading "Accorgimenti" [level=3] [ref=f2e951]
+              - list [ref=f2e952]:
+                - listitem [ref=f2e953]: Mantieni la stessa direzione camera.
+                - listitem [ref=f2e954]: Estensioni successive brevi sono più stabili di una sola molto lunga.
+            - link "Usa questo workflow" [ref=f2e956] [cursor=pointer]:
+              - /url: /video-studio.html?workflow=extend
+              - text: Usa questo workflow
+              - generic [ref=f2e957]: →
+          - article [ref=f2e958]:
+            - generic [ref=f2e959]:
+              - generic [ref=f2e960]:
+                - paragraph [ref=f2e961]: 13 / Video Studio
+                - heading "HDR IC-LoRA" [level=2] [ref=f2e962]
+                - paragraph [ref=f2e963]: Ricostruisce highlight e ombre con la pipeline IC-LoRA HDR, con esposizione ed EXR opzionale.
+              - generic [ref=f2e964]: Finishing
+            - generic [ref=f2e965]:
+              - generic [ref=f2e966]:
+                - heading "Ideale per" [level=3] [ref=f2e967]
+                - list [ref=f2e968]:
+                  - listitem [ref=f2e969]: Recupero gamma dinamica
+                  - listitem [ref=f2e970]: Finishing cinematografico
+                  - listitem [ref=f2e971]: Sequenze EXR
+              - generic [ref=f2e972]:
+                - heading "Cosa preparare" [level=3] [ref=f2e973]
+                - list [ref=f2e974]:
+                  - listitem [ref=f2e975]: Video sorgente
+                  - listitem [ref=f2e976]: Direzione HDR
+                  - listitem [ref=f2e977]: Esposizione
+                  - listitem [ref=f2e978]: Opzione EXR
+            - generic [ref=f2e979]:
+              - heading "Come usarlo" [level=3] [ref=f2e980]
+              - list [ref=f2e981]:
+                - listitem [ref=f2e982]:
+                  - generic [ref=f2e983]:
+                    - generic [ref=f2e984]: Carica il master
+                    - paragraph [ref=f2e985]: Usa il video già montato e approvato.
+                - listitem [ref=f2e986]:
+                  - generic [ref=f2e987]:
+                    - generic [ref=f2e988]: Regola l’esposizione
+                    - paragraph [ref=f2e989]: Parti dal preset 7,1.
+                - listitem [ref=f2e990]:
+                  - generic [ref=f2e991]:
+                    - generic [ref=f2e992]: Genera senza EXR
+                    - paragraph [ref=f2e993]: Controlla il risultato video prima.
+                - listitem [ref=f2e994]:
+                  - generic [ref=f2e995]:
+                    - generic [ref=f2e996]: Esporta EXR
+                    - paragraph [ref=f2e997]: Attivalo soltanto per grading esterno.
+            - generic [ref=f2e998]:
+              - heading "Impostazioni consigliate" [level=3] [ref=f2e999]
+              - generic [ref=f2e1000]:
+                - generic [ref=f2e1001]:
+                  - generic [ref=f2e1002]: Esposizione
+                  - generic [ref=f2e1003]: 7,1
+                  - paragraph [ref=f2e1004]: Preset iniziale.
+                - generic [ref=f2e1005]:
+                  - generic [ref=f2e1006]: EXR
+                  - generic [ref=f2e1007]: Disattivo
+                  - paragraph [ref=f2e1008]: Risparmia spazio.
+                - generic [ref=f2e1009]:
+                  - generic [ref=f2e1010]: Audio
+                  - generic [ref=f2e1011]: Sorgente
+                  - paragraph [ref=f2e1012]: Resta invariato.
+                - generic [ref=f2e1013]:
+                  - generic [ref=f2e1014]: Motore
+                  - generic [ref=f2e1015]: IC-LoRA HDR
+                  - paragraph [ref=f2e1016]: Separato da DaSiWa.
+            - complementary [ref=f2e1017]:
+              - text: Esempio prompt
+              - paragraph [ref=f2e1018]: Natural cinematic HDR, recupera le alte luci del cielo e dettaglio nelle ombre senza aloni né saturazione artificiale.
+            - generic [ref=f2e1019]:
+              - heading "Accorgimenti" [level=3] [ref=f2e1020]
+              - list [ref=f2e1021]:
+                - listitem [ref=f2e1022]: Non usare HDR per correggere motion blur o flicker.
+                - listitem [ref=f2e1023]: EXR produce molti file e richiede spazio.
+            - link "Usa questo workflow" [ref=f2e1025] [cursor=pointer]:
+              - /url: /video-studio.html?workflow=hdr
+              - text: Usa questo workflow
+              - generic [ref=f2e1026]: →
+          - article [ref=f2e1027]:
+            - generic [ref=f2e1028]:
+              - generic [ref=f2e1029]:
+                - paragraph [ref=f2e1030]: 14 / Video Studio
+                - heading "Temporal Upscaler 2×" [level=2] [ref=f2e1031]
+                - paragraph [ref=f2e1032]: Raddoppia i frame nello spazio latente LTX, mantenendo durata oppure creando slow motion 2×.
+              - generic [ref=f2e1033]: Finishing
+            - generic [ref=f2e1034]:
+              - generic [ref=f2e1035]:
+                - heading "Ideale per" [level=3] [ref=f2e1036]
+                - list [ref=f2e1037]:
+                  - listitem [ref=f2e1038]: Movimento più fluido
+                  - listitem [ref=f2e1039]: FPS doppi
+                  - listitem [ref=f2e1040]: Slow motion
+              - generic [ref=f2e1041]:
+                - heading "Cosa preparare" [level=3] [ref=f2e1042]
+                - list [ref=f2e1043]:
+                  - listitem [ref=f2e1044]: Video sorgente
+                  - listitem [ref=f2e1045]: Modalità durata invariata o slow motion
+            - generic [ref=f2e1046]:
+              - heading "Come usarlo" [level=3] [ref=f2e1047]
+              - list [ref=f2e1048]:
+                - listitem [ref=f2e1049]:
+                  - generic [ref=f2e1050]:
+                    - generic [ref=f2e1051]: Carica il video
+                    - paragraph [ref=f2e1052]: Preferisci un master già corretto.
+                - listitem [ref=f2e1053]:
+                  - generic [ref=f2e1054]:
+                    - generic [ref=f2e1055]: Scegli la modalità
+                    - paragraph [ref=f2e1056]: FPS doppi conserva la durata; slow motion conserva gli FPS.
+                - listitem [ref=f2e1057]:
+                  - generic [ref=f2e1058]:
+                    - generic [ref=f2e1059]: Interpola
+                    - paragraph [ref=f2e1060]: Il modello crea i frame intermedi.
+                - listitem [ref=f2e1061]:
+                  - generic [ref=f2e1062]:
+                    - generic [ref=f2e1063]: Controlla
+                    - paragraph [ref=f2e1064]: Verifica mani, volti e movimenti rapidi.
+            - generic [ref=f2e1065]:
+              - heading "Impostazioni consigliate" [level=3] [ref=f2e1066]
+              - generic [ref=f2e1067]:
+                - generic [ref=f2e1068]:
+                  - generic [ref=f2e1069]: Fattore
+                  - generic [ref=f2e1070]: 2×
+                  - paragraph [ref=f2e1071]: Vincolato dal modello.
+                - generic [ref=f2e1072]:
+                  - generic [ref=f2e1073]: FPS doppi
+                  - generic [ref=f2e1074]: Default
+                  - paragraph [ref=f2e1075]: Durata invariata.
+                - generic [ref=f2e1076]:
+                  - generic [ref=f2e1077]: Slow motion
+                  - generic [ref=f2e1078]: Opzionale
+                  - paragraph [ref=f2e1079]: Durata raddoppiata.
+                - generic [ref=f2e1080]:
+                  - generic [ref=f2e1081]: Audio
+                  - generic [ref=f2e1082]: Sorgente
+                  - paragraph [ref=f2e1083]: Conservato nel video.
+            - complementary [ref=f2e1084]:
+              - text: Esempio prompt
+              - paragraph [ref=f2e1085]: Raddoppia la frequenza dei fotogrammi mantenendo durata e audio per un movimento più fluido.
+            - generic [ref=f2e1086]:
+              - heading "Accorgimenti" [level=3] [ref=f2e1087]
+              - list [ref=f2e1088]:
+                - listitem [ref=f2e1089]: Applicalo dopo il montaggio.
+                - listitem [ref=f2e1090]: Non sostituisce un upscale spaziale come SeedVR2.
+            - link "Usa questo workflow" [ref=f2e1092] [cursor=pointer]:
+              - /url: /video-studio.html?workflow=temporalUpscale
+              - text: Usa questo workflow
+              - generic [ref=f2e1093]: →

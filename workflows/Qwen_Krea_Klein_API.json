@@ -1,0 +1,829 @@
+{
+  "8": {
+    "inputs": {
+      "samples": [
+        "504",
+        0
+      ],
+      "vae": [
+        "39",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "38": {
+    "inputs": {
+      "clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "39": {
+    "inputs": {
+      "vae_name": "qwen_image_vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "77": {
+    "inputs": {
+      "prompt": "",
+      "clip": [
+        "38",
+        0
+      ],
+      "vae": [
+        "39",
+        0
+      ]
+    },
+    "class_type": "TextEncodeQwenImageEdit",
+    "_meta": {
+      "title": "TextEncodeQwenImageEdit"
+    }
+  },
+  "78": {
+    "inputs": {
+      "image": "ChatGPT Image 6 lug 2026, 11_01_01 (4).png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "88": {
+    "inputs": {
+      "pixels": [
+        "416",
+        0
+      ],
+      "vae": [
+        "39",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode"
+    }
+  },
+  "110": {
+    "inputs": {
+      "prompt": "Transform the provided anime image into a physically realistic live-action photograph.\n\nReconstruct the entire scene as if it had been photographed in the real world with a professional full-frame camera. Preserve exactly the original character’s identity, recognizable facial structure, hairstyle, hair length, hair color, eye color, body proportions, clothing design, accessories, pose, hand placement, facial expression, gaze direction, camera angle, framing, composition, environment, object positions and narrative context.\n\nTranslate every stylized anime element into a believable real-world equivalent:\n\n- Reconstruct the face with realistic human anatomy, natural facial proportions, authentic bone structure and subtle facial asymmetry.\n- Preserve the distinctive shape of the eyes, eyebrows, nose, lips, jawline and hairstyle without making the person generic.\n- Convert illustrated skin into natural human skin with pores, fine facial hairs, subtle imperfections, realistic subsurface scattering and natural tonal variation.\n- Convert illustrated hair into individually visible hair strands with realistic density, roots, flyaway hairs, volume and physically plausible highlights.\n- Reconstruct the eyes with realistic sclera, iris texture, corneal reflections, tear line and natural moisture.\n- Convert the clothing into real fabric with accurate stitching, seams, folds, thickness, tension, texture and material response.\n- Rebuild the environment using physically plausible materials, depth, perspective, contact shadows and realistic reflections.\n- Preserve the original lighting direction and atmosphere, but convert them into physically accurate cinematic photographic lighting.\n- Use realistic depth of field, natural lens behavior, coherent perspective and believable exposure.\n\nThe result must look like an authentic live-action cinematic photograph of a real person in a real location, not a digital painting, illustration, CGI render, cosplay photograph or obvious AI-generated image.\n\nPreserve the original aspect ratio and composition. Do not add, remove, replace or redesign any character, object, accessory, garment or environmental element.",
+      "clip": [
+        "38",
+        0
+      ],
+      "vae": [
+        "39",
+        0
+      ],
+      "image1": [
+        "416",
+        0
+      ]
+    },
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "_meta": {
+      "title": "TextEncodeQwenImageEditPlus"
+    }
+  },
+  "169": {
+    "inputs": {
+      "lora_name": "QWEN\\Anime2Real_v4-22.safetensors",
+      "strength_model": 1.0000000000000002,
+      "model": [
+        "524",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Load LoRA"
+    }
+  },
+  "286": {
+    "inputs": {
+      "anything": [
+        "523",
+        0
+      ]
+    },
+    "class_type": "easy cleanGpuUsed",
+    "_meta": {
+      "title": "Clean VRAM Used"
+    }
+  },
+  "394": {
+    "inputs": {
+      "text": "Perform a restrained professional photographic refinement of the provided image.\n\nTreat the input as the final composition and preserve it exactly. Do not regenerate, redesign or reinterpret the subject or the scene.\n\nMaintain unchanged:\n\n- facial identity and facial geometry\n- hairstyle, hairline, hair length and hair color\n- eye shape and eye color\n- body shape and proportions\n- facial expression and gaze direction\n- pose, hands and finger positions\n- clothing, accessories and materials\n- background, objects and their positions\n- camera angle, framing, crop and perspective\n- lighting direction, color palette and atmosphere\n\nApply only subtle, localized photographic corrections:\n\n- restore natural fine skin texture, pores, peach fuzz and realistic tonal variation\n- remove waxy, plastic or overly smooth synthetic-looking skin\n- improve iris detail, sclera texture, corneal reflections and tear-line realism\n- refine individual hair strands, roots, eyelashes, eyebrows and flyaway hairs\n- improve fabric weave, stitching, seams, folds and material definition\n- correct small anatomical irregularities and minor AI-generated artifacts\n- improve contact shadows, ambient occlusion, reflections and material response\n- recover fine details without creating sharpening halos\n- reduce digital noise, color banding, smearing and compression artifacts\n- balance exposure, white balance and local contrast naturally\n- preserve realistic depth of field and lens behavior\n- apply subtle professional photographic color grading\n\nThe final result must look like a clean, high-resolution photograph captured by a professional full-frame camera. Keep natural skin texture and realistic imperfections. Avoid beauty-filter aesthetics, excessive sharpness, HDR or artificial contrast.\n\nThis is a restoration and refinement pass only. Do not change the content of the image.",
+      "clip": [
+        "414",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "396": {
+    "inputs": {
+      "conditioning": [
+        "394",
+        0
+      ]
+    },
+    "class_type": "ConditioningZeroOut",
+    "_meta": {
+      "title": "Conditioning Zero Out"
+    }
+  },
+  "402": {
+    "inputs": {
+      "pixels": [
+        "286",
+        0
+      ],
+      "vae": [
+        "415",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode"
+    }
+  },
+  "405": {
+    "inputs": {
+      "samples": [
+        "499",
+        0
+      ],
+      "vae": [
+        "415",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "413": {
+    "inputs": {
+      "unet_name": "FLUX1D\\moodyKrea2Mix_v50.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "414": {
+    "inputs": {
+      "clip_name": "qwen3vl_4b_fp8_scaled.safetensors",
+      "type": "krea2",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "415": {
+    "inputs": {
+      "vae_name": "wan_2.1_vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "416": {
+    "inputs": {
+      "aspect_ratio": "original",
+      "proportional_width": 1,
+      "proportional_height": 1,
+      "fit": "crop",
+      "method": "bicubic",
+      "round_to_multiple": "16",
+      "scale_to_side": "longest",
+      "scale_to_length": 1840,
+      "background_color": "#000000",
+      "image": [
+        "78",
+        0
+      ]
+    },
+    "class_type": "LayerUtility: ImageScaleByAspectRatio V2",
+    "_meta": {
+      "title": "LayerUtility: ImageScaleByAspectRatio V2"
+    }
+  },
+  "432": {
+    "inputs": {
+      "value": 1
+    },
+    "class_type": "INTConstant",
+    "_meta": {
+      "title": "1压缩，2直出"
+    }
+  },
+  "473": {
+    "inputs": {
+      "image": [
+        "489",
+        0
+      ]
+    },
+    "class_type": "GetImageSize",
+    "_meta": {
+      "title": "Get Image Size"
+    }
+  },
+  "474": {
+    "inputs": {
+      "pixels": [
+        "489",
+        0
+      ],
+      "vae": [
+        "487",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode"
+    }
+  },
+  "475": {
+    "inputs": {
+      "conditioning": [
+        "476",
+        0
+      ]
+    },
+    "class_type": "ConditioningZeroOut",
+    "_meta": {
+      "title": "Conditioning Zero Out"
+    }
+  },
+  "476": {
+    "inputs": {
+      "conditioning": [
+        "488",
+        0
+      ],
+      "latent": [
+        "474",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent"
+    }
+  },
+  "477": {
+    "inputs": {
+      "noise_seed": 8848
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "RandomNoise"
+    }
+  },
+  "478": {
+    "inputs": {
+      "cfg": 1,
+      "model": [
+        "485",
+        0
+      ],
+      "positive": [
+        "476",
+        0
+      ],
+      "negative": [
+        "475",
+        0
+      ]
+    },
+    "class_type": "CFGGuider",
+    "_meta": {
+      "title": "CFG Guider"
+    }
+  },
+  "479": {
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSamplerSelect"
+    }
+  },
+  "480": {
+    "inputs": {
+      "noise": [
+        "477",
+        0
+      ],
+      "guider": [
+        "478",
+        0
+      ],
+      "sampler": [
+        "479",
+        0
+      ],
+      "sigmas": [
+        "481",
+        0
+      ],
+      "latent_image": [
+        "490",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "SamplerCustomAdvanced"
+    }
+  },
+  "481": {
+    "inputs": {
+      "steps": 4,
+      "width": [
+        "473",
+        0
+      ],
+      "height": [
+        "473",
+        1
+      ]
+    },
+    "class_type": "Flux2Scheduler",
+    "_meta": {
+      "title": "Flux2Scheduler"
+    }
+  },
+  "482": {
+    "inputs": {
+      "samples": [
+        "480",
+        0
+      ],
+      "vae": [
+        "487",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "483": {
+    "inputs": {
+      "color_space": "LAB",
+      "factor": 1,
+      "device": "auto",
+      "batch_size": 0,
+      "image": [
+        "482",
+        0
+      ],
+      "reference": [
+        "526",
+        0
+      ]
+    },
+    "class_type": "ImageColorMatch+",
+    "_meta": {
+      "title": "🔧 Image Color Match"
+    }
+  },
+  "484": {
+    "inputs": {
+      "unet_name": "FLUX2\\flux2Klein_9bBase.safetensors",
+      "weight_dtype": "fp8_e4m3fn"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "485": {
+    "inputs": {
+      "lora_name": "FLUX2\\f2k_9B_lcs_consist_20260415.safetensors",
+      "strength_model": 0.2,
+      "model": [
+        "484",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Load LoRA"
+    }
+  },
+  "486": {
+    "inputs": {
+      "clip_name": "qwen_3_8b_fp8mixed.safetensors",
+      "type": "flux2",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "487": {
+    "inputs": {
+      "vae_name": "flux2-vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "488": {
+    "inputs": {
+      "text": "在保持原图整体构图、人物身份及背景环境完全不变的前提下，对画面进行细节增强。具体包括：提升物体表面的材质纹理清晰度（如织物纤维、皮肤质感等），优化光影过渡的细腻度，并丰富暗部与亮部的层次信息，使图像整体呈现出更高分辨率的真实质感，同时确保不引入任何新的物体或改变原有色彩风格。",
+      "clip": [
+        "486",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "489": {
+    "inputs": {
+      "upscale_method": "lanczos",
+      "megapixels": 3,
+      "resolution_steps": 1,
+      "image": [
+        "526",
+        0
+      ]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "Scale Image to Total Pixels"
+    }
+  },
+  "490": {
+    "inputs": {
+      "width": [
+        "473",
+        0
+      ],
+      "height": [
+        "473",
+        1
+      ],
+      "batch_size": 1
+    },
+    "class_type": "EmptyFlux2LatentImage",
+    "_meta": {
+      "title": "Empty Flux 2 Latent"
+    }
+  },
+  "491": {
+    "inputs": {
+      "upscale_method": "lanczos",
+      "megapixels": 0.30000000000000004,
+      "resolution_steps": 1,
+      "image": [
+        "483",
+        0
+      ]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "Scale Image to Total Pixels"
+    }
+  },
+  "492": {
+    "inputs": {
+      "seed": 1655973157,
+      "resolution": 4096,
+      "max_resolution": 4096,
+      "batch_size": 5,
+      "uniform_batch_size": false,
+      "color_correction": "lab",
+      "temporal_overlap": 0,
+      "prepend_frames": 0,
+      "input_noise_scale": 0,
+      "latent_noise_scale": 0,
+      "offload_device": "cpu",
+      "enable_debug": false,
+      "image": [
+        "491",
+        0
+      ],
+      "dit": [
+        "494",
+        0
+      ],
+      "vae": [
+        "493",
+        0
+      ]
+    },
+    "class_type": "SeedVR2VideoUpscaler",
+    "_meta": {
+      "title": "SeedVR2 Video Upscaler (v2.5.22)"
+    }
+  },
+  "493": {
+    "inputs": {
+      "model": "ema_vae_fp16.safetensors",
+      "device": "cuda:0",
+      "encode_tiled": true,
+      "encode_tile_size": 1024,
+      "encode_tile_overlap": 128,
+      "decode_tiled": true,
+      "decode_tile_size": 1024,
+      "decode_tile_overlap": 128,
+      "tile_debug": "false",
+      "offload_device": "cpu",
+      "cache_model": false
+    },
+    "class_type": "SeedVR2LoadVAEModel",
+    "_meta": {
+      "title": "SeedVR2 (Down)Load VAE Model"
+    }
+  },
+  "494": {
+    "inputs": {
+      "model": "seedvr2_ema_3b-Q4_K_M.gguf",
+      "device": "cuda:0",
+      "blocks_to_swap": 32,
+      "swap_io_components": true,
+      "offload_device": "cpu",
+      "cache_model": "sdpa",
+      "attention_mode": "sdpa"
+    },
+    "class_type": "SeedVR2LoadDiTModel",
+    "_meta": {
+      "title": "SeedVR2 (Down)Load DiT Model"
+    }
+  },
+  "496": {
+    "inputs": {
+      "purge_cache": true,
+      "purge_models": true,
+      "anything": [
+        "482",
+        0
+      ]
+    },
+    "class_type": "LayerUtility: PurgeVRAM",
+    "_meta": {
+      "title": "LayerUtility: Purge VRAM"
+    }
+  },
+  "498": {
+    "inputs": {
+      "lora_name": "QWEN\\HRP_20.safetensors",
+      "strength_model": 0.8000000000000002,
+      "model": [
+        "169",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Load LoRA"
+    }
+  },
+  "499": {
+    "inputs": {
+      "add_noise": "enable",
+      "noise_seed": [
+        "522",
+        0
+      ],
+      "steps": 40,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "start_at_step": 32,
+      "end_at_step": 40,
+      "return_with_leftover_noise": "enable",
+      "model": [
+        "413",
+        0
+      ],
+      "positive": [
+        "394",
+        0
+      ],
+      "negative": [
+        "396",
+        0
+      ],
+      "latent_image": [
+        "402",
+        0
+      ]
+    },
+    "class_type": "KSamplerAdvanced",
+    "_meta": {
+      "title": "KSampler (Advanced)"
+    }
+  },
+  "504": {
+    "inputs": {
+      "add_noise": "enable",
+      "noise_seed": [
+        "522",
+        0
+      ],
+      "steps": 8,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "start_at_step": 0,
+      "end_at_step": 8,
+      "return_with_leftover_noise": "enable",
+      "model": [
+        "498",
+        0
+      ],
+      "positive": [
+        "110",
+        0
+      ],
+      "negative": [
+        "77",
+        0
+      ],
+      "latent_image": [
+        "88",
+        0
+      ]
+    },
+    "class_type": "KSamplerAdvanced",
+    "_meta": {
+      "title": "KSampler (Advanced)"
+    }
+  },
+  "522": {
+    "inputs": {
+      "seed": 1044698637479907
+    },
+    "class_type": "easy seed",
+    "_meta": {
+      "title": "EasySeed"
+    }
+  },
+  "523": {
+    "inputs": {
+      "purge_cache": true,
+      "purge_models": true,
+      "purge_seedvr2_models": false,
+      "purge_qwen3vl_models": false,
+      "purge_nunchaku_models": false,
+      "HSWQ": false,
+      "Ollama": false,
+      "anything": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "DisTorchPurgeVRAMV2",
+    "_meta": {
+      "title": "General Purge VRAM V2"
+    }
+  },
+  "524": {
+    "inputs": {
+      "unet_name": "QWEN\\qwen_image_edit_2511_bf16.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "525": {
+    "inputs": {
+      "purge_cache": true,
+      "purge_models": true,
+      "purge_seedvr2_models": true,
+      "purge_qwen3vl_models": true,
+      "purge_nunchaku_models": true,
+      "HSWQ": true,
+      "Ollama": true,
+      "anything": [
+        "405",
+        0
+      ]
+    },
+    "class_type": "DisTorchPurgeVRAMV2",
+    "_meta": {
+      "title": "General Purge VRAM V2"
+    }
+  },
+  "526": {
+    "inputs": {
+      "anything": [
+        "525",
+        0
+      ]
+    },
+    "class_type": "easy cleanGpuUsed",
+    "_meta": {
+      "title": "Clean VRAM Used"
+    }
+  },
+  "527": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "492",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "528": {
+    "inputs": {
+      "rgthree_comparer": {
+        "images": []
+      },
+      "image_a": [
+        "78",
+        0
+      ],
+      "image_b": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "Image Comparer (rgthree)",
+    "_meta": {
+      "title": "Image Comparer (rgthree)"
+    }
+  },
+  "531": {
+    "inputs": {
+      "rgthree_comparer": {
+        "images": []
+      },
+      "image_a": [
+        "8",
+        0
+      ],
+      "image_b": [
+        "405",
+        0
+      ]
+    },
+    "class_type": "Image Comparer (rgthree)",
+    "_meta": {
+      "title": "Image Comparer (rgthree)"
+    }
+  },
+  "532": {
+    "inputs": {
+      "rgthree_comparer": {
+        "images": []
+      },
+      "image_a": [
+        "405",
+        0
+      ],
+      "image_b": [
+        "492",
+        0
+      ]
+    },
+    "class_type": "Image Comparer (rgthree)",
+    "_meta": {
+      "title": "Image Comparer (rgthree)"
+    }
+  }
+}

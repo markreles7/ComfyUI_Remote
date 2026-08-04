@@ -1,0 +1,539 @@
+- generic [ref=e1]:
+  - main [ref=e9]:
+    - generic [ref=e10]:
+      - generic "Progress Bar by rgthree. right-click for rgthree menu." [ref=e12]: Idle
+      - generic [ref=e17]:
+        - generic [ref=e18]:
+          - generic [ref=e19]: ↹ Resize Feed
+          - generic:
+            - generic "Controls the maximum size of the image feed panel (25vh)":
+              - generic: Feed Size...
+              - slider: "25"
+            - generic "Controls the number of columns in the feed (4 columns). Click label to set custom value.":
+              - generic: Column count...
+              - slider: "4"
+        - generic [ref=e20]:
+          - button "Clear" [ref=e21] [cursor=pointer]
+          - button "❌" [ref=e22] [cursor=pointer]
+      - generic [ref=e23]:
+        - text: .. .. .. ▼ ▼
+        - generic:
+          - generic [ref=e26]:
+            - group [ref=e30]:
+              - button "Unsaved Workflow •" [ref=e1413] [cursor=pointer]:
+                - generic [ref=e33]:
+                  - generic [ref=e34]: Unsaved Workflow
+                  - generic [ref=e35]: •
+              - button "LTX-2.3_ICLoRA_HDR_Distilled •" [ref=e1544] [cursor=pointer]:
+                - generic [ref=e1416]:
+                  - generic [ref=e1417]: LTX-2.3_ICLoRA_HDR_Distilled
+                  - generic [ref=e1418]: •
+              - button "LTX-2.3_ICLoRA_Union_Control_Distilled • Close" [pressed] [ref=e1545] [cursor=pointer]:
+                - generic [ref=e1547]:
+                  - generic [ref=e1548]: LTX-2.3_ICLoRA_Union_Control_Distilled
+                  - generic [ref=e1549]:
+                    - generic [ref=e1550]: •
+                    - button "Close" [ref=e1551]:
+                      - generic [ref=e1552]: 
+            - button "Create a new blank workflow" [ref=e39] [cursor=pointer]:
+              - generic [ref=e40]: 
+          - generic:
+            - navigation [ref=e42]:
+              - generic [ref=e43]:
+                - generic [ref=e44]:
+                  - button "Assets (a)" [ref=e50] [cursor=pointer]
+                  - button "Node Library (n)" [ref=e54] [cursor=pointer]
+                  - button "Model Library (m)" [ref=e58] [cursor=pointer]
+                  - button "Workflows (w)" [ref=e62] [cursor=pointer]
+                  - button "Apps" [ref=e66] [cursor=pointer]
+                  - button "NodesMap" [ref=e70] [cursor=pointer]:
+                    - generic [ref=e71]: 
+                  - 'button "MTB: Browse inputs and outputs directories." [ref=e74] [cursor=pointer]':
+                    - generic [ref=e75]: 
+                  - button "Templates" [ref=e78] [cursor=pointer]
+                - generic [ref=e82]:
+                  - button "Help Center" [ref=e83] [cursor=pointer]:
+                    - generic [ref=e84]: 
+                  - button "Toggle Bottom Panel" [ref=e87] [cursor=pointer]
+                  - button "Keyboard Shortcuts (Ctrl + Shift + k)" [ref=e91] [cursor=pointer]
+                  - button "Settings (Ctrl + ,)" [ref=e95] [cursor=pointer]
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic [ref=e99]:
+                          - button "Enter app mode" [ref=e100] [cursor=pointer]
+                          - button "Workflow actions" [ref=e102] [cursor=pointer]:
+                            - generic [ref=e103]: Graph
+                        - text: 
+                    - generic:
+                      - generic:
+                        - button "Extensions" [ref=e106] [cursor=pointer]
+                        - generic [ref=e109]:
+                          - generic [ref=e111]:
+                            - generic [ref=e112]:
+                              - generic "Drag system monitor" [ref=e113]: ⠿
+                              - generic [ref=e114]:
+                                - generic "8 threads" [ref=e1553]:
+                                  - generic [ref=e1554]: CPU
+                                  - strong [ref=e1555]: 55%
+                                - generic "19.7 GiB / 31.9 GiB" [ref=e1556]:
+                                  - generic [ref=e1557]: RAM
+                                  - strong [ref=e1558]: 62%
+                                - generic "1.1 GiB / 47.6 GiB" [ref=e1559]:
+                                  - generic [ref=e1560]: SWAP
+                                  - strong [ref=e1561]: 2%
+                                - 'generic "E:\\: 829.2 GiB / 931.5 GiB" [ref=e1562]':
+                                  - generic [ref=e1563]: DISK
+                                  - strong [ref=e1564]: 89%
+                                - generic "NVIDIA:0 — NVIDIA GeForce RTX 4070 SUPER; GPU utilization" [ref=e1565]:
+                                  - generic [ref=e1566]: GPU0 Util
+                                  - strong [ref=e1567]: 8%
+                                - generic "NVIDIA:0 — NVIDIA GeForce RTX 4070 SUPER; VRAM 7.8 GiB / 12.0 GiB" [ref=e1568]:
+                                  - generic [ref=e1569]: GPU0 VRAM
+                                  - strong [ref=e1570]: 65%
+                                - generic "NVIDIA:0 — NVIDIA GeForce RTX 4070 SUPER; GPU temperature" [ref=e1571]:
+                                  - generic [ref=e1572]: GPU0 Temp
+                                  - strong [ref=e1573]: 46°
+                                - generic "Other:ROOT\\DISPLAY\\0000 — Meta Virtual Monitor; GPU utilization" [ref=e1574]:
+                                  - generic [ref=e1575]: GPU0 Util
+                                  - strong [ref=e1576]: n/a
+                                - generic "Other:ROOT\\DISPLAY\\0000 — Meta Virtual Monitor; VRAM n/a / n/a" [ref=e1577]:
+                                  - generic [ref=e1578]: GPU0 VRAM
+                                  - strong [ref=e1579]: n/a
+                                - generic "Other:ROOT\\DISPLAY\\0000 — Meta Virtual Monitor; GPU temperature" [ref=e1580]:
+                                  - generic [ref=e1581]: GPU0 Temp
+                                  - strong [ref=e1582]: n/a
+                              - button "DaSiWa node settings" [ref=e145] [cursor=pointer]: ⚙
+                            - generic [ref=e146]:
+                              - button "rgthree-comfy" [ref=e147] [cursor=pointer]
+                              - button "󰃀" [ref=e156] [cursor=pointer]
+                            - generic [ref=e159]:
+                              - generic "36%" [ref=e1583]: CPU
+                              - 'generic "61% - 19.71 GB / 31.94 GB Max: 19.71 GB" [ref=e1584]':
+                                - generic [ref=e166]: RAM
+                                - generic [ref=e167]: 61%
+                              - 'generic "0: NVIDIA GeForce RTX 4070 SUPER - 46°" [ref=e1507]':
+                                - generic [ref=e171]: Temp
+                                - generic [ref=e172]: 46°
+                              - 'generic "0: NVIDIA GeForce RTX 4070 SUPER - 67% - 8.04 GB / 11.99 GB Max: 8.04 GB" [ref=e1585]':
+                                - generic [ref=e176]: VRAM
+                                - generic [ref=e177]: 67%
+                              - 'generic "0: NVIDIA GeForce RTX 4070 SUPER - 24%" [ref=e1586]':
+                                - generic [ref=e181]: GPU
+                                - generic [ref=e182]: 24%
+                            - button "Show Image Feed 🐍" [disabled] [ref=e186]:
+                              - generic [ref=e187]: 󰋹
+                              - text: Show Image Feed 🐍
+                          - region [ref=e190]:
+                            - generic [ref=e192]:
+                              - generic [ref=e193]: .. .. ..
+                              - generic [ref=e194]:
+                                - generic "Batch Count" [ref=e195]:
+                                  - generic [ref=e196]:
+                                    - textbox "Batch Count" [ref=e197]: "1"
+                                    - generic [ref=e198]:
+                                      - button "Increment" [ref=e199] [cursor=pointer]
+                                      - button "Decrement" [disabled]
+                                - button "Run" [ref=e200] [cursor=pointer]
+                                - button "Run" [ref=e202] [cursor=pointer]
+                              - button "Cancel current run" [disabled]
+                              - button "0 active Expand job queue" [ref=e1457] [cursor=pointer]:
+                                - generic [ref=e204]: 0 active
+                                - generic [ref=e205]: Expand job queue
+                          - button "Toggle properties panel" [ref=e207] [cursor=pointer]
+                      - alert [ref=e1587]:
+                        - generic [ref=e1588]:
+                          - generic [ref=e1589]: 10 ERRORS
+                          - button "Close" [ref=e1590] [cursor=pointer]
+                        - list [ref=e1593]:
+                          - listitem [ref=e1594]:
+                            - generic [ref=e1596]: Some nodes are missing and need to be installed
+                          - listitem [ref=e1597]:
+                            - generic [ref=e1599]: 5 required models are missing
+                          - listitem [ref=e1600]:
+                            - generic [ref=e1602]: Some nodes are missing required inputs
+                        - generic [ref=e1603]:
+                          - button "Dismiss" [ref=e1604] [cursor=pointer]
+                          - button "See Errors" [ref=e1605] [cursor=pointer]
+                  - generic:
+                    - status:
+                      - generic: Job failed
+                - generic:
+                  - toolbar "Canvas Toolbar" [ref=e222]:
+                    - button "Canvas Mode" [ref=e223] [cursor=pointer]
+                    - button "Fit View (.)" [ref=e229] [cursor=pointer]
+                    - button "Zoom Controls" [ref=e231] [cursor=pointer]:
+                      - generic [ref=e232]: 62%
+                    - button "Show Minimap (ALT + SHIFT + M)" [ref=e236] [cursor=pointer]
+                    - button "Show Links" [ref=e238] [cursor=pointer]
+                  - text: 
+        - generic:
+          - generic "Text prompt to encode" [ref=e1606]:
+            - textbox "prompt" [ref=e1607]
+          - generic "The text to be encoded." [ref=e1608]:
+            - textbox "text" [ref=e1609]: pc game, console game, video game, cartoon, childish, ugly
+          - generic "Text prompt to encode" [ref=e1610]:
+            - textbox "prompt" [ref=e1611]: pc game, console game, video game, cartoon, childish, ugly
+          - generic "The text to be encoded." [ref=e1612]:
+            - textbox "text" [ref=e1613]: "Apocalyptic landscape with abandoned buildings, overgrown with foliage and trees. The sky is clear and the sun is setting, with the horizon turning bright red. The buildings are delapidated, falling apart and crumbling due to being abandoned for so long. The air is full of silence and the only thing to be heard is a young girl breathing and saying: \"Where is everyone?\""
+    - text: 
+  - text: ×
+  - dialog [ref=e708]:
+    - generic [ref=e712]:
+      - navigation [ref=e713]:
+        - heading "Nodes Manager" [level=2] [ref=e716]
+        - generic [ref=e717]:
+          - button "All Extensions" [ref=e719] [cursor=pointer]
+          - button "Not Installed" [ref=e723] [cursor=pointer]
+          - generic [ref=e726]:
+            - heading "INSTALLED" [level=3] [ref=e728]
+            - button "All installed" [ref=e729] [cursor=pointer]
+            - button "Updates Available" [ref=e732] [cursor=pointer]
+            - button "Conflicting" [ref=e735] [cursor=pointer]
+          - generic [ref=e738]:
+            - heading "IN WORKFLOW" [level=3] [ref=e740]
+            - 'button "All in: LTX-2.3_ICLoRA_Union_Control_Distilled" [ref=e1614] [cursor=pointer]'
+            - button "Missing Nodes" [ref=e744] [cursor=pointer]
+      - generic [ref=e747]:
+        - banner [ref=e748]:
+          - generic [ref=e751]:
+            - combobox "Single-select dropdown" [ref=e752] [cursor=pointer]:
+              - generic [ref=e753]: Node Pack
+            - combobox "Search" [active] [ref=e758]
+          - button "Show right panel" [ref=e759] [cursor=pointer]
+          - button "Close dialog" [ref=e761] [cursor=pointer]:
+            - generic [ref=e762]: 
+        - main [ref=e763]:
+          - combobox "Sort" [ref=e765] [cursor=pointer]:
+            - generic [ref=e766]: Downloads
+          - generic [ref=e773]:
+            - generic [ref=e775] [cursor=pointer]:
+              - img "ComfyUI-KJNodes banner" [ref=e780]
+              - generic [ref=e783]:
+                - generic [ref=e784]: ComfyUI-KJNodes
+                - paragraph [ref=e785]: Various quality of life -nodes for ComfyUI, mostly just visual stuff to improve usability.
+                - generic [ref=e786]:
+                  - generic [ref=e787]:
+                    - button "e27a505 " [ref=e789]:
+                      - generic [ref=e790]: e27a505
+                      - generic [ref=e791]: 
+                    - generic [ref=e792]: Jul 27, 2026
+                  - generic [ref=e793]: kijai
+              - generic [ref=e796]:
+                - generic [ref=e797]:
+                  - generic [ref=e798]: 
+                  - generic [ref=e799]: 3,977,064
+                - switch "Enable or disable pack" [checked] [ref=e802]
+            - generic [ref=e806] [cursor=pointer]:
+              - img "rgthree-comfy banner" [ref=e811]
+              - generic [ref=e814]:
+                - generic [ref=e815]: rgthree-comfy
+                - paragraph [ref=e816]: Making ComfyUI more comfortable.
+                - generic [ref=e817]:
+                  - generic [ref=e818]:
+                    - button " 1.0.2605082257 " [ref=e820]:
+                      - generic [ref=e821]: 
+                      - generic [ref=e822]: 1.0.2605082257
+                      - generic [ref=e823]: 
+                    - generic [ref=e824]: Jul 24, 2026
+                  - generic [ref=e825]: rgthree
+              - generic [ref=e828]:
+                - generic [ref=e829]:
+                  - generic [ref=e830]: 
+                  - generic [ref=e831]: 3,637,073
+                - switch "Enable or disable pack" [checked] [ref=e834]
+            - generic [ref=e838] [cursor=pointer]:
+              - img "ComfyUI-Easy-Use banner" [ref=e843]
+              - generic [ref=e846]:
+                - generic [ref=e847]: ComfyUI-Easy-Use
+                - paragraph [ref=e848]: To enhance the usability of ComfyUI, optimizations and integrations have been implemented for several commonly used nodes.
+                - generic [ref=e849]:
+                  - generic [ref=e850]:
+                    - button "1.3.6 " [ref=e852]:
+                      - generic [ref=e853]: 1.3.6
+                      - generic [ref=e854]: 
+                    - generic [ref=e855]: Jan 23, 2026
+                  - generic [ref=e856]: yolain
+              - generic [ref=e859]:
+                - generic [ref=e860]:
+                  - generic [ref=e861]: 
+                  - generic [ref=e862]: 3,259,170
+                - switch "Enable or disable pack" [checked] [ref=e865]
+            - generic [ref=e869] [cursor=pointer]:
+              - img "default banner" [ref=e873]
+              - generic [ref=e876]:
+                - generic [ref=e877]: ComfyUI-VideoHelperSuite
+                - paragraph [ref=e878]: Nodes related to video workflows
+                - generic [ref=e879]:
+                  - generic [ref=e880]:
+                    - generic [ref=e881]: 40 nodes
+                    - button "1.7.9 " [ref=e883]:
+                      - generic [ref=e884]: 1.7.9
+                      - generic [ref=e885]: 
+                    - generic [ref=e886]: Dec 17, 2025
+                  - generic [ref=e887]: kosinkadink
+              - generic [ref=e890]:
+                - generic [ref=e891]:
+                  - generic [ref=e892]: 
+                  - generic [ref=e893]: 3,136,694
+                - switch "Enable or disable pack" [checked] [ref=e896]
+            - generic [ref=e900] [cursor=pointer]:
+              - img "default banner" [ref=e904]
+              - generic [ref=e907]:
+                - generic [ref=e908]: ComfyUI Impact Pack
+                - paragraph [ref=e909]: This node pack offers various detector nodes and detailer nodes that allow you to configure a workflow that automatically enhances facial details. And provide iterative upscaler.
+                - generic [ref=e910]:
+                  - generic [ref=e911]:
+                    - generic [ref=e912]: 197 nodes
+                    - button "8.28.3 " [ref=e914]:
+                      - generic [ref=e915]: 8.28.3
+                      - generic [ref=e916]: 
+                    - generic [ref=e917]: Apr 19, 2026
+                  - generic [ref=e918]: drltdata
+              - generic [ref=e921]:
+                - generic [ref=e922]:
+                  - generic [ref=e923]: 
+                  - generic [ref=e924]: 3,098,593
+                - button "Install" [ref=e925]
+            - generic [ref=e929] [cursor=pointer]:
+              - img "default banner" [ref=e933]
+              - generic [ref=e936]:
+                - generic [ref=e937]: ComfyUI_essentials
+                - paragraph [ref=e938]: Essential nodes that are weirdly missing from ComfyUI core. With few exceptions they are new features and not commodities.
+                - generic [ref=e939]:
+                  - generic [ref=e940]:
+                    - generic [ref=e941]: 62 nodes
+                    - button "1.1.0 " [ref=e943]:
+                      - generic [ref=e944]: 1.1.0
+                      - generic [ref=e945]: 
+                    - generic [ref=e946]: Aug 7, 2024
+                  - generic [ref=e947]: matteo
+              - generic [ref=e950]:
+                - generic [ref=e951]:
+                  - generic [ref=e952]: 
+                  - generic [ref=e953]: 2,760,098
+                - switch "Enable or disable pack" [checked] [ref=e956]
+            - generic [ref=e960] [cursor=pointer]:
+              - img "default banner" [ref=e964]
+              - generic [ref=e967]:
+                - generic [ref=e968]: ComfyUI-Custom-Scripts
+                - paragraph [ref=e969]: Enhancements & experiments for ComfyUI, mostly focusing on UI features
+                - generic [ref=e970]:
+                  - generic [ref=e971]:
+                    - generic [ref=e972]: 13 nodes
+                    - button "1.2.5 " [ref=e974]:
+                      - generic [ref=e975]: 1.2.5
+                      - generic [ref=e976]: 
+                    - generic [ref=e977]: Apr 30, 2025
+                  - generic [ref=e978]: pythongosssss
+              - generic [ref=e981]:
+                - generic [ref=e982]:
+                  - generic [ref=e983]: 
+                  - generic [ref=e984]: 2,723,555
+                - switch "Enable or disable pack" [checked] [ref=e987]
+            - generic [ref=e991] [cursor=pointer]:
+              - img "default banner" [ref=e995]
+              - generic [ref=e998]:
+                - generic [ref=e999]: comfyui_controlnet_aux
+                - paragraph [ref=e1000]: Plug-and-play ComfyUI node sets for making ControlNet hint images
+                - generic [ref=e1001]:
+                  - generic [ref=e1002]:
+                    - generic [ref=e1003]: 64 nodes
+                    - button "e8b689a " [ref=e1005]:
+                      - generic [ref=e1006]: e8b689a
+                      - generic [ref=e1007]: 
+                    - generic [ref=e1008]: Apr 13, 2026
+                  - generic [ref=e1009]: fannovel16
+              - generic [ref=e1012]:
+                - generic [ref=e1013]:
+                  - generic [ref=e1014]: 
+                  - generic [ref=e1015]: 2,479,809
+                - switch "Enable or disable pack" [checked] [ref=e1018]
+            - generic [ref=e1022] [cursor=pointer]:
+              - img "default banner" [ref=e1026]
+              - generic [ref=e1029]:
+                - generic [ref=e1030]: ComfyUI-GGUF
+                - paragraph [ref=e1031]: GGUF Quantization support for native ComfyUI models.
+                - generic [ref=e1032]:
+                  - generic [ref=e1033]:
+                    - generic [ref=e1034]: 6 nodes
+                    - button "1.1.10 " [ref=e1036]:
+                      - generic [ref=e1037]: 1.1.10
+                      - generic [ref=e1038]: 
+                    - generic [ref=e1039]: Jan 12, 2026
+                  - generic [ref=e1040]: city96
+              - generic [ref=e1043]:
+                - generic [ref=e1044]:
+                  - generic [ref=e1045]: 
+                  - generic [ref=e1046]: 2,304,891
+                - switch "Enable or disable pack" [checked] [ref=e1049]
+            - generic [ref=e1053] [cursor=pointer]:
+              - img "ComfyUI-Crystools banner" [ref=e1058]
+              - generic [ref=e1061]:
+                - generic [ref=e1062]: ComfyUI-Crystools
+                - paragraph [ref=e1063]: With this suit, you can see the resources monitor, progress bar & time elapsed, metadata and compare between two images, compare between two JSONs, show any value to console/display, pipes, and more! This provides better nodes to load/save images, previews, etc, and see "hidden" data without loading a new workflow.
+                - generic [ref=e1064]:
+                  - generic [ref=e1065]:
+                    - generic [ref=e1066]: 29 nodes
+                    - button "2f18256 " [ref=e1068]:
+                      - generic [ref=e1069]: 2f18256
+                      - generic [ref=e1070]: 
+                    - generic [ref=e1071]: Oct 26, 2025
+                  - generic [ref=e1072]: crystian
+              - generic [ref=e1075]:
+                - generic [ref=e1076]:
+                  - generic [ref=e1077]: 
+                  - generic [ref=e1078]: 2,065,563
+                - switch "Enable or disable pack" [checked] [ref=e1081]
+            - generic [ref=e1085] [cursor=pointer]:
+              - img "default banner" [ref=e1089]
+              - generic [ref=e1092]:
+                - generic [ref=e1093]: ComfyUI Impact Subpack
+                - paragraph [ref=e1094]: This node pack provides nodes that complement the Impact Pack, such as the UltralyticsDetectorProvider.
+                - generic [ref=e1095]:
+                  - generic [ref=e1096]:
+                    - generic [ref=e1097]: 1 node
+                    - button "1.3.5 " [ref=e1099]:
+                      - generic [ref=e1100]: 1.3.5
+                      - generic [ref=e1101]: 
+                    - generic [ref=e1102]: Jul 22, 2025
+                  - generic [ref=e1103]: drltdata
+              - generic [ref=e1106]:
+                - generic [ref=e1107]:
+                  - generic [ref=e1108]: 
+                  - generic [ref=e1109]: 2,050,171
+                - button "Install" [ref=e1110]
+            - generic [ref=e1114] [cursor=pointer]:
+              - img "ComfyUI_LayerStyle banner" [ref=e1119]
+              - generic [ref=e1122]:
+                - generic [ref=e1123]: ComfyUI_LayerStyle
+                - paragraph [ref=e1124]: A set of nodes for ComfyUI it generate image like Adobe Photoshop's Layer Style. the Drop Shadow is first completed node, and follow-up work is in progress.
+                - generic [ref=e1125]:
+                  - generic [ref=e1126]:
+                    - button " 1.0.90 " [ref=e1128]:
+                      - generic [ref=e1129]: 
+                      - generic [ref=e1130]: 1.0.90
+                      - generic [ref=e1131]: 
+                    - generic [ref=e1132]: Jul 23, 2026
+                  - generic [ref=e1133]: chflame163
+              - generic [ref=e1136]:
+                - generic [ref=e1137]:
+                  - generic [ref=e1138]: 
+                  - generic [ref=e1139]: 1,958,660
+                - switch "Enable or disable pack" [checked] [ref=e1142]
+            - generic [ref=e1146] [cursor=pointer]:
+              - img "CG Use Everywhere banner" [ref=e1151]
+              - generic [ref=e1154]:
+                - generic [ref=e1155]: CG Use Everywhere
+                - paragraph [ref=e1156]: A set of nodes that allow data to be 'broadcast' to some or all unconnected inputs. Greatly reduces link spaghetti.
+                - generic [ref=e1157]:
+                  - generic [ref=e1158]:
+                    - button "7.8.0 " [ref=e1160]:
+                      - generic [ref=e1161]: 7.8.0
+                      - generic [ref=e1162]: 
+                    - generic [ref=e1163]: Mar 26, 2026
+                  - generic [ref=e1164]: chrisgoringe
+              - generic [ref=e1167]:
+                - generic [ref=e1168]:
+                  - generic [ref=e1169]: 
+                  - generic [ref=e1170]: 1,868,171
+                - button "Install" [ref=e1171]
+            - generic [ref=e1175] [cursor=pointer]:
+              - img "default banner" [ref=e1179]
+              - generic [ref=e1182]:
+                - generic [ref=e1183]: ComfyUI-WanVideoWrapper
+                - paragraph [ref=e1184]: ComfyUI wrapper nodes for WanVideo
+                - generic [ref=e1185]:
+                  - generic [ref=e1186]:
+                    - button "1.4.7 " [ref=e1188]:
+                      - generic [ref=e1189]: 1.4.7
+                      - generic [ref=e1190]: 
+                    - generic [ref=e1191]: Feb 2, 2026
+                  - generic [ref=e1192]: kijai
+              - generic [ref=e1195]:
+                - generic [ref=e1196]:
+                  - generic [ref=e1197]: 
+                  - generic [ref=e1198]: 1,857,911
+                - button "Install" [ref=e1199]
+            - generic [ref=e1203] [cursor=pointer]:
+              - img "default banner" [ref=e1207]
+              - generic [ref=e1210]:
+                - generic [ref=e1211]: ComfyUI-Frame-Interpolation
+                - paragraph [ref=e1212]: A custom node suite for Video Frame Interpolation in ComfyUI
+                - generic [ref=e1213]:
+                  - generic [ref=e1214]:
+                    - generic [ref=e1215]: 16 nodes
+                    - button " 1.0.7 " [ref=e1217]:
+                      - generic [ref=e1218]: 
+                      - generic [ref=e1219]: 1.0.7
+                      - generic [ref=e1220]: 
+                    - generic [ref=e1221]: Mar 22, 2026
+                  - generic [ref=e1222]: fannovel16
+              - generic [ref=e1225]:
+                - generic [ref=e1226]:
+                  - generic [ref=e1227]: 
+                  - generic [ref=e1228]: 1,726,854
+                - switch "Enable or disable pack" [checked] [ref=e1231]
+            - generic [ref=e1235] [cursor=pointer]:
+              - img "default banner" [ref=e1239]
+              - generic [ref=e1242]:
+                - generic [ref=e1243]: ComfyUI_UltimateSDUpscale
+                - paragraph [ref=e1244]: ComfyUI nodes for the Ultimate Stable Diffusion Upscale script by Coyote-A.
+                - generic [ref=e1245]:
+                  - generic [ref=e1246]:
+                    - generic [ref=e1247]: 3 nodes
+                    - button "1.7.2 " [ref=e1249]:
+                      - generic [ref=e1250]: 1.7.2
+                      - generic [ref=e1251]: 
+                    - generic [ref=e1252]: Mar 28, 2026
+                  - generic [ref=e1253]: ssit
+              - generic [ref=e1256]:
+                - generic [ref=e1257]:
+                  - generic [ref=e1258]: 
+                  - generic [ref=e1259]: 1,683,099
+                - button "Install" [ref=e1260]
+            - generic [ref=e1264] [cursor=pointer]:
+              - img "default banner" [ref=e1268]
+              - generic [ref=e1271]:
+                - generic [ref=e1272]: ComfyUI-Florence2
+                - paragraph [ref=e1273]: "Nodes to use Florence2 VLM for image vision tasks: object detection, captioning, segmentation and ocr"
+                - generic [ref=e1274]:
+                  - generic [ref=e1275]:
+                    - button "1.1.0 " [ref=e1277]:
+                      - generic [ref=e1278]: 1.1.0
+                      - generic [ref=e1279]: 
+                    - generic [ref=e1280]: May 6, 2026
+                  - generic [ref=e1281]: kijai
+              - generic [ref=e1284]:
+                - generic [ref=e1285]:
+                  - generic [ref=e1286]: 
+                  - generic [ref=e1287]: 1,538,654
+                - button "Install" [ref=e1288]
+            - generic [ref=e1292] [cursor=pointer]:
+              - img "default banner" [ref=e1296]
+              - generic [ref=e1299]:
+                - generic [ref=e1300]: ComfyUI_IPAdapter_plus
+                - paragraph [ref=e1301]: ComfyUI reference implementation for the IPAdapter models. The IPAdapter are very powerful models for image conditioning. The style and composition of a reference can be easily transferred to the generation. Think of it as a 1-image lora.
+                - generic [ref=e1302]:
+                  - generic [ref=e1303]:
+                    - generic [ref=e1304]: 30 nodes
+                    - button "2.0.0 " [ref=e1306]:
+                      - generic [ref=e1307]: 2.0.0
+                      - generic [ref=e1308]: 
+                    - generic [ref=e1309]: Jun 5, 2024
+                  - generic [ref=e1310]: matteo
+              - generic [ref=e1313]:
+                - generic [ref=e1314]:
+                  - generic [ref=e1315]: 
+                  - generic [ref=e1316]: 1,416,482
+                - button "Install" [ref=e1317]
+      - generic [ref=e1321]:
+        - generic [ref=e1322]:
+          - heading [level=2] [ref=e1323]: Node Pack Info
+          - button [ref=e1324] [cursor=pointer]
+          - button [ref=e1326] [cursor=pointer]:
+            - generic [ref=e1327]: 
+        - generic [ref=e1328]: Click an item to see the info

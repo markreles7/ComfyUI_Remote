@@ -1,0 +1,620 @@
+{
+  "version": "1.0.0",
+  "id": "e051b2d5-c7cc-4e68-bb03-8f4bc45ff926",
+  "cacheKey": "b325a9f224b265ceec45d5579359d8dc5112424fbf8a777a559f4ba2e5c6db87",
+  "createdAt": "2026-08-01T11:53:26.659Z",
+  "mediaType": "image",
+  "sourceMetadata": {
+    "filename": "comfy-remote-source-e051b2d5-c7cc-4e68-bb03-8f4bc45ff926.jpg",
+    "width": 3000,
+    "height": 4000,
+    "analysisWidth": 960,
+    "analysisHeight": 1280,
+    "channels": 3,
+    "originalName": "62968.jpg",
+    "mimeType": "image/jpeg",
+    "byteLength": 3830507,
+    "sha256": "3d100d75ca770b869c4578a91f9c838ba229a8502772c1d60664b45bcdf6ffe4",
+    "storedExtension": ".jpg"
+  },
+  "analysisSettings": {
+    "enabled": true,
+    "preset": "balanced",
+    "reuseAnalysis": true,
+    "autoPlacement": true,
+    "autoRelighting": true,
+    "matchColor": true,
+    "matchBlur": true,
+    "grainMode": "match",
+    "customGrain": 0.04,
+    "preserveBackground": true,
+    "temporalConsistency": true,
+    "occlusionHandling": true,
+    "contactShadows": true,
+    "correctionIterations": 2,
+    "debugArtifacts": false,
+    "analysisScale": 0.6,
+    "maxVideoFrames": 72,
+    "depth": true,
+    "segmentation": true,
+    "opticalFlow": true,
+    "evaluator": true,
+    "upscale": false
+  },
+  "colorProfile": {
+    "temperature": {
+      "value": 6838,
+      "unit": "kelvin-estimate",
+      "confidence": 0.45,
+      "method": "rgb-warm-cool-balance",
+      "fallback": null
+    },
+    "tint": {
+      "value": 0.017736778109681394,
+      "unit": "normalized",
+      "confidence": 0.5,
+      "method": "rgb-green-magenta-balance",
+      "fallback": null
+    },
+    "exposure": {
+      "value": 1.1559606790542603,
+      "unit": "EV-estimate",
+      "confidence": 0.7,
+      "method": "mean-relative-luminance",
+      "fallback": null
+    },
+    "luminanceDistribution": {
+      "value": [
+        0.000005,
+        0.000295,
+        0.002334,
+        0.008303,
+        0.020308,
+        0.022033,
+        0.024529,
+        0.022235,
+        0.020671,
+        0.019067,
+        0.018656,
+        0.018348,
+        0.019475,
+        0.02094,
+        0.022708,
+        0.023428,
+        0.024067,
+        0.023851,
+        0.024744,
+        0.025354,
+        0.026976,
+        0.02769,
+        0.027463,
+        0.02991,
+        0.032037,
+        0.031012,
+        0.029669,
+        0.028113,
+        0.0261,
+        0.024548,
+        0.023253,
+        0.02193,
+        0.021053,
+        0.020369,
+        0.020652,
+        0.020601,
+        0.020374,
+        0.019932,
+        0.018444,
+        0.016268,
+        0.014508,
+        0.013296,
+        0.012002,
+        0.011048,
+        0.00995,
+        0.009881,
+        0.011278,
+        0.010624,
+        0.008703,
+        0.00742,
+        0.005992,
+        0.00437,
+        0.003636,
+        0.003306,
+        0.00309,
+        0.003314,
+        0.004064,
+        0.004797,
+        0.004817,
+        0.003548,
+        0.001762,
+        0.000667,
+        0.000178,
+        0.000001
+      ],
+      "unit": "probability",
+      "confidence": 0.95,
+      "method": "64-bin-luminance-histogram",
+      "fallback": null
+    },
+    "globalContrast": {
+      "value": 0.20772813260555267,
+      "unit": "normalized",
+      "confidence": 0.9,
+      "method": "luminance-standard-deviation",
+      "fallback": null
+    },
+    "localContrast": {
+      "value": 0.07331591099500656,
+      "unit": "normalized",
+      "confidence": 0.8,
+      "method": "gaussian-local-deviation",
+      "fallback": null
+    },
+    "blackPoint": {
+      "value": 0.05882352963089943,
+      "unit": "normalized",
+      "confidence": 0.95,
+      "method": "luminance-percentile-1",
+      "fallback": null
+    },
+    "whitePoint": {
+      "value": 0.9098039269447327,
+      "unit": "normalized",
+      "confidence": 0.95,
+      "method": "luminance-percentile-99",
+      "fallback": null
+    },
+    "meanSaturation": {
+      "value": 0.21879852813521242,
+      "unit": "normalized",
+      "confidence": 0.9,
+      "method": "mean-hsv-saturation",
+      "fallback": null
+    },
+    "dominantPalette": {
+      "value": [
+        {
+          "hex": "#6c6b63",
+          "weight": 0.2536
+        },
+        {
+          "hex": "#494a3f",
+          "weight": 0.2229
+        },
+        {
+          "hex": "#20211f",
+          "weight": 0.2096
+        },
+        {
+          "hex": "#969387",
+          "weight": 0.2029
+        },
+        {
+          "hex": "#d9c59f",
+          "weight": 0.1109
+        }
+      ],
+      "unit": "hex-weight",
+      "confidence": 0.75,
+      "method": "kmeans-rgb",
+      "fallback": null
+    },
+    "colorCast": {
+      "value": {
+        "warmCool": 0.0565,
+        "greenMagenta": 0.0177
+      },
+      "unit": "normalized",
+      "confidence": 0.55,
+      "method": "channel-balance",
+      "fallback": null
+    },
+    "toneRegions": {
+      "shadows": {
+        "value": 0.17685894668102264,
+        "unit": "normalized",
+        "confidence": 0.9,
+        "method": "luminance-tertiles",
+        "fallback": null
+      },
+      "midtones": {
+        "value": 0.38562893867492676,
+        "unit": "normalized",
+        "confidence": 0.9,
+        "method": "luminance-tertiles",
+        "fallback": null
+      },
+      "highlights": {
+        "value": 0.6349748969078064,
+        "unit": "normalized",
+        "confidence": 0.9,
+        "method": "luminance-tertiles",
+        "fallback": null
+      }
+    }
+  },
+  "lightingProfile": {
+    "mainDirection": {
+      "value": {
+        "x": 0.296,
+        "y": -0.955
+      },
+      "unit": "normalized-vector",
+      "confidence": 0.314,
+      "method": "highlight-centroid-2d",
+      "fallback": null
+    },
+    "shadowSoftness": {
+      "value": 0.2803776041666667,
+      "unit": "normalized",
+      "confidence": 0.35,
+      "method": "shadow-edge-density",
+      "fallback": null
+    },
+    "relativeIntensity": {
+      "value": 0.4010988175868988,
+      "unit": "normalized",
+      "confidence": 0.75,
+      "method": "mean-luminance",
+      "fallback": null
+    },
+    "keyToAmbientRatio": {
+      "value": 9.156518936157227,
+      "unit": "ratio-estimate",
+      "confidence": 0.4,
+      "method": "highlight-shadow-ratio",
+      "fallback": null
+    },
+    "keyColor": {
+      "value": [
+        105.49,
+        102.82,
+        91.09
+      ],
+      "unit": "rgb-255",
+      "confidence": 0.4,
+      "method": "bright-region-channel-mean",
+      "fallback": null
+    },
+    "backlightPresence": {
+      "value": false,
+      "unit": "normalized",
+      "confidence": 0.35,
+      "method": "border-center-luminance",
+      "fallback": null
+    },
+    "shadowArea": {
+      "value": 0.24578938802083333,
+      "unit": "normalized",
+      "confidence": 0.65,
+      "method": "lower-luminance-quartile",
+      "fallback": null
+    },
+    "practicalLightPresence": {
+      "value": false,
+      "unit": "normalized",
+      "confidence": 0.35,
+      "method": "compact-highlight-heuristic",
+      "fallback": null
+    }
+  },
+  "cameraProfile": {
+    "depthOfField": {
+      "value": 0.13310782491651452,
+      "unit": "normalized",
+      "confidence": 0.35,
+      "method": "regional-sharpness-variance",
+      "fallback": null
+    },
+    "blur": {
+      "value": 0.01804966146845577,
+      "unit": "normalized",
+      "confidence": 0.7,
+      "method": "laplacian-variance",
+      "fallback": null
+    },
+    "apparentSharpness": {
+      "value": 0.9819503385315442,
+      "unit": "normalized",
+      "confidence": 0.8,
+      "method": "log-laplacian-variance",
+      "fallback": null
+    },
+    "vignette": {
+      "value": 0.07810261845588684,
+      "unit": "normalized",
+      "confidence": 0.55,
+      "method": "center-border-luminance",
+      "fallback": null
+    },
+    "chromaticAberration": {
+      "value": 0,
+      "unit": "normalized",
+      "confidence": 0.15,
+      "method": "not-robustly-measurable",
+      "fallback": "disabled"
+    },
+    "lensDistortion": {
+      "value": "unknown",
+      "unit": "normalized",
+      "confidence": 0,
+      "method": "insufficient-calibration-data",
+      "fallback": "none"
+    },
+    "perspective": {
+      "value": "single-view-estimate",
+      "unit": "normalized",
+      "confidence": 0.2,
+      "method": "line-orientation-heuristic",
+      "fallback": null
+    },
+    "horizonPosition": {
+      "value": 0.7006153173401837,
+      "unit": "normalized-y",
+      "confidence": 0.75,
+      "method": "hough-horizontal-lines",
+      "fallback": null
+    },
+    "cameraOrientation": {
+      "value": "level",
+      "unit": "normalized",
+      "confidence": 0.75,
+      "method": "horizon-lines",
+      "fallback": null
+    },
+    "apparentFocalLength": {
+      "value": null,
+      "unit": "mm-estimate",
+      "confidence": 0,
+      "method": "not-identifiable-from-single-uncalibrated-view",
+      "fallback": null
+    },
+    "bloom": {
+      "value": 0.0056689453125,
+      "unit": "normalized",
+      "confidence": 0.45,
+      "method": "highlight-halo-area",
+      "fallback": null
+    },
+    "halation": {
+      "value": 0.00032019355353187114,
+      "unit": "normalized",
+      "confidence": 0.25,
+      "method": "warm-highlight-halo-heuristic",
+      "fallback": null
+    }
+  },
+  "spatialProfile": {
+    "depthMap": {
+      "value": "depth",
+      "confidence": 0.88,
+      "method": "DepthAnythingV2-VITS",
+      "unit": "relative-depth-artifact",
+      "fallback": null
+    },
+    "mainObjects": {
+      "value": [],
+      "unit": "normalized",
+      "confidence": 0,
+      "method": "semantic-model-not-run",
+      "fallback": "SAM3/Florence2"
+    },
+    "groundPlane": {
+      "value": {
+        "horizonY": 0.7006153173401837,
+        "bottomY": 1
+      },
+      "unit": "normalized",
+      "confidence": 0.375,
+      "method": "horizon-and-frame-prior",
+      "fallback": null
+    },
+    "contactSurfaces": {
+      "value": [],
+      "unit": "normalized",
+      "confidence": 0,
+      "method": "semantic-model-not-run",
+      "fallback": "user-mask-or-depth"
+    },
+    "occlusionZones": {
+      "value": [],
+      "unit": "normalized",
+      "confidence": 0,
+      "method": "semantic-model-not-run",
+      "fallback": "SAM3"
+    },
+    "perspectiveScale": {
+      "value": {
+        "near": 1,
+        "far": 0.35
+      },
+      "unit": "normalized",
+      "confidence": 0.3,
+      "method": "ground-plane-prior",
+      "fallback": null
+    },
+    "recommendedPlacement": {
+      "value": {
+        "x": 0.5,
+        "y": 0.72
+      },
+      "unit": "normalized",
+      "confidence": 0.15,
+      "method": "safe-frame-prior",
+      "fallback": null
+    },
+    "contactPoint": {
+      "value": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "unit": "normalized",
+      "confidence": 0.15,
+      "method": "lower-frame-prior",
+      "fallback": null
+    }
+  },
+  "temporalProfile": {
+    "available": false,
+    "reason": "Still image"
+  },
+  "textureProfile": {
+    "grainAmount": {
+      "value": 0.22776062786579132,
+      "unit": "normalized",
+      "confidence": 0.65,
+      "method": "high-pass-residual",
+      "fallback": null
+    },
+    "grainSize": {
+      "value": 1.2,
+      "unit": "pixel-estimate",
+      "confidence": 0.35,
+      "method": "fixed-scale-high-pass",
+      "fallback": null
+    },
+    "digitalNoise": {
+      "value": 0.21530220532974456,
+      "unit": "normalized",
+      "confidence": 0.5,
+      "method": "chromatic-high-pass-heuristic",
+      "fallback": null
+    },
+    "compression": {
+      "value": 0.019762277603149414,
+      "unit": "normalized",
+      "confidence": 0.65,
+      "method": "8x8-boundary-discontinuity",
+      "fallback": null
+    },
+    "detailLevel": {
+      "value": 0.9819503385315442,
+      "unit": "normalized",
+      "confidence": 0.8,
+      "method": "log-laplacian-variance",
+      "fallback": null
+    },
+    "texture": {
+      "value": "coarse",
+      "unit": "normalized",
+      "confidence": 0.45,
+      "method": "high-pass-residual",
+      "fallback": null
+    },
+    "cinematicLook": {
+      "value": 0.30460153460502626,
+      "unit": "normalized",
+      "confidence": 0.25,
+      "method": "contrast-bloom-heuristic",
+      "fallback": null
+    },
+    "finishing": {
+      "recommendedGrain": 0.0273,
+      "recommendedBlurSigma": 0.032
+    }
+  },
+  "masks": {
+    "subject": null,
+    "intervention": null,
+    "occlusion": null,
+    "contact": null
+  },
+  "artifacts": {
+    "depth": "depth.png"
+  },
+  "confidenceScores": {
+    "color": 0.793,
+    "lighting": 0.446,
+    "camera": 0.412,
+    "spatial": 0.144,
+    "temporal": 0,
+    "texture": 0.521,
+    "overall": 0.386
+  },
+  "analysisWarnings": [
+    "Lighting, camera, focal length and depth values are estimates, not physical measurements.",
+    "Depth map is a low-confidence proxy until Depth Anything V2 analysis is run."
+  ],
+  "metricsSummary": {
+    "meanLuminance": 0.4010988175868988,
+    "meanSaturation": 0.21879852813521242,
+    "sharpness": 0.9819503385315442,
+    "grain": 0.22776062786579132,
+    "histogram": [
+      0.0000048828125,
+      0.00029541015625,
+      0.002333984375,
+      0.00830322265625,
+      0.020308430989583334,
+      0.022032877604166667,
+      0.02452880859375,
+      0.022234700520833334,
+      0.02067138671875,
+      0.0190673828125,
+      0.018656412760416668,
+      0.018347981770833334,
+      0.01947509765625,
+      0.02093994140625,
+      0.022708333333333334,
+      0.023427734375,
+      0.0240673828125,
+      0.023850911458333332,
+      0.024744466145833335,
+      0.02535400390625,
+      0.026975911458333335,
+      0.0276904296875,
+      0.02746337890625,
+      0.029910481770833334,
+      0.03203694661458333,
+      0.03101155598958333,
+      0.02966878255208333,
+      0.02811279296875,
+      0.026100260416666667,
+      0.02454833984375,
+      0.023252766927083335,
+      0.021929524739583334,
+      0.021053059895833334,
+      0.020369466145833334,
+      0.02065185546875,
+      0.020601399739583335,
+      0.020374348958333333,
+      0.019932454427083333,
+      0.018444010416666667,
+      0.016267903645833335,
+      0.014507649739583333,
+      0.0132958984375,
+      0.012001953125,
+      0.011048177083333333,
+      0.009949544270833333,
+      0.009881184895833334,
+      0.011277669270833334,
+      0.010624186197916666,
+      0.008702799479166667,
+      0.007420247395833334,
+      0.005992024739583333,
+      0.0043701171875,
+      0.003636067708333333,
+      0.0033064778645833333,
+      0.0030900065104166666,
+      0.0033138020833333335,
+      0.004064127604166667,
+      0.004796549479166667,
+      0.00481689453125,
+      0.0035481770833333333,
+      0.0017618815104166667,
+      0.00066650390625,
+      0.00017822265625,
+      8.138020833333334e-7
+    ],
+    "meanLab": [
+      108.53281982421875,
+      127.2052490234375,
+      134.72200439453124
+    ]
+  },
+  "analysisStatus": {
+    "state": "completed",
+    "promptId": "c21b454d-0f29-4616-b48b-6db18df8feb4",
+    "startedAt": "2026-08-01T12:12:45.720Z",
+    "finishedAt": "2026-08-01T12:12:47.960Z"
+  }
+}

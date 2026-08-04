@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0c10">
+  <title>Guida Workflow · LTX Remote Studio</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/workflow-guide-page.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"></span><span>LTX <b>REMOTE</b></span></a>
+    <div class="topbar-actions">
+      <nav class="primary-nav" aria-label="Navigazione principale">
+        <a href="/guided-create.html">Crea guidata</a>
+        <a href="/">Genera</a>
+        <a href="/studio.html">Image Studio</a>
+        <a href="/video-studio.html">Video Studio</a>
+        <a href="/virtual-influencer.html">Virtual Influencer</a>
+        <a class="active" href="/workflow-guide.html">Guida</a>
+        <a href="/generations.html">Generazioni</a>
+      </nav>
+      <div id="connection" class="connection checking"><span></span>Connessione…</div>
+    </div>
+  </header>
+
+  <main class="guide-page">
+    <section class="gallery-hero guide-hero">
+      <div>
+        <p class="eyebrow">MANUALE OPERATIVO / WORKFLOW E MOTORI</p>
+        <h1>Scegli il percorso <em>giusto.</em></h1>
+        <p>Scopri quando usare ogni workflow, cosa preparare e le impostazioni da cui partire.</p>
+      </div>
+    </section>
+
+    <div class="guide-layout">
+      <aside class="guide-index panel" aria-label="Indice workflow">
+        <div class="guide-search">
+          <label for="guide-search">Trova un workflow</label>
+          <input id="guide-search" type="search" placeholder="Editing, storyboard, luce…">
+        </div>
+        <nav id="guide-index-links"></nav>
+        <p id="guide-no-results" class="hint hidden">Nessun workflow corrisponde alla ricerca.</p>
+      </aside>
+
+      <section>
+        <div class="guide-intro panel">
+          <p class="eyebrow">SCELTA RAPIDA</p>
+          <h2>Da dove parto?</h2>
+          <div class="guide-choice-grid">
+            <a href="#smartphone"><b>Modifico una foto reale</b><span>Smartphone Photo Editor →</span></a>
+            <a href="#storyboard"><b>Creo una sequenza</b><span>Storyboard Director →</span></a>
+            <a href="#firstLast"><b>Animo due frame</b><span>LTX First / Last Frame →</span></a>
+            <a href="#perfect"><b>Creo un master da zero</b><span>Perfect Image Studio →</span></a>
+            <a href="#videoActorReplacement"><b>Sostituisco un attore</b><span>Actor Replacement →</span></a>
+            <a href="#videoInteractiveScene"><b>Entro nella scena</b><span>Interactive Scene →</span></a>
+          </div>
+        </div>
+        <div id="workflow-guide-list" class="workflow-guide-list"></div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

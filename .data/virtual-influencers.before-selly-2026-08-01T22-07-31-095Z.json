@@ -1,0 +1,2814 @@
+{
+  "schemaVersion": 1,
+  "profiles": [
+    {
+      "id": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+      "displayName": "Selly",
+      "slug": "selly",
+      "status": "draft",
+      "ownerId": "local-user",
+      "disclosureSettings": {
+        "synthetic": true,
+        "required": true,
+        "label": "AI-generated fictional adult character",
+        "defaultText": "Virtual creator - AI-generated fictional adult character.",
+        "watermarkEnabled": false,
+        "badgeEnabled": true,
+        "metadataEnabled": true,
+        "bioTemplate": "Virtual creator - AI-generated fictional adult character.",
+        "captionTemplate": "{caption}\n\nVirtual creator - AI-generated fictional adult character.",
+        "history": []
+      },
+      "identityProfile": {
+        "stageName": "Selly",
+        "declaredAge": 21,
+        "fictionalNationality": "Italiana",
+        "fictionalCity": "Viadana",
+        "language": "Italiano",
+        "narrativeProfession": "Influencer",
+        "shortBio": "Influencer troietta",
+        "personalHistory": "Selly è un influencer che ama farsi vedere nuda",
+        "interests": [
+          "foto pornografiche",
+          "foto nuda",
+          "amante dei dildo",
+          "amante dei selfie"
+        ],
+        "values": [
+          "troia",
+          "disinibita",
+          "seducente",
+          "provocatoria"
+        ],
+        "habits": [
+          "fare foto selfie in qualche momento e possibilmente nuda"
+        ],
+        "personalityTraits": [
+          "troia in calore"
+        ],
+        "communicationTone": "Seducente",
+        "typicalLexicon": [
+          "intellettuale"
+        ],
+        "recurringPhrases": [
+          "viva il cazzooo!!!",
+          "mi piacerebbe succhiartelo",
+          "venite a sfondarmi!"
+        ],
+        "avoidedTopics": [
+          "politica",
+          "animali",
+          "gay"
+        ]
+      },
+      "appearanceProfile": {
+        "faceShape": "",
+        "eyeColorAndShape": "",
+        "hair": "trecce",
+        "skinTone": "caucasica",
+        "bodyShape": "atletica, in forma, grandi tette naturali",
+        "approximateHeight": "170cm",
+        "bodyProportions": "",
+        "distinctiveMarks": "",
+        "makeup": "",
+        "aestheticStyle": "",
+        "recurringAccessories": [],
+        "tattoos": "",
+        "immutableElements": [
+          "seno enorme"
+        ],
+        "tattoosEnabled": false
+      },
+      "bodyProfile": {},
+      "voiceProfile": {
+        "enabled": false,
+        "provider": "",
+        "voiceId": "",
+        "language": "Italiano",
+        "accent": "",
+        "speed": 1,
+        "pitch": 1,
+        "energy": 0.7,
+        "style": "",
+        "pronunciationRules": [],
+        "licensed": false,
+        "syntheticOriginal": false,
+        "consentMetadata": null
+      },
+      "personalityProfile": {
+        "traits": [
+          "troia in calore"
+        ],
+        "tone": "Seducente",
+        "lexicon": [
+          "intellettuale"
+        ],
+        "recurringPhrases": [
+          "viva il cazzooo!!!",
+          "mi piacerebbe succhiartelo",
+          "venite a sfondarmi!"
+        ],
+        "avoidedTopics": [
+          "politica",
+          "animali",
+          "gay"
+        ]
+      },
+      "wardrobeProfile": {},
+      "outfitLibrary": [
+        {
+          "id": "3abad4cf-dcfb-45a0-8413-1e84cbfb403b",
+          "name": "top aderente verde oliva scollato, jeans chiari a vita alta",
+          "category": "casual",
+          "description": "look casual realistico da selfie indoor, top corto aderente verde oliva con scollo ampio, jeans chiari, stile naturale e provocante ma credibile",
+          "referenceImages": [],
+          "colors": [
+            "verde oliva",
+            "denim chiaro",
+            "toni naturali"
+          ],
+          "materials": [
+            "cotone elasticizzato",
+            "denim"
+          ],
+          "accessories": [
+            "collanina sottile",
+            "elastici neri sulle trecce"
+          ],
+          "allowedPlatforms": [],
+          "sensualityLevel": 2,
+          "promptFragments": [
+            "look casual realistico da selfie indoor",
+            "top corto aderente verde oliva con scollo ampio",
+            "jeans chiari",
+            "stile naturale e provocante ma credibile"
+          ],
+          "negativePromptFragments": [],
+          "createdAt": "2026-08-01T21:57:30.569Z",
+          "updatedAt": "2026-08-01T21:57:30.569Z"
+        },
+        {
+          "id": "9032be5e-b1f5-4903-9210-3d066fbd80e4",
+          "name": "top aderente verde oliva scollato, jeans chiari a vita alta",
+          "category": "casual",
+          "description": "look casual realistico da selfie indoor, top corto aderente verde oliva con scollo ampio, jeans chiari, stile naturale e provocante ma credibile",
+          "referenceImages": [],
+          "colors": [
+            "verde oliva",
+            "denim chiaro",
+            "toni naturali"
+          ],
+          "materials": [
+            "cotone elasticizzato",
+            "denim"
+          ],
+          "accessories": [
+            "collanina sottile",
+            "elastici neri sulle trecce"
+          ],
+          "allowedPlatforms": [],
+          "sensualityLevel": 2,
+          "promptFragments": [
+            "look casual realistico da selfie indoor",
+            "top corto aderente verde oliva con scollo ampio",
+            "jeans chiari",
+            "stile naturale e provocante ma credibile"
+          ],
+          "negativePromptFragments": [],
+          "createdAt": "2026-08-01T21:57:39.323Z",
+          "updatedAt": "2026-08-01T21:57:39.323Z"
+        },
+        {
+          "id": "48ac45a3-547b-479a-8006-8544dd056b5e",
+          "name": "top aderente verde oliva scollato, jeans chiari a vita alta",
+          "category": "casual",
+          "description": "look casual realistico da selfie indoor, top corto aderente verde oliva con scollo ampio, jeans chiari, stile naturale e provocante ma credibile",
+          "referenceImages": [],
+          "colors": [
+            "verde oliva",
+            "denim chiaro",
+            "toni naturali"
+          ],
+          "materials": [
+            "cotone elasticizzato",
+            "denim"
+          ],
+          "accessories": [
+            "collanina sottile",
+            "elastici neri sulle trecce"
+          ],
+          "allowedPlatforms": [],
+          "sensualityLevel": 2,
+          "promptFragments": [
+            "look casual realistico da selfie indoor",
+            "top corto aderente verde oliva con scollo ampio",
+            "jeans chiari",
+            "stile naturale e provocante ma credibile"
+          ],
+          "negativePromptFragments": [],
+          "createdAt": "2026-08-01T22:00:59.306Z",
+          "updatedAt": "2026-08-01T22:00:59.306Z"
+        },
+        {
+          "id": "b8691b36-c00d-41ed-8e49-78ee4ddc5153",
+          "name": "top aderente verde oliva scollato, jeans chiari a vita alta",
+          "category": "casual",
+          "description": "look casual realistico da selfie indoor, top corto aderente verde oliva con scollo ampio, jeans chiari, stile naturale e provocante ma credibile",
+          "referenceImages": [],
+          "colors": [
+            "verde oliva",
+            "denim chiaro",
+            "toni naturali"
+          ],
+          "materials": [
+            "cotone elasticizzato",
+            "denim"
+          ],
+          "accessories": [
+            "collanina sottile",
+            "elastici neri sulle trecce"
+          ],
+          "allowedPlatforms": [],
+          "sensualityLevel": 2,
+          "promptFragments": [
+            "look casual realistico da selfie indoor",
+            "top corto aderente verde oliva con scollo ampio",
+            "jeans chiari",
+            "stile naturale e provocante ma credibile"
+          ],
+          "negativePromptFragments": [],
+          "createdAt": "2026-08-01T22:01:01.565Z",
+          "updatedAt": "2026-08-01T22:01:01.565Z"
+        }
+      ],
+      "locationLibrary": [
+        {
+          "id": "0b826b83-0549-492c-9d10-8deed9ac604f",
+          "name": "camera da letto moderna con luce naturale",
+          "description": "stanza privata realistica, letto o divano sullo sfondo, luce morbida dalla finestra, atmosfera intima da selfie",
+          "type": "casa",
+          "referenceAssets": [],
+          "lightingPreset": "luce naturale morbida dalla finestra, ombre leggere, pelle realistica",
+          "cameraPreset": "smartphone selfie camera, prospettiva ravvicinata, leggero grandangolo realistico",
+          "sceneProfile": null,
+          "promptFragments": [
+            "stanza privata realistica",
+            "letto o divano sullo sfondo",
+            "luce morbida dalla finestra",
+            "atmosfera intima da selfie"
+          ],
+          "allowedContentLevels": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "createdAt": "2026-08-01T21:58:15.436Z",
+          "updatedAt": "2026-08-01T21:58:15.436Z"
+        },
+        {
+          "id": "7b29c00a-5d44-49bc-a836-1ac4aa9ebc71",
+          "name": "camera da letto moderna con luce naturale",
+          "description": "stanza privata realistica, letto o divano sullo sfondo, luce morbida dalla finestra, atmosfera intima da selfie",
+          "type": "casa",
+          "referenceAssets": [],
+          "lightingPreset": "luce naturale morbida dalla finestra, ombre leggere, pelle realistica",
+          "cameraPreset": "smartphone selfie camera, prospettiva ravvicinata, leggero grandangolo realistico",
+          "sceneProfile": null,
+          "promptFragments": [
+            "stanza privata realistica",
+            "letto o divano sullo sfondo",
+            "luce morbida dalla finestra",
+            "atmosfera intima da selfie"
+          ],
+          "allowedContentLevels": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "createdAt": "2026-08-01T21:58:18.707Z",
+          "updatedAt": "2026-08-01T21:58:18.707Z"
+        }
+      ],
+      "batchQueues": [],
+      "contentRules": {
+        "maxContentLevel": 2,
+        "adultRestrictedEnabled": false,
+        "prohibitedTerms": [
+          "teen",
+          "teenage",
+          "schoolgirl",
+          "school boy",
+          "schoolboy",
+          "underage",
+          "minor",
+          "minorenne",
+          "adolescente",
+          "liceale",
+          "ragazzina",
+          "ragazzino"
+        ],
+        "noRealPersonImitation": true,
+        "noUnauthorizedFaceSwap": true
+      },
+      "platformRules": {},
+      "referenceAssets": [
+        {
+          "id": "8cbe1c05-8f4b-4b19-923e-db8bbfc41b23",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_fluxKlein9b_00190_.png",
+          "filename": "8cbe1c05-8f4b-4b19-923e-db8bbfc41b23-Remote_fluxKlein9b_00190_.png",
+          "mimeType": "image/png",
+          "size": 1695437,
+          "sha256": "45b7befa4e471cc2fdfd343b93d5e2ddd9d4d4c3a1b8e99e939086cbacb152c4",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": false,
+          "sortOrder": 1,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [],
+            "score": null,
+            "warnings": [
+              "Nessuna reference canonica disponibile per il confronto."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:53:24.116Z",
+          "updatedAt": "2026-08-01T21:54:46.702Z"
+        },
+        {
+          "id": "53fd179d-6ff6-403c-b216-0760849f300d",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_fluxKlein9b_00191_.png",
+          "filename": "53fd179d-6ff6-403c-b216-0760849f300d-Remote_fluxKlein9b_00191_.png",
+          "mimeType": "image/png",
+          "size": 1595695,
+          "sha256": "cce886b42c0eb21d5276619e8388fc4443ebd83263a2e7d5c471b958696d50ef",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": false,
+          "sortOrder": 2,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [],
+            "score": null,
+            "warnings": [
+              "Nessuna reference canonica disponibile per il confronto."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:53:26.975Z",
+          "updatedAt": "2026-08-01T21:54:47.243Z"
+        },
+        {
+          "id": "be1c997f-3ee6-4425-9c9e-4b91f7a374fc",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00040_.png",
+          "filename": "be1c997f-3ee6-4425-9c9e-4b91f7a374fc-Remote_qwenImage2512_00040_.png",
+          "mimeType": "image/png",
+          "size": 1365622,
+          "sha256": "3b27dcaeb425238549ca064627b99cb68e5e7e6bb6da19f2451bdf5042469e69",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": false,
+          "sortOrder": 3,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [],
+            "score": null,
+            "warnings": [
+              "Nessuna reference canonica disponibile per il confronto."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:53:29.472Z",
+          "updatedAt": "2026-08-01T21:54:56.239Z"
+        },
+        {
+          "id": "21d8f42e-58d3-4516-a94e-f9b8f4b071b0",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00041_.png",
+          "filename": "21d8f42e-58d3-4516-a94e-f9b8f4b071b0-Remote_qwenImage2512_00041_.png",
+          "mimeType": "image/png",
+          "size": 1281833,
+          "sha256": "43331781d0f83b10601b15de78693a3283fcbec7ff88b2f53b89f016cf2bf7ed",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": false,
+          "sortOrder": 4,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [],
+            "score": null,
+            "warnings": [
+              "Nessuna reference canonica disponibile per il confronto."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:53:32.366Z",
+          "updatedAt": "2026-08-01T21:54:55.528Z"
+        },
+        {
+          "id": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00042_.png",
+          "filename": "76a16f0c-48f5-4d19-87f3-57078aa96dc3-Remote_qwenImage2512_00042_.png",
+          "mimeType": "image/png",
+          "size": 1383627,
+          "sha256": "4f4f6196d2bc6abc4e705a3ed9e6ae90c7bcda0f400dc31137ee58a381f17991",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": true,
+          "sortOrder": 5,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [],
+            "score": null,
+            "warnings": [
+              "Nessuna reference canonica disponibile per il confronto."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:53:35.315Z",
+          "updatedAt": "2026-08-01T21:55:00.301Z"
+        },
+        {
+          "id": "ee23ca85-9492-41ba-b758-7ba6dd74ebc3",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00043_.png",
+          "filename": "ee23ca85-9492-41ba-b758-7ba6dd74ebc3-Remote_qwenImage2512_00043_.png",
+          "mimeType": "image/png",
+          "size": 1399682,
+          "sha256": "b1beb6c602d742d497d9c0f4e3eb3c097b07cbff7a9ae5310875d0db862aee63",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": false,
+          "sortOrder": 6,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [
+              {
+                "assetId": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+                "score": 100
+              }
+            ],
+            "score": 100,
+            "warnings": [
+              "Confronto euristico: confermare manualmente prima di usarla come canonica."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:53:40.284Z",
+          "updatedAt": "2026-08-01T21:55:00.913Z"
+        },
+        {
+          "id": "57736faa-db96-44ee-aeb2-6e3296516852",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00048_.png",
+          "filename": "57736faa-db96-44ee-aeb2-6e3296516852-Remote_qwenImage2512_00048_.png",
+          "mimeType": "image/png",
+          "size": 1670373,
+          "sha256": "717a815ff87e49129c9cf3ed2ce2eb9e75d478537fdad1af499a846dcbaabbeb",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": false,
+          "sortOrder": 7,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [
+              {
+                "assetId": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+                "score": 100
+              }
+            ],
+            "score": 100,
+            "warnings": [
+              "Confronto euristico: confermare manualmente prima di usarla come canonica."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:53:43.287Z",
+          "updatedAt": "2026-08-01T21:55:03.626Z"
+        },
+        {
+          "id": "ad133cac-2b06-472f-8b8d-a3a57279576d",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00049_.png",
+          "filename": "ad133cac-2b06-472f-8b8d-a3a57279576d-Remote_qwenImage2512_00049_.png",
+          "mimeType": "image/png",
+          "size": 1597078,
+          "sha256": "7b3592a23dfa4b84d5ace14e3a055fb2827e3640f9d717ad2b10c50378bff281",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": false,
+          "sortOrder": 8,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": [
+              "Duplicato rilevato e riutilizzato: nessun nuovo file salvato."
+            ]
+          },
+          "duplicate": true,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [
+              {
+                "assetId": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+                "score": 100
+              }
+            ],
+            "score": 100,
+            "warnings": [
+              "Confronto euristico: confermare manualmente prima di usarla come canonica."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:53:46.068Z",
+          "updatedAt": "2026-08-01T21:55:11.780Z"
+        },
+        {
+          "id": "fa299971-123a-4d97-b383-4fe636965fa2",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00054_.png",
+          "filename": "fa299971-123a-4d97-b383-4fe636965fa2-Remote_qwenImage2512_00054_.png",
+          "mimeType": "image/png",
+          "size": 1395209,
+          "sha256": "e5accd2588fbd74977b6f701460259b7d5d088ee4e01d000f96e7e063316f23b",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": true,
+          "sortOrder": 6,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [
+              {
+                "assetId": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+                "score": 100
+              },
+              {
+                "assetId": "36258c6f-997c-44c7-8ec3-f067859d8031",
+                "score": 100
+              },
+              {
+                "assetId": "75e3fc49-5801-4822-9fd6-188d546690ee",
+                "score": 100
+              },
+              {
+                "assetId": "99a4ce19-b45b-44f5-9e2a-35a6d4c73f4e",
+                "score": 100
+              },
+              {
+                "assetId": "cb86a903-1cee-44d8-8384-98d7e91ce7c4",
+                "score": 100
+              }
+            ],
+            "score": 100,
+            "warnings": [
+              "Confronto euristico: confermare manualmente prima di usarla come canonica."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:53:51.271Z",
+          "updatedAt": "2026-08-01T21:56:11.598Z"
+        },
+        {
+          "id": "1c6444a7-e93f-4520-9d44-2052c86f9599",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00061_.png",
+          "filename": "1c6444a7-e93f-4520-9d44-2052c86f9599-Remote_qwenImage2512_00061_.png",
+          "mimeType": "image/png",
+          "size": 1409346,
+          "sha256": "a42bc52a501d93454a60c600f1b3e1db6dca5e63c35ed522efdeaad8e199a62b",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": false,
+          "sortOrder": 10,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [
+              {
+                "assetId": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+                "score": 100
+              },
+              {
+                "assetId": "fa299971-123a-4d97-b383-4fe636965fa2",
+                "score": 100
+              }
+            ],
+            "score": 100,
+            "warnings": [
+              "Confronto euristico: confermare manualmente prima di usarla come canonica."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:53:53.745Z",
+          "updatedAt": "2026-08-01T21:55:14.763Z"
+        },
+        {
+          "id": "51ded3a3-876d-4953-b8dd-b1f19ae50031",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00063_.png",
+          "filename": "51ded3a3-876d-4953-b8dd-b1f19ae50031-Remote_qwenImage2512_00063_.png",
+          "mimeType": "image/png",
+          "size": 1340476,
+          "sha256": "b82ddf28d6d92d1d3adde928ccd8754f06c3be0441b693ca2c380f14ead4303a",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": false,
+          "sortOrder": 11,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [
+              {
+                "assetId": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+                "score": 100
+              },
+              {
+                "assetId": "fa299971-123a-4d97-b383-4fe636965fa2",
+                "score": 100
+              }
+            ],
+            "score": 100,
+            "warnings": [
+              "Confronto euristico: confermare manualmente prima di usarla come canonica."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:53:55.871Z",
+          "updatedAt": "2026-08-01T21:55:16.007Z"
+        },
+        {
+          "id": "4ece19b5-9d1c-4365-934d-226a683164d0",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00065_.png",
+          "filename": "4ece19b5-9d1c-4365-934d-226a683164d0-Remote_qwenImage2512_00065_.png",
+          "mimeType": "image/png",
+          "size": 1428406,
+          "sha256": "9490ae7f404e5c08cdfea30dfc45cc6578d554bd98b17adbd1d163114559057b",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": false,
+          "sortOrder": 12,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [
+              {
+                "assetId": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+                "score": 100
+              },
+              {
+                "assetId": "fa299971-123a-4d97-b383-4fe636965fa2",
+                "score": 100
+              }
+            ],
+            "score": 100,
+            "warnings": [
+              "Confronto euristico: confermare manualmente prima di usarla come canonica."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:53:58.289Z",
+          "updatedAt": "2026-08-01T21:55:17.017Z"
+        },
+        {
+          "id": "36258c6f-997c-44c7-8ec3-f067859d8031",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00076_.png",
+          "filename": "36258c6f-997c-44c7-8ec3-f067859d8031-Remote_qwenImage2512_00076_.png",
+          "mimeType": "image/png",
+          "size": 1279864,
+          "sha256": "b5bc0f8d3246b69ad35fe84dbfa6d20042470e3fcf5ef8af485abc177c766279",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": true,
+          "sortOrder": 13,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [
+              {
+                "assetId": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+                "score": 100
+              },
+              {
+                "assetId": "fa299971-123a-4d97-b383-4fe636965fa2",
+                "score": 100
+              }
+            ],
+            "score": 100,
+            "warnings": [
+              "Confronto euristico: confermare manualmente prima di usarla come canonica."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:54:00.497Z",
+          "updatedAt": "2026-08-01T21:55:20.429Z"
+        },
+        {
+          "id": "350f228b-750c-4ee1-8295-ff3cf3209458",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00077_.png",
+          "filename": "350f228b-750c-4ee1-8295-ff3cf3209458-Remote_qwenImage2512_00077_.png",
+          "mimeType": "image/png",
+          "size": 1391777,
+          "sha256": "292159a57610c78fabec2a9ad0736f943d94803bcb86d13fc776072ec8029de8",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": false,
+          "sortOrder": 14,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [
+              {
+                "assetId": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+                "score": 100
+              },
+              {
+                "assetId": "fa299971-123a-4d97-b383-4fe636965fa2",
+                "score": 100
+              },
+              {
+                "assetId": "36258c6f-997c-44c7-8ec3-f067859d8031",
+                "score": 100
+              }
+            ],
+            "score": 100,
+            "warnings": [
+              "Confronto euristico: confermare manualmente prima di usarla come canonica."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:54:02.616Z",
+          "updatedAt": "2026-08-01T21:55:21.351Z"
+        },
+        {
+          "id": "973d4e97-559b-40ab-a0c4-ff0805e9e610",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00078_.png",
+          "filename": "973d4e97-559b-40ab-a0c4-ff0805e9e610-Remote_qwenImage2512_00078_.png",
+          "mimeType": "image/png",
+          "size": 1407693,
+          "sha256": "8334974dcc4a939ec1e2bd931ed053615556e031015994884f01a5792531969c",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": false,
+          "sortOrder": 15,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": [
+              "Duplicato rilevato e riutilizzato: nessun nuovo file salvato."
+            ]
+          },
+          "duplicate": true,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [
+              {
+                "assetId": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+                "score": 100
+              },
+              {
+                "assetId": "fa299971-123a-4d97-b383-4fe636965fa2",
+                "score": 100
+              },
+              {
+                "assetId": "36258c6f-997c-44c7-8ec3-f067859d8031",
+                "score": 100
+              }
+            ],
+            "score": 100,
+            "warnings": [
+              "Confronto euristico: confermare manualmente prima di usarla come canonica."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:54:04.983Z",
+          "updatedAt": "2026-08-01T21:55:25.342Z"
+        },
+        {
+          "id": "75e3fc49-5801-4822-9fd6-188d546690ee",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00079_.png",
+          "filename": "75e3fc49-5801-4822-9fd6-188d546690ee-Remote_qwenImage2512_00079_.png",
+          "mimeType": "image/png",
+          "size": 1328868,
+          "sha256": "c16f3feb100d22cf6a6ab33edb2d109e3e2958a10a20f75e22c2af097c22f87d",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": true,
+          "sortOrder": 16,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [
+              {
+                "assetId": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+                "score": 100
+              },
+              {
+                "assetId": "fa299971-123a-4d97-b383-4fe636965fa2",
+                "score": 100
+              },
+              {
+                "assetId": "36258c6f-997c-44c7-8ec3-f067859d8031",
+                "score": 100
+              }
+            ],
+            "score": 100,
+            "warnings": [
+              "Confronto euristico: confermare manualmente prima di usarla come canonica."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:54:09.768Z",
+          "updatedAt": "2026-08-01T21:55:26.175Z"
+        },
+        {
+          "id": "6a1cdee4-3b4b-4dd0-a550-d1ece54c5b50",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00085_.png",
+          "filename": "6a1cdee4-3b4b-4dd0-a550-d1ece54c5b50-Remote_qwenImage2512_00085_.png",
+          "mimeType": "image/png",
+          "size": 1147898,
+          "sha256": "44198be1ea579ec8a90c7076acf16e256fd5cc20914fee4c419798370e033e98",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": false,
+          "sortOrder": 17,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [
+              {
+                "assetId": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+                "score": 100
+              },
+              {
+                "assetId": "fa299971-123a-4d97-b383-4fe636965fa2",
+                "score": 100
+              },
+              {
+                "assetId": "36258c6f-997c-44c7-8ec3-f067859d8031",
+                "score": 100
+              },
+              {
+                "assetId": "75e3fc49-5801-4822-9fd6-188d546690ee",
+                "score": 100
+              }
+            ],
+            "score": 100,
+            "warnings": [
+              "Confronto euristico: confermare manualmente prima di usarla come canonica."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:54:11.716Z",
+          "updatedAt": "2026-08-01T21:55:27.567Z"
+        },
+        {
+          "id": "99a4ce19-b45b-44f5-9e2a-35a6d4c73f4e",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00088_.png",
+          "filename": "99a4ce19-b45b-44f5-9e2a-35a6d4c73f4e-Remote_qwenImage2512_00088_.png",
+          "mimeType": "image/png",
+          "size": 1395306,
+          "sha256": "4b3a8987d0dbf5b99e1b128f0d1e15c9eeab53902c2110873f14ed1556d8ceb1",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": true,
+          "sortOrder": 18,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [
+              {
+                "assetId": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+                "score": 100
+              },
+              {
+                "assetId": "fa299971-123a-4d97-b383-4fe636965fa2",
+                "score": 100
+              },
+              {
+                "assetId": "36258c6f-997c-44c7-8ec3-f067859d8031",
+                "score": 100
+              },
+              {
+                "assetId": "75e3fc49-5801-4822-9fd6-188d546690ee",
+                "score": 100
+              }
+            ],
+            "score": 100,
+            "warnings": [
+              "Confronto euristico: confermare manualmente prima di usarla come canonica."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:54:14.234Z",
+          "updatedAt": "2026-08-01T21:55:31.380Z"
+        },
+        {
+          "id": "348c1f81-34bf-46e6-a169-8119ee5c5fe3",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00089_.png",
+          "filename": "348c1f81-34bf-46e6-a169-8119ee5c5fe3-Remote_qwenImage2512_00089_.png",
+          "mimeType": "image/png",
+          "size": 1427299,
+          "sha256": "634d43929d9693b40b455055251b93390ab3d679737c7b000d80df2559e116ed",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": false,
+          "sortOrder": 19,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [
+              {
+                "assetId": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+                "score": 100
+              },
+              {
+                "assetId": "fa299971-123a-4d97-b383-4fe636965fa2",
+                "score": 100
+              },
+              {
+                "assetId": "36258c6f-997c-44c7-8ec3-f067859d8031",
+                "score": 100
+              },
+              {
+                "assetId": "75e3fc49-5801-4822-9fd6-188d546690ee",
+                "score": 100
+              },
+              {
+                "assetId": "99a4ce19-b45b-44f5-9e2a-35a6d4c73f4e",
+                "score": 100
+              }
+            ],
+            "score": 100,
+            "warnings": [
+              "Confronto euristico: confermare manualmente prima di usarla come canonica."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:54:16.465Z",
+          "updatedAt": "2026-08-01T21:55:32.729Z"
+        },
+        {
+          "id": "9f4a8cc9-e16f-445e-82d6-2d492c71786f",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00090_.png",
+          "filename": "9f4a8cc9-e16f-445e-82d6-2d492c71786f-Remote_qwenImage2512_00090_.png",
+          "mimeType": "image/png",
+          "size": 1304465,
+          "sha256": "4cdad0c344e3a290aa15f456bfbf44e171fe6a9f0ec49d5112a17d7c75bcaa62",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": false,
+          "sortOrder": 20,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [
+              {
+                "assetId": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+                "score": 100
+              },
+              {
+                "assetId": "fa299971-123a-4d97-b383-4fe636965fa2",
+                "score": 100
+              },
+              {
+                "assetId": "36258c6f-997c-44c7-8ec3-f067859d8031",
+                "score": 100
+              },
+              {
+                "assetId": "75e3fc49-5801-4822-9fd6-188d546690ee",
+                "score": 100
+              },
+              {
+                "assetId": "99a4ce19-b45b-44f5-9e2a-35a6d4c73f4e",
+                "score": 100
+              }
+            ],
+            "score": 100,
+            "warnings": [
+              "Confronto euristico: confermare manualmente prima di usarla come canonica."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:54:18.592Z",
+          "updatedAt": "2026-08-01T21:55:33.664Z"
+        },
+        {
+          "id": "9d0b0827-c04e-427e-8b29-fa4b8d925838",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00091_.png",
+          "filename": "9d0b0827-c04e-427e-8b29-fa4b8d925838-Remote_qwenImage2512_00091_.png",
+          "mimeType": "image/png",
+          "size": 1305332,
+          "sha256": "51f07ac5036d70370fca6ba1300bc6f00a0c8239853625519c6db2a065a830bf",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": false,
+          "sortOrder": 21,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [
+              {
+                "assetId": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+                "score": 100
+              },
+              {
+                "assetId": "fa299971-123a-4d97-b383-4fe636965fa2",
+                "score": 100
+              },
+              {
+                "assetId": "36258c6f-997c-44c7-8ec3-f067859d8031",
+                "score": 100
+              },
+              {
+                "assetId": "75e3fc49-5801-4822-9fd6-188d546690ee",
+                "score": 100
+              },
+              {
+                "assetId": "99a4ce19-b45b-44f5-9e2a-35a6d4c73f4e",
+                "score": 100
+              }
+            ],
+            "score": 100,
+            "warnings": [
+              "Confronto euristico: confermare manualmente prima di usarla come canonica."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:54:21.361Z",
+          "updatedAt": "2026-08-01T21:55:35.956Z"
+        },
+        {
+          "id": "cb86a903-1cee-44d8-8384-98d7e91ce7c4",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00097_.png",
+          "filename": "cb86a903-1cee-44d8-8384-98d7e91ce7c4-Remote_qwenImage2512_00097_.png",
+          "mimeType": "image/png",
+          "size": 1303014,
+          "sha256": "4b654e6e254b2d78893f2c3a71800567a207337417e289fc92f1fd09931e847a",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": true,
+          "sortOrder": 1,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [
+              {
+                "assetId": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+                "score": 100
+              },
+              {
+                "assetId": "fa299971-123a-4d97-b383-4fe636965fa2",
+                "score": 100
+              },
+              {
+                "assetId": "36258c6f-997c-44c7-8ec3-f067859d8031",
+                "score": 100
+              },
+              {
+                "assetId": "75e3fc49-5801-4822-9fd6-188d546690ee",
+                "score": 100
+              },
+              {
+                "assetId": "99a4ce19-b45b-44f5-9e2a-35a6d4c73f4e",
+                "score": 100
+              }
+            ],
+            "score": 100,
+            "warnings": [
+              "Confronto euristico: confermare manualmente prima di usarla come canonica."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:54:24.040Z",
+          "updatedAt": "2026-08-01T21:55:40.434Z"
+        },
+        {
+          "id": "f19cd459-3bcc-4e61-a9d5-eccd8bc16e29",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00101_.png",
+          "filename": "f19cd459-3bcc-4e61-a9d5-eccd8bc16e29-Remote_qwenImage2512_00101_.png",
+          "mimeType": "image/png",
+          "size": 1281924,
+          "sha256": "633a3b4edd66e319ba433c6db6d02f7d8291bec7eafb5cc0b573301fbeeabbac",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": false,
+          "sortOrder": 2,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [
+              {
+                "assetId": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+                "score": 100
+              },
+              {
+                "assetId": "fa299971-123a-4d97-b383-4fe636965fa2",
+                "score": 100
+              },
+              {
+                "assetId": "36258c6f-997c-44c7-8ec3-f067859d8031",
+                "score": 100
+              },
+              {
+                "assetId": "75e3fc49-5801-4822-9fd6-188d546690ee",
+                "score": 100
+              },
+              {
+                "assetId": "99a4ce19-b45b-44f5-9e2a-35a6d4c73f4e",
+                "score": 100
+              },
+              {
+                "assetId": "cb86a903-1cee-44d8-8384-98d7e91ce7c4",
+                "score": 100
+              }
+            ],
+            "score": 100,
+            "warnings": [
+              "Confronto euristico: confermare manualmente prima di usarla come canonica."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:54:26.339Z",
+          "updatedAt": "2026-08-01T21:55:46.281Z"
+        },
+        {
+          "id": "cbf54431-e0dc-4279-abc1-f8deb6183ea7",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00104_.png",
+          "filename": "cbf54431-e0dc-4279-abc1-f8deb6183ea7-Remote_qwenImage2512_00104_.png",
+          "mimeType": "image/png",
+          "size": 1259403,
+          "sha256": "bc14a92d0a95c158361832fc3571df43e0d8996fd4457230aec4f6e498c028a4",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": false,
+          "sortOrder": 24,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [
+              {
+                "assetId": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+                "score": 100
+              },
+              {
+                "assetId": "fa299971-123a-4d97-b383-4fe636965fa2",
+                "score": 100
+              },
+              {
+                "assetId": "36258c6f-997c-44c7-8ec3-f067859d8031",
+                "score": 100
+              },
+              {
+                "assetId": "75e3fc49-5801-4822-9fd6-188d546690ee",
+                "score": 100
+              },
+              {
+                "assetId": "99a4ce19-b45b-44f5-9e2a-35a6d4c73f4e",
+                "score": 100
+              },
+              {
+                "assetId": "cb86a903-1cee-44d8-8384-98d7e91ce7c4",
+                "score": 100
+              }
+            ],
+            "score": 100,
+            "warnings": [
+              "Confronto euristico: confermare manualmente prima di usarla come canonica."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:54:28.614Z",
+          "updatedAt": "2026-08-01T21:55:48.079Z"
+        },
+        {
+          "id": "d9e96243-5053-40fa-90fc-b7e29842cc85",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00105_.png",
+          "filename": "d9e96243-5053-40fa-90fc-b7e29842cc85-Remote_qwenImage2512_00105_.png",
+          "mimeType": "image/png",
+          "size": 1300807,
+          "sha256": "aaa2ed5859942d6854252962702663d9f44f1010e599c9ec4a77f7e58eb6d4e4",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": false,
+          "sortOrder": 25,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [
+              {
+                "assetId": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+                "score": 100
+              },
+              {
+                "assetId": "fa299971-123a-4d97-b383-4fe636965fa2",
+                "score": 100
+              },
+              {
+                "assetId": "36258c6f-997c-44c7-8ec3-f067859d8031",
+                "score": 100
+              },
+              {
+                "assetId": "75e3fc49-5801-4822-9fd6-188d546690ee",
+                "score": 100
+              },
+              {
+                "assetId": "99a4ce19-b45b-44f5-9e2a-35a6d4c73f4e",
+                "score": 100
+              },
+              {
+                "assetId": "cb86a903-1cee-44d8-8384-98d7e91ce7c4",
+                "score": 100
+              }
+            ],
+            "score": 100,
+            "warnings": [
+              "Confronto euristico: confermare manualmente prima di usarla come canonica."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:54:30.693Z",
+          "updatedAt": "2026-08-01T21:55:50.251Z"
+        },
+        {
+          "id": "0bb701ad-9520-4820-85df-4bdf83cb64d0",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00106_.png",
+          "filename": "0bb701ad-9520-4820-85df-4bdf83cb64d0-Remote_qwenImage2512_00106_.png",
+          "mimeType": "image/png",
+          "size": 1343043,
+          "sha256": "27a21bc67bf3a5277443265de0196bd875e2e19af2a5284be3940ef16d13e817",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": false,
+          "sortOrder": 3,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [
+              {
+                "assetId": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+                "score": 100
+              },
+              {
+                "assetId": "fa299971-123a-4d97-b383-4fe636965fa2",
+                "score": 100
+              },
+              {
+                "assetId": "36258c6f-997c-44c7-8ec3-f067859d8031",
+                "score": 100
+              },
+              {
+                "assetId": "75e3fc49-5801-4822-9fd6-188d546690ee",
+                "score": 100
+              },
+              {
+                "assetId": "99a4ce19-b45b-44f5-9e2a-35a6d4c73f4e",
+                "score": 100
+              },
+              {
+                "assetId": "cb86a903-1cee-44d8-8384-98d7e91ce7c4",
+                "score": 100
+              }
+            ],
+            "score": 100,
+            "warnings": [
+              "Confronto euristico: confermare manualmente prima di usarla come canonica."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:54:33.253Z",
+          "updatedAt": "2026-08-01T21:55:53.952Z"
+        },
+        {
+          "id": "8884b7db-2e4b-4b05-a89b-cad206d2af12",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00107_.png",
+          "filename": "8884b7db-2e4b-4b05-a89b-cad206d2af12-Remote_qwenImage2512_00107_.png",
+          "mimeType": "image/png",
+          "size": 1257293,
+          "sha256": "88139ea8c6ff0e005ded56e4e0b5c754dee179488ad7889866a117ad683f557d",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": false,
+          "sortOrder": 4,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [
+              {
+                "assetId": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+                "score": 100
+              },
+              {
+                "assetId": "fa299971-123a-4d97-b383-4fe636965fa2",
+                "score": 100
+              },
+              {
+                "assetId": "36258c6f-997c-44c7-8ec3-f067859d8031",
+                "score": 100
+              },
+              {
+                "assetId": "75e3fc49-5801-4822-9fd6-188d546690ee",
+                "score": 100
+              },
+              {
+                "assetId": "99a4ce19-b45b-44f5-9e2a-35a6d4c73f4e",
+                "score": 100
+              },
+              {
+                "assetId": "cb86a903-1cee-44d8-8384-98d7e91ce7c4",
+                "score": 100
+              }
+            ],
+            "score": 100,
+            "warnings": [
+              "Confronto euristico: confermare manualmente prima di usarla come canonica."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:54:35.328Z",
+          "updatedAt": "2026-08-01T21:55:58.894Z"
+        },
+        {
+          "id": "e426e41b-f646-42df-95c0-2d031409f2fd",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00108_.png",
+          "filename": "e426e41b-f646-42df-95c0-2d031409f2fd-Remote_qwenImage2512_00108_.png",
+          "mimeType": "image/png",
+          "size": 1292725,
+          "sha256": "659e9b47770f49e8d84373bc8ba8ecfa0f3ea82749efd46a0a7eba1b01a0c762",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": false,
+          "sortOrder": 5,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [
+              {
+                "assetId": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+                "score": 100
+              },
+              {
+                "assetId": "fa299971-123a-4d97-b383-4fe636965fa2",
+                "score": 100
+              },
+              {
+                "assetId": "36258c6f-997c-44c7-8ec3-f067859d8031",
+                "score": 100
+              },
+              {
+                "assetId": "75e3fc49-5801-4822-9fd6-188d546690ee",
+                "score": 100
+              },
+              {
+                "assetId": "99a4ce19-b45b-44f5-9e2a-35a6d4c73f4e",
+                "score": 100
+              },
+              {
+                "assetId": "cb86a903-1cee-44d8-8384-98d7e91ce7c4",
+                "score": 100
+              }
+            ],
+            "score": 100,
+            "warnings": [
+              "Confronto euristico: confermare manualmente prima di usarla come canonica."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:54:38.938Z",
+          "updatedAt": "2026-08-01T21:56:01.739Z"
+        },
+        {
+          "id": "a8fcbd80-330d-4288-8de2-c428ba77ecc5",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "originalName": "Remote_qwenImage2512_00109_.png",
+          "filename": "a8fcbd80-330d-4288-8de2-c428ba77ecc5-Remote_qwenImage2512_00109_.png",
+          "mimeType": "image/png",
+          "size": 1249630,
+          "sha256": "6d4426ac5b86ee72b248cb0cf5332ff528370fdf556cfc03ebaa8d56e9ff544c",
+          "width": 896,
+          "height": 1152,
+          "status": "approved",
+          "canonical": false,
+          "sortOrder": 29,
+          "tags": [],
+          "categories": [
+            "figura intera",
+            "frontale",
+            "luce naturale",
+            "espressione neutra"
+          ],
+          "autoClassification": {
+            "method": "filename-and-dimensions-heuristic",
+            "categories": [
+              "figura intera",
+              "frontale",
+              "luce naturale",
+              "espressione neutra"
+            ],
+            "warnings": [
+              "Classificazione automatica euristica: confermare manualmente le categorie canoniche."
+            ]
+          },
+          "quality": {
+            "score": 100,
+            "warnings": []
+          },
+          "duplicate": false,
+          "comparison": {
+            "method": "dataset-overlap-heuristic",
+            "comparedWith": [
+              {
+                "assetId": "76a16f0c-48f5-4d19-87f3-57078aa96dc3",
+                "score": 100
+              },
+              {
+                "assetId": "fa299971-123a-4d97-b383-4fe636965fa2",
+                "score": 100
+              },
+              {
+                "assetId": "36258c6f-997c-44c7-8ec3-f067859d8031",
+                "score": 100
+              },
+              {
+                "assetId": "75e3fc49-5801-4822-9fd6-188d546690ee",
+                "score": 100
+              },
+              {
+                "assetId": "99a4ce19-b45b-44f5-9e2a-35a6d4c73f4e",
+                "score": 100
+              },
+              {
+                "assetId": "cb86a903-1cee-44d8-8384-98d7e91ce7c4",
+                "score": 100
+              }
+            ],
+            "score": 100,
+            "warnings": [
+              "Confronto euristico: confermare manualmente prima di usarla come canonica."
+            ]
+          },
+          "multiPersonCheck": {
+            "status": "unverified",
+            "warning": "Milestone 1 non esegue face detection automatica: verifica manualmente che ci sia una sola identità."
+          },
+          "createdAt": "2026-08-01T21:54:41.174Z",
+          "updatedAt": "2026-08-01T21:56:03.159Z"
+        }
+      ],
+      "trainedAssets": [],
+      "generatedAssets": [],
+      "captionDrafts": [],
+      "contentProjects": [],
+      "analyticsEntries": [],
+      "generationDefaults": {
+        "imageModelFamily": "flux2",
+        "editModelFamily": "qwenEdit",
+        "videoModelFamily": "ltx23",
+        "qualityPreset": "fastPreview"
+      },
+      "moderationSettings": {
+        "minDeclaredAge": 21,
+        "blockAgeAmbiguousPrompts": true,
+        "requireSyntheticDisclosure": true,
+        "humanApprovalRequired": true
+      },
+      "metadata": {
+        "schemaVersion": 1,
+        "featureFlag": "virtualInfluencerStudio"
+      },
+      "identityLocks": {
+        "face": {
+          "enabled": false,
+          "strength": 0.75,
+          "tolerance": 0.25,
+          "referenceSet": [],
+          "validationThreshold": 0.7
+        },
+        "eyes": {
+          "enabled": false,
+          "strength": 0.75,
+          "tolerance": 0.25,
+          "referenceSet": [],
+          "validationThreshold": 0.7
+        },
+        "hair": {
+          "enabled": false,
+          "strength": 0.75,
+          "tolerance": 0.25,
+          "referenceSet": [],
+          "validationThreshold": 0.7
+        },
+        "skinTone": {
+          "enabled": false,
+          "strength": 0.75,
+          "tolerance": 0.25,
+          "referenceSet": [],
+          "validationThreshold": 0.7
+        },
+        "bodyShape": {
+          "enabled": false,
+          "strength": 0.75,
+          "tolerance": 0.25,
+          "referenceSet": [],
+          "validationThreshold": 0.7
+        },
+        "height": {
+          "enabled": false,
+          "strength": 0.75,
+          "tolerance": 0.25,
+          "referenceSet": [],
+          "validationThreshold": 0.7
+        },
+        "proportions": {
+          "enabled": false,
+          "strength": 0.75,
+          "tolerance": 0.25,
+          "referenceSet": [],
+          "validationThreshold": 0.7
+        },
+        "distinctiveMarks": {
+          "enabled": false,
+          "strength": 0.75,
+          "tolerance": 0.25,
+          "referenceSet": [],
+          "validationThreshold": 0.7
+        },
+        "tattoos": {
+          "enabled": false,
+          "strength": 0.75,
+          "tolerance": 0.25,
+          "referenceSet": [],
+          "validationThreshold": 0.7
+        },
+        "apparentAge": {
+          "enabled": false,
+          "strength": 0.75,
+          "tolerance": 0.25,
+          "referenceSet": [],
+          "validationThreshold": 0.7
+        },
+        "makeupStyle": {
+          "enabled": false,
+          "strength": 0.75,
+          "tolerance": 0.25,
+          "referenceSet": [],
+          "validationThreshold": 0.7
+        }
+      },
+      "createdAt": "2026-08-01T21:23:26.970Z",
+      "updatedAt": "2026-08-01T22:01:01.565Z",
+      "currentVersionId": "d6c75655-6780-403e-9e98-afa1a0e93779",
+      "versions": [
+        {
+          "id": "01d64cdc-2ffb-4b61-a79e-a9080927844a",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "versionNumber": 1,
+          "changeLog": "Versione iniziale del personaggio virtuale adulto.",
+          "identitySignature": {
+            "displayName": "Selly",
+            "declaredAge": 21,
+            "identityProfile": {
+              "stageName": "Selly",
+              "declaredAge": 21,
+              "fictionalNationality": "",
+              "fictionalCity": "",
+              "language": "Italiano",
+              "narrativeProfession": "",
+              "shortBio": "Influencer troietta",
+              "personalHistory": "",
+              "interests": [],
+              "values": [],
+              "habits": [],
+              "personalityTraits": [],
+              "communicationTone": "",
+              "typicalLexicon": [],
+              "recurringPhrases": [],
+              "avoidedTopics": []
+            },
+            "appearanceProfile": {
+              "faceShape": "",
+              "eyeColorAndShape": "",
+              "hair": "",
+              "skinTone": "",
+              "bodyShape": "",
+              "approximateHeight": "",
+              "bodyProportions": "",
+              "distinctiveMarks": "",
+              "makeup": "",
+              "aestheticStyle": "",
+              "recurringAccessories": [],
+              "tattoos": "",
+              "immutableElements": [],
+              "tattoosEnabled": false
+            },
+            "identityLocks": {
+              "face": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "eyes": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "hair": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "skinTone": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "bodyShape": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "height": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "proportions": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "distinctiveMarks": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "tattoos": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "apparentAge": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "makeupStyle": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              }
+            },
+            "approvedReferenceIds": []
+          },
+          "approvedReferences": [],
+          "canonicalPrompts": {
+            "identity": "Selly, 21 year old fictional adult virtual creator"
+          },
+          "negativePrompts": {
+            "identity": "age-ambiguous appearance, immature appearance, real person impersonation, unauthorized identity transfer"
+          },
+          "modelSettings": {
+            "imageModelFamily": "flux2",
+            "editModelFamily": "qwenEdit",
+            "videoModelFamily": "ltx23",
+            "qualityPreset": "fastPreview"
+          },
+          "createdAt": "2026-08-01T21:23:26.970Z",
+          "createdBy": "local-user"
+        },
+        {
+          "id": "10c306ba-acc7-40f2-a696-2cf891169b8e",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "versionNumber": 2,
+          "changeLog": "Aggiornamento Character Bible.",
+          "identitySignature": {
+            "displayName": "Selly",
+            "declaredAge": 21,
+            "identityProfile": {
+              "stageName": "Selly",
+              "declaredAge": 21,
+              "fictionalNationality": "Italiana",
+              "fictionalCity": "Viadana",
+              "language": "Italiano",
+              "narrativeProfession": "Influencer",
+              "shortBio": "Influencer troietta",
+              "personalHistory": "Selly è un influencer che ama farsi vedere nuda",
+              "interests": [
+                "foto pornografiche",
+                "foto nuda",
+                "amante dei dildo",
+                "amante dei selfie"
+              ],
+              "values": [
+                "troia",
+                "disinibita",
+                "seducente",
+                "provocatoria"
+              ],
+              "habits": [
+                "fare foto selfie in qualche momento e possibilmente nuda"
+              ],
+              "personalityTraits": [
+                "troia in calore"
+              ],
+              "communicationTone": "Seducente",
+              "typicalLexicon": [
+                "intellettuale"
+              ],
+              "recurringPhrases": [
+                "viva il cazzooo!!!",
+                "mi piacerebbe succhiartelo",
+                "venite a sfondarmi!"
+              ],
+              "avoidedTopics": [
+                "politica",
+                "animali",
+                "gay"
+              ]
+            },
+            "appearanceProfile": {
+              "faceShape": "",
+              "eyeColorAndShape": "",
+              "hair": "trecce",
+              "skinTone": "caucasica",
+              "bodyShape": "atletica, in forma, grandi tette naturali",
+              "approximateHeight": "170cm",
+              "bodyProportions": "",
+              "distinctiveMarks": "",
+              "makeup": "",
+              "aestheticStyle": "",
+              "recurringAccessories": [],
+              "tattoos": "",
+              "immutableElements": [
+                "seno enorme"
+              ],
+              "tattoosEnabled": false
+            },
+            "identityLocks": {
+              "face": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "eyes": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "hair": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "skinTone": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "bodyShape": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "height": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "proportions": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "distinctiveMarks": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "tattoos": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "apparentAge": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "makeupStyle": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              }
+            },
+            "approvedReferenceIds": []
+          },
+          "approvedReferences": [],
+          "canonicalPrompts": {
+            "identity": "Selly, 21 year old fictional adult virtual creator, trecce, caucasica, atletica, in forma, grandi tette naturali, seno enorme"
+          },
+          "negativePrompts": {
+            "identity": "age-ambiguous appearance, immature appearance, real person impersonation, unauthorized identity transfer"
+          },
+          "modelSettings": {
+            "imageModelFamily": "flux2",
+            "editModelFamily": "qwenEdit",
+            "videoModelFamily": "ltx23",
+            "qualityPreset": "fastPreview"
+          },
+          "createdAt": "2026-08-01T21:36:53.912Z",
+          "createdBy": "local-user"
+        },
+        {
+          "id": "d6c75655-6780-403e-9e98-afa1a0e93779",
+          "influencerId": "43e33678-0d8a-499a-bba8-d5e0ea216f71",
+          "versionNumber": 3,
+          "changeLog": "Snapshot manuale dell'identità.",
+          "identitySignature": {
+            "displayName": "Selly",
+            "declaredAge": 21,
+            "identityProfile": {
+              "stageName": "Selly",
+              "declaredAge": 21,
+              "fictionalNationality": "Italiana",
+              "fictionalCity": "Viadana",
+              "language": "Italiano",
+              "narrativeProfession": "Influencer",
+              "shortBio": "Influencer troietta",
+              "personalHistory": "Selly è un influencer che ama farsi vedere nuda",
+              "interests": [
+                "foto pornografiche",
+                "foto nuda",
+                "amante dei dildo",
+                "amante dei selfie"
+              ],
+              "values": [
+                "troia",
+                "disinibita",
+                "seducente",
+                "provocatoria"
+              ],
+              "habits": [
+                "fare foto selfie in qualche momento e possibilmente nuda"
+              ],
+              "personalityTraits": [
+                "troia in calore"
+              ],
+              "communicationTone": "Seducente",
+              "typicalLexicon": [
+                "intellettuale"
+              ],
+              "recurringPhrases": [
+                "viva il cazzooo!!!",
+                "mi piacerebbe succhiartelo",
+                "venite a sfondarmi!"
+              ],
+              "avoidedTopics": [
+                "politica",
+                "animali",
+                "gay"
+              ]
+            },
+            "appearanceProfile": {
+              "faceShape": "",
+              "eyeColorAndShape": "",
+              "hair": "trecce",
+              "skinTone": "caucasica",
+              "bodyShape": "atletica, in forma, grandi tette naturali",
+              "approximateHeight": "170cm",
+              "bodyProportions": "",
+              "distinctiveMarks": "",
+              "makeup": "",
+              "aestheticStyle": "",
+              "recurringAccessories": [],
+              "tattoos": "",
+              "immutableElements": [
+                "seno enorme"
+              ],
+              "tattoosEnabled": false
+            },
+            "identityLocks": {
+              "face": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "eyes": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "hair": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "skinTone": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "bodyShape": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "height": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "proportions": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "distinctiveMarks": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "tattoos": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "apparentAge": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              },
+              "makeupStyle": {
+                "enabled": false,
+                "strength": 0.75,
+                "tolerance": 0.25,
+                "referenceSet": [],
+                "validationThreshold": 0.7
+              }
+            },
+            "approvedReferenceIds": [
+              "02302466-ce27-4bbe-9be1-f3e893c35536"
+            ]
+          },
+          "approvedReferences": [
+            "02302466-ce27-4bbe-9be1-f3e893c35536"
+          ],
+          "canonicalPrompts": {
+            "identity": "Selly, 21 year old fictional adult virtual creator, trecce, caucasica, atletica, in forma, grandi tette naturali, seno enorme"
+          },
+          "negativePrompts": {
+            "identity": "age-ambiguous appearance, immature appearance, real person impersonation, unauthorized identity transfer"
+          },
+          "modelSettings": {
+            "imageModelFamily": "flux2",
+            "editModelFamily": "qwenEdit",
+            "videoModelFamily": "ltx23",
+            "qualityPreset": "fastPreview"
+          },
+          "createdAt": "2026-08-01T21:38:34.186Z",
+          "createdBy": "local-user"
+        }
+      ]
+    }
+  ]
+}

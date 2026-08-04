@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0c10">
+  <title>Video Studio · LTX Remote Studio</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/video-studio.js"></script>
+  <script type="module" src="/scene-integration.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"></span><span>LTX <b>REMOTE</b></span></a>
+    <div class="topbar-actions">
+      <nav class="primary-nav" aria-label="Navigazione principale">
+        <a href="/guided-create.html">Crea guidata</a>
+        <a href="/">Genera</a>
+        <a href="/studio.html">Image Studio</a>
+        <a class="active" href="/video-studio.html">Video Studio</a>
+        <a href="/virtual-influencer.html">Virtual Influencer</a>
+        <a href="/workflow-guide.html">Guida</a>
+        <a href="/generations.html">Generazioni</a>
+      </nav>
+      <div id="connection" class="connection checking"><span></span>Connessione…</div>
+    </div>
+  </header>
+
+  <main class="video-studio-page">
+    <section class="gallery-hero video-studio-hero">
+      <div>
+        <p class="eyebrow">ACTOR REPLACEMENT / RETAKE / EXTEND / HDR / TEMPORAL</p>
+        <h1>Entra nella <em>scena.</em></h1>
+        <p>Sostituisci un interprete oppure aggiungi un nuovo personaggio con azioni, dialoghi e risposte sincronizzate.</p>
+      </div>
+    </section>
+
+    <div class="video-studio-layout">
+      <form id="video-studio-form" class="panel generator video-studio-form">
+        <div class="section-heading">
+          <span>01</span>
+          <div><h2>Nuovo progetto video</h2><p>Workflow guidato a stadi, con preflight delle dipendenze</p></div>
+        </div>
+
+        <fieldset class="video-studio-mode-grid">
+          <legend>Workflow</legend>
+          <label>
+            <input type="radio" name="videoStudioMode" value="actorReplacement" checked>
+            <span><b>Actor Replacement</b><small>Viso o corpo, recitazione e audio originali</small></span>
+          </label>
+          <label>
+            <input type="radio" name="videoStudioMode" value="interactiveScene">
+            <span><b>Interactive Scene</b><small>Nuovo personaggio, copione e risposte</small></span>
+          </label>
+          <label>
+            <input type="radio" name="videoStudioMode" value="sceneTransform">
+            <span><b>Scene Transform V2V</b><small>Sfondo, look o motion transfer con Union Control</small></span>
+          </label>
+          <label>
+            <input type="radio" name="videoStudioMode" value="retake">
+            <span><b>Retake</b><small>Rigenera una clip mantenendo scena e audio</small></span>
+          </label>
+          <label>
+            <input type="radio" name="videoStudioMode" value="extend">
+            <span><b>Extend</b><small>Prolunga dal frame finale e accoda la clip</small></span>
+          </label>
+          <label>
+            <input type="radio" name="videoStudioMode" value="hdr">
+            <span><b>HDR IC-LoRA</b><small>Highlight, ombre ed EXR opzionale</small></span>
+          </label>
+          <label>
+            <input type="radio" name="videoStudioMode" value="temporalUpscale">
+            <span><b>Temporal ×2</b><small>FPS doppi o slow motion fluido</small></span>
+          </label>
+        </fieldset>
+
+        <div id="video-studio-readiness" class="video-readiness" role="status"></div>
+
+        <div class="field">
+          <label for="videoProjectName">Nome progetto</label>
+          <input id="videoProjectName" name="projectName" placeholder="Es. Scena film · inserimento John">
+        </div>
+
+        <div class="field">
+          <label for="videoVirtualInfluencerId">Influencer reference</label>
+          <select id="videoVirtualInfluencerId" name="virtualInfluencerId">
+            <option value="">Nessuna</option>
+          </select>
+          <p class="hint">Usa la reference canonica come nuova identità, reference sheet o keyframe quando il workflow lo richiede.</p>
+        </div>
+
+        <section id="actor-replacement-fields">
+          <div class="field">
+            <label>Spezzone originale</label>
+            <label class="dropzone video-studio-drop">
+              <input id="actor-source-video" name="sourceVideo" type="file" accept="video/mp4,video/webm,video/quicktime,video/x-matroska,video/x-msvideo">
+              <video id="actor-video-preview" muted playsinline></video>
+              <span class="upload-icon">▶</span>
+              <strong>Carica la scena</strong>
+              <small>Consigliati uno shot continuo e massimo 10 secondi</small>
+            </label>
+          </div>
+
+          <div class="field-grid">
+            <div class="field">
+              <label for="replacementScope">Cosa sostituire</label>
+              <select id="replacementScope" name="replacementScope">
+                <option value="face">Solo viso</option>
+                <option value="head">Viso, testa e capelli</option>
+                <option value="body">Corpo completo</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="actorEngine">Motore</label>
+              <select id="actorEngine" name="actorEngine"></select>
+            </div>
+            <div class="field">
+              <label for="targetActor">Attore da sostituire</label>
+              <input id="targetActor" name="targetActor" placeholder="Es. uomo a sinistra, giacca blu">
+            </div>
+            <div class="field">
+              <label for="duration">Durata da elaborare</label>
+              <input id="duration" name="duration" type="number" min="1" max="30" value="10">
+            </div>
+          </div>
+
+          <div id="actor-selection-panel" class="actor-selection-panel hidden">
+            <div class="field-grid">
+              <div class="field">
+                <label for="selectionMode">Come selezionare l’attore</label>
+                <select id="selectionMode" name="selectionMode">
+                  <option value="auto">Automatico · numero da sinistra</option>
+                  <option value="click">Clicca sull’attore</option>
+                  <option value="paint">Disegna sul primo fotogramma</option>
+                  <option value="manual">Carica video maschera · avanzato</option>
+                </select>
+              </div>
+              <div id="target-face-index-field" class="field">
+                <label for="targetFaceIndex">Volto da sinistra</label>
+                <select id="targetFaceIndex" name="targetFaceIndex">
+                  <option value="0">1° volto</option>
+                  <option value="1">2° volto</option>
+                  <option value="2">3° volto</option>
+                  <option value="3">4° volto</option>
+                  <option value="4">5° volto</option>
+                  <option value="5">6° volto</option>
+                </select>
+              </div>
+            </div>
+            <div id="actor-selection-stage" class="actor-selection-stage">
+              <canvas id="actor-selection-canvas"></canvas>
+              <span id="actor-selection-marker" class="actor-selection-marker hidden"></span>
+              <p id="actor-selection-instruction">Carica il video: apparirà qui il primo fotogramma.</p>
+            </div>
+            <div id="paint-tools" class="actor-paint-tools hidden">
+              <label for="maskBrushSize">Pennello <input id="maskBrushSize" type="range" min="8" max="120" value="42"></label>
+              <button id="clear-actor-mask" class="chip-button" type="button">Cancella disegno</button>
+              <span>Dipingi grossolanamente la persona: SAM3 seguirà automaticamente la zona.</span>
+            </div>
+            <input id="targetPointX" name="targetPointX" type="hidden" value=".5">
+            <input id="targetPointY" name="targetPointY" type="hidden" value=".5">
+          </div>
+
+          <div class="field-grid">
+            <div class="field">
+              <label>Reference della nuova identità</label>
+              <label class="dropzone compact-drop">
+                <input name="identityImage" type="file" accept="image/png,image/jpeg,image/webp">
+                <span class="upload-icon">ID</span><strong>Carica un primo piano</strong>
+              </label>
+              <p id="identity-reference-hint" class="hint">LTX 2.3 userà questa identità nella zona tracciata da SAM3.</p>
+            </div>
+            <div id="mask-video-field" class="field hidden">
+              <label>Maschera video manuale · avanzato</label>
+              <label class="dropzone compact-drop">
+                <input name="maskVideo" type="file" accept="video/*">
+                <span class="upload-icon">◐</span><strong>Bianco = sostituisci</strong>
+              </label>
+              <p class="hint">Mostrata soltanto come fallback. Normalmente la maschera viene creata da SAM3.</p>
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="label-row">
+              <label for="actorPrompt">Descrizione della nuova identità e del risultato</label>
+              <button id="actor-prompt-assistant" class="prompt-assistant-button" type="button">✦ IA + Genera</button>
+            </div>
+            <textarea id="actorPrompt" name="prompt" rows="4" placeholder="La persona della reference sostituisce l’uomo a sinistra. Mantieni camera, luce, gesti e interazioni…"></textarea>
+            <p id="actor-prompt-assistant-status" class="prompt-assistant-status">Il video non viene inviato al modello vision; usa la reference identità se presente</p>
+          </div>
+          <div class="field">
+            <label for="transcript">Dialogo originale / trascrizione</label>
+            <textarea id="transcript" name="transcript" rows="3" placeholder="Testo pronunciato dall’attore, utile al successivo passaggio LipDub…"></textarea>
+          </div>
+        </section>
+
+        <section id="scene-transform-fields" class="hidden">
+          <div class="field-grid">
+            <div class="field">
+              <label>Video da trasformare</label>
+              <label class="dropzone video-studio-drop">
+                <input name="guideVideo" type="file" accept="video/mp4,video/webm,video/quicktime,video/x-matroska,video/x-msvideo">
+                <span class="upload-icon">▶</span><strong>Carica la clip guida</strong>
+                <small>Movimento, camera e layout vengono usati come controllo</small>
+              </label>
+            </div>
+            <div class="field">
+              <label>Frame editato / reference target</label>
+              <label class="dropzone compact-drop">
+                <input name="referenceSheet" type="file" accept="image/png,image/jpeg,image/webp">
+                <span class="upload-icon">REF</span><strong>Carica il frame desiderato</strong>
+              </label>
+              <p class="hint">Per Bahamas: crea prima un frame dove il muro è già sostituito; Union prova a propagare quel look nel video.</p>
+            </div>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label for="editUseCase">Tipo modifica</label>
+              <select id="editUseCase" name="editUseCase">
+                <option value="background">Sfondo / location</option>
+                <option value="style">Look / atmosfera</option>
+                <option value="wardrobe">Abito / oggetti coerenti</option>
+                <option value="character">Personaggio già nel frame reference</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="sceneControlType">Controllo</label>
+              <select id="sceneControlType" name="controlType">
+                <option value="edges">Edge / composizione</option>
+                <option value="pose">Pose / performance umana</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="sceneControlStrength">Forza controllo</label>
+              <input id="sceneControlStrength" name="controlStrength" type="number" min="0" max="1.5" step=".05" value=".78">
+            </div>
+          </div>
+          <div class="field">
+            <label for="sceneTransformPrompt">Trasformazione desiderata</label>
+            <textarea id="sceneTransformPrompt" rows="4" placeholder="Mantieni me e l'acqua della piscina; sostituisci il muro dietro con una vista realistica delle Bahamas, mare turchese, palme e luce tropicale coerente…"></textarea>
+          </div>
+        </section>
+
+        <section id="interactive-scene-fields" class="hidden">
+          <div class="field">
+            <label>Keyframe master / reference sheet</label>
+            <label class="dropzone video-studio-master-drop">
+              <input id="reference-sheet" name="referenceSheet" type="file" accept="image/png,image/jpeg,image/webp">
+              <img id="reference-sheet-preview" alt="">
+              <span class="upload-icon">＋</span>
+              <strong>Carica l’immagine con te già posizionato</strong>
+              <small>Può essere preparata con Multi-Reference Composer o Smartphone Photo Editor</small>
+            </label>
+          </div>
+          <div class="field">
+            <label for="referenceDescription">Descrizione delle persone nel reference sheet</label>
+            <textarea id="referenceDescription" name="referenceDescription" rows="3" placeholder="Da sinistra: Attore A… Al centro: John… A destra: Attrice B…"></textarea>
+          </div>
+          <div class="field">
+            <div class="label-row">
+              <label for="interactivePrompt">Regia della scena e azioni</label>
+              <button id="interactive-prompt-assistant" class="prompt-assistant-button" type="button">✦ IA + Genera</button>
+            </div>
+            <textarea id="interactivePrompt" rows="4" placeholder="I tre personaggi restano nella stessa posizione. John si rivolge all’attore a sinistra, che ascolta e poi risponde…"></textarea>
+            <p id="interactive-prompt-assistant-status" class="prompt-assistant-status">Analizza il keyframe master quando presente</p>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label for="interactiveDuration">Durata</label>
+              <input id="interactiveDuration" type="number" min="2" max="20" value="10">
+            </div>
+            <div class="field">
+              <label for="cameraMotion">Movimento camera</label>
+              <select id="cameraMotion" name="cameraMotion">
+                <option value="static locked camera">Statica</option>
+                <option value="subtle handheld" selected>Handheld leggero</option>
+                <option value="slow dolly in">Dolly in lento</option>
+                <option value="slow dolly out">Dolly out lento</option>
+                <option value="gentle pan following the speakers">Pan sugli interlocutori</option>
+              </select>
+            </div>
+          </div>
+
+          <section class="studio-subpanel dialogue-panel">
+            <div class="subpanel-heading">
+              <div><p class="subpanel-title">Copione multi-personaggio</p><p class="hint">Una battuta per riga, nell’ordine in cui deve essere pronunciata.</p></div>
+              <button id="add-dialogue" class="chip-button" type="button">＋ Battuta</button>
+            </div>
+            <div id="dialogue-list"></div>
+            <input id="dialogue-json" name="dialogue" type="hidden" value="[]">
+          </section>
+        </section>
+
+        <section id="retake-fields" class="hidden">
+          <div class="field"><label>Clip da rigenerare</label><label class="dropzone video-studio-drop"><input name="sourceVideo" type="file" accept="video/*"><span class="upload-icon">↻</span><strong>Carica la clip</strong><small>L’audio originale viene mantenuto</small></label></div>
+          <div class="field"><label for="retakePrompt">Cosa deve cambiare</label><textarea id="retakePrompt" rows="4" placeholder="Mantieni attori, camera e ambiente; cambia soltanto…"></textarea></div>
+          <div class="field"><label for="retakeDuration">Durata</label><input id="retakeDuration" type="number" min="1" max="30" value="10"></div>
+        </section>
+
+        <section id="extend-fields" class="hidden">
+          <div class="field"><label>Clip da prolungare</label><label class="dropzone video-studio-drop"><input name="sourceVideo" type="file" accept="video/*"><span class="upload-icon">＋</span><strong>Carica la clip originale</strong><small>La continuazione parte automaticamente dall’ultimo frame</small></label></div>
+          <div class="field"><label for="extendPrompt">Cosa accade dopo</label><textarea id="extendPrompt" rows="4" placeholder="La camera continua il movimento; i soggetti…"></textarea></div>
+          <div class="field"><label for="extendDuration">Secondi da aggiungere</label><input id="extendDuration" name="extendDuration" type="number" min="1" max="15" value="5"></div>
+        </section>
+
+        <section id="hdr-fields" class="hidden">
+          <div class="field"><label>Video sorgente</label><label class="dropzone video-studio-drop"><input name="sourceVideo" type="file" accept="video/*"><span class="upload-icon">HDR</span><strong>Carica il video</strong></label></div>
+          <div class="field-grid"><div class="field"><label for="hdrExposure">Esposizione</label><input id="hdrExposure" name="hdrExposure" type="number" min="-10" max="10" step=".1" value="7.1"></div><label class="inline-check"><input name="saveExr" type="checkbox"> Salva anche sequenza EXR</label></div>
+          <div class="field"><label for="hdrPrompt">Direzione HDR</label><textarea id="hdrPrompt" rows="3">Natural cinematic HDR footage with recovered highlights and clean shadow detail.</textarea></div>
+        </section>
+
+        <section id="temporal-fields" class="hidden">
+          <div class="field"><label>Video da interpolare</label><label class="dropzone video-studio-drop"><input name="sourceVideo" type="file" accept="video/*"><span class="upload-icon">2×</span><strong>Carica il video</strong><small>Il modello lavora nello spazio latente LTX 2.3</small></label></div>
+          <label class="inline-check"><input name="slowMotion" type="checkbox"> Slow motion 2× (mantieni gli FPS invece della durata)</label>
+        </section>
+
+        <section id="ltx-generative-settings" class="studio-subpanel hidden">
+          <p class="subpanel-title">Motore LTX generativo</p>
+          <div class="field-grid">
+            <div class="field"><label for="studioVideoModel">Modello</label><select id="studioVideoModel" name="videoModelId"></select></div>
+            <div class="field"><label for="studioResolution">Risoluzione</label><select id="studioResolution" name="resolution"><option value="360p">360p · veloce</option><option value="480p" selected>480p · consigliata</option><option value="720p">720p · finale / VRAM alta</option></select></div>
+            <div class="field"><label for="studioOrientation">Orientamento</label><select id="studioOrientation" name="orientation"><option value="landscape">Orizzontale</option><option value="portrait">Verticale</option></select></div>
+          </div>
+        </section>
+
+        <section class="studio-subpanel">
+          <div class="subpanel-heading">
+            <div><p class="subpanel-title">Identity e Style LoRA</p><p class="hint">Puoi concatenare più LoRA LTX 2.3 con forza indipendente.</p></div>
+            <button id="video-add-lora" class="chip-button" type="button">＋ LoRA</button>
+          </div>
+          <div id="video-loras"></div>
+          <input id="video-loras-json" name="loras" type="hidden" value="[]">
+        </section>
+
+        <details class="advanced-settings">
+          <summary>Impostazioni avanzate <span>qualità, maschera e seed</span></summary>
+          <div class="advanced-settings-body">
+            <div class="field-grid">
+              <div class="field"><label for="videoSeed">Seed</label><input id="videoSeed" name="seed" inputmode="numeric" placeholder="Random"></div>
+              <div class="field"><label for="maskDilation">Dilatazione maschera</label><input id="maskDilation" name="maskDilation" type="number" min="0" max="96" value="10"></div>
+              <div class="field"><label for="trackingThreshold">Confidenza tracking</label><input id="trackingThreshold" name="trackingThreshold" type="number" min="0" max="1" step=".05" value=".5"></div>
+              <div class="field"><label for="trackingInterval">Controllo SAM3 ogni N frame</label><input id="trackingInterval" name="trackingInterval" type="number" min="1" max="30" value="3"></div>
+              <div class="field"><label for="faceDetectionSize">Precisione rilevamento volto</label><select id="faceDetectionSize" name="faceDetectionSize"><option value="640">Normale · veloce</option><option value="896">Alta</option><option value="1024">Massima</option></select></div>
+              <div class="field"><label for="editStrength">Forza sostituzione</label><input id="editStrength" name="editStrength" type="number" min="0" max="2" step=".05" value=".8"></div>
+              <div class="field"><label for="nagScale">NAG scale</label><input id="nagScale" name="nagScale" type="number" min="0" max="30" step=".5" value="11"></div>
+            </div>
+            <div class="field">
+              <label for="videoNegativePrompt">Prompt negativo</label>
+              <textarea id="videoNegativePrompt" name="negativePrompt" rows="2" placeholder="identity drift, temporal flicker, changed background…"></textarea>
+            </div>
+            <label class="inline-check"><input name="promptEnhancer" type="checkbox"> Espandi automaticamente il prompt nel fallback Edit Anything</label>
+          </div>
+        </details>
+
+        <section class="scene-integration-mount" data-scene-integration></section>
+
+        <button id="video-studio-submit" class="submit-button" type="submit"><span>Crea progetto Video Studio</span><span>→</span></button>
+        <p id="video-studio-status" class="form-status" role="alert"></p>
+      </form>
+
+      <aside class="video-studio-projects-column">
+        <div class="panel studio-projects-panel">
+          <div class="section-heading compact">
+            <span>02</span><div><h2>Progetti video</h2><p>Generazione, controllo, editing e finishing</p></div>
+          </div>
+          <div id="video-studio-projects"></div>
+          <p id="video-studio-empty" class="hint">Nessun progetto Video Studio.</p>
+        </div>
+
+        <div class="panel video-studio-help">
+          <p class="eyebrow">PIPELINE CONSIGLIATA</p>
+          <h3>Lavora uno shot alla volta</h3>
+          <p>Se nei 10 secondi c’è uno stacco di montaggio, dividi prima la clip. Tracking, identità e lip-sync saranno molto più stabili.</p>
+        </div>
+      </aside>
+    </div>
+  </main>
+  <div id="toast" class="toast" role="status"></div>
+</body>
+</html>

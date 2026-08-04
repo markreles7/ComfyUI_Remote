@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0c10">
+  <title>Image Studio · LTX Remote Studio</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/studio.js"></script>
+  <script type="module" src="/scene-integration.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"></span><span>LTX <b>REMOTE</b></span></a>
+    <div class="topbar-actions">
+      <nav class="primary-nav" aria-label="Navigazione principale">
+        <a href="/guided-create.html">Crea guidata</a>
+        <a href="/">Genera</a>
+        <a class="active" href="/studio.html">Image Studio</a>
+        <a href="/video-studio.html">Video Studio</a>
+        <a href="/virtual-influencer.html">Virtual Influencer</a>
+        <a href="/workflow-guide.html">Guida</a>
+        <a href="/generations.html">Generazioni</a>
+      </nav>
+      <div id="connection" class="connection checking"><span></span>Connessione…</div>
+    </div>
+  </header>
+
+  <main class="studio-page">
+    <section class="gallery-hero studio-hero">
+      <div>
+        <p class="eyebrow">EDITING / STORYBOARD / PERFECT IMAGE</p>
+        <h1>Costruisci il tuo <em>master.</em></h1>
+        <p>Workflow guidati e multi-stadio: conserva le reference, confronta le bozze e anima gli shot approvati con LTX 2.3.</p>
+      </div>
+    </section>
+
+    <div class="studio-workspace">
+      <form id="studio-form" class="panel generator studio-form">
+        <div class="section-heading">
+          <span>01</span>
+          <div><h2>Nuovo progetto</h2><p>Ogni stadio e risultato resta recuperabile</p></div>
+        </div>
+
+        <div class="field">
+          <div class="workflow-label-row">
+            <label for="studioMode">Workflow</label>
+            <button id="open-workflow-guide" class="workflow-help-button" type="button" aria-haspopup="dialog" aria-controls="workflow-guide-dialog">
+              <span aria-hidden="true">?</span> Guida rapida
+            </button>
+          </div>
+          <select id="studioMode" name="studioMode"></select>
+          <p id="studio-description" class="hint"></p>
+        </div>
+        <div class="field">
+          <label for="projectName">Nome progetto</label>
+          <input id="projectName" name="projectName" placeholder="Es. Piscina · scena tramonto">
+        </div>
+
+        <div class="field">
+          <label for="studioVirtualInfluencerId">Influencer reference</label>
+          <select id="studioVirtualInfluencerId" name="virtualInfluencerId">
+            <option value="">Nessuna</option>
+          </select>
+          <p class="hint">Aggiunge la reference canonica dell’influencer al progetto e rinforza il prompt identitario.</p>
+        </div>
+
+        <section id="source-section">
+          <div class="field">
+            <label>Fotografia principale / reference master</label>
+            <label class="dropzone studio-source-drop">
+              <input id="studio-source" name="sourceImage" type="file" accept="image/png,image/jpeg,image/webp">
+              <img id="studio-source-preview" alt="">
+              <span class="upload-icon">↗</span>
+              <strong>Carica una foto</strong>
+              <small>Orientamento EXIF e proporzioni vengono conservati</small>
+            </label>
+            <input id="imageWidth" name="imageWidth" type="hidden" value="1152">
+            <input id="imageHeight" name="imageHeight" type="hidden" value="896">
+          </div>
+        </section>
+
+        <section id="qwen-krea-klein-section" class="studio-subpanel hidden">
+          <div class="guided-step-heading">
+            <span>QK</span>
+            <div>
+              <p class="subpanel-title">Workflow Qwen_Krea_Klein</p>
+              <p class="hint">Usa il JSON API originale: Qwen Image Editing, Krea refine, Klein refine e SeedVR2 finale nello stesso job.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="guided-edit-section" class="studio-subpanel hidden">
+          <div class="guided-step-heading">
+            <span>1</span>
+            <div><p class="subpanel-title">Cosa vuoi fare?</p><p class="hint">Scegli l’obiettivo: l’editor prepara automaticamente prompt, maschera e modello.</p></div>
+          </div>
+          <div class="guided-action-grid" role="radiogroup" aria-label="Tipo di modifica">
+            <label><input type="radio" name="editAction" value="addPerson" checked><span aria-hidden="true">＋</span><b>Persona</b><small>Aggiungi una persona</small></label>
+            <label><input type="radio" name="editAction" value="addAnimal"><span aria-hidden="true">＋</span><b>Animale</b><small>Aggiungi un animale</small></label>
+            <label><input type="radio" name="editAction" value="addObject"><span aria-hidden="true">＋</span><b>Oggetto</b><small>Aggiungi un elemento</small></label>
+            <label><input type="radio" name="editAction" value="replace"><span aria-hidden="true">⇄</span><b>Sostituisci</b><small>Cambia un elemento</small></label>
+            <label><input type="radio" name="editAction" value="remove"><span aria-hidden="true">−</span><b>Rimuovi</b><small>Ricostruisci lo sfondo</small></label>
+            <label><input type="radio" name="editAction" value="modify"><span aria-hidden="true">◇</span><b>Modifica</b><small>Abito, colore o dettaglio</small></label>
+            <label><input type="radio" name="editAction" value="background"><span aria-hidden="true">▧</span><b>Sfondo</b><small>Cambia l’ambiente</small></label>
+            <label><input type="radio" name="editAction" value="style"><span aria-hidden="true">✦</span><b>Stile</b><small>Cambia il look globale</small></label>
+            <label><input type="radio" name="editAction" value="relight"><span aria-hidden="true">☼</span><b>Luce</b><small>Ora, meteo e atmosfera</small></label>
+          </div>
+
+          <div class="guided-step-heading">
+            <span>2</span>
+            <div><p class="subpanel-title">Descrivi il risultato</p><p class="hint">Usa parole normali; i vincoli tecnici vengono aggiunti automaticamente.</p></div>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label for="spatialInstruction">Dove deve trovarsi?</label>
+              <input id="spatialInstruction" name="spatialInstruction" placeholder="Es. alla mia destra, dentro la piscina">
+            </div>
+            <div class="field">
+              <label for="depthRelation">Davanti o dietro?</label>
+              <select id="depthRelation" name="depthRelation">
+                <option value="integrated naturally in the scene">Automatico</option>
+                <option value="in front of the principal subject">Davanti al soggetto</option>
+                <option value="beside the principal subject at the same depth">Accanto, stessa profondità</option>
+                <option value="behind the principal subject">Dietro al soggetto</option>
+                <option value="partially occluded by the environment">Parzialmente coperto dall’ambiente</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="subjectInteraction">Cosa sta facendo?</label>
+              <input id="subjectInteraction" name="subjectInteraction" placeholder="Es. mi guarda, sorride e appoggia una mano sulla mia spalla">
+            </div>
+            <div class="field">
+              <label for="contactInstruction">Contatto con la scena</label>
+              <input id="contactInstruction" name="contactInstruction" placeholder="Es. immersa fino alla vita, increspature e riflessi nell’acqua">
+            </div>
+          </div>
+          <div class="field">
+            <label for="preserveInstruction">Cosa non deve cambiare?</label>
+            <input id="preserveInstruction" name="preserveInstruction" placeholder="Es. il mio volto, corpo, posa, piscina, sfondo e illuminazione">
+          </div>
+
+          <div class="guided-step-heading">
+            <span>3</span>
+            <div><p class="subpanel-title">Guida visiva facoltativa</p><p class="hint">Per una posa o una sagoma precisa puoi caricare una foto, uno sketch o una mappa Depth.</p></div>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label for="structureGuide">Tipo di guida</label>
+              <select id="structureGuide" name="structureGuide">
+                <option value="automatic">Automatico · consigliato</option>
+                <option value="canny">Contorni · Canny</option>
+                <option value="sketch">Sketch / disegno</option>
+                <option value="depth">Profondità · Depth automatica</option>
+                <option value="none">Nessuna guida</option>
+              </select>
+              <p id="structure-guide-status" class="hint"></p>
+            </div>
+            <div class="field">
+              <label for="structureStrength">Precisione guida</label>
+              <input id="structureStrength" name="structureStrength" type="range" min="0" max="1.5" step=".05" value=".75">
+              <output id="structure-strength-value" for="structureStrength">0,75</output>
+            </div>
+          </div>
+          <div id="guide-image-field" class="field hidden">
+            <label>Immagine guida separata</label>
+            <label class="dropzone compact-drop">
+              <input id="guideImage" name="guideImage" type="file" accept="image/png,image/jpeg,image/webp">
+              <span class="upload-icon">↗</span><strong>Carica posa, sketch o Depth</strong>
+            </label>
+          </div>
+          <details class="advanced-settings">
+            <summary>Contorni avanzati <span>Soglie Canny</span></summary>
+            <div class="advanced-settings-body field-grid">
+              <div class="field"><label for="cannyLow">Soglia bassa</label><input id="cannyLow" name="cannyLow" type="number" min=".01" max=".99" step=".01" value=".25"></div>
+              <div class="field"><label for="cannyHigh">Soglia alta</label><input id="cannyHigh" name="cannyHigh" type="number" min=".01" max=".99" step=".01" value=".75"></div>
+            </div>
+          </details>
+          <input id="placement" name="placement" type="hidden" value="">
+          <input id="guidedSteps" name="guidedSteps" type="hidden" value="6">
+          <input id="guidedGuidance" name="guidedGuidance" type="hidden" value="1">
+        </section>
+
+        <section id="mask-section" class="studio-subpanel hidden">
+          <div id="guided-zone-heading" class="guided-step-heading hidden">
+            <span>4</span>
+            <div><p class="subpanel-title">Indica esattamente dove</p><p class="hint">Traccia un riquadro per posizione e dimensione, poi rifinisci l’area con il pennello.</p></div>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label for="maskMode">Zona da modificare</label>
+              <select id="maskMode" name="maskMode">
+                <option value="manual">Maschera manuale</option>
+                <option value="automatic">Maschera automatica SAM</option>
+                <option value="none">Intera immagine</option>
+              </select>
+            </div>
+            <div id="mask-target-field" class="field hidden">
+              <label for="maskTarget">Elemento da selezionare</label>
+              <input id="maskTarget" name="maskTarget" placeholder="es. swimming pool water">
+              <label for="autoMaskEngine">Motore di analisi</label>
+              <select id="autoMaskEngine" name="autoMaskEngine">
+                <option value="sam" selected>SAM + GroundingDINO · rapido</option>
+                <option value="florence">Florence 2 · analisi semantica</option>
+              </select>
+            </div>
+          </div>
+          <div id="mask-editor">
+            <div class="mask-toolbar">
+              <label>Pennello <input id="mask-brush" type="range" min="8" max="120" value="42"></label>
+              <button id="mask-draw" class="chip-button active" type="button">Disegna</button>
+              <button id="mask-rectangle" class="chip-button" type="button">Riquadro posizione</button>
+              <button id="mask-erase" class="chip-button" type="button">Cancella</button>
+              <button id="mask-clear" class="chip-button" type="button">Azzera</button>
+            </div>
+            <div class="mask-stage">
+              <canvas id="mask-photo"></canvas>
+              <canvas id="mask-canvas"></canvas>
+              <p id="mask-placeholder">Carica la fotografia, poi dipingi la zona da modificare.</p>
+            </div>
+          </div>
+          <div class="field-grid compact-grid">
+            <div class="field"><label for="maskGrow">Espansione maschera</label><input id="maskGrow" name="maskGrow" type="number" min="0" max="256" value="32"></div>
+            <div class="field"><label for="maskFeather">Sfumatura</label><input id="maskFeather" name="maskFeather" type="number" min="0" max="256" value="24"></div>
+            <div class="field"><label for="contextPercent">Contesto</label><input id="contextPercent" name="contextPercent" type="number" min="20" max="60" value="35"></div>
+            <div class="field"><label for="maskThreshold">Soglia automatica</label><input id="maskThreshold" name="maskThreshold" type="number" min=".05" max=".95" step=".05" value=".3"></div>
+          </div>
+        </section>
+
+        <section id="first-last-section" class="studio-subpanel hidden">
+          <div class="field-grid">
+            <div class="field">
+              <label>Primo fotogramma</label>
+              <label class="dropzone compact-drop"><input name="firstFrame" type="file" accept="image/*"><span class="upload-icon">1</span><strong>Carica frame iniziale</strong></label>
+            </div>
+            <div class="field">
+              <label>Ultimo fotogramma</label>
+              <label class="dropzone compact-drop"><input name="lastFrame" type="file" accept="image/*"><span class="upload-icon">2</span><strong>Carica frame finale</strong></label>
+            </div>
+          </div>
+          <div class="field-grid">
+            <div class="field"><label for="cameraMotion">Movimento camera</label><select id="cameraMotion" name="cameraMotion"><option>static</option><option>dolly in</option><option>dolly out</option><option>pan left</option><option>pan right</option><option>orbit</option><option>handheld</option></select></div>
+            <div class="field"><label for="motionIntensity">Intensità movimento</label><select id="motionIntensity" name="motionIntensity"><option value="low">Bassa</option><option value="medium" selected>Media</option><option value="high">Alta</option></select></div>
+            <div class="field"><label for="duration">Durata</label><input id="duration" name="duration" type="number" min="1" max="30" value="5"></div>
+            <div class="field"><label for="audioMode">Audio</label><select id="audioMode" name="audioMode"><option value="generated">Generato da LTX</option><option value="silent">Senza audio</option></select></div>
+          </div>
+          <div class="field-grid">
+            <div class="field"><label for="firstLastVideoModel">Modello LTX</label><select id="firstLastVideoModel" name="videoModelId"></select></div>
+            <div class="field"><label for="resolution">Risoluzione</label><select id="resolution" name="resolution"><option value="360p">360p</option><option value="480p" selected>480p</option><option value="720p">720p</option></select></div>
+            <div class="field"><label for="orientation">Orientamento</label><select id="orientation" name="orientation"><option value="landscape">Orizzontale</option><option value="portrait">Verticale</option></select></div>
+          </div>
+          <label class="inline-check"><input name="reverseFrames" type="checkbox"> Inverti primo e ultimo frame</label>
+        </section>
+
+        <section id="reference-section" class="studio-subpanel hidden">
+          <p class="subpanel-title">Reference opzionali</p>
+          <div class="reference-grid">
+            <label><span>Persona</span><input name="reference1" type="file" accept="image/*"></label>
+            <label><span>Posa / abito</span><input name="reference2" type="file" accept="image/*"></label>
+            <label><span>Stile / location</span><input name="reference3" type="file" accept="image/*"></label>
+          </div>
+          <p class="hint">In Perfect Image Studio la fotografia principale è Persona 1 e lo slot Persona è Persona 2. Posa / abito e Stile / location restano guide separate, non nuove identità.</p>
+        </section>
+
+        <div class="field">
+          <div class="label-row">
+            <label for="studio-prompt">Prompt globale / istruzione</label>
+            <div class="prompt-assistant-tools">
+              <button id="studio-prompt-assistant" class="prompt-assistant-button" type="button">✦ IA + Genera</button>
+              <button id="studio-qwen-edit-prompt" class="prompt-assistant-button hidden" type="button">✦ Qwen Edit</button>
+              <button id="studio-klein-prompt" class="prompt-assistant-button hidden" type="button">✦ Klein</button>
+              <span id="studio-prompt-count">0</span>
+            </div>
+          </div>
+          <textarea id="studio-prompt" name="prompt" rows="6" placeholder="Descrivi il risultato e specifica ciò che deve rimanere invariato…"></textarea>
+          <p id="studio-prompt-assistant-status" class="prompt-assistant-status">Analizza la foto sorgente quando presente</p>
+          <div id="edit-wildcard-panel" class="edit-wildcard-panel">
+            <div class="field-grid compact-grid">
+              <div class="field">
+                <label for="editWildcardFamily">Prompt random BigLove</label>
+                <select id="editWildcardFamily">
+                  <option value="gwen">Gwen / Qwen Image Edit</option>
+                  <option value="klein">Klein / Flux.2 Klein</option>
+                  <option value="mix">Mix tra Gwen e Klein</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="editWildcardMode">Come inserirlo</label>
+                <select id="editWildcardMode">
+                  <option value="replace">Sostituisci prompt</option>
+                  <option value="append">Aggiungi alla mia idea</option>
+                  <option value="prepend">Usalo come base + mia idea</option>
+                </select>
+              </div>
+            </div>
+            <div class="edit-wildcard-actions">
+              <button id="edit-wildcard-random" class="chip-button" type="button">🎲 Prompt random</button>
+              <button id="edit-wildcard-reroll" class="chip-button" type="button">↻ Riprova</button>
+              <span id="edit-wildcard-status" class="hint">Wildcard locali per image2image: carichi una foto, peschi una scena e poi generi.</span>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label for="studio-negative">Prompt negativo</label>
+          <textarea id="studio-negative" name="negativePrompt" rows="3" placeholder="Artefatti o modifiche da evitare…"></textarea>
+        </div>
+
+        <section id="storyboard-section" class="studio-subpanel hidden">
+          <div class="field-grid">
+            <div class="field"><label for="shotCount">Numero shot</label><select id="shotCount"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option></select></div>
+            <div class="field"><label for="storyboardFamily">Motore storyboard</label><select id="storyboardFamily" name="storyboardFamily"><option value="klein">BigLove Klein 4</option><option value="gwen">BigLove Gwen 2</option></select></div>
+          </div>
+          <p id="storyboard-model-status" class="hint"></p>
+          <div class="field"><label for="globalStyle">Look globale bloccato</label><input id="globalStyle" name="globalStyle" placeholder="Golden hour, Kodak Portra, 35 mm, contrasto morbido"></div>
+          <div id="shot-fields"></div>
+          <input id="shots" name="shots" type="hidden">
+        </section>
+
+        <section id="bible-section" class="studio-subpanel hidden">
+          <div class="field"><label for="bibleType">Tipo di reference bible</label><select id="bibleType" name="bibleType"><option value="character">Personaggio</option><option value="location">Location</option></select></div>
+          <div class="field"><label for="bibleViewsText">Viste, una per riga</label><textarea id="bibleViewsText" rows="7"></textarea><input id="bibleViews" name="bibleViews" type="hidden"></div>
+        </section>
+
+        <section id="camera-section" class="studio-subpanel hidden">
+          <div class="field-grid">
+            <div class="field"><label for="shotSize">Inquadratura</label><select id="shotSize" name="shotSize"><option>close-up</option><option selected>medium</option><option>full body</option><option>wide</option></select></div>
+            <div class="field"><label for="cameraAngle">Angolo</label><select id="cameraAngle" name="cameraAngle"><option>low angle</option><option selected>eye level</option><option>high angle</option></select></div>
+            <div class="field"><label for="subjectView">Vista soggetto</label><select id="subjectView" name="subjectView"><option>front</option><option>side</option><option selected>three-quarter</option><option>rear</option></select></div>
+            <div class="field"><label for="cameraDepth">Profondità</label><select id="cameraDepth" name="cameraDepth"><option>shallow depth of field</option><option selected>natural</option><option>deep focus</option></select></div>
+          </div>
+        </section>
+
+        <section id="relight-section" class="studio-subpanel hidden">
+          <div class="field-grid">
+            <div class="field"><label for="weather">Ora / meteo</label><select id="weather" name="weather"><option>unchanged</option><option>golden hour</option><option>sunny day</option><option>overcast</option><option>blue hour</option><option>night</option><option>rain</option></select></div>
+            <div class="field"><label for="lighting">Illuminazione</label><select id="lighting" name="lighting"><option>natural light</option><option>soft cinematic light</option><option>left key light</option><option>right key light</option><option>backlight</option><option>dramatic chiaroscuro</option></select></div>
+          </div>
+        </section>
+
+        <section id="perfect-section" class="studio-subpanel hidden">
+          <div class="field">
+            <label for="perfectFamily">Motore Perfect</label>
+            <select id="perfectFamily" name="perfectFamily">
+              <option value="gwen" selected>BigLove Gwen 2 · consigliato per identità e reference</option>
+              <option value="qwen2511">Qwen Edit 2511 BF16 · massimo controllo reference</option>
+              <option value="klein">BigLove Klein 4 · consigliato per velocità e realismo</option>
+            </select>
+            <p id="perfect-model-status" class="hint"></p>
+          </div>
+          <div class="field-grid">
+            <div id="perfect-qwen-model-field" class="field">
+              <label for="perfectQwenModel">Checkpoint Qwen</label>
+              <select id="perfectQwenModel" name="perfectQwenModel"></select>
+            </div>
+            <div id="perfect-klein-model-field" class="field hidden">
+              <label for="perfectKleinModel">Checkpoint Flux.2 / Klein</label>
+              <select id="perfectKleinModel" name="perfectKleinModel"></select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="perfectRecipe">Motore workflow</label>
+            <select id="perfectRecipe" name="perfectRecipe">
+              <option value="runninghub" selected>RunningHub Multi-Reference · consigliato</option>
+              <option value="runninghubSeedvr">RunningHub + SeedVR finale · MAX</option>
+              <option value="standard">Standard webapp · compatibilità</option>
+            </select>
+            <p id="perfect-recipe-status" class="hint"></p>
+          </div>
+          <div class="field">
+            <label for="executionMode">Avanzamento fra gli stadi</label>
+            <select id="executionMode" name="executionMode">
+              <option value="guided" selected>Guidato · scelgo io proposta e master</option>
+              <option value="automatic">Automatico · completa tutta la pipeline</option>
+            </select>
+            <p class="hint">In Automatico viene scelta la prima proposta completata; in Guidato puoi confrontare e creare variazioni prima di proseguire.</p>
+          </div>
+          <fieldset class="quality">
+            <legend>Pipeline</legend>
+            <label><input type="radio" name="studioPreset" value="speed"><span><b>Veloce</b><small>Qualità unica e upscale semplice</small></span></label>
+            <label><input type="radio" name="studioPreset" value="quality" checked><span><b>Qualità</b><small>Modello qualità unico</small></span></label>
+            <label><input type="radio" name="studioPreset" value="max"><span><b>MAX</b><small>Rifinitura completa</small></span></label>
+          </fieldset>
+          <div class="field-grid compact-grid">
+            <label class="inline-check"><input name="faceDetailer" type="checkbox" checked> Detailer volto</label>
+            <label class="inline-check"><input name="handDetailer" type="checkbox" checked> Detailer mani</label>
+            <div class="field"><label for="faceDetailerDenoise">Denoise volto</label><input id="faceDetailerDenoise" name="faceDetailerDenoise" type="number" min=".05" max=".5" step=".01" value=".22"></div>
+            <div class="field"><label for="handDetailerDenoise">Denoise mani</label><input id="handDetailerDenoise" name="handDetailerDenoise" type="number" min=".05" max=".6" step=".01" value=".28"></div>
+          </div>
+        </section>
+
+        <div id="common-settings" class="field-grid">
+          <div class="field"><label for="editPreset">Comportamento</label><select id="editPreset" name="editPreset"><option value="conservative">Conservativo</option><option value="balanced" selected>Bilanciato</option><option value="creative">Creativo</option></select></div>
+          <div class="field"><label for="alternatives">Alternative</label><select id="alternatives" name="alternatives"><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
+          <div class="field"><label for="editScope">Ambito</label><select id="editScope" name="editScope"><option value="local">Locale / maschera</option><option value="global">Globale</option></select></div>
+          <div class="field"><label for="studio-seed">Seed</label><input id="studio-seed" name="seed" inputmode="numeric" placeholder="Random"></div>
+        </div>
+
+        <section id="editing-controls" class="studio-subpanel">
+          <p class="subpanel-title">Controlli di fedeltà</p>
+          <label class="inline-check"><input name="sourceDenoise" type="checkbox" checked> Riduzione rumore locale molto leggera sulla copia di lavoro (senza RTX; l’originale resta intatto)</label>
+          <div class="field-grid compact-grid">
+            <div class="field"><label for="originalPreservation">Conservazione originale %</label><input id="originalPreservation" name="originalPreservation" type="number" min="0" max="100" value="100"></div>
+            <div class="field"><label for="editIntensity">Intensità modifica %</label><input id="editIntensity" name="editIntensity" type="number" min="0" max="100" value="50"></div>
+            <div class="field"><label for="referenceAdherence">Aderenza persona %</label><input id="referenceAdherence" name="referenceAdherence" type="number" min="0" max="100" value="80"></div>
+            <div class="field"><label for="poseAdherence">Aderenza posa %</label><input id="poseAdherence" name="poseAdherence" type="number" min="0" max="100" value="70"></div>
+            <div class="field"><label for="creativeFreedom">Libertà creativa %</label><input id="creativeFreedom" name="creativeFreedom" type="number" min="0" max="100" value="30"></div>
+          </div>
+        </section>
+
+        <section id="studio-models" class="studio-subpanel">
+          <p class="subpanel-title">Modelli per gli stadi</p>
+          <div class="field-grid">
+            <div id="guided-model-family-field" class="field hidden">
+              <label for="guidedModelFamily">Famiglia Editor Guidato</label>
+              <select id="guidedModelFamily" name="guidedModelFamily">
+                <option value="qwen" selected>Qwen Image Edit / BigLove Gwen</option>
+                <option value="klein">Flux.2 Klein</option>
+              </select>
+            </div>
+            <div id="qwen-edit-model-field" class="field hidden"><label for="qwenEditModel">Checkpoint Qwen editing guidato</label><select id="qwenEditModel" name="qwenEditModel"></select></div>
+            <div id="guided-klein-model-field" class="field hidden"><label for="guidedKleinModel">Checkpoint Flux.2 / Klein guidato</label><select id="guidedKleinModel" name="guidedKleinModel"></select></div>
+            <div id="flux2-turbo-model-field" class="field"><label for="flux2TurboModel">Flux.2 bozze</label><select id="flux2TurboModel" name="flux2TurboModel"></select></div>
+            <div id="flux2-base-model-field" class="field"><label for="flux2BaseModel">Flux.2 qualità</label><select id="flux2BaseModel" name="flux2BaseModel"></select></div>
+            <div id="zimage-model-field" class="field"><label for="zImageModel">Z-Image bozze</label><select id="zImageModel" name="zImageModel"></select></div>
+            <div id="flux1-refine-model-field" class="field"><label for="flux1RefineModel">Flux.1 refine</label><select id="flux1RefineModel" name="flux1RefineModel"></select></div>
+          </div>
+        </section>
+
+        <section class="scene-integration-mount" data-scene-integration></section>
+
+        <section id="final-output-section" class="studio-subpanel">
+          <p class="subpanel-title">Output master</p>
+          <div class="field-grid">
+            <div class="field">
+              <label for="finalOutput">Upscale finale</label>
+              <select id="finalOutput" name="finalOutput">
+                <option value="none">Stessa risoluzione / nessun upscale</option>
+                <option value="seed3" selected>SeedVR2 Leggero · 3B FP8</option>
+                <option value="seed7">SeedVR2 Massimo · 7B FP16</option>
+                <option value="rtx">RTX VSR · veloce e fedele</option>
+                <option value="realesrgan">RealESRGAN 2× · tradizionale</option>
+              </select>
+            </div>
+            <label class="inline-check"><input name="saveOriginal" type="checkbox" checked> Conserva anche lo stadio prima dell’upscale</label>
+          </div>
+        </section>
+
+        <section id="studio-lora-section" class="studio-subpanel">
+          <div class="subpanel-heading"><div><p class="subpanel-title">LoRA aggiuntive</p><p class="hint">Filtrate per la famiglia usata nello stadio.</p></div><button id="studio-add-lora" class="chip-button" type="button">＋ LoRA</button></div>
+          <div id="studio-loras"></div>
+          <input id="studio-loras-json" name="loras" type="hidden" value="[]">
+        </section>
+
+        <button id="studio-submit" class="submit-button" type="submit"><span>Crea progetto</span><span>→</span></button>
+        <p id="studio-form-status" class="form-status" role="alert"></p>
+      </form>
+
+      <aside class="studio-projects-column">
+        <div class="panel studio-projects-panel">
+          <div class="section-heading compact">
+            <span>02</span><div><h2>Progetti guidati</h2><p>Bozze, selezioni, master e clip</p></div>
+          </div>
+          <div id="studio-projects"></div>
+          <p id="studio-empty" class="hint">Nessun progetto Studio.</p>
+        </div>
+      </aside>
+    </div>
+  </main>
+  <dialog id="workflow-guide-dialog" class="workflow-guide-dialog" aria-labelledby="workflow-guide-title">
+    <div class="workflow-guide-modal">
+      <header>
+        <div>
+          <p id="workflow-guide-category" class="eyebrow"></p>
+          <h2 id="workflow-guide-title"></h2>
+        </div>
+        <button id="close-workflow-guide" class="dialog-close" type="button" aria-label="Chiudi guida">×</button>
+      </header>
+      <div id="workflow-guide-content" class="workflow-guide-content"></div>
+      <footer>
+        <span>Premi Esc per chiudere</span>
+        <a id="full-workflow-guide" class="guide-link-button" href="/workflow-guide.html">Apri la guida completa <span aria-hidden="true">→</span></a>
+      </footer>
+    </div>
+  </dialog>
+  <div id="toast" class="toast" role="status"></div>
+</body>
+</html>

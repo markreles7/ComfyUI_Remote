@@ -1,0 +1,291 @@
+- generic [ref=e1]:
+  - main [ref=e9]:
+    - generic [ref=e10]:
+      - generic "Progress Bar by rgthree. right-click for rgthree menu." [ref=e12]: Idle
+      - generic [ref=e17]:
+        - generic [ref=e18]:
+          - generic [ref=e19]: ↹ Resize Feed
+          - generic:
+            - generic "Controls the maximum size of the image feed panel (25vh)":
+              - generic: Feed Size...
+              - slider: "25"
+            - generic "Controls the number of columns in the feed (4 columns). Click label to set custom value.":
+              - generic: Column count...
+              - slider: "4"
+        - generic [ref=e20]:
+          - button "Clear" [ref=e21] [cursor=pointer]
+          - button "❌" [ref=e22] [cursor=pointer]
+      - generic [ref=e23]:
+        - text: .. .. .. ▼ ▼
+        - generic:
+          - generic [ref=e26]:
+            - group [ref=e30]:
+              - button "Unsaved Workflow • Close" [pressed] [ref=e31] [cursor=pointer]:
+                - generic [ref=e33]:
+                  - generic [ref=e34]: Unsaved Workflow
+                  - generic [ref=e35]:
+                    - generic [ref=e36]: •
+                    - button "Close" [ref=e37]:
+                      - generic [ref=e38]: 
+            - button "Create a new blank workflow" [ref=e39] [cursor=pointer]:
+              - generic [ref=e40]: 
+          - generic:
+            - navigation [ref=e42]:
+              - generic [ref=e43]:
+                - generic [ref=e44]:
+                  - button "Assets (a)" [ref=e50] [cursor=pointer]
+                  - button "Node Library (n)" [ref=e54] [cursor=pointer]
+                  - button "Model Library (m)" [ref=e58] [cursor=pointer]
+                  - button "Workflows (w)" [ref=e62] [cursor=pointer]
+                  - button "Apps" [ref=e66] [cursor=pointer]
+                  - button "NodesMap" [ref=e70] [cursor=pointer]:
+                    - generic [ref=e71]: 
+                  - 'button "MTB: Browse inputs and outputs directories." [ref=e74] [cursor=pointer]':
+                    - generic [ref=e75]: 
+                  - button "Templates" [ref=e78] [cursor=pointer]
+                - generic [ref=e82]:
+                  - button "Help Center" [ref=e83] [cursor=pointer]:
+                    - generic [ref=e84]: 
+                  - button "Toggle Bottom Panel" [ref=e87] [cursor=pointer]
+                  - button "Keyboard Shortcuts (Ctrl + Shift + k)" [ref=e91] [cursor=pointer]
+                  - button "Settings (Ctrl + ,)" [ref=e95] [cursor=pointer]
+            - generic:
+              - complementary "Sidebar" [ref=e294]:
+                - generic [ref=e296]:
+                  - generic [ref=e297]:
+                    - toolbar [ref=e298]:
+                      - generic "Workflows" [ref=e300]
+                      - button "Refresh" [ref=e303] [cursor=pointer]
+                    - combobox "Search Workflow..." [active] [ref=e309]
+                  - generic [ref=e310]:
+                    - generic [ref=e314]:
+                      - generic [ref=e315]:
+                        - generic [ref=e316]: Browse
+                        - separator
+                      - tree [ref=e319]:
+                        - treeitem "DasiwaLTX23_DragonleapV4_READY" [level=1] [ref=e320]:
+                          - generic [ref=e321] [cursor=pointer]:
+                            - generic [ref=e322]: 
+                            - generic [ref=e324]:
+                              - generic [ref=e325]: DasiwaLTX23_DragonleapV4_READY
+                              - button "Bookmark" [ref=e329]:
+                                - generic [ref=e330]: 
+                        - treeitem "LTX UltraHD Preset Cinema" [level=1] [ref=e331]:
+                          - generic [ref=e332] [cursor=pointer]:
+                            - generic [ref=e333]: 
+                            - generic [ref=e335]:
+                              - generic [ref=e336]: LTX UltraHD Preset Cinema
+                              - button "Bookmark" [ref=e340]:
+                                - generic [ref=e341]: 
+                        - treeitem "LTX2.3_DevFP8_FF2V" [level=1] [ref=e342]:
+                          - generic [ref=e343] [cursor=pointer]:
+                            - generic [ref=e344]: 
+                            - generic [ref=e346]:
+                              - generic [ref=e347]: LTX2.3_DevFP8_FF2V
+                              - button "Bookmark" [ref=e351]:
+                                - generic [ref=e352]: 
+                        - treeitem "LTX2.3_DevFP8_I2V" [level=1] [ref=e353]:
+                          - generic [ref=e354] [cursor=pointer]:
+                            - generic [ref=e355]: 
+                            - generic [ref=e357]:
+                              - generic [ref=e358]: LTX2.3_DevFP8_I2V
+                              - button "Bookmark" [ref=e362]:
+                                - generic [ref=e363]: 
+                        - treeitem "LTX2.3_ManualPrompt_3_Bypass_SeedVR2_FlashVSR_ColorGrain_12GB" [level=1] [ref=e364]:
+                          - generic [ref=e365] [cursor=pointer]:
+                            - generic [ref=e366]: 
+                            - generic [ref=e368]:
+                              - generic [ref=e369]: LTX2.3_ManualPrompt_3_Bypass_SeedVR2_FlashVSR_ColorGrain_12GB
+                              - button "Bookmark" [ref=e373]:
+                                - generic [ref=e374]: 
+                        - treeitem "LTX2.3_ManualPrompt_SeedVR2_Amatoriale_12GB" [level=1] [ref=e375]:
+                          - generic [ref=e376] [cursor=pointer]:
+                            - generic [ref=e377]: 
+                            - generic [ref=e379]:
+                              - generic [ref=e380]: LTX2.3_ManualPrompt_SeedVR2_Amatoriale_12GB
+                              - button "Bookmark" [ref=e384]:
+                                - generic [ref=e385]: 
+                        - treeitem "LTX23_3_WORKFLOW_LEGGIMI" [level=1] [ref=e386]:
+                          - generic [ref=e387] [cursor=pointer]:
+                            - generic [ref=e388]: 
+                            - generic [ref=e390]:
+                              - generic [ref=e391]: LTX23_3_WORKFLOW_LEGGIMI
+                              - button "Bookmark" [ref=e395]:
+                                - generic [ref=e396]: 
+                        - treeitem "LTX23_Director_2_UHD_STANDALONE" [level=1] [ref=e397]:
+                          - generic [ref=e398] [cursor=pointer]:
+                            - generic [ref=e399]: 
+                            - generic [ref=e401]:
+                              - generic [ref=e402]: LTX23_Director_2_UHD_STANDALONE
+                              - button "Bookmark" [ref=e406]:
+                                - generic [ref=e407]: 
+                        - treeitem "LTX23_Dragonleap_V2V_EDIT_ANYTHING_READY" [level=1] [ref=e408]:
+                          - generic [ref=e409] [cursor=pointer]:
+                            - generic [ref=e410]: 
+                            - generic [ref=e412]:
+                              - generic [ref=e413]: LTX23_Dragonleap_V2V_EDIT_ANYTHING_READY
+                              - button "Bookmark" [ref=e417]:
+                                - generic [ref=e418]: 
+                        - treeitem "LTX23_Dragonleap_V2V_INPAINT_SAM3_READY" [level=1] [ref=e419]:
+                          - generic [ref=e420] [cursor=pointer]:
+                            - generic [ref=e421]: 
+                            - generic [ref=e423]:
+                              - generic [ref=e424]: LTX23_Dragonleap_V2V_INPAINT_SAM3_READY
+                              - button "Bookmark" [ref=e428]:
+                                - generic [ref=e429]: 
+                        - treeitem "LTX23_Dragonleap_V2V_LIPDUB_AMBIENCE_READY" [level=1] [ref=e430]:
+                          - generic [ref=e431] [cursor=pointer]:
+                            - generic [ref=e432]: 
+                            - generic [ref=e434]:
+                              - generic [ref=e435]: LTX23_Dragonleap_V2V_LIPDUB_AMBIENCE_READY
+                              - button "Bookmark" [ref=e439]:
+                                - generic [ref=e440]: 
+                        - treeitem "LTX23_JoyAI_Echo_22B_STANDALONE" [level=1] [ref=e441]:
+                          - generic [ref=e442] [cursor=pointer]:
+                            - generic [ref=e443]: 
+                            - generic [ref=e445]:
+                              - generic [ref=e446]: LTX23_JoyAI_Echo_22B_STANDALONE
+                              - button "Bookmark" [ref=e450]:
+                                - generic [ref=e451]: 
+                        - treeitem "LTX23_JoyAI_Echo_Director_DUAL_README" [level=1] [ref=e452]:
+                          - generic [ref=e453] [cursor=pointer]:
+                            - generic [ref=e454]: 
+                            - generic [ref=e456]:
+                              - generic [ref=e457]: LTX23_JoyAI_Echo_Director_DUAL_README
+                              - button "Bookmark" [ref=e461]:
+                                - generic [ref=e462]: 
+                        - treeitem "LTX23_JoyAI_Echo_Director_DUAL" [level=1] [ref=e463]:
+                          - generic [ref=e464] [cursor=pointer]:
+                            - generic [ref=e465]: 
+                            - generic [ref=e467]:
+                              - generic [ref=e468]: LTX23_JoyAI_Echo_Director_DUAL
+                              - button "Bookmark" [ref=e472]:
+                                - generic [ref=e473]: 
+                        - treeitem "LTX23_UltraHD_I2V_CLEAN" [level=1] [ref=e474]:
+                          - generic [ref=e475] [cursor=pointer]:
+                            - generic [ref=e476]: 
+                            - generic [ref=e478]:
+                              - generic [ref=e479]: LTX23_UltraHD_I2V_CLEAN
+                              - button "Bookmark" [ref=e483]:
+                                - generic [ref=e484]: 
+                        - treeitem "LTX23_V2V_EDIT_ANYTHING" [level=1] [ref=e485]:
+                          - generic [ref=e486] [cursor=pointer]:
+                            - generic [ref=e487]: 
+                            - generic [ref=e489]:
+                              - generic [ref=e490]: LTX23_V2V_EDIT_ANYTHING
+                              - button "Bookmark" [ref=e494]:
+                                - generic [ref=e495]: 
+                    - scrollbar [ref=e496] [cursor=pointer]
+              - separator [ref=e497]
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic [ref=e99]:
+                          - button "Enter app mode" [ref=e100] [cursor=pointer]
+                          - button "Workflow actions" [ref=e102] [cursor=pointer]:
+                            - generic [ref=e103]: Graph
+                        - text: 
+                    - generic:
+                      - generic:
+                        - button "Extensions" [ref=e106] [cursor=pointer]
+                        - generic [ref=e109]:
+                          - generic [ref=e111]:
+                            - generic [ref=e112]:
+                              - generic "Drag system monitor" [ref=e113]: ⠿
+                              - generic [ref=e114]:
+                                - generic "8 threads" [ref=e499]:
+                                  - generic [ref=e500]: CPU
+                                  - strong [ref=e501]: 48%
+                                - generic "19.9 GiB / 31.9 GiB" [ref=e502]:
+                                  - generic [ref=e503]: RAM
+                                  - strong [ref=e504]: 62%
+                                - generic "1.1 GiB / 47.6 GiB" [ref=e505]:
+                                  - generic [ref=e506]: SWAP
+                                  - strong [ref=e507]: 2%
+                                - 'generic "E:\\: 829.2 GiB / 931.5 GiB" [ref=e508]':
+                                  - generic [ref=e509]: DISK
+                                  - strong [ref=e510]: 89%
+                                - generic "NVIDIA:0 — NVIDIA GeForce RTX 4070 SUPER; GPU utilization" [ref=e511]:
+                                  - generic [ref=e512]: GPU0 Util
+                                  - strong [ref=e513]: 9%
+                                - generic "NVIDIA:0 — NVIDIA GeForce RTX 4070 SUPER; VRAM 7.4 GiB / 12.0 GiB" [ref=e514]:
+                                  - generic [ref=e515]: GPU0 VRAM
+                                  - strong [ref=e516]: 62%
+                                - generic "NVIDIA:0 — NVIDIA GeForce RTX 4070 SUPER; GPU temperature" [ref=e517]:
+                                  - generic [ref=e518]: GPU0 Temp
+                                  - strong [ref=e519]: 49°
+                                - generic "Other:ROOT\\DISPLAY\\0000 — Meta Virtual Monitor; GPU utilization" [ref=e520]:
+                                  - generic [ref=e521]: GPU0 Util
+                                  - strong [ref=e522]: n/a
+                                - generic "Other:ROOT\\DISPLAY\\0000 — Meta Virtual Monitor; VRAM n/a / n/a" [ref=e523]:
+                                  - generic [ref=e524]: GPU0 VRAM
+                                  - strong [ref=e525]: n/a
+                                - generic "Other:ROOT\\DISPLAY\\0000 — Meta Virtual Monitor; GPU temperature" [ref=e526]:
+                                  - generic [ref=e527]: GPU0 Temp
+                                  - strong [ref=e528]: n/a
+                              - button "DaSiWa node settings" [ref=e145] [cursor=pointer]: ⚙
+                            - generic [ref=e146]:
+                              - button "rgthree-comfy" [ref=e147] [cursor=pointer]
+                              - button "󰃀" [ref=e156] [cursor=pointer]
+                            - generic [ref=e159]:
+                              - generic "21%" [ref=e529]: CPU
+                              - 'generic "62% - 19.86 GB / 31.94 GB Max: 19.86 GB" [ref=e530]':
+                                - generic [ref=e166]: RAM
+                                - generic [ref=e167]: 62%
+                              - 'generic "0: NVIDIA GeForce RTX 4070 SUPER - 48°" [ref=e531]':
+                                - generic [ref=e171]: Temp
+                                - generic [ref=e172]: 48°
+                              - 'generic "0: NVIDIA GeForce RTX 4070 SUPER - 63% - 7.67 GB / 11.99 GB Max: 7.67 GB" [ref=e532]':
+                                - generic [ref=e176]: VRAM
+                                - generic [ref=e177]: 63%
+                              - 'generic "0: NVIDIA GeForce RTX 4070 SUPER - 15%" [ref=e533]':
+                                - generic [ref=e181]: GPU
+                                - generic [ref=e182]: 15%
+                            - button "Show Image Feed 🐍" [disabled] [ref=e186]:
+                              - generic [ref=e187]: 󰋹
+                              - text: Show Image Feed 🐍
+                          - region [ref=e190]:
+                            - generic [ref=e192]:
+                              - generic [ref=e193]: .. .. ..
+                              - generic [ref=e194]:
+                                - generic "Batch Count" [ref=e195]:
+                                  - generic [ref=e196]:
+                                    - textbox "Batch Count" [ref=e197]: "1"
+                                    - generic [ref=e198]:
+                                      - button "Increment" [ref=e199] [cursor=pointer]
+                                      - button "Decrement" [disabled]
+                                - button "Run" [ref=e200] [cursor=pointer]
+                                - button "Run" [ref=e202] [cursor=pointer]
+                              - button "Cancel current run" [disabled]
+                              - button "0 active Expand job queue" [ref=e534] [cursor=pointer]:
+                                - generic [ref=e204]: 0 active
+                                - generic [ref=e205]: Expand job queue
+                          - button "Toggle properties panel" [ref=e207] [cursor=pointer]
+                      - alert [ref=e209]:
+                        - generic [ref=e210]:
+                          - generic [ref=e211]: 1 ERROR
+                          - button "Close" [ref=e212] [cursor=pointer]
+                        - list [ref=e215]:
+                          - listitem [ref=e216]:
+                            - generic [ref=e218]: 1 required model is missing
+                        - generic [ref=e219]:
+                          - button "Dismiss" [ref=e220] [cursor=pointer]
+                          - button "Show missing models" [ref=e221] [cursor=pointer]
+                - generic:
+                  - toolbar "Canvas Toolbar" [ref=e222]:
+                    - button "Canvas Mode" [ref=e223] [cursor=pointer]
+                    - button "Fit View (.)" [ref=e229] [cursor=pointer]
+                    - button "Zoom Controls" [ref=e231] [cursor=pointer]:
+                      - generic [ref=e232]: 90%
+                    - button "Show Minimap (ALT + SHIFT + M)" [ref=e236] [cursor=pointer]
+                    - button "Show Links" [ref=e238] [cursor=pointer]
+                  - text: 
+        - generic:
+          - generic "The text to be encoded." [ref=e241]:
+            - textbox "text" [ref=e242]: anime RPG game style, cute anime girl with gigantic fennec ears and a big fluffy fox tail with long wavy blonde hair and large blue eyes blonde colored eyelashes wearing a pink sweater a large oversized gold trimmed black winter coat and a long blue maxi skirt and a red scarf, she is sitting beside a campfire in the wilderness at night playing guitar with a milky way galaxy sky
+          - generic "The text to be encoded." [ref=e243]:
+            - textbox "text" [ref=e244]: low quality, bad anatomy, extra digits, missing digits, extra limbs, missing limbs
+    - text: 
+  - text: ×

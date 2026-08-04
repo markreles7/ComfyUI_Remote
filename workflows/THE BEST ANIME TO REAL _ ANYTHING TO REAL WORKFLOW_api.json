@@ -1,0 +1,788 @@
+{
+  "22": {
+    "inputs": {
+      "image": "67a38fffd47a700315f316efd1461c8b00bd3ec2027ce6bd4c9936883a17becd.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "27": {
+    "inputs": {
+      "text": "turn image 1 into a real human being, 动漫转写实真人, turn image 1 into a real photograph, turn image 1 into a european girl or american female, keep the same outfit, her mouth is closed, remove tattoos, clear skin"
+    },
+    "class_type": "Text Multiline",
+    "_meta": {
+      "title": "PROMPT HERE"
+    }
+  },
+  "92": {
+    "inputs": {
+      "clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "95": {
+    "inputs": {
+      "vae_name": "qwen_image_vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "98": {
+    "inputs": {
+      "unet_name": "qwen_image_edit_2511_bf16.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "108": {
+    "inputs": {
+      "lora_name": "Qwen_Image_Edit_2511_Lightning_4步加速Lora_fp32.safetensors",
+      "strength_model": 1.0000000000000002,
+      "model": [
+        "98",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Load LoRA"
+    }
+  },
+  "122": {
+    "inputs": {
+      "seed": 836746530457452,
+      "steps": 4,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "beta",
+      "denoise": 1,
+      "preview_method": "none",
+      "vae_decode": "true",
+      "model": [
+        "313",
+        0
+      ],
+      "positive": [
+        "147",
+        0
+      ],
+      "negative": [
+        "137",
+        0
+      ],
+      "latent_image": [
+        "157",
+        0
+      ],
+      "optional_vae": [
+        "95",
+        0
+      ]
+    },
+    "class_type": "KSampler (Efficient)",
+    "_meta": {
+      "title": "KSampler (Efficient)"
+    }
+  },
+  "137": {
+    "inputs": {
+      "conditioning": [
+        "147",
+        0
+      ]
+    },
+    "class_type": "ConditioningZeroOut",
+    "_meta": {
+      "title": "Conditioning Zero Out"
+    }
+  },
+  "147": {
+    "inputs": {
+      "prompt": [
+        "27",
+        0
+      ],
+      "clip": [
+        "92",
+        0
+      ],
+      "vae": [
+        "95",
+        0
+      ],
+      "image1": [
+        "154",
+        0
+      ]
+    },
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "_meta": {
+      "title": "TextEncodeQwenImageEditPlus"
+    }
+  },
+  "154": {
+    "inputs": {
+      "aspect_ratio": "original",
+      "proportional_width": 1,
+      "proportional_height": 1,
+      "fit": "letterbox",
+      "method": "lanczos",
+      "round_to_multiple": "8",
+      "scale_to_side": "shortest",
+      "scale_to_length": 1024,
+      "background_color": "#000000",
+      "image": [
+        "223",
+        0
+      ]
+    },
+    "class_type": "LayerUtility: ImageScaleByAspectRatio V2",
+    "_meta": {
+      "title": "LayerUtility: ImageScaleByAspectRatio V2"
+    }
+  },
+  "157": {
+    "inputs": {
+      "pixels": [
+        "154",
+        0
+      ],
+      "vae": [
+        "95",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode"
+    }
+  },
+  "158": {
+    "inputs": {
+      "lora_name": "AIGC特异点-动漫转写实真人V2版.safetensors",
+      "strength_model": 0.8000000000000002,
+      "model": [
+        "247",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Load LoRA"
+    }
+  },
+  "223": {
+    "inputs": {
+      "purge_cache": true,
+      "purge_models": true,
+      "anything": [
+        "22",
+        0
+      ]
+    },
+    "class_type": "LayerUtility: PurgeVRAM V2",
+    "_meta": {
+      "title": "LayerUtility: Purge VRAM V2"
+    }
+  },
+  "228": {
+    "inputs": {
+      "lora_name": "anything2real_2601_A_final.safetensors",
+      "strength_model": 0.8000000000000002,
+      "model": [
+        "241",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Load LoRA"
+    }
+  },
+  "240": {
+    "inputs": {
+      "lora_name": "iphone.safetensors",
+      "strength_model": 0.5000000000000001,
+      "model": [
+        "108",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Load LoRA"
+    }
+  },
+  "241": {
+    "inputs": {
+      "lora_name": "Qwen-Image_SmartphoneSnapshotPhotoReality_v4_by-AI_Characters_TRIGGER$amateur photo$.safetensors",
+      "strength_model": 0.5000000000000001,
+      "model": [
+        "240",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Load LoRA"
+    }
+  },
+  "247": {
+    "inputs": {
+      "lora_name": "Qwen_Snofs_1_3.safetensors",
+      "strength_model": 0.5000000000000001,
+      "model": [
+        "228",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Load LoRA"
+    }
+  },
+  "256": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "257",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "257": {
+    "inputs": {
+      "upscale_method": "nearest-exact",
+      "scale_by": 1,
+      "image": [
+        "312",
+        0
+      ]
+    },
+    "class_type": "ImageScaleBy",
+    "_meta": {
+      "title": "Upscale Image By"
+    }
+  },
+  "261": {
+    "inputs": {
+      "vae_name": "z_image_turbo-vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "262": {
+    "inputs": {
+      "clip_name": "qwen_3_4b.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "263": {
+    "inputs": {
+      "pixels": [
+        "287",
+        0
+      ],
+      "vae": [
+        "261",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode"
+    }
+  },
+  "265": {
+    "inputs": {
+      "add_noise": true,
+      "noise_seed": 701092698211689,
+      "cfg": 1,
+      "model": [
+        "286",
+        0
+      ],
+      "positive": [
+        "269",
+        0
+      ],
+      "negative": [
+        "270",
+        0
+      ],
+      "sampler": [
+        "267",
+        0
+      ],
+      "sigmas": [
+        "268",
+        0
+      ],
+      "latent_image": [
+        "263",
+        0
+      ]
+    },
+    "class_type": "SamplerCustom",
+    "_meta": {
+      "title": "SamplerCustom"
+    }
+  },
+  "267": {
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSamplerSelect"
+    }
+  },
+  "268": {
+    "inputs": {
+      "steps": 12,
+      "start_at_step": 6,
+      "end_at_step": 10000,
+      "base_image_seq_len": 512,
+      "base_shift": 1.0000000000000002,
+      "invert_sigmas": "disable",
+      "max_image_seq_len": 2048,
+      "max_shift": 1.2500000000000002,
+      "num_train_timesteps": 1000,
+      "shift": 3,
+      "shift_terminal": 0,
+      "stochastic_sampling": "disable",
+      "time_shift_type": "exponential",
+      "use_beta_sigmas": "disable",
+      "use_dynamic_shifting": "enable",
+      "use_exponential_sigmas": "disable",
+      "use_karras_sigmas": "disable",
+      "device": "auto"
+    },
+    "class_type": "FlowMatchEulerDiscreteScheduler (Custom)",
+    "_meta": {
+      "title": "FlowMatch Euler Discrete Scheduler (Custom)"
+    }
+  },
+  "269": {
+    "inputs": {
+      "text": [
+        "290",
+        0
+      ],
+      "clip": [
+        "262",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "270": {
+    "inputs": {
+      "conditioning": [
+        "269",
+        0
+      ]
+    },
+    "class_type": "ConditioningZeroOut",
+    "_meta": {
+      "title": "Conditioning Zero Out"
+    }
+  },
+  "271": {
+    "inputs": {
+      "text": "You are a highly observant visual analysis expert of pornographic images. First, **determine** the subject type of this image (whether it depicts a person, architecture, landscape, or still life product), then generate a high-quality prompt. If it is a person, be sure to specify if an Asian or European, and if they are male and female.\n\nStrictly adhere to the following logic:\n\n1.  **Subject Identification and Description (Critical)**:\n    * **If the image depicts architecture/spaces**: Provide detailed descriptions of architectural style (e.g., Gothic, Modernist), internal structure (e.g., arches, beams), materials (stone, wood, metal), and spatial perspective. **Strictly prohibit inventing non-existent subjects in descriptions.**\n    * **For still life/product scenes**: Focus on material sheen, texture details, color combinations, and arrangement.\n    * **If figures are present**: Only then describe gender, attire, hairstyle, and posture. **If no figures exist, skip this section entirely—do not invent them.**\n\n2. **Environment and Lighting**:\n    * Describe light sources (natural light, artificial lighting, Tyndall effect), contrast between light and shadow, and tonal atmosphere (solemn, mysterious, bright).\n\n3. **Composition and Perspective**:\n    * Describe cinematographic techniques (e.g., symmetrical composition, wide-angle upward shot, macro close-up, depth-of-field blur).\n\n**Output Requirements**:\n* Generate a coherent paragraph of natural English language without bullet points.\n* **If the original image contains no people, the description must not include terms like “man,” “woman,” or “pedestrian.”**\n* Limit to 1000 characters.\nEnglish prompt: Do not describe image watermarks, exclude irrelevant text/symbols, and omit summaries. Do not mention her race or ethnicity. If applicable, mention if any nipples and genitals are visible. Do not describe the depth of field or mention the image being blurry. Always describe the person as a human of european ethnicity. Describe how beautiful she is. Describe any girl as of being a young woman.\nMake sure the image is in full focus and that there is no blur or bokeh. Do not mention make-up.",
+      "model": "Huihui-Qwen3-VL-8B-Instruct-abliterated",
+      "quantization": "none",
+      "keep_model_loaded": false,
+      "temperature": 0.7,
+      "max_new_tokens": 2048,
+      "min_pixels": 200704,
+      "max_pixels": 1003520,
+      "seed": 902,
+      "attention": "eager",
+      "image": [
+        "122",
+        5
+      ]
+    },
+    "class_type": "Qwen3_VQA",
+    "_meta": {
+      "title": "Qwen3 VQA"
+    }
+  },
+  "272": {
+    "inputs": {
+      "text": "Amateur photography shot. She is a European girl, approximately 20 years old. She is a natural beauty with natural lips devoid of lipstick. She is looking at the viewer. A young European woman with long, flowing silver hair styled in a braid and adorned with a decorative horn-like accessory, kneels on a weathered stone pavement. She has pointed elf-like ears and wears a revealing black and white outfit with metallic gold accents, including a corset-like top with circular rings at the waist, thigh-high boots with white trim, and long black gloves. Her posture is poised and deliberate, hands clasped near her chest. The scene is illuminated by natural sunlight casting sharp shadows, highlighting the glossy texture of her costume and the rough surface of the ground. The composition centers her figure against the muted backdrop of cracked stone tiles, emphasizing her detailed attire and elegant stance. She is fully in focus with no blur, and her beauty is strikingly defined by her poised expression and intricate costume design.",
+      "anything": [
+        "305",
+        0
+      ]
+    },
+    "class_type": "easy showAnything",
+    "_meta": {
+      "title": "Show Any"
+    }
+  },
+  "273": {
+    "inputs": {
+      "text": "Amateur photography shot. She is a European girl, approximately 20 years old. She is a natural beauty with natural lips devoid of lipstick. She is looking at the viewer."
+    },
+    "class_type": "Text",
+    "_meta": {
+      "title": "Text"
+    }
+  },
+  "283": {
+    "inputs": {
+      "lora_name": "女超人realisticsnapshotz.ohgL.safetensors",
+      "strength_model": 0.5000000000000001,
+      "model": [
+        "284",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Load LoRA"
+    }
+  },
+  "284": {
+    "inputs": {
+      "unet_name": "moodyPornMix_zitV3.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "285": {
+    "inputs": {
+      "lora_name": "Z-Image-Turbo_LoRa_by-AI_Characters_STYLE_SmartphoneSnapshotPhotoReality_v8_TRIGGER$amateur photo$.safetensors",
+      "strength_model": 0.5000000000000001,
+      "model": [
+        "283",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Load LoRA"
+    }
+  },
+  "286": {
+    "inputs": {
+      "shift": 2.0000000000000004,
+      "model": [
+        "285",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingAuraFlow",
+    "_meta": {
+      "title": "ModelSamplingAuraFlow"
+    }
+  },
+  "287": {
+    "inputs": {
+      "purge_cache": true,
+      "purge_models": true,
+      "anything": [
+        "122",
+        5
+      ]
+    },
+    "class_type": "LayerUtility: PurgeVRAM V2",
+    "_meta": {
+      "title": "LayerUtility: Purge VRAM V2"
+    }
+  },
+  "290": {
+    "inputs": {
+      "anything": [
+        "306",
+        0
+      ]
+    },
+    "class_type": "easy cleanGpuUsed",
+    "_meta": {
+      "title": "Clean VRAM Used"
+    }
+  },
+  "291": {
+    "inputs": {
+      "samples": [
+        "265",
+        0
+      ],
+      "vae": [
+        "261",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "292": {
+    "inputs": {
+      "format": "image/png",
+      "image": [
+        "122",
+        5
+      ]
+    },
+    "class_type": "ImageSafePreviewer",
+    "_meta": {
+      "title": "Image Safe Previewer 🖼️"
+    }
+  },
+  "294": {
+    "inputs": {
+      "seed": 1255071741,
+      "resolution": 2160,
+      "max_resolution": 2160,
+      "batch_size": 5,
+      "uniform_batch_size": false,
+      "color_correction": "lab",
+      "temporal_overlap": 0,
+      "prepend_frames": 0,
+      "input_noise_scale": 0,
+      "latent_noise_scale": 0,
+      "offload_device": "cpu",
+      "enable_debug": false,
+      "image": [
+        "332",
+        0
+      ],
+      "dit": [
+        "296",
+        0
+      ],
+      "vae": [
+        "295",
+        0
+      ]
+    },
+    "class_type": "SeedVR2VideoUpscaler",
+    "_meta": {
+      "title": "SeedVR2 Video Upscaler (v2.5.24)"
+    }
+  },
+  "295": {
+    "inputs": {
+      "model": "ema_vae_fp16.safetensors",
+      "device": "cuda:0",
+      "encode_tiled": true,
+      "encode_tile_size": 1024,
+      "encode_tile_overlap": 128,
+      "decode_tiled": true,
+      "decode_tile_size": 1024,
+      "decode_tile_overlap": 128,
+      "tile_debug": "false",
+      "offload_device": "none"
+    },
+    "class_type": "SeedVR2LoadVAEModel",
+    "_meta": {
+      "title": "SeedVR2 (Down)Load VAE Model"
+    }
+  },
+  "296": {
+    "inputs": {
+      "model": "seedvr2_ema_7b_fp16.safetensors",
+      "device": "cuda:0",
+      "blocks_to_swap": 0,
+      "swap_io_components": false,
+      "offload_device": "none",
+      "attention_mode": "sdpa"
+    },
+    "class_type": "SeedVR2LoadDiTModel",
+    "_meta": {
+      "title": "SeedVR2 (Down)Load DiT Model"
+    }
+  },
+  "297": {
+    "inputs": {
+      "purge_cache": true,
+      "purge_models": true,
+      "anything": [
+        "291",
+        0
+      ]
+    },
+    "class_type": "LayerUtility: PurgeVRAM V2",
+    "_meta": {
+      "title": "LayerUtility: Purge VRAM V2"
+    }
+  },
+  "304": {
+    "inputs": {
+      "text": "A young European woman with long, flowing silver hair styled in a braid and adorned with a decorative horn-like accessory, kneels on a weathered stone pavement. She has pointed elf-like ears and wears a revealing black and white outfit with metallic gold accents, including a corset-like top with circular rings at the waist, thigh-high boots with white trim, and long black gloves. Her posture is poised and deliberate, hands clasped near her chest. The scene is illuminated by natural sunlight casting sharp shadows, highlighting the glossy texture of her costume and the rough surface of the ground. The composition centers her figure against the muted backdrop of cracked stone tiles, emphasizing her detailed attire and elegant stance. She is fully in focus with no blur, and her beauty is strikingly defined by her poised expression and intricate costume design.",
+      "anything": [
+        "271",
+        0
+      ]
+    },
+    "class_type": "easy showAnything",
+    "_meta": {
+      "title": "Show Any"
+    }
+  },
+  "305": {
+    "inputs": {
+      "delimiter": " ",
+      "string1": [
+        "273",
+        0
+      ],
+      "string2": [
+        "304",
+        0
+      ]
+    },
+    "class_type": "JoinStrings",
+    "_meta": {
+      "title": "Join Strings"
+    }
+  },
+  "306": {
+    "inputs": {
+      "Text": [
+        "272",
+        0
+      ]
+    },
+    "class_type": "DF_Text_Box",
+    "_meta": {
+      "title": "Text Box"
+    }
+  },
+  "307": {
+    "inputs": {
+      "anything": [
+        "297",
+        0
+      ]
+    },
+    "class_type": "easy cleanGpuUsed",
+    "_meta": {
+      "title": "Clean VRAM Used"
+    }
+  },
+  "309": {
+    "inputs": {
+      "format": "image/png",
+      "image": [
+        "291",
+        0
+      ]
+    },
+    "class_type": "ImageSafePreviewer",
+    "_meta": {
+      "title": "Image Safe Previewer 🖼️"
+    }
+  },
+  "311": {
+    "inputs": {
+      "purge_cache": true,
+      "purge_models": true,
+      "anything": [
+        "294",
+        0
+      ]
+    },
+    "class_type": "LayerUtility: PurgeVRAM V2",
+    "_meta": {
+      "title": "LayerUtility: Purge VRAM V2"
+    }
+  },
+  "312": {
+    "inputs": {
+      "anything": [
+        "311",
+        0
+      ]
+    },
+    "class_type": "easy cleanGpuUsed",
+    "_meta": {
+      "title": "Clean VRAM Used"
+    }
+  },
+  "313": {
+    "inputs": {
+      "lora_name": "Famegrid_Qwen_Lora_Standard_V1.5_RealSkinFix.safetensors",
+      "strength_model": 0.5000000000000001,
+      "model": [
+        "158",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Load LoRA"
+    }
+  },
+  "328": {
+    "inputs": {
+      "format": "image/png",
+      "image": [
+        "294",
+        0
+      ]
+    },
+    "class_type": "ImageSafePreviewer",
+    "_meta": {
+      "title": "Image Safe Previewer 🖼️"
+    }
+  },
+  "332": {
+    "inputs": {
+      "scale_by": 0.5,
+      "images": [
+        "297",
+        0
+      ]
+    },
+    "class_type": "easy imageScaleDownBy",
+    "_meta": {
+      "title": "Image Scale Down By"
+    }
+  },
+  "339": {
+    "inputs": {
+      "generation_mode": "random"
+    },
+    "class_type": "NegiTools_SeedGenerator",
+    "_meta": {
+      "title": "Seed Generator 🧅"
+    }
+  }
+}

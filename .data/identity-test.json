@@ -1,0 +1,39 @@
+{
+  "metrics": {
+    "backgroundPreservation": {
+      "score": 100.0,
+      "confidence": 0.38,
+      "method": "inferred-change-mask-ssim"
+    },
+    "edgeCompositingQuality": {
+      "score": 50.0,
+      "confidence": 0.35,
+      "method": "mask-boundary-laplacian"
+    },
+    "perspectiveCoherence": {
+      "score": 100.0,
+      "confidence": 0.28,
+      "method": "global-edge-structure-proxy"
+    },
+    "scaleCoherence": {
+      "score": 50.0,
+      "confidence": 0.0,
+      "method": "semantic-subject-scale-unavailable"
+    },
+    "depthCoherence": {
+      "score": 50.0,
+      "confidence": 0.0,
+      "method": "depth-map-comparison-not-run"
+    },
+    "identityPreservation": {
+      "score": 100.0,
+      "confidence": 0.82,
+      "method": "insightface-buffalo_sc-cosine:1.000"
+    }
+  },
+  "usedExplicitMask": false,
+  "artifacts": {
+    "evaluationMask": "evaluation-mask-identity-test.png",
+    "evaluationDifference": "evaluation-difference-identity-test.png"
+  }
+}

@@ -1,0 +1,179 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - link "LTX REMOTE" [ref=e3] [cursor=pointer]:
+      - /url: /
+    - generic [ref=e6]:
+      - navigation "Navigazione principale" [ref=e7]:
+        - link "Crea guidata" [ref=e8] [cursor=pointer]:
+          - /url: /guided-create.html
+        - link "Genera" [ref=e9] [cursor=pointer]:
+          - /url: /
+        - link "Image Studio" [ref=e10] [cursor=pointer]:
+          - /url: /studio.html
+        - link "Video Studio" [ref=e11] [cursor=pointer]:
+          - /url: /video-studio.html
+        - link "Guida" [ref=e12] [cursor=pointer]:
+          - /url: /workflow-guide.html
+        - link "Generazioni" [ref=e13] [cursor=pointer]:
+          - /url: /generations.html
+      - generic [ref=e14]: Connessione…
+  - main [ref=e16]:
+    - generic [ref=e18]:
+      - paragraph [ref=e19]: EDITING / STORYBOARD / PERFECT IMAGE
+      - heading [level=1] [ref=e20]:
+        - text: Costruisci il tuo
+        - emphasis [ref=e21]: master.
+      - paragraph [ref=e22]: "Workflow guidati e multi-stadio: conserva le reference, confronta le bozze e anima gli shot approvati con LTX 2.3."
+    - generic [ref=e23]:
+      - generic [ref=e24]:
+        - generic [ref=e25]:
+          - generic [ref=e26]: "01"
+          - generic [ref=e27]:
+            - heading "Nuovo progetto" [level=2] [ref=e28]
+            - paragraph [ref=e29]: Ogni stadio e risultato resta recuperabile
+        - generic [ref=e30]:
+          - generic [ref=e31]:
+            - generic [ref=e32]: Workflow
+            - button "Guida rapida" [ref=e33] [cursor=pointer]:
+              - generic [ref=e34]: "?"
+              - text: Guida rapida
+          - combobox "Workflow" [ref=e35] [cursor=pointer]
+          - paragraph
+        - generic [ref=e36]:
+          - generic [ref=e37]: Nome progetto
+          - textbox "Nome progetto" [ref=e38]:
+            - /placeholder: Es. Piscina · scena tramonto
+        - generic [ref=e40]:
+          - generic [ref=e41]: Fotografia principale / reference master
+          - generic [ref=e42]:
+            - button "↗ Carica una foto Orientamento EXIF e proporzioni vengono conservati" [ref=e43] [cursor=pointer]
+            - generic [ref=e44]: ↗
+            - strong [ref=e45]: Carica una foto
+            - generic [ref=e46]: Orientamento EXIF e proporzioni vengono conservati
+        - generic [ref=e47]:
+          - generic [ref=e48]:
+            - generic [ref=e49]: Prompt globale / istruzione
+            - generic [ref=e50]:
+              - button "✦ IA + Genera" [ref=e51] [cursor=pointer]
+              - generic [ref=e52]: "0"
+          - textbox "Prompt globale / istruzione" [ref=e53]:
+            - /placeholder: Descrivi il risultato e specifica ciò che deve rimanere invariato…
+          - paragraph [ref=e54]: Analizza la foto sorgente quando presente
+          - generic [ref=e55]:
+            - generic [ref=e56]:
+              - generic [ref=e57]:
+                - generic [ref=e58]: Prompt random BigLove
+                - combobox "Prompt random BigLove" [ref=e59] [cursor=pointer]:
+                  - option "Gwen / Qwen Image Edit" [selected]
+                  - option "Klein / Flux.2 Klein"
+                  - option "Mix tra Gwen e Klein"
+              - generic [ref=e60]:
+                - generic [ref=e61]: Come inserirlo
+                - combobox "Come inserirlo" [ref=e62] [cursor=pointer]:
+                  - option "Sostituisci prompt" [selected]
+                  - option "Aggiungi alla mia idea"
+                  - option "Usalo come base + mia idea"
+            - generic [ref=e63]:
+              - button "🎲 Prompt random" [ref=e64] [cursor=pointer]
+              - button "↻ Riprova" [ref=e65] [cursor=pointer]
+              - generic [ref=e66]: "Wildcard locali per image2image: carichi una foto, peschi una scena e poi generi."
+        - generic [ref=e67]:
+          - generic [ref=e68]: Prompt negativo
+          - textbox "Prompt negativo" [ref=e69]:
+            - /placeholder: Artefatti o modifiche da evitare…
+        - generic [ref=e70]:
+          - generic [ref=e71]:
+            - generic [ref=e72]: Comportamento
+            - combobox "Comportamento" [ref=e73] [cursor=pointer]:
+              - option "Conservativo"
+              - option "Bilanciato" [selected]
+              - option "Creativo"
+          - generic [ref=e74]:
+            - generic [ref=e75]: Alternative
+            - combobox "Alternative" [ref=e76] [cursor=pointer]:
+              - option "2" [selected]
+              - option "3"
+              - option "4"
+          - generic [ref=e77]:
+            - generic [ref=e78]: Ambito
+            - combobox "Ambito" [ref=e79] [cursor=pointer]:
+              - option "Locale / maschera" [selected]
+              - option "Globale"
+          - generic [ref=e80]:
+            - generic [ref=e81]: Seed
+            - textbox "Seed" [ref=e82]:
+              - /placeholder: Random
+        - generic [ref=e83]:
+          - paragraph [ref=e84]: Controlli di fedeltà
+          - generic [ref=e85]:
+            - checkbox "Riduzione rumore locale molto leggera sulla copia di lavoro (senza RTX; l’originale resta intatto)" [checked] [ref=e86]
+            - text: Riduzione rumore locale molto leggera sulla copia di lavoro (senza RTX; l’originale resta intatto)
+          - generic [ref=e87]:
+            - generic [ref=e88]:
+              - generic [ref=e89]: Conservazione originale %
+              - spinbutton "Conservazione originale %" [ref=e90]: "100"
+            - generic [ref=e91]:
+              - generic [ref=e92]: Intensità modifica %
+              - spinbutton "Intensità modifica %" [ref=e93]: "50"
+            - generic [ref=e94]:
+              - generic [ref=e95]: Aderenza persona %
+              - spinbutton "Aderenza persona %" [ref=e96]: "80"
+            - generic [ref=e97]:
+              - generic [ref=e98]: Aderenza posa %
+              - spinbutton "Aderenza posa %" [ref=e99]: "70"
+            - generic [ref=e100]:
+              - generic [ref=e101]: Libertà creativa %
+              - spinbutton "Libertà creativa %" [ref=e102]: "30"
+        - generic [ref=e103]:
+          - paragraph [ref=e104]: Modelli per gli stadi
+          - generic [ref=e105]:
+            - generic [ref=e106]:
+              - generic [ref=e107]: Flux.2 bozze
+              - combobox "Flux.2 bozze" [ref=e108] [cursor=pointer]
+            - generic [ref=e109]:
+              - generic [ref=e110]: Flux.2 qualità
+              - combobox "Flux.2 qualità" [ref=e111] [cursor=pointer]
+            - generic [ref=e112]:
+              - generic [ref=e113]: Z-Image bozze
+              - combobox "Z-Image bozze" [ref=e114] [cursor=pointer]
+            - generic [ref=e115]:
+              - generic [ref=e116]: Flux.1 refine
+              - combobox "Flux.1 refine" [ref=e117] [cursor=pointer]
+        - generic [ref=e120]:
+          - generic [ref=e121]:
+            - paragraph [ref=e122]: SCENE INTEGRATION
+            - heading "Integra soggetto e scena" [level=3] [ref=e123]
+            - paragraph [ref=e124]: Analizza luce, colore, camera, profondità, movimento e texture prima della generazione.
+          - generic [ref=e125]:
+            - checkbox "Abilita" [ref=e126]
+            - generic [ref=e127]: Abilita
+        - generic [ref=e128]:
+          - paragraph [ref=e129]: Output master
+          - generic [ref=e130]:
+            - generic [ref=e131]:
+              - generic [ref=e132]: Upscale finale
+              - combobox "Upscale finale" [ref=e133] [cursor=pointer]:
+                - option "Stessa risoluzione / nessun upscale"
+                - option "SeedVR2 Leggero · 3B FP8" [selected]
+                - option "SeedVR2 Massimo · 7B FP16"
+                - option "RTX VSR · veloce e fedele"
+                - option "RealESRGAN 2× · tradizionale"
+            - generic [ref=e134]:
+              - checkbox "Conserva anche lo stadio prima dell’upscale" [checked] [ref=e135]
+              - text: Conserva anche lo stadio prima dell’upscale
+        - generic [ref=e137]:
+          - generic [ref=e138]:
+            - paragraph [ref=e139]: LoRA aggiuntive
+            - paragraph [ref=e140]: Filtrate per la famiglia usata nello stadio.
+          - button "＋ LoRA" [ref=e141] [cursor=pointer]
+        - button "Crea progetto→" [ref=e142] [cursor=pointer]
+        - alert
+      - complementary [ref=e143]:
+        - generic [ref=e144]:
+          - generic [ref=e145]:
+            - generic [ref=e146]: "02"
+            - generic [ref=e147]:
+              - heading "Progetti guidati" [level=2] [ref=e148]
+              - paragraph [ref=e149]: Bozze, selezioni, master e clip
+          - paragraph [ref=e150]: Nessun progetto Studio.
+  - status

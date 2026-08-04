@@ -1,0 +1,711 @@
+{
+  "75": {
+    "inputs": {
+      "filename_prefix": "video/LTX2.3_DevFP8_I2V",
+      "format": "mp4",
+      "codec": "auto",
+      "video": [
+        "122",
+        0
+      ]
+    },
+    "class_type": "SaveVideo",
+    "_meta": {
+      "title": "SALVA VIDEO FINALE • I2V"
+    }
+  },
+  "103": {
+    "inputs": {
+      "cfg": 1,
+      "model": [
+        "290",
+        0
+      ],
+      "positive": [
+        "107",
+        0
+      ],
+      "negative": [
+        "107",
+        1
+      ]
+    },
+    "class_type": "CFGGuider",
+    "_meta": {
+      "title": "CFG Guider"
+    }
+  },
+  "104": {
+    "inputs": {
+      "upscale_method": "lanczos",
+      "scale_by": 0.5,
+      "image": [
+        "111",
+        0
+      ]
+    },
+    "class_type": "ImageScaleBy",
+    "_meta": {
+      "title": "Upscale Image By"
+    }
+  },
+  "105": {
+    "inputs": {
+      "image": [
+        "104",
+        0
+      ]
+    },
+    "class_type": "GetImageSize",
+    "_meta": {
+      "title": "Get Image Size"
+    }
+  },
+  "107": {
+    "inputs": {
+      "frame_rate": [
+        "233",
+        0
+      ],
+      "positive": [
+        "121",
+        0
+      ],
+      "negative": [
+        "110",
+        0
+      ]
+    },
+    "class_type": "LTXVConditioning",
+    "_meta": {
+      "title": "LTXVConditioning"
+    }
+  },
+  "108": {
+    "inputs": {
+      "width": [
+        "105",
+        0
+      ],
+      "height": [
+        "105",
+        1
+      ],
+      "length": [
+        "235",
+        1
+      ],
+      "batch_size": 1
+    },
+    "class_type": "EmptyLTXVLatentVideo",
+    "_meta": {
+      "title": "EmptyLTXVLatentVideo"
+    }
+  },
+  "109": {
+    "inputs": {
+      "video_latent": [
+        "153",
+        0
+      ],
+      "audio_latent": [
+        "171",
+        0
+      ]
+    },
+    "class_type": "LTXVConcatAVLatent",
+    "_meta": {
+      "title": "LTXVConcatAVLatent"
+    }
+  },
+  "110": {
+    "inputs": {
+      "text": "deformed anatomy, distorted face, identity drift, facial morphing, asymmetrical eyes, warped hands, extra fingers, fused fingers, duplicated limbs, extra legs, broken joints, unnatural walking cycle, sliding feet, floating steps, stiff body, exaggerated hip movement, unstable proportions, body reshaping, breast deformation, clothing changes, wardrobe morphing, disappearing accessories, hair changing style or color, flickering braids, temporal flicker, frame jitter, camera shake, sudden zoom jumps, incorrect camera direction, discontinuous movement, pose reset after hard cut, teleportation, scene change, background warping, bending architecture, moving walls, duplicated objects, inconsistent lighting, overexposure, crushed shadows, excessive motion blur, low detail, plastic skin, oversmoothing, subtitles, text, dialogue, lip movement, singing, narration",
+      "clip": [
+        "273",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "PROMPT NEGATIVO • ANTI LOOK IA"
+    }
+  },
+  "111": {
+    "inputs": {
+      "width": [
+        "237",
+        0
+      ],
+      "height": [
+        "238",
+        0
+      ],
+      "batch_size": 1,
+      "color": 0
+    },
+    "class_type": "EmptyImage",
+    "_meta": {
+      "title": "Empty Image"
+    }
+  },
+  "114": {
+    "inputs": {
+      "noise_seed": 732185017912966
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "RandomNoise"
+    }
+  },
+  "115": {
+    "inputs": {
+      "noise_seed": 178742904567063
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "RandomNoise"
+    }
+  },
+  "116": {
+    "inputs": {
+      "av_latent": [
+        "172",
+        0
+      ]
+    },
+    "class_type": "LTXVSeparateAVLatent",
+    "_meta": {
+      "title": "LTXVSeparateAVLatent"
+    }
+  },
+  "117": {
+    "inputs": {
+      "video_latent": [
+        "154",
+        0
+      ],
+      "audio_latent": [
+        "116",
+        1
+      ]
+    },
+    "class_type": "LTXVConcatAVLatent",
+    "_meta": {
+      "title": "LTXVConcatAVLatent"
+    }
+  },
+  "118": {
+    "inputs": {
+      "samples": [
+        "116",
+        0
+      ],
+      "upscale_model": [
+        "267",
+        0
+      ],
+      "vae": [
+        "270",
+        2
+      ]
+    },
+    "class_type": "LTXVLatentUpsampler",
+    "_meta": {
+      "title": "spatial"
+    }
+  },
+  "119": {
+    "inputs": {
+      "noise": [
+        "114",
+        0
+      ],
+      "guider": [
+        "103",
+        0
+      ],
+      "sampler": [
+        "136",
+        0
+      ],
+      "sigmas": [
+        "463",
+        1
+      ],
+      "latent_image": [
+        "117",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "SamplerCustomAdvanced"
+    }
+  },
+  "121": {
+    "inputs": {
+      "text": "Starting from the reference image, create a tightly paced 10-second cinematic sequence with two clearly separated shots and one unmistakable hard cut. Shot 1, 0.0–4.2 seconds: the woman immediately walks straight toward the camera at a brisk natural pace while the camera rapidly tracks backward. Begin in a medium full shot, then perform a fast push-in to a close-up of her face by 2.5 seconds. Hold the face briefly, then tilt down quickly to frame her torso and upper body by 4.2 seconds. Her braids sway, clothing reacts naturally, footsteps remain grounded, and her body motion stays fluid. At exactly 4.2 seconds, execute an abrupt hard cut with no transition, no dissolve, no motion continuity blending, and no camera interpolation. Shot 2, 4.2–10.0 seconds: instantly switch to a side-profile tracking view of the same woman already continuing the same walk in the same direction. Begin with a tight shot of her moving legs and boots, then smoothly tilt and push upward along her body from legs to hips, torso, shoulders, and face, reaching her face by 8.6 seconds. From 8.6 to 9.4 seconds she slows and stops naturally. From 9.4 to 10.0 seconds she turns only her head toward the camera and holds a confident final look. Keep the timing strict, the camera movements fast and readable, the two shots visually distinct, and the hard cut clearly visible. Background music only, cinematic rhythmic instrumental, no dialogue, no narration, no singing, no lip movement.\n",
+      "clip": [
+        "273",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "PROMPT POSITIVO • INCOLLA QUI DA CHATGPT"
+    }
+  },
+  "122": {
+    "inputs": {
+      "fps": [
+        "233",
+        0
+      ],
+      "bit_depth": 8,
+      "images": [
+        "126",
+        0
+      ],
+      "audio": [
+        "127",
+        0
+      ]
+    },
+    "class_type": "CreateVideo",
+    "_meta": {
+      "title": "CREA VIDEO • PERCORSO SELEZIONATO + AUDIO LTX"
+    }
+  },
+  "124": {
+    "inputs": {
+      "av_latent": [
+        "464",
+        0
+      ]
+    },
+    "class_type": "LTXVSeparateAVLatent",
+    "_meta": {
+      "title": "LTXVSeparateAVLatent"
+    }
+  },
+  "126": {
+    "inputs": {
+      "tile_size": 512,
+      "overlap": 64,
+      "temporal_size": 2048,
+      "temporal_overlap": 8,
+      "samples": [
+        "124",
+        0
+      ],
+      "vae": [
+        "270",
+        2
+      ]
+    },
+    "class_type": "VAEDecodeTiled",
+    "_meta": {
+      "title": "VAE Decode (Tiled)"
+    }
+  },
+  "127": {
+    "inputs": {
+      "samples": [
+        "124",
+        1
+      ],
+      "audio_vae": [
+        "271",
+        0
+      ]
+    },
+    "class_type": "LTXVAudioVAEDecode",
+    "_meta": {
+      "title": "LTXV Audio VAE Decode"
+    }
+  },
+  "128": {
+    "inputs": {
+      "cfg": 1,
+      "model": [
+        "290",
+        0
+      ],
+      "positive": [
+        "107",
+        0
+      ],
+      "negative": [
+        "107",
+        1
+      ]
+    },
+    "class_type": "CFGGuider",
+    "_meta": {
+      "title": "CFG Guider"
+    }
+  },
+  "135": {
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSamplerSelect"
+    }
+  },
+  "136": {
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSamplerSelect"
+    }
+  },
+  "149": {
+    "inputs": {
+      "image": "ChatGPT Image 23 lug 2026, 17_47_47.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "151": {
+    "inputs": {
+      "longer_edge": 1024,
+      "images": [
+        "149",
+        0
+      ]
+    },
+    "class_type": "ResizeImagesByLongerEdge",
+    "_meta": {
+      "title": "Resize Images by Longer Edge (DEPRECATED)"
+    }
+  },
+  "152": {
+    "inputs": {
+      "img_compression": 18,
+      "image": [
+        "151",
+        0
+      ]
+    },
+    "class_type": "LTXVPreprocess",
+    "_meta": {
+      "title": "LTXV Preprocess"
+    }
+  },
+  "153": {
+    "inputs": {
+      "strength": 0.8,
+      "bypass": [
+        "239",
+        0
+      ],
+      "vae": [
+        "270",
+        2
+      ],
+      "image": [
+        "152",
+        0
+      ],
+      "latent": [
+        "108",
+        0
+      ]
+    },
+    "class_type": "LTXVImgToVideoInplace",
+    "_meta": {
+      "title": "LTXVImgToVideoInplace"
+    }
+  },
+  "154": {
+    "inputs": {
+      "strength": 0.8,
+      "bypass": false,
+      "vae": [
+        "270",
+        2
+      ],
+      "image": [
+        "152",
+        0
+      ],
+      "latent": [
+        "118",
+        0
+      ]
+    },
+    "class_type": "LTXVImgToVideoInplace",
+    "_meta": {
+      "title": "LTXVImgToVideoInplace"
+    }
+  },
+  "171": {
+    "inputs": {
+      "frames_number": [
+        "235",
+        1
+      ],
+      "frame_rate": [
+        "286",
+        0
+      ],
+      "batch_size": 1,
+      "audio_vae": [
+        "271",
+        0
+      ]
+    },
+    "class_type": "LTXVEmptyLatentAudio",
+    "_meta": {
+      "title": "LTXV Empty Latent Audio"
+    }
+  },
+  "172": {
+    "inputs": {
+      "noise": [
+        "115",
+        0
+      ],
+      "guider": [
+        "128",
+        0
+      ],
+      "sampler": [
+        "135",
+        0
+      ],
+      "sigmas": [
+        "463",
+        0
+      ],
+      "latent_image": [
+        "109",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "SamplerCustomAdvanced"
+    }
+  },
+  "233": {
+    "inputs": {
+      "value": 24
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "FPS"
+    }
+  },
+  "235": {
+    "inputs": {
+      "expression": "1+ 8*(round(a*b)/8)",
+      "a": [
+        "236",
+        0
+      ],
+      "b": [
+        "233",
+        0
+      ]
+    },
+    "class_type": "SimpleCalculatorKJ",
+    "_meta": {
+      "title": "SimpleCalculatorKJ"
+    }
+  },
+  "236": {
+    "inputs": {
+      "value": 10
+    },
+    "class_type": "INTConstant",
+    "_meta": {
+      "title": "INT Constant"
+    }
+  },
+  "237": {
+    "inputs": {
+      "value": 576
+    },
+    "class_type": "INTConstant",
+    "_meta": {
+      "title": "INT Constant"
+    }
+  },
+  "238": {
+    "inputs": {
+      "value": 1024
+    },
+    "class_type": "INTConstant",
+    "_meta": {
+      "title": "INT Constant"
+    }
+  },
+  "239": {
+    "inputs": {
+      "value": false
+    },
+    "class_type": "PrimitiveBoolean",
+    "_meta": {
+      "title": "是否开启文生图（开启为T2V）"
+    }
+  },
+  "267": {
+    "inputs": {
+      "model_name": "ltx-2.3-spatial-upscaler-x2-1.1.safetensors"
+    },
+    "class_type": "LatentUpscaleModelLoader",
+    "_meta": {
+      "title": "Load Latent Upscale Model"
+    }
+  },
+  "270": {
+    "inputs": {
+      "ckpt_name": "ltx-2.3-22b-dev-fp8.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "LTX 2.3 DEV FP8 • MODELLO PRINCIPALE"
+    }
+  },
+  "271": {
+    "inputs": {
+      "ckpt_name": "ltx-2.3-22b-dev-fp8.safetensors"
+    },
+    "class_type": "LTXVAudioVAELoader",
+    "_meta": {
+      "title": "LTX 2.3 DEV FP8 • AUDIO VAE"
+    }
+  },
+  "273": {
+    "inputs": {
+      "text_encoder": "gemma_3_12B_it_fp8_scaled.safetensors",
+      "ckpt_name": "ltx-2.3-22b-dev-fp8.safetensors",
+      "device": "default"
+    },
+    "class_type": "LTXAVTextEncoderLoader",
+    "_meta": {
+      "title": "LTXV Audio Text Encoder Loader"
+    }
+  },
+  "274": {
+    "inputs": {
+      "lora_name": "LTX2.3\\ltx-2.3-22b-distilled-lora-384-1.1.safetensors",
+      "strength_model": 0.5,
+      "model": [
+        "270",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "DISTILLED LoRA 384 v1.1 • STRENGTH 0.50"
+    }
+  },
+  "286": {
+    "inputs": {
+      "a": [
+        "233",
+        0
+      ]
+    },
+    "class_type": "CM_FloatToInt",
+    "_meta": {
+      "title": "FloatToInt"
+    }
+  },
+  "288": {
+    "inputs": {
+      "enable_fp16_accumulation": true,
+      "model": [
+        "289",
+        0
+      ]
+    },
+    "class_type": "ModelPatchTorchSettings",
+    "_meta": {
+      "title": "Model Patch Torch Settings"
+    }
+  },
+  "289": {
+    "inputs": {
+      "sage_attention": "auto",
+      "allow_compile": false,
+      "model": [
+        "466",
+        0
+      ]
+    },
+    "class_type": "PathchSageAttentionKJ",
+    "_meta": {
+      "title": "Patch Sage Attention KJ"
+    }
+  },
+  "290": {
+    "inputs": {
+      "chunks": 4,
+      "dim_threshold": 4096,
+      "model": [
+        "288",
+        0
+      ]
+    },
+    "class_type": "LTXVChunkFeedForward",
+    "_meta": {
+      "title": "LTXV Chunk FeedForward (optional)"
+    }
+  },
+  "463": {
+    "inputs": {
+      "modalita": "QUALITA MASSIMA • FINALE",
+      "sigmas_anteprima_passaggio_1": "1.0, 0.909375, 0.725, 0.421875, 0.0",
+      "sigmas_massimi_passaggio_1": "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0",
+      "sigmas_massimi_passaggio_2": "0.85, 0.7250, 0.4219, 0.0"
+    },
+    "class_type": "LTXQualityProfile",
+    "_meta": {
+      "title": "ANTEPRIMA ULTRA / QUALITÀ MASSIMA • SEED INVARIATO"
+    }
+  },
+  "464": {
+    "inputs": {
+      "switch": [
+        "463",
+        2
+      ],
+      "on_false": [
+        "172",
+        0
+      ],
+      "on_true": [
+        "119",
+        1
+      ]
+    },
+    "class_type": "LazySwitchKJ",
+    "_meta": {
+      "title": "FALSE=ANTEPRIMA PASSAGGIO 1 / TRUE=MASSIMA PASSAGGIO 2"
+    }
+  },
+  "466": {
+    "inputs": {
+      "lora_name": "LTX2.3\\LTX2.3_breastsway.safetensors",
+      "strength_model": 1,
+      "model": [
+        "274",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "DISTILLED LoRA 384 v1.1 • STRENGTH 0.50"
+    }
+  }
+}

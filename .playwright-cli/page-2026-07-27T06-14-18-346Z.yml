@@ -1,0 +1,746 @@
+- generic [active] [ref=f4e1]:
+  - banner [ref=f4e2]:
+    - link [ref=f4e3] [cursor=pointer]:
+      - /url: /
+    - generic [ref=f4e5]:
+      - navigation "Navigazione principale" [ref=f4e6]:
+        - link "Genera" [ref=f4e7] [cursor=pointer]:
+          - /url: /
+        - link "Image Studio" [ref=f4e8] [cursor=pointer]:
+          - /url: /studio.html
+        - link "Guida" [ref=f4e9] [cursor=pointer]:
+          - /url: /workflow-guide.html
+        - link "Generazioni" [ref=f4e10] [cursor=pointer]:
+          - /url: /generations.html
+      - generic [ref=f4e11]: ComfyUI online
+  - main [ref=f4e13]:
+    - generic [ref=f4e15]:
+      - paragraph [ref=f4e16]: MANUALE OPERATIVO / 10 WORKFLOW
+      - heading [level=1] [ref=f4e17]:
+        - text: Scegli il percorso
+        - emphasis [ref=f4e18]: giusto.
+      - paragraph [ref=f4e19]: Scopri quando usare ogni workflow, cosa preparare e le impostazioni da cui partire.
+    - generic [ref=f4e20]:
+      - complementary "Indice workflow" [ref=f4e21]:
+        - generic [ref=f4e22]:
+          - generic [ref=f4e23]: Trova un workflow
+          - searchbox "Trova un workflow" [ref=f4e24]
+        - navigation [ref=f4e25]:
+          - link "01 Smartphone Photo Editor Editing fotografico" [ref=f4e26] [cursor=pointer]:
+            - /url: "#smartphone"
+            - generic [ref=f4e27]: "01"
+            - generic [ref=f4e28]: Smartphone Photo Editor
+            - generic [ref=f4e29]: Editing fotografico
+          - link "02 Smart Image Editor Editing versatile" [ref=f4e30] [cursor=pointer]:
+            - /url: "#smartEditor"
+            - generic [ref=f4e31]: "02"
+            - generic [ref=f4e32]: Smart Image Editor
+            - generic [ref=f4e33]: Editing versatile
+          - link "03 Inpainting intelligente Editing locale" [ref=f4e34] [cursor=pointer]:
+            - /url: "#inpaint"
+            - generic [ref=f4e35]: "03"
+            - generic [ref=f4e36]: Inpainting intelligente
+            - generic [ref=f4e37]: Editing locale
+          - link "04 Multi-Reference Composer Composizione" [ref=f4e38] [cursor=pointer]:
+            - /url: "#multiReference"
+            - generic [ref=f4e39]: "04"
+            - generic [ref=f4e40]: Multi-Reference Composer
+            - generic [ref=f4e41]: Composizione
+          - link "05 Storyboard Director Sequenza" [ref=f4e42] [cursor=pointer]:
+            - /url: "#storyboard"
+            - generic [ref=f4e43]: "05"
+            - generic [ref=f4e44]: Storyboard Director
+            - generic [ref=f4e45]: Sequenza
+          - link "06 LTX First / Last Frame Animazione" [ref=f4e46] [cursor=pointer]:
+            - /url: "#firstLast"
+            - generic [ref=f4e47]: "06"
+            - generic [ref=f4e48]: LTX First / Last Frame
+            - generic [ref=f4e49]: Animazione
+          - link "07 Character & Location Bible Continuità" [ref=f4e50] [cursor=pointer]:
+            - /url: "#bible"
+            - generic [ref=f4e51]: "07"
+            - generic [ref=f4e52]: Character & Location Bible
+            - generic [ref=f4e53]: Continuità
+          - link "08 Camera, posa e composizione Regia" [ref=f4e54] [cursor=pointer]:
+            - /url: "#camera"
+            - generic [ref=f4e55]: "08"
+            - generic [ref=f4e56]: Camera, posa e composizione
+            - generic [ref=f4e57]: Regia
+          - link "09 Relighting e continuità Luce e look" [ref=f4e58] [cursor=pointer]:
+            - /url: "#relight"
+            - generic [ref=f4e59]: "09"
+            - generic [ref=f4e60]: Relighting e continuità
+            - generic [ref=f4e61]: Luce e look
+          - link "10 Perfect Image Studio Pipeline completa" [ref=f4e62] [cursor=pointer]:
+            - /url: "#perfect"
+            - generic [ref=f4e63]: "10"
+            - generic [ref=f4e64]: Perfect Image Studio
+            - generic [ref=f4e65]: Pipeline completa
+      - generic [ref=f4e66]:
+        - generic [ref=f4e67]:
+          - paragraph [ref=f4e68]: SCELTA RAPIDA
+          - heading "Da dove parto?" [level=2] [ref=f4e69]
+          - generic [ref=f4e70]:
+            - link "Modifico una foto reale Smartphone Photo Editor →" [ref=f4e71] [cursor=pointer]:
+              - /url: "#smartphone"
+              - generic [ref=f4e72]: Modifico una foto reale
+              - generic [ref=f4e73]: Smartphone Photo Editor →
+            - link "Creo una sequenza Storyboard Director →" [ref=f4e74] [cursor=pointer]:
+              - /url: "#storyboard"
+              - generic [ref=f4e75]: Creo una sequenza
+              - generic [ref=f4e76]: Storyboard Director →
+            - link "Animo due frame LTX First / Last Frame →" [ref=f4e77] [cursor=pointer]:
+              - /url: "#firstLast"
+              - generic [ref=f4e78]: Animo due frame
+              - generic [ref=f4e79]: LTX First / Last Frame →
+            - link "Creo un master da zero Perfect Image Studio →" [ref=f4e80] [cursor=pointer]:
+              - /url: "#perfect"
+              - generic [ref=f4e81]: Creo un master da zero
+              - generic [ref=f4e82]: Perfect Image Studio →
+        - generic [ref=f4e83]:
+          - article [ref=f4e84]:
+            - generic [ref=f4e85]:
+              - generic [ref=f4e86]:
+                - paragraph [ref=f4e87]: 01 / Editing fotografico
+                - heading "Smartphone Photo Editor" [level=2] [ref=f4e88]
+                - paragraph [ref=f4e89]: Inserisce, sostituisce o corregge elementi in una fotografia reale proteggendo il resto dello scatto.
+              - generic [ref=f4e90]: Consigliato
+            - generic [ref=f4e91]:
+              - generic [ref=f4e92]:
+                - heading "Ideale per" [level=3] [ref=f4e93]
+                - list [ref=f4e94]:
+                  - listitem [ref=f4e95]: Foto da smartphone
+                  - listitem [ref=f4e96]: Inserimento di persone o oggetti
+                  - listitem [ref=f4e97]: Modifiche realistiche e localizzate
+              - generic [ref=f4e98]:
+                - heading "Cosa preparare" [level=3] [ref=f4e99]
+                - list [ref=f4e100]:
+                  - listitem [ref=f4e101]: Fotografia principale
+                  - listitem [ref=f4e102]: Maschera manuale oppure elemento da trovare automaticamente
+                  - listitem [ref=f4e103]: Prompt della sola modifica
+                  - listitem [ref=f4e104]: Reference facoltative per persona, posa o stile
+            - generic [ref=f4e105]:
+              - heading "Come usarlo" [level=3] [ref=f4e106]
+              - list [ref=f4e107]:
+                - listitem [ref=f4e108]:
+                  - generic [ref=f4e109]:
+                    - generic [ref=f4e110]: Carica e delimita
+                    - paragraph [ref=f4e111]: Carica l’originale e maschera la zona da modificare. Per un inserimento lascia spazio anche a ombre e riflessi.
+                - listitem [ref=f4e112]:
+                  - generic [ref=f4e113]:
+                    - generic [ref=f4e114]: Descrivi l’integrazione
+                    - paragraph [ref=f4e115]: Indica soggetto, posizione, scala, luce, prospettiva e interazione con l’ambiente.
+                - listitem [ref=f4e116]:
+                  - generic [ref=f4e117]:
+                    - generic [ref=f4e118]: Confronta le bozze
+                    - paragraph [ref=f4e119]: Genera 2–4 alternative, seleziona la più credibile e continua con lo stadio qualità.
+                - listitem [ref=f4e120]:
+                  - generic [ref=f4e121]:
+                    - generic [ref=f4e122]: Rifinisci
+                    - paragraph [ref=f4e123]: Usa detailer e upscale soltanto dopo avere approvato composizione e anatomia.
+            - generic [ref=f4e124]:
+              - heading "Impostazioni consigliate" [level=3] [ref=f4e125]
+              - generic [ref=f4e126]:
+                - generic [ref=f4e127]:
+                  - generic [ref=f4e128]: Maschera
+                  - generic [ref=f4e129]: Grow 32 · Feather 24
+                  - paragraph [ref=f4e130]: Buon punto di partenza per bordi naturali.
+                - generic [ref=f4e131]:
+                  - generic [ref=f4e132]: Contesto
+                  - generic [ref=f4e133]: 35%
+                  - paragraph [ref=f4e134]: Permette al modello di ricostruire luce, ombre e riflessi vicini.
+                - generic [ref=f4e135]:
+                  - generic [ref=f4e136]: Comportamento
+                  - generic [ref=f4e137]: Conservativo o Bilanciato
+                  - paragraph [ref=f4e138]: Mantiene più fedelmente la fotografia originale.
+                - generic [ref=f4e139]:
+                  - generic [ref=f4e140]: Alternative
+                  - generic [ref=f4e141]: "3"
+                  - paragraph [ref=f4e142]: Offre scelta senza occupare inutilmente VRAM e coda.
+            - complementary [ref=f4e143]:
+              - text: Esempio prompt
+              - paragraph [ref=f4e144]: Aggiungi una donna adulta in bikini dentro la piscina, scala realistica, corpo parzialmente immerso, riflessi e increspature coerenti, stessa luce solare e prospettiva della foto.
+            - generic [ref=f4e145]:
+              - heading "Accorgimenti" [level=3] [ref=f4e146]
+              - list [ref=f4e147]:
+                - listitem [ref=f4e148]: Maschera anche l’area dell’acqua che deve reagire al soggetto.
+                - listitem [ref=f4e149]: Una reference della persona migliora identità e abbigliamento.
+                - listitem [ref=f4e150]: Se i bordi sembrano incollati, aumenta Feather prima di alzare la creatività.
+            - link "Usa questo workflow" [ref=f4e152] [cursor=pointer]:
+              - /url: /studio.html?workflow=smartphone
+              - text: Usa questo workflow
+              - generic [ref=f4e153]: →
+          - article [ref=f4e154]:
+            - generic [ref=f4e155]:
+              - generic [ref=f4e156]:
+                - paragraph [ref=f4e157]: 02 / Editing versatile
+                - heading "Smart Image Editor" [level=2] [ref=f4e158]
+                - paragraph [ref=f4e159]: Editor Flux.2 generale per correzioni locali o trasformazioni dell’intera immagine.
+              - generic [ref=f4e160]: Facile
+            - generic [ref=f4e161]:
+              - generic [ref=f4e162]:
+                - heading "Ideale per" [level=3] [ref=f4e163]
+                - list [ref=f4e164]:
+                  - listitem [ref=f4e165]: Cambio abito o stile
+                  - listitem [ref=f4e166]: Rimozione e sostituzione
+                  - listitem [ref=f4e167]: Trasformazioni globali controllate
+              - generic [ref=f4e168]:
+                - heading "Cosa preparare" [level=3] [ref=f4e169]
+                - list [ref=f4e170]:
+                  - listitem [ref=f4e171]: Immagine sorgente
+                  - listitem [ref=f4e172]: Prompt di modifica
+                  - listitem [ref=f4e173]: Maschera se la modifica è locale
+                  - listitem [ref=f4e174]: Reference facoltative
+            - generic [ref=f4e175]:
+              - heading "Come usarlo" [level=3] [ref=f4e176]
+              - list [ref=f4e177]:
+                - listitem [ref=f4e178]:
+                  - generic [ref=f4e179]:
+                    - generic [ref=f4e180]: Scegli l’ambito
+                    - paragraph [ref=f4e181]: Usa Locale per proteggere lo scatto; Globale quando luce, stile o ambiente devono cambiare insieme.
+                - listitem [ref=f4e182]:
+                  - generic [ref=f4e183]:
+                    - generic [ref=f4e184]: Scegli il comportamento
+                    - paragraph [ref=f4e185]: Conservativo conserva struttura, Bilanciato media fedeltà e libertà, Creativo reinterpreta maggiormente.
+                - listitem [ref=f4e186]:
+                  - generic [ref=f4e187]:
+                    - generic [ref=f4e188]: Genera e seleziona
+                    - paragraph [ref=f4e189]: Confronta le varianti prima della rifinitura finale.
+            - generic [ref=f4e190]:
+              - heading "Impostazioni consigliate" [level=3] [ref=f4e191]
+              - generic [ref=f4e192]:
+                - generic [ref=f4e193]:
+                  - generic [ref=f4e194]: Ambito
+                  - generic [ref=f4e195]: Locale per oggetti
+                  - paragraph [ref=f4e196]: Evita modifiche involontarie fuori dalla zona interessata.
+                - generic [ref=f4e197]:
+                  - generic [ref=f4e198]: Aderenza reference
+                  - generic [ref=f4e199]: 70–85%
+                  - paragraph [ref=f4e200]: Alzala quando identità o costume devono essere precisi.
+                - generic [ref=f4e201]:
+                  - generic [ref=f4e202]: Libertà creativa
+                  - generic [ref=f4e203]: 20–40%
+                  - paragraph [ref=f4e204]: Intervallo affidabile per fotografie.
+            - complementary [ref=f4e205]:
+              - text: Esempio prompt
+              - paragraph [ref=f4e206]: Sostituisci la camicia con una giacca di lino bianca, mantieni volto, posa, corpo, sfondo, luce e resa fotografica originali.
+            - generic [ref=f4e207]:
+              - heading "Accorgimenti" [level=3] [ref=f4e208]
+              - list [ref=f4e209]:
+                - listitem [ref=f4e210]: Scrivi anche cosa deve restare invariato.
+                - listitem [ref=f4e211]: Passa a Creativo solo se Bilanciato non modifica abbastanza.
+            - link "Usa questo workflow" [ref=f4e213] [cursor=pointer]:
+              - /url: /studio.html?workflow=smartEditor
+              - text: Usa questo workflow
+              - generic [ref=f4e214]: →
+          - article [ref=f4e215]:
+            - generic [ref=f4e216]:
+              - generic [ref=f4e217]:
+                - paragraph [ref=f4e218]: 03 / Editing locale
+                - heading "Inpainting intelligente" [level=2] [ref=f4e219]
+                - paragraph [ref=f4e220]: Ricostruisce esclusivamente una zona dipinta a mano o identificata con SAM e GroundingDINO/Florence 2.
+              - generic [ref=f4e221]: Preciso
+            - generic [ref=f4e222]:
+              - generic [ref=f4e223]:
+                - heading "Ideale per" [level=3] [ref=f4e224]
+                - list [ref=f4e225]:
+                  - listitem [ref=f4e226]: Rimuovere oggetti
+                  - listitem [ref=f4e227]: Correggere dettagli
+                  - listitem [ref=f4e228]: Sostituire una porzione precisa
+              - generic [ref=f4e229]:
+                - heading "Cosa preparare" [level=3] [ref=f4e230]
+                - list [ref=f4e231]:
+                  - listitem [ref=f4e232]: Immagine sorgente
+                  - listitem [ref=f4e233]: Maschera manuale o automatica
+                  - listitem [ref=f4e234]: Descrizione del contenuto finale
+            - generic [ref=f4e235]:
+              - heading "Come usarlo" [level=3] [ref=f4e236]
+              - list [ref=f4e237]:
+                - listitem [ref=f4e238]:
+                  - generic [ref=f4e239]:
+                    - generic [ref=f4e240]: Crea la maschera
+                    - paragraph [ref=f4e241]: Copri tutto l’elemento e un piccolo margine circostante.
+                - listitem [ref=f4e242]:
+                  - generic [ref=f4e243]:
+                    - generic [ref=f4e244]: Controlla il contesto
+                    - paragraph [ref=f4e245]: Includi abbastanza ambiente perché texture e luce possano continuare.
+                - listitem [ref=f4e246]:
+                  - generic [ref=f4e247]:
+                    - generic [ref=f4e248]: Descrivi il risultato
+                    - paragraph [ref=f4e249]: Chiedi ciò che deve apparire nella zona, non il comando tecnico di cancellazione.
+            - generic [ref=f4e250]:
+              - heading "Impostazioni consigliate" [level=3] [ref=f4e251]
+              - generic [ref=f4e252]:
+                - generic [ref=f4e253]:
+                  - generic [ref=f4e254]: Maschera automatica
+                  - generic [ref=f4e255]: SAM rapido · Florence semantico
+                  - paragraph [ref=f4e256]: Florence è utile con descrizioni più complesse.
+                - generic [ref=f4e257]:
+                  - generic [ref=f4e258]: Grow
+                  - generic [ref=f4e259]: 24–48 px
+                  - paragraph [ref=f4e260]: Evita aloni del vecchio soggetto.
+                - generic [ref=f4e261]:
+                  - generic [ref=f4e262]: Feather
+                  - generic [ref=f4e263]: 16–32 px
+                  - paragraph [ref=f4e264]: Integra il bordo con la fotografia.
+            - complementary [ref=f4e265]:
+              - text: Esempio prompt
+              - paragraph [ref=f4e266]: Continua naturalmente il pavimento in pietra, stessa trama, prospettiva, luce e ombre della scena circostante.
+            - generic [ref=f4e267]:
+              - heading "Accorgimenti" [level=3] [ref=f4e268]
+              - list [ref=f4e269]:
+                - listitem [ref=f4e270]: Per rimuovere, descrivi lo sfondo che dovrebbe esserci dietro.
+                - listitem [ref=f4e271]: Maschere troppo strette tendono a lasciare contorni residui.
+            - link "Usa questo workflow" [ref=f4e273] [cursor=pointer]:
+              - /url: /studio.html?workflow=inpaint
+              - text: Usa questo workflow
+              - generic [ref=f4e274]: →
+          - article [ref=f4e275]:
+            - generic [ref=f4e276]:
+              - generic [ref=f4e277]:
+                - paragraph [ref=f4e278]: 04 / Composizione
+                - heading "Multi-Reference Composer" [level=2] [ref=f4e279]
+                - paragraph [ref=f4e280]: Combina una scena principale con reference distinte per persona, posa e stile o costume.
+              - generic [ref=f4e281]: Avanzato
+            - generic [ref=f4e282]:
+              - generic [ref=f4e283]:
+                - heading "Ideale per" [level=3] [ref=f4e284]
+                - list [ref=f4e285]:
+                  - listitem [ref=f4e286]: Compositing guidato
+                  - listitem [ref=f4e287]: Identità più posa
+                  - listitem [ref=f4e288]: Prodotti o outfit con reference
+              - generic [ref=f4e289]:
+                - heading "Cosa preparare" [level=3] [ref=f4e290]
+                - list [ref=f4e291]:
+                  - listitem [ref=f4e292]: Immagine principale
+                  - listitem [ref=f4e293]: "Fino a tre reference: persona, posa, stile/costume"
+                  - listitem [ref=f4e294]: Prompt di composizione
+            - generic [ref=f4e295]:
+              - heading "Come usarlo" [level=3] [ref=f4e296]
+              - list [ref=f4e297]:
+                - listitem [ref=f4e298]:
+                  - generic [ref=f4e299]:
+                    - generic [ref=f4e300]: Assegna i ruoli
+                    - paragraph [ref=f4e301]: "Usa ogni slot per un solo scopo: identità, posa, stile/costume."
+                - listitem [ref=f4e302]:
+                  - generic [ref=f4e303]:
+                    - generic [ref=f4e304]: Definisci le priorità
+                    - paragraph [ref=f4e305]: Nel prompt chiarisci quale reference governa ogni caratteristica.
+                - listitem [ref=f4e306]:
+                  - generic [ref=f4e307]:
+                    - generic [ref=f4e308]: Bilancia l’aderenza
+                    - paragraph [ref=f4e309]: Aumenta persona o posa separatamente senza forzare tutte le reference.
+            - generic [ref=f4e310]:
+              - heading "Impostazioni consigliate" [level=3] [ref=f4e311]
+              - generic [ref=f4e312]:
+                - generic [ref=f4e313]:
+                  - generic [ref=f4e314]: Reference totali
+                  - generic [ref=f4e315]: Massimo 4 inclusa la principale
+                  - paragraph [ref=f4e316]: Riduce conflitti fra segnali visivi.
+                - generic [ref=f4e317]:
+                  - generic [ref=f4e318]: Aderenza persona
+                  - generic [ref=f4e319]: 75–90%
+                  - paragraph [ref=f4e320]: Per identità riconoscibile.
+                - generic [ref=f4e321]:
+                  - generic [ref=f4e322]: Aderenza posa
+                  - generic [ref=f4e323]: 60–80%
+                  - paragraph [ref=f4e324]: Lascia spazio all’adattamento prospettico.
+            - complementary [ref=f4e325]:
+              - text: Esempio prompt
+              - paragraph [ref=f4e326]: Inserisci la persona della reference 1 nella scena principale, usa la posa della reference 2 e l’abito della reference 3; conserva camera, luce e sfondo della scena.
+            - generic [ref=f4e327]:
+              - heading "Accorgimenti" [level=3] [ref=f4e328]
+              - list [ref=f4e329]:
+                - listitem [ref=f4e330]: Reference con angolazioni compatibili producono risultati più naturali.
+                - listitem [ref=f4e331]: Se il risultato mescola i ruoli, rimuovi la reference meno importante.
+            - link "Usa questo workflow" [ref=f4e333] [cursor=pointer]:
+              - /url: /studio.html?workflow=multiReference
+              - text: Usa questo workflow
+              - generic [ref=f4e334]: →
+          - article [ref=f4e335]:
+            - generic [ref=f4e336]:
+              - generic [ref=f4e337]:
+                - paragraph [ref=f4e338]: 05 / Sequenza
+                - heading "Storyboard Director" [level=2] [ref=f4e339]
+                - paragraph [ref=f4e340]: Crea 2–4 immagini consecutive condividendo personaggi, location, look e prompt globale.
+              - generic [ref=f4e341]: Guidato
+            - generic [ref=f4e342]:
+              - generic [ref=f4e343]:
+                - heading "Ideale per" [level=3] [ref=f4e344]
+                - list [ref=f4e345]:
+                  - listitem [ref=f4e346]: Previsualizzazione
+                  - listitem [ref=f4e347]: Sequenze da animare con LTX
+                  - listitem [ref=f4e348]: Narrazione coerente
+              - generic [ref=f4e349]:
+                - heading "Cosa preparare" [level=3] [ref=f4e350]
+                - list [ref=f4e351]:
+                  - listitem [ref=f4e352]: Prompt globale
+                  - listitem [ref=f4e353]: Descrizione separata di ogni shot
+                  - listitem [ref=f4e354]: Immagine master e reference facoltative
+            - generic [ref=f4e355]:
+              - heading "Come usarlo" [level=3] [ref=f4e356]
+              - list [ref=f4e357]:
+                - listitem [ref=f4e358]:
+                  - generic [ref=f4e359]:
+                    - generic [ref=f4e360]: Definisci la continuità
+                    - paragraph [ref=f4e361]: Nel prompt globale fissa personaggio, abito, luogo, luce, palette e formato.
+                - listitem [ref=f4e362]:
+                  - generic [ref=f4e363]:
+                    - generic [ref=f4e364]: Descrivi gli shot
+                    - paragraph [ref=f4e365]: Per ogni immagine cambia soprattutto azione e camera, senza riscrivere l’identità.
+                - listitem [ref=f4e366]:
+                  - generic [ref=f4e367]:
+                    - generic [ref=f4e368]: Approva la sequenza
+                    - paragraph [ref=f4e369]: Confronta gli shot e rigenera soltanto quelli incoerenti.
+                - listitem [ref=f4e370]:
+                  - generic [ref=f4e371]:
+                    - generic [ref=f4e372]: Anima
+                    - paragraph [ref=f4e373]: Usa coppie adiacenti come first/last frame per le transizioni LTX 2.3.
+            - generic [ref=f4e374]:
+              - heading "Impostazioni consigliate" [level=3] [ref=f4e375]
+              - generic [ref=f4e376]:
+                - generic [ref=f4e377]:
+                  - generic [ref=f4e378]: Shot
+                  - generic [ref=f4e379]: 3 come partenza
+                  - paragraph [ref=f4e380]: Establishing, medium, close-up formano una sequenza leggibile.
+                - generic [ref=f4e381]:
+                  - generic [ref=f4e382]: Comportamento
+                  - generic [ref=f4e383]: Conservativo
+                  - paragraph [ref=f4e384]: Aiuta la continuità fra immagini.
+                - generic [ref=f4e385]:
+                  - generic [ref=f4e386]: Seed
+                  - generic [ref=f4e387]: Fisso
+                  - paragraph [ref=f4e388]: Rende più ripetibili le iterazioni.
+            - complementary [ref=f4e389]:
+              - text: Esempio prompt
+              - paragraph [ref=f4e390]: Stessa donna adulta, costume rosso e piscina mediterranea al tramonto; realismo da smartphone, luce e palette costanti in tutti gli shot.
+            - generic [ref=f4e391]:
+              - heading "Accorgimenti" [level=3] [ref=f4e392]
+              - list [ref=f4e393]:
+                - listitem [ref=f4e394]: Evita salti estremi di lente o lato camera fra due frame da animare.
+                - listitem [ref=f4e395]: La Bible del personaggio può diventare la reference master.
+            - link "Usa questo workflow" [ref=f4e397] [cursor=pointer]:
+              - /url: /studio.html?workflow=storyboard
+              - text: Usa questo workflow
+              - generic [ref=f4e398]: →
+          - article [ref=f4e399]:
+            - generic [ref=f4e400]:
+              - generic [ref=f4e401]:
+                - paragraph [ref=f4e402]: 06 / Animazione
+                - heading "LTX First / Last Frame" [level=2] [ref=f4e403]
+                - paragraph [ref=f4e404]: Genera con LTX 2.3 il movimento che collega due fotogrammi approvati.
+              - generic [ref=f4e405]: Video
+            - generic [ref=f4e406]:
+              - generic [ref=f4e407]:
+                - heading "Ideale per" [level=3] [ref=f4e408]
+                - list [ref=f4e409]:
+                  - listitem [ref=f4e410]: Animare storyboard
+                  - listitem [ref=f4e411]: Transizioni controllate
+                  - listitem [ref=f4e412]: Movimenti camera e soggetto
+              - generic [ref=f4e413]:
+                - heading "Cosa preparare" [level=3] [ref=f4e414]
+                - list [ref=f4e415]:
+                  - listitem [ref=f4e416]: Primo frame
+                  - listitem [ref=f4e417]: Ultimo frame
+                  - listitem [ref=f4e418]: Prompt del movimento
+                  - listitem [ref=f4e419]: Durata, camera e intensità
+            - generic [ref=f4e420]:
+              - heading "Come usarlo" [level=3] [ref=f4e421]
+              - list [ref=f4e422]:
+                - listitem [ref=f4e423]:
+                  - generic [ref=f4e424]:
+                    - generic [ref=f4e425]: Scegli frame compatibili
+                    - paragraph [ref=f4e426]: Soggetto, ambiente e prospettiva devono poter evolvere senza salti impossibili.
+                - listitem [ref=f4e427]:
+                  - generic [ref=f4e428]:
+                    - generic [ref=f4e429]: Descrivi il movimento
+                    - paragraph [ref=f4e430]: Spiega cosa si muove, come reagisce l’ambiente e cosa fa la camera.
+                - listitem [ref=f4e431]:
+                  - generic [ref=f4e432]:
+                    - generic [ref=f4e433]: Parti leggero
+                    - paragraph [ref=f4e434]: Prova 480p e intensità media; passa a 720p dopo aver approvato il moto.
+            - generic [ref=f4e435]:
+              - heading "Impostazioni consigliate" [level=3] [ref=f4e436]
+              - generic [ref=f4e437]:
+                - generic [ref=f4e438]:
+                  - generic [ref=f4e439]: Durata
+                  - generic [ref=f4e440]: 4–6 secondi
+                  - paragraph [ref=f4e441]: Intervallo gestibile per una singola azione.
+                - generic [ref=f4e442]:
+                  - generic [ref=f4e443]: Risoluzione bozza
+                  - generic [ref=f4e444]: 480p
+                  - paragraph [ref=f4e445]: Più rapida e meno esposta a OOM.
+                - generic [ref=f4e446]:
+                  - generic [ref=f4e447]: Intensità
+                  - generic [ref=f4e448]: Media
+                  - paragraph [ref=f4e449]: Buon equilibrio fra dinamica e stabilità.
+            - complementary [ref=f4e450]:
+              - text: Esempio prompt
+              - paragraph [ref=f4e451]: La donna entra lentamente in piscina, l’acqua forma increspature naturali; lieve dolly in, movimenti fluidi, illuminazione e identità costanti.
+            - generic [ref=f4e452]:
+              - heading "Accorgimenti" [level=3] [ref=f4e453]
+              - list [ref=f4e454]:
+                - listitem [ref=f4e455]: Un’azione principale per clip è più stabile.
+                - listitem [ref=f4e456]: Frame troppo diversi richiedono più invenzione e possono creare morphing.
+            - link "Usa questo workflow" [ref=f4e458] [cursor=pointer]:
+              - /url: /studio.html?workflow=firstLast
+              - text: Usa questo workflow
+              - generic [ref=f4e459]: →
+          - article [ref=f4e460]:
+            - generic [ref=f4e461]:
+              - generic [ref=f4e462]:
+                - paragraph [ref=f4e463]: 07 / Continuità
+                - heading "Character & Location Bible" [level=2] [ref=f4e464]
+                - paragraph [ref=f4e465]: Produce viste di riferimento coerenti di un personaggio o di una location per i workflow successivi.
+              - generic [ref=f4e466]: Preparazione
+            - generic [ref=f4e467]:
+              - generic [ref=f4e468]:
+                - heading "Ideale per" [level=3] [ref=f4e469]
+                - list [ref=f4e470]:
+                  - listitem [ref=f4e471]: Identità ricorrenti
+                  - listitem [ref=f4e472]: Location multi-inquadratura
+                  - listitem [ref=f4e473]: Reference master per storyboard
+              - generic [ref=f4e474]:
+                - heading "Cosa preparare" [level=3] [ref=f4e475]
+                - list [ref=f4e476]:
+                  - listitem [ref=f4e477]: Immagine di partenza
+                  - listitem [ref=f4e478]: Descrizione invarianti
+                  - listitem [ref=f4e479]: Elenco delle viste richieste
+            - generic [ref=f4e480]:
+              - heading "Come usarlo" [level=3] [ref=f4e481]
+              - list [ref=f4e482]:
+                - listitem [ref=f4e483]:
+                  - generic [ref=f4e484]:
+                    - generic [ref=f4e485]: Definisci gli invarianti
+                    - paragraph [ref=f4e486]: Elenca volto, corporatura, abito, materiali, architettura e palette che non devono cambiare.
+                - listitem [ref=f4e487]:
+                  - generic [ref=f4e488]:
+                    - generic [ref=f4e489]: Genera viste pulite
+                    - paragraph [ref=f4e490]: Crea frontale, profili, tre quarti e figura intera oppure viste della location.
+                - listitem [ref=f4e491]:
+                  - generic [ref=f4e492]:
+                    - generic [ref=f4e493]: Riusa il master
+                    - paragraph [ref=f4e494]: Seleziona le migliori viste come reference negli editor e nello Storyboard Director.
+            - generic [ref=f4e495]:
+              - heading "Impostazioni consigliate" [level=3] [ref=f4e496]
+              - generic [ref=f4e497]:
+                - generic [ref=f4e498]:
+                  - generic [ref=f4e499]: Comportamento
+                  - generic [ref=f4e500]: Conservativo
+                  - paragraph [ref=f4e501]: Evita derive d’identità.
+                - generic [ref=f4e502]:
+                  - generic [ref=f4e503]: Viste
+                  - generic [ref=f4e504]: Una per riga
+                  - paragraph [ref=f4e505]: Ogni output ha un obiettivo chiaro.
+                - generic [ref=f4e506]:
+                  - generic [ref=f4e507]: Upscale
+                  - generic [ref=f4e508]: Dopo la selezione
+                  - paragraph [ref=f4e509]: Non spendere tempo sulle viste scartate.
+            - complementary [ref=f4e510]:
+              - text: Esempio prompt
+              - paragraph [ref=f4e511]: Mantieni identici volto, capelli, corporatura e costume rosso; genera viste fotografiche frontale, profilo, tre quarti e figura intera.
+            - generic [ref=f4e512]:
+              - heading "Accorgimenti" [level=3] [ref=f4e513]
+              - list [ref=f4e514]:
+                - listitem [ref=f4e515]: Usa descrizioni concrete e ripetibili.
+                - listitem [ref=f4e516]: Non cambiare contemporaneamente posa, abito e illuminazione.
+            - link "Usa questo workflow" [ref=f4e518] [cursor=pointer]:
+              - /url: /studio.html?workflow=bible
+              - text: Usa questo workflow
+              - generic [ref=f4e519]: →
+          - article [ref=f4e520]:
+            - generic [ref=f4e521]:
+              - generic [ref=f4e522]:
+                - paragraph [ref=f4e523]: 08 / Regia
+                - heading "Camera, posa e composizione" [level=2] [ref=f4e524]
+                - paragraph [ref=f4e525]: Reinquadra soggetto e scena variando shot, angolo, profondità e posa senza perdere l’identità.
+              - generic [ref=f4e526]: Controllato
+            - generic [ref=f4e527]:
+              - generic [ref=f4e528]:
+                - heading "Ideale per" [level=3] [ref=f4e529]
+                - list [ref=f4e530]:
+                  - listitem [ref=f4e531]: Nuove inquadrature
+                  - listitem [ref=f4e532]: Correzione composizione
+                  - listitem [ref=f4e533]: Frame compatibili per storyboard
+              - generic [ref=f4e534]:
+                - heading "Cosa preparare" [level=3] [ref=f4e535]
+                - list [ref=f4e536]:
+                  - listitem [ref=f4e537]: Immagine o reference
+                  - listitem [ref=f4e538]: Tipo di shot
+                  - listitem [ref=f4e539]: Angolo, vista, profondità e posa
+            - generic [ref=f4e540]:
+              - heading "Come usarlo" [level=3] [ref=f4e541]
+              - list [ref=f4e542]:
+                - listitem [ref=f4e543]:
+                  - generic [ref=f4e544]:
+                    - generic [ref=f4e545]: Fissa il soggetto
+                    - paragraph [ref=f4e546]: Usa una reference chiara e alta aderenza per conservare identità e abito.
+                - listitem [ref=f4e547]:
+                  - generic [ref=f4e548]:
+                    - generic [ref=f4e549]: Cambia una dimensione alla volta
+                    - paragraph [ref=f4e550]: Prima shot e angolo; poi perfeziona posa e profondità.
+                - listitem [ref=f4e551]:
+                  - generic [ref=f4e552]:
+                    - generic [ref=f4e553]: Verifica la geometria
+                    - paragraph [ref=f4e554]: Controlla mani, contatti, orizzonte e coerenza dello sfondo.
+            - generic [ref=f4e555]:
+              - heading "Impostazioni consigliate" [level=3] [ref=f4e556]
+              - generic [ref=f4e557]:
+                - generic [ref=f4e558]:
+                  - generic [ref=f4e559]: Aderenza persona
+                  - generic [ref=f4e560]: 80–90%
+                  - paragraph [ref=f4e561]: Protegge il soggetto nel cambio camera.
+                - generic [ref=f4e562]:
+                  - generic [ref=f4e563]: Comportamento
+                  - generic [ref=f4e564]: Bilanciato
+                  - paragraph [ref=f4e565]: Consente di ricostruire le parti non visibili.
+                - generic [ref=f4e566]:
+                  - generic [ref=f4e567]: Alternative
+                  - generic [ref=f4e568]: 3–4
+                  - paragraph [ref=f4e569]: Le nuove geometrie beneficiano di più scelta.
+            - complementary [ref=f4e570]:
+              - text: Esempio prompt
+              - paragraph [ref=f4e571]: Mantieni la stessa persona e lo stesso abito; passa a un medium shot a livello dell’acqua, camera leggermente bassa, profondità naturale e prospettiva fotografica.
+            - generic [ref=f4e572]:
+              - heading "Accorgimenti" [level=3] [ref=f4e573]
+              - list [ref=f4e574]:
+                - listitem [ref=f4e575]: Un cambio di 180° obbliga il modello a inventare gran parte della scena.
+                - listitem [ref=f4e576]: Per continuità video usa variazioni progressive.
+            - link "Usa questo workflow" [ref=f4e578] [cursor=pointer]:
+              - /url: /studio.html?workflow=camera
+              - text: Usa questo workflow
+              - generic [ref=f4e579]: →
+          - article [ref=f4e580]:
+            - generic [ref=f4e581]:
+              - generic [ref=f4e582]:
+                - paragraph [ref=f4e583]: 09 / Luce e look
+                - heading "Relighting e continuità" [level=2] [ref=f4e584]
+                - paragraph [ref=f4e585]: Cambia ora, meteo, direzione della luce e color grading mantenendo scena e soggetto.
+              - generic [ref=f4e586]: Fotografico
+            - generic [ref=f4e587]:
+              - generic [ref=f4e588]:
+                - heading "Ideale per" [level=3] [ref=f4e589]
+                - list [ref=f4e590]:
+                  - listitem [ref=f4e591]: Uniformare una sequenza
+                  - listitem [ref=f4e592]: Day-to-night
+                  - listitem [ref=f4e593]: Correggere luce e atmosfera
+              - generic [ref=f4e594]:
+                - heading "Cosa preparare" [level=3] [ref=f4e595]
+                - list [ref=f4e596]:
+                  - listitem [ref=f4e597]: Immagine sorgente
+                  - listitem [ref=f4e598]: Ora/meteo e illuminazione desiderati
+                  - listitem [ref=f4e599]: Maschera facoltativa per interventi locali
+            - generic [ref=f4e600]:
+              - heading "Come usarlo" [level=3] [ref=f4e601]
+              - list [ref=f4e602]:
+                - listitem [ref=f4e603]:
+                  - generic [ref=f4e604]:
+                    - generic [ref=f4e605]: Descrivi la sorgente
+                    - paragraph [ref=f4e606]: Indica direzione, durezza e colore della nuova luce.
+                - listitem [ref=f4e607]:
+                  - generic [ref=f4e608]:
+                    - generic [ref=f4e609]: Mantieni la struttura
+                    - paragraph [ref=f4e610]: Usa comportamento conservativo per non spostare soggetti e oggetti.
+                - listitem [ref=f4e611]:
+                  - generic [ref=f4e612]:
+                    - generic [ref=f4e613]: Uniforma gli shot
+                    - paragraph [ref=f4e614]: Riutilizza la stessa descrizione cromatica sull’intera sequenza.
+            - generic [ref=f4e615]:
+              - heading "Impostazioni consigliate" [level=3] [ref=f4e616]
+              - generic [ref=f4e617]:
+                - generic [ref=f4e618]:
+                  - generic [ref=f4e619]: Ambito
+                  - generic [ref=f4e620]: Globale
+                  - paragraph [ref=f4e621]: Necessario quando luce e atmosfera coinvolgono tutta la scena.
+                - generic [ref=f4e622]:
+                  - generic [ref=f4e623]: Comportamento
+                  - generic [ref=f4e624]: Conservativo
+                  - paragraph [ref=f4e625]: Protegge composizione e identità.
+                - generic [ref=f4e626]:
+                  - generic [ref=f4e627]: Libertà creativa
+                  - generic [ref=f4e628]: 15–30%
+                  - paragraph [ref=f4e629]: Riduce alterazioni non richieste.
+            - complementary [ref=f4e630]:
+              - text: Esempio prompt
+              - paragraph [ref=f4e631]: Trasforma la luce in un tramonto caldo da sinistra, ombre lunghe e morbide, riflessi dorati sull’acqua; conserva esattamente persone, piscina e composizione.
+            - generic [ref=f4e632]:
+              - heading "Accorgimenti" [level=3] [ref=f4e633]
+              - list [ref=f4e634]:
+                - listitem [ref=f4e635]: Nomina sempre direzione e qualità della luce.
+                - listitem [ref=f4e636]: Per una sola zona usa una maschera morbida e ampio contesto.
+            - link "Usa questo workflow" [ref=f4e638] [cursor=pointer]:
+              - /url: /studio.html?workflow=relight
+              - text: Usa questo workflow
+              - generic [ref=f4e639]: →
+          - article [ref=f4e640]:
+            - generic [ref=f4e641]:
+              - generic [ref=f4e642]:
+                - paragraph [ref=f4e643]: 10 / Pipeline completa
+                - heading "Perfect Image Studio" [level=2] [ref=f4e644]
+                - paragraph [ref=f4e645]: Orchestra bozze multi-modello, selezione, rifinitura Flux.1, detailer e upscale in un progetto recuperabile.
+              - generic [ref=f4e646]: Qualità
+            - generic [ref=f4e647]:
+              - generic [ref=f4e648]:
+                - heading "Ideale per" [level=3] [ref=f4e649]
+                - list [ref=f4e650]:
+                  - listitem [ref=f4e651]: Text-to-image finale
+                  - listitem [ref=f4e652]: Immagine master da animare
+                  - listitem [ref=f4e653]: Confronto fra modelli e rifinitura
+              - generic [ref=f4e654]:
+                - heading "Cosa preparare" [level=3] [ref=f4e655]
+                - list [ref=f4e656]:
+                  - listitem [ref=f4e657]: Prompt completo
+                  - listitem [ref=f4e658]: Immagine sorgente facoltativa
+                  - listitem [ref=f4e659]: Reference e LoRA facoltative
+                  - listitem [ref=f4e660]: Preset Speed, Quality o MAX
+            - generic [ref=f4e661]:
+              - heading "Come usarlo" [level=3] [ref=f4e662]
+              - list [ref=f4e663]:
+                - listitem [ref=f4e664]:
+                  - generic [ref=f4e665]:
+                    - generic [ref=f4e666]: Crea le bozze
+                    - paragraph [ref=f4e667]: Flux.2 e Z-Image esplorano rapidamente composizione e look.
+                - listitem [ref=f4e668]:
+                  - generic [ref=f4e669]:
+                    - generic [ref=f4e670]: Seleziona
+                    - paragraph [ref=f4e671]: Approva la bozza con miglior geometria, luce e leggibilità prima di spendere sul refine.
+                - listitem [ref=f4e672]:
+                  - generic [ref=f4e673]:
+                    - generic [ref=f4e674]: Rifinisci
+                    - paragraph [ref=f4e675]: Flux.1 realistico migliora resa; detailer interviene su volto e mani.
+                - listitem [ref=f4e676]:
+                  - generic [ref=f4e677]:
+                    - generic [ref=f4e678]: Produci il master
+                    - paragraph [ref=f4e679]: Applica l’upscale scelto e conserva anche lo stadio precedente.
+            - generic [ref=f4e680]:
+              - heading "Impostazioni consigliate" [level=3] [ref=f4e681]
+              - generic [ref=f4e682]:
+                - generic [ref=f4e683]:
+                  - generic [ref=f4e684]: Speed
+                  - generic [ref=f4e685]: Bozze rapide
+                  - paragraph [ref=f4e686]: Per esplorare prompt e composizione.
+                - generic [ref=f4e687]:
+                  - generic [ref=f4e688]: Quality
+                  - generic [ref=f4e689]: Pipeline equilibrata
+                  - paragraph [ref=f4e690]: Scelta consigliata per la maggior parte dei master.
+                - generic [ref=f4e691]:
+                  - generic [ref=f4e692]: MAX
+                  - generic [ref=f4e693]: Tutti gli stadi
+                  - paragraph [ref=f4e694]: Per il risultato approvato; richiede più tempo e VRAM.
+                - generic [ref=f4e695]:
+                  - generic [ref=f4e696]: Upscale
+                  - generic [ref=f4e697]: SeedVR2 3B
+                  - paragraph [ref=f4e698]: Buon equilibrio fra dettaglio e fedeltà.
+            - complementary [ref=f4e699]:
+              - text: Esempio prompt
+              - paragraph [ref=f4e700]: Fotografia editoriale realistica di una villa mediterranea con piscina al tramonto, luce naturale, materiali credibili, composizione cinematografica ma resa non artificiale.
+            - generic [ref=f4e701]:
+              - heading "Accorgimenti" [level=3] [ref=f4e702]
+              - list [ref=f4e703]:
+                - listitem [ref=f4e704]: Per editing di una foto esistente preferisci Smartphone Photo Editor.
+                - listitem [ref=f4e705]: Non usare MAX finché prompt e composizione non sono definitivi.
+                - listitem [ref=f4e706]: Conserva lo stadio pre-upscale per confronti e animazione.
+            - link "Usa questo workflow" [ref=f4e708] [cursor=pointer]:
+              - /url: /studio.html?workflow=perfect
+              - text: Usa questo workflow
+              - generic [ref=f4e709]: →

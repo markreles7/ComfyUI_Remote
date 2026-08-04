@@ -1,0 +1,807 @@
+- generic [active] [ref=f3e1]:
+  - banner [ref=f3e2]:
+    - link [ref=f3e3] [cursor=pointer]:
+      - /url: /
+    - generic [ref=f3e5]:
+      - navigation "Navigazione principale" [ref=f3e6]:
+        - link "Genera" [ref=f3e7] [cursor=pointer]:
+          - /url: /
+        - link "Image Studio" [ref=f3e8] [cursor=pointer]:
+          - /url: /studio.html
+        - link "Generazioni" [ref=f3e9] [cursor=pointer]:
+          - /url: /generations.html
+      - generic [ref=f3e10]: ComfyUI online
+  - main [ref=f3e12]:
+    - generic [ref=f3e13]:
+      - generic [ref=f3e14]:
+        - paragraph [ref=f3e15]: ARCHIVIO LOCALE
+        - heading [level=1] [ref=f3e16]:
+          - text: Le tue
+          - emphasis [ref=f3e17]: generazioni.
+        - paragraph [ref=f3e18]: Visualizza i risultati, controlla lo stato e recupera tutte le impostazioni usate.
+      - generic "Riepilogo generazioni" [ref=f3e19]:
+        - generic [ref=f3e20]:
+          - generic [ref=f3e21]: "32"
+          - generic [ref=f3e22]: Totali
+        - generic [ref=f3e23]:
+          - generic [ref=f3e24]: "32"
+          - generic [ref=f3e25]: Completate
+        - generic [ref=f3e26]:
+          - generic [ref=f3e27]: "0"
+          - generic [ref=f3e28]: Attive
+    - generic [ref=f3e29]:
+      - generic [ref=f3e30]:
+        - generic [ref=f3e31]: Cerca
+        - searchbox "Cerca" [ref=f3e32]
+      - generic [ref=f3e33]:
+        - generic [ref=f3e34]: Workflow
+        - combobox "Workflow" [ref=f3e35] [cursor=pointer]:
+          - option "Tutti i workflow" [selected]
+          - option "Flux.2 Klein 9B Base · Image to Image"
+          - option "Z-Image Turbo · Text to Image"
+          - option "Flux.1 Dev · Text to Image"
+          - option "Flux.2 Klein 9B Base · Text to Image"
+          - option "LTX 2.3 Dev FP8 I2V"
+          - option "LTX 2.3 1Work"
+          - option "LTX 2.3 Director 2 UHD"
+      - generic [ref=f3e36]:
+        - generic [ref=f3e37]: Stato
+        - combobox "Stato" [ref=f3e38] [cursor=pointer]:
+          - option "Tutti gli stati" [selected]
+          - option "Completate"
+          - option "In lavorazione"
+          - option "In coda"
+          - option "Errori"
+          - option "Interrotte"
+      - button "Aggiorna ↻" [ref=f3e39] [cursor=pointer]
+    - generic [ref=f3e40]:
+      - generic [ref=f3e41]:
+        - article [ref=f3e42]:
+          - figure [ref=f3e45]:
+            - link [ref=f3e46] [cursor=pointer]:
+              - /url: /api/image/d85973a8-6a0e-4273-b1bd-1c7a62c55812/0
+              - img "Risultato 1" [ref=f3e47]
+            - link "Download ↓" [ref=f3e48] [cursor=pointer]:
+              - /url: /api/image/d85973a8-6a0e-4273-b1bd-1c7a62c55812/0?download=1
+          - generic [ref=f3e49]:
+            - generic [ref=f3e51]:
+              - generic [ref=f3e52]: Completata
+              - heading "Remove clothes, completely naked girl, huge breasts, hard nipples" [level=2] [ref=f3e53]
+              - paragraph [ref=f3e54]: Flux.2 Klein 9B Base · Image to Image · 26 lug 2026, 21:24
+            - generic [ref=f3e55]:
+              - generic [ref=f3e56]:
+                - generic [ref=f3e57]: Output
+                - generic [ref=f3e58]: 896×1152
+              - generic [ref=f3e59]:
+                - generic [ref=f3e60]: Seed
+                - generic [ref=f3e61]: "707532879"
+              - generic [ref=f3e62]:
+                - generic [ref=f3e63]: Immagini
+                - generic [ref=f3e64]: "1"
+              - generic [ref=f3e65]:
+                - generic [ref=f3e66]: LoRA
+                - generic [ref=f3e67]: "1"
+              - generic [ref=f3e68]:
+                - generic [ref=f3e69]: Step
+                - generic [ref=f3e70]: "40"
+              - generic [ref=f3e71]:
+                - generic [ref=f3e72]: Guidance
+                - generic [ref=f3e73]: "5"
+              - generic [ref=f3e74]:
+                - generic [ref=f3e75]: Denoise
+                - generic [ref=f3e76]: "0.6"
+            - group [ref=f3e77]:
+              - generic "Prompt negativo" [ref=f3e78] [cursor=pointer]
+            - group [ref=f3e79]:
+              - generic "LoRA applicate (1)" [ref=f3e80] [cursor=pointer]
+        - article [ref=f3e81]:
+          - figure [ref=f3e84]:
+            - link [ref=f3e85] [cursor=pointer]:
+              - /url: /api/image/30a5b594-ce40-451a-bf44-df57bfa5d1ea/0
+              - img "Risultato 1" [ref=f3e86]
+            - link "Download ↓" [ref=f3e87] [cursor=pointer]:
+              - /url: /api/image/30a5b594-ce40-451a-bf44-df57bfa5d1ea/0?download=1
+          - generic [ref=f3e88]:
+            - generic [ref=f3e90]:
+              - generic [ref=f3e91]: Completata
+              - heading "Remove clothes, completely naked girl, huge breasts, hard nipples" [level=2] [ref=f3e92]
+              - paragraph [ref=f3e93]: Flux.2 Klein 9B Base · Image to Image · 26 lug 2026, 21:24
+            - generic [ref=f3e94]:
+              - generic [ref=f3e95]:
+                - generic [ref=f3e96]: Output
+                - generic [ref=f3e97]: 896×1152
+              - generic [ref=f3e98]:
+                - generic [ref=f3e99]: Seed
+                - generic [ref=f3e100]: "990648839"
+              - generic [ref=f3e101]:
+                - generic [ref=f3e102]: Immagini
+                - generic [ref=f3e103]: "1"
+              - generic [ref=f3e104]:
+                - generic [ref=f3e105]: LoRA
+                - generic [ref=f3e106]: "1"
+              - generic [ref=f3e107]:
+                - generic [ref=f3e108]: Step
+                - generic [ref=f3e109]: "40"
+              - generic [ref=f3e110]:
+                - generic [ref=f3e111]: Guidance
+                - generic [ref=f3e112]: "5"
+              - generic [ref=f3e113]:
+                - generic [ref=f3e114]: Denoise
+                - generic [ref=f3e115]: "0.6"
+            - group [ref=f3e116]:
+              - generic "Prompt negativo" [ref=f3e117] [cursor=pointer]
+            - group [ref=f3e118]:
+              - generic "LoRA applicate (1)" [ref=f3e119] [cursor=pointer]
+        - article [ref=f3e120]:
+          - figure [ref=f3e123]:
+            - link [ref=f3e124] [cursor=pointer]:
+              - /url: /api/image/0256acb4-0483-4678-8b9d-eb42b1718a22/0
+              - img "Risultato 1" [ref=f3e125]
+            - link "Download ↓" [ref=f3e126] [cursor=pointer]:
+              - /url: /api/image/0256acb4-0483-4678-8b9d-eb42b1718a22/0?download=1
+          - generic [ref=f3e127]:
+            - generic [ref=f3e129]:
+              - generic [ref=f3e130]: Completata
+              - heading "Remove clothes, completely naked girl, huge breasts, hard nipples" [level=2] [ref=f3e131]
+              - paragraph [ref=f3e132]: Flux.2 Klein 9B Base · Image to Image · 26 lug 2026, 21:24
+            - generic [ref=f3e133]:
+              - generic [ref=f3e134]:
+                - generic [ref=f3e135]: Output
+                - generic [ref=f3e136]: 896×1152
+              - generic [ref=f3e137]:
+                - generic [ref=f3e138]: Seed
+                - generic [ref=f3e139]: "467700012"
+              - generic [ref=f3e140]:
+                - generic [ref=f3e141]: Immagini
+                - generic [ref=f3e142]: "1"
+              - generic [ref=f3e143]:
+                - generic [ref=f3e144]: LoRA
+                - generic [ref=f3e145]: "2"
+              - generic [ref=f3e146]:
+                - generic [ref=f3e147]: Step
+                - generic [ref=f3e148]: "40"
+              - generic [ref=f3e149]:
+                - generic [ref=f3e150]: Guidance
+                - generic [ref=f3e151]: "5"
+              - generic [ref=f3e152]:
+                - generic [ref=f3e153]: Denoise
+                - generic [ref=f3e154]: "0.6"
+            - group [ref=f3e155]:
+              - generic "Prompt negativo" [ref=f3e156] [cursor=pointer]
+            - group [ref=f3e157]:
+              - generic "LoRA applicate (2)" [ref=f3e158] [cursor=pointer]
+        - article [ref=f3e159]:
+          - figure [ref=f3e162]:
+            - link [ref=f3e163] [cursor=pointer]:
+              - /url: /api/image/1dd8ab2d-258a-4cc7-b185-a5f572190ba2/0
+              - img "Risultato 1" [ref=f3e164]
+            - link "Download ↓" [ref=f3e165] [cursor=pointer]:
+              - /url: /api/image/1dd8ab2d-258a-4cc7-b185-a5f572190ba2/0?download=1
+          - generic [ref=f3e166]:
+            - generic [ref=f3e168]:
+              - generic [ref=f3e169]: Completata
+              - heading "Remove clothes, completely naked girl, huge breasts, hard nipples" [level=2] [ref=f3e170]
+              - paragraph [ref=f3e171]: Flux.2 Klein 9B Base · Image to Image · 26 lug 2026, 21:24
+            - generic [ref=f3e172]:
+              - generic [ref=f3e173]:
+                - generic [ref=f3e174]: Output
+                - generic [ref=f3e175]: 896×1152
+              - generic [ref=f3e176]:
+                - generic [ref=f3e177]: Seed
+                - generic [ref=f3e178]: "2073426552"
+              - generic [ref=f3e179]:
+                - generic [ref=f3e180]: Immagini
+                - generic [ref=f3e181]: "1"
+              - generic [ref=f3e182]:
+                - generic [ref=f3e183]: LoRA
+                - generic [ref=f3e184]: "2"
+              - generic [ref=f3e185]:
+                - generic [ref=f3e186]: Step
+                - generic [ref=f3e187]: "40"
+              - generic [ref=f3e188]:
+                - generic [ref=f3e189]: Guidance
+                - generic [ref=f3e190]: "5"
+              - generic [ref=f3e191]:
+                - generic [ref=f3e192]: Denoise
+                - generic [ref=f3e193]: "0.6"
+            - group [ref=f3e194]:
+              - generic "Prompt negativo" [ref=f3e195] [cursor=pointer]
+            - group [ref=f3e196]:
+              - generic "LoRA applicate (2)" [ref=f3e197] [cursor=pointer]
+        - article [ref=f3e198]:
+          - figure [ref=f3e201]:
+            - link [ref=f3e202] [cursor=pointer]:
+              - /url: /api/image/f698e84a-ff3f-4643-a6a5-9b3f12b45df9/0
+              - img "Risultato 1" [ref=f3e203]
+            - link "Download ↓" [ref=f3e204] [cursor=pointer]:
+              - /url: /api/image/f698e84a-ff3f-4643-a6a5-9b3f12b45df9/0?download=1
+          - generic [ref=f3e205]:
+            - generic [ref=f3e207]:
+              - generic [ref=f3e208]: Completata
+              - heading "POV scene of a woman kneeling under a kitchen table, sucking a huge penis. The scene features the man's legs and his enormous, extra-large penis. The woman is in the center, her mouth open, ready to suck the man's massive penis, kneeling under a kitchen table. Modern anime style." [level=2] [ref=f3e209]
+              - paragraph [ref=f3e210]: Z-Image Turbo · Text to Image · 26 lug 2026, 21:19
+            - generic [ref=f3e211]:
+              - generic [ref=f3e212]:
+                - generic [ref=f3e213]: Output
+                - generic [ref=f3e214]: 896×1152
+              - generic [ref=f3e215]:
+                - generic [ref=f3e216]: Seed
+                - generic [ref=f3e217]: "976032930"
+              - generic [ref=f3e218]:
+                - generic [ref=f3e219]: Immagini
+                - generic [ref=f3e220]: "1"
+              - generic [ref=f3e221]:
+                - generic [ref=f3e222]: LoRA
+                - generic [ref=f3e223]: "1"
+              - generic [ref=f3e224]:
+                - generic [ref=f3e225]: Step
+                - generic [ref=f3e226]: "8"
+              - generic [ref=f3e227]:
+                - generic [ref=f3e228]: Guidance
+                - generic [ref=f3e229]: "1"
+            - group [ref=f3e230]:
+              - generic "LoRA applicate (1)" [ref=f3e231] [cursor=pointer]
+        - article [ref=f3e232]:
+          - figure [ref=f3e235]:
+            - link [ref=f3e236] [cursor=pointer]:
+              - /url: /api/image/be290857-70fb-4d4f-8e21-14efa2ab9f43/0
+              - img "Risultato 1" [ref=f3e237]
+            - link "Download ↓" [ref=f3e238] [cursor=pointer]:
+              - /url: /api/image/be290857-70fb-4d4f-8e21-14efa2ab9f43/0?download=1
+          - generic [ref=f3e239]:
+            - generic [ref=f3e241]:
+              - generic [ref=f3e242]: Completata
+              - heading "POV scene of a woman kneeling under a kitchen table, sucking a huge penis. The scene features the man's legs and his enormous, extra-large penis. The woman is in the center, her mouth open, ready to suck the man's massive penis, kneeling under a kitchen table. Modern anime style." [level=2] [ref=f3e243]
+              - paragraph [ref=f3e244]: Flux.1 Dev · Text to Image · 26 lug 2026, 21:18
+            - generic [ref=f3e245]:
+              - generic [ref=f3e246]:
+                - generic [ref=f3e247]: Output
+                - generic [ref=f3e248]: 896×1152
+              - generic [ref=f3e249]:
+                - generic [ref=f3e250]: Seed
+                - generic [ref=f3e251]: "1300494886"
+              - generic [ref=f3e252]:
+                - generic [ref=f3e253]: Immagini
+                - generic [ref=f3e254]: "1"
+              - generic [ref=f3e255]:
+                - generic [ref=f3e256]: LoRA
+                - generic [ref=f3e257]: "1"
+              - generic [ref=f3e258]:
+                - generic [ref=f3e259]: Step
+                - generic [ref=f3e260]: "28"
+              - generic [ref=f3e261]:
+                - generic [ref=f3e262]: Guidance
+                - generic [ref=f3e263]: "3.5"
+            - group [ref=f3e264]:
+              - generic "LoRA applicate (1)" [ref=f3e265] [cursor=pointer]
+        - article [ref=f3e266]:
+          - figure [ref=f3e269]:
+            - link [ref=f3e270] [cursor=pointer]:
+              - /url: /api/image/6c180471-b3bb-4ea3-b9ef-84b16da63d14/0
+              - img "Risultato 1" [ref=f3e271]
+            - link "Download ↓" [ref=f3e272] [cursor=pointer]:
+              - /url: /api/image/6c180471-b3bb-4ea3-b9ef-84b16da63d14/0?download=1
+          - generic [ref=f3e273]:
+            - generic [ref=f3e275]:
+              - generic [ref=f3e276]: Completata
+              - heading "POV scene of a woman kneeling under a kitchen table, sucking a huge penis. The scene features the man's legs and his enormous, extra-large penis. The woman is in the center, her mouth open, ready to suck the man's massive penis, kneeling under a kitchen table. Modern anime style." [level=2] [ref=f3e277]
+              - paragraph [ref=f3e278]: Flux.2 Klein 9B Base · Text to Image · 26 lug 2026, 21:18
+            - generic [ref=f3e279]:
+              - generic [ref=f3e280]:
+                - generic [ref=f3e281]: Output
+                - generic [ref=f3e282]: 896×1152
+              - generic [ref=f3e283]:
+                - generic [ref=f3e284]: Seed
+                - generic [ref=f3e285]: "1015758009"
+              - generic [ref=f3e286]:
+                - generic [ref=f3e287]: Immagini
+                - generic [ref=f3e288]: "1"
+              - generic [ref=f3e289]:
+                - generic [ref=f3e290]: Step
+                - generic [ref=f3e291]: "20"
+              - generic [ref=f3e292]:
+                - generic [ref=f3e293]: Guidance
+                - generic [ref=f3e294]: "5"
+        - article [ref=f3e295]:
+          - figure [ref=f3e298]:
+            - link [ref=f3e299] [cursor=pointer]:
+              - /url: /api/image/174ecbbf-9cd9-4b91-be2b-3f411f73ca17/0
+              - img "Risultato 1" [ref=f3e300]
+            - link "Download ↓" [ref=f3e301] [cursor=pointer]:
+              - /url: /api/image/174ecbbf-9cd9-4b91-be2b-3f411f73ca17/0?download=1
+          - generic [ref=f3e302]:
+            - generic [ref=f3e304]:
+              - generic [ref=f3e305]: Completata
+              - heading "Remove clothes, nude, big breasts, hard nipples" [level=2] [ref=f3e306]
+              - paragraph [ref=f3e307]: Flux.2 Klein 9B Base · Image to Image · 26 lug 2026, 20:16
+            - generic [ref=f3e308]:
+              - generic [ref=f3e309]:
+                - generic [ref=f3e310]: Output
+                - generic [ref=f3e311]: 896×1152
+              - generic [ref=f3e312]:
+                - generic [ref=f3e313]: Seed
+                - generic [ref=f3e314]: "3459902"
+              - generic [ref=f3e315]:
+                - generic [ref=f3e316]: Immagini
+                - generic [ref=f3e317]: "1"
+              - generic [ref=f3e318]:
+                - generic [ref=f3e319]: LoRA
+                - generic [ref=f3e320]: "3"
+              - generic [ref=f3e321]:
+                - generic [ref=f3e322]: Step
+                - generic [ref=f3e323]: "20"
+              - generic [ref=f3e324]:
+                - generic [ref=f3e325]: Guidance
+                - generic [ref=f3e326]: "5"
+              - generic [ref=f3e327]:
+                - generic [ref=f3e328]: Denoise
+                - generic [ref=f3e329]: "0.6"
+            - group [ref=f3e330]:
+              - generic "LoRA applicate (3)" [ref=f3e331] [cursor=pointer]
+        - article [ref=f3e332]:
+          - figure [ref=f3e335]:
+            - link [ref=f3e336] [cursor=pointer]:
+              - /url: /api/image/7a6bb98e-9da4-4824-99d2-f65f6d695c12/0
+              - img "Risultato 1" [ref=f3e337]
+            - link "Download ↓" [ref=f3e338] [cursor=pointer]:
+              - /url: /api/image/7a6bb98e-9da4-4824-99d2-f65f6d695c12/0?download=1
+          - generic [ref=f3e339]:
+            - generic [ref=f3e341]:
+              - generic [ref=f3e342]: Completata
+              - heading "Remove clothes, nude, big breasts, hard nipples" [level=2] [ref=f3e343]
+              - paragraph [ref=f3e344]: Flux.2 Klein 9B Base · Image to Image · 26 lug 2026, 20:16
+            - generic [ref=f3e345]:
+              - generic [ref=f3e346]:
+                - generic [ref=f3e347]: Output
+                - generic [ref=f3e348]: 896×1152
+              - generic [ref=f3e349]:
+                - generic [ref=f3e350]: Seed
+                - generic [ref=f3e351]: "320157257"
+              - generic [ref=f3e352]:
+                - generic [ref=f3e353]: Immagini
+                - generic [ref=f3e354]: "1"
+              - generic [ref=f3e355]:
+                - generic [ref=f3e356]: LoRA
+                - generic [ref=f3e357]: "1"
+              - generic [ref=f3e358]:
+                - generic [ref=f3e359]: Step
+                - generic [ref=f3e360]: "20"
+              - generic [ref=f3e361]:
+                - generic [ref=f3e362]: Guidance
+                - generic [ref=f3e363]: "5"
+              - generic [ref=f3e364]:
+                - generic [ref=f3e365]: Denoise
+                - generic [ref=f3e366]: "0.6"
+            - group [ref=f3e367]:
+              - generic "LoRA applicate (1)" [ref=f3e368] [cursor=pointer]
+        - article [ref=f3e369]:
+          - figure [ref=f3e372]:
+            - link [ref=f3e373] [cursor=pointer]:
+              - /url: /api/image/4cf7649c-9b50-446c-9595-1455a9ce7575/0
+              - img "Risultato 1" [ref=f3e374]
+            - link "Download ↓" [ref=f3e375] [cursor=pointer]:
+              - /url: /api/image/4cf7649c-9b50-446c-9595-1455a9ce7575/0?download=1
+          - generic [ref=f3e376]:
+            - generic [ref=f3e378]:
+              - generic [ref=f3e379]: Completata
+              - heading "Remove clothes, nude, big breasts, hard nipples" [level=2] [ref=f3e380]
+              - paragraph [ref=f3e381]: Flux.2 Klein 9B Base · Image to Image · 26 lug 2026, 20:16
+            - generic [ref=f3e382]:
+              - generic [ref=f3e383]:
+                - generic [ref=f3e384]: Output
+                - generic [ref=f3e385]: 896×1152
+              - generic [ref=f3e386]:
+                - generic [ref=f3e387]: Seed
+                - generic [ref=f3e388]: "1184118454"
+              - generic [ref=f3e389]:
+                - generic [ref=f3e390]: Immagini
+                - generic [ref=f3e391]: "1"
+              - generic [ref=f3e392]:
+                - generic [ref=f3e393]: LoRA
+                - generic [ref=f3e394]: "1"
+              - generic [ref=f3e395]:
+                - generic [ref=f3e396]: Step
+                - generic [ref=f3e397]: "20"
+              - generic [ref=f3e398]:
+                - generic [ref=f3e399]: Guidance
+                - generic [ref=f3e400]: "5"
+              - generic [ref=f3e401]:
+                - generic [ref=f3e402]: Denoise
+                - generic [ref=f3e403]: "0.6"
+            - group [ref=f3e404]:
+              - generic "LoRA applicate (1)" [ref=f3e405] [cursor=pointer]
+        - article [ref=f3e406]:
+          - figure [ref=f3e409]:
+            - link [ref=f3e410] [cursor=pointer]:
+              - /url: /api/image/e0ab6855-7f73-4078-bf11-c8a4c344346c/0
+              - img "Risultato 1" [ref=f3e411]
+            - link "Download ↓" [ref=f3e412] [cursor=pointer]:
+              - /url: /api/image/e0ab6855-7f73-4078-bf11-c8a4c344346c/0?download=1
+          - generic [ref=f3e413]:
+            - generic [ref=f3e415]:
+              - generic [ref=f3e416]: Completata
+              - heading "Remove clothes, nude, big breasts, hard nipples" [level=2] [ref=f3e417]
+              - paragraph [ref=f3e418]: Flux.2 Klein 9B Base · Image to Image · 26 lug 2026, 20:16
+            - generic [ref=f3e419]:
+              - generic [ref=f3e420]:
+                - generic [ref=f3e421]: Output
+                - generic [ref=f3e422]: 896×1152
+              - generic [ref=f3e423]:
+                - generic [ref=f3e424]: Seed
+                - generic [ref=f3e425]: "2021521743"
+              - generic [ref=f3e426]:
+                - generic [ref=f3e427]: Immagini
+                - generic [ref=f3e428]: "1"
+              - generic [ref=f3e429]:
+                - generic [ref=f3e430]: LoRA
+                - generic [ref=f3e431]: "1"
+              - generic [ref=f3e432]:
+                - generic [ref=f3e433]: Step
+                - generic [ref=f3e434]: "20"
+              - generic [ref=f3e435]:
+                - generic [ref=f3e436]: Guidance
+                - generic [ref=f3e437]: "5"
+              - generic [ref=f3e438]:
+                - generic [ref=f3e439]: Denoise
+                - generic [ref=f3e440]: "0.6"
+            - group [ref=f3e441]:
+              - generic "LoRA applicate (1)" [ref=f3e442] [cursor=pointer]
+        - article [ref=f3e443]:
+          - figure [ref=f3e446]:
+            - link [ref=f3e447] [cursor=pointer]:
+              - /url: /api/image/9c913f1f-1833-4ce3-86b7-257c57217335/0
+              - img "Risultato 1" [ref=f3e448]
+            - link "Download ↓" [ref=f3e449] [cursor=pointer]:
+              - /url: /api/image/9c913f1f-1833-4ce3-86b7-257c57217335/0?download=1
+          - generic [ref=f3e450]:
+            - generic [ref=f3e452]:
+              - generic [ref=f3e453]: Completata
+              - heading "Remove clothes, nude, big breasts, hard nipples" [level=2] [ref=f3e454]
+              - paragraph [ref=f3e455]: Flux.2 Klein 9B Base · Image to Image · 26 lug 2026, 20:15
+            - generic [ref=f3e456]:
+              - generic [ref=f3e457]:
+                - generic [ref=f3e458]: Output
+                - generic [ref=f3e459]: 896×1152
+              - generic [ref=f3e460]:
+                - generic [ref=f3e461]: Seed
+                - generic [ref=f3e462]: "1068579815"
+              - generic [ref=f3e463]:
+                - generic [ref=f3e464]: Immagini
+                - generic [ref=f3e465]: "1"
+              - generic [ref=f3e466]:
+                - generic [ref=f3e467]: Step
+                - generic [ref=f3e468]: "20"
+              - generic [ref=f3e469]:
+                - generic [ref=f3e470]: Guidance
+                - generic [ref=f3e471]: "5"
+              - generic [ref=f3e472]:
+                - generic [ref=f3e473]: Denoise
+                - generic [ref=f3e474]: "0.6"
+        - article [ref=f3e475]:
+          - figure [ref=f3e478]:
+            - link [ref=f3e479] [cursor=pointer]:
+              - /url: /api/image/b1974d0c-cdf3-45ef-a5d1-5e49beb2e8b6/0
+              - img "Risultato 1" [ref=f3e480]
+            - link "Download ↓" [ref=f3e481] [cursor=pointer]:
+              - /url: /api/image/b1974d0c-cdf3-45ef-a5d1-5e49beb2e8b6/0?download=1
+          - generic [ref=f3e482]:
+            - generic [ref=f3e484]:
+              - generic [ref=f3e485]: Completata
+              - heading "Remove clothes, nude, big breasts, hard nipples" [level=2] [ref=f3e486]
+              - paragraph [ref=f3e487]: Flux.2 Klein 9B Base · Image to Image · 26 lug 2026, 20:07
+            - generic [ref=f3e488]:
+              - generic [ref=f3e489]:
+                - generic [ref=f3e490]: Output
+                - generic [ref=f3e491]: 896×1152
+              - generic [ref=f3e492]:
+                - generic [ref=f3e493]: Seed
+                - generic [ref=f3e494]: "1771397704"
+              - generic [ref=f3e495]:
+                - generic [ref=f3e496]: Immagini
+                - generic [ref=f3e497]: "1"
+              - generic [ref=f3e498]:
+                - generic [ref=f3e499]: LoRA
+                - generic [ref=f3e500]: "2"
+              - generic [ref=f3e501]:
+                - generic [ref=f3e502]: Step
+                - generic [ref=f3e503]: "20"
+              - generic [ref=f3e504]:
+                - generic [ref=f3e505]: Guidance
+                - generic [ref=f3e506]: "5"
+              - generic [ref=f3e507]:
+                - generic [ref=f3e508]: Denoise
+                - generic [ref=f3e509]: "0.6"
+            - group [ref=f3e510]:
+              - generic "LoRA applicate (2)" [ref=f3e511] [cursor=pointer]
+        - article [ref=f3e512]:
+          - figure [ref=f3e515]:
+            - link [ref=f3e516] [cursor=pointer]:
+              - /url: /api/image/74c36cca-f0d7-4258-8f8c-913b513e1150/0
+              - img "Risultato 1" [ref=f3e517]
+            - link "Download ↓" [ref=f3e518] [cursor=pointer]:
+              - /url: /api/image/74c36cca-f0d7-4258-8f8c-913b513e1150/0?download=1
+          - generic [ref=f3e519]:
+            - generic [ref=f3e521]:
+              - generic [ref=f3e522]: Completata
+              - heading "Remove clothes, nude, big breasts, hard nipples" [level=2] [ref=f3e523]
+              - paragraph [ref=f3e524]: Flux.2 Klein 9B Base · Image to Image · 26 lug 2026, 20:06
+            - generic [ref=f3e525]:
+              - generic [ref=f3e526]:
+                - generic [ref=f3e527]: Output
+                - generic [ref=f3e528]: 896×1152
+              - generic [ref=f3e529]:
+                - generic [ref=f3e530]: Seed
+                - generic [ref=f3e531]: "713604612"
+              - generic [ref=f3e532]:
+                - generic [ref=f3e533]: Immagini
+                - generic [ref=f3e534]: "1"
+              - generic [ref=f3e535]:
+                - generic [ref=f3e536]: LoRA
+                - generic [ref=f3e537]: "2"
+              - generic [ref=f3e538]:
+                - generic [ref=f3e539]: Step
+                - generic [ref=f3e540]: "20"
+              - generic [ref=f3e541]:
+                - generic [ref=f3e542]: Guidance
+                - generic [ref=f3e543]: "5"
+              - generic [ref=f3e544]:
+                - generic [ref=f3e545]: Denoise
+                - generic [ref=f3e546]: "0.6"
+            - group [ref=f3e547]:
+              - generic "LoRA applicate (2)" [ref=f3e548] [cursor=pointer]
+        - article [ref=f3e549]:
+          - link "Download ↓" [ref=f3e553] [cursor=pointer]:
+            - /url: /api/media/2f17427a-596f-45ce-be2f-8ca31e3cb934/0?download=1
+          - generic [ref=f3e554]:
+            - generic [ref=f3e556]:
+              - generic [ref=f3e557]: Completata
+              - heading "The boy places his hand on the girl's large breasts, the shot zooms in on her chest, then with a quick movement, the boy tears off her clothes, revealing her enormous breasts. The shot zooms in on the boy's face and then follows the position of his hands until it focuses on the girl's chest again. The boy touches and squeezes the girl's large breasts with both hands, then moves his mouth to her hard nipples and begins to lick them. The shot returns to normal, showing both boys, and slowly zooms in on the girl's face. The girl gently moves her hand from his face to her lips, and they begin to kiss passionately. As the couple kiss, the girl begins to gently touch the boy's large penis until it becomes fully erect." [level=2] [ref=f3e558]
+              - paragraph [ref=f3e559]: LTX 2.3 Dev FP8 I2V · 26 lug 2026, 18:42
+            - generic [ref=f3e560]:
+              - generic [ref=f3e561]:
+                - generic [ref=f3e562]: Output
+                - generic [ref=f3e563]: 704×1280
+              - generic [ref=f3e564]:
+                - generic [ref=f3e565]: Seed
+                - generic [ref=f3e566]: "360244281"
+              - generic [ref=f3e567]:
+                - generic [ref=f3e568]: Durata
+                - generic [ref=f3e569]: 30s
+              - generic [ref=f3e570]:
+                - generic [ref=f3e571]: FPS
+                - generic [ref=f3e572]: "24"
+              - generic [ref=f3e573]:
+                - generic [ref=f3e574]: Qualità
+                - generic [ref=f3e575]: Massima
+        - article [ref=f3e576]:
+          - link "Download ↓" [ref=f3e580] [cursor=pointer]:
+            - /url: /api/media/1a1c5aed-85d7-4a1d-b35b-f617b93a7676/0?download=1
+          - generic [ref=f3e581]:
+            - generic [ref=f3e583]:
+              - generic [ref=f3e584]: Completata
+              - heading [level=2] [ref=f3e585]
+              - paragraph [ref=f3e586]: LTX 2.3 Dev FP8 I2V · 26 lug 2026, 18:22
+            - generic [ref=f3e587]:
+              - generic [ref=f3e588]:
+                - generic [ref=f3e589]: Output
+                - generic [ref=f3e590]: 704×1280
+              - generic [ref=f3e591]:
+                - generic [ref=f3e592]: Seed
+                - generic [ref=f3e593]: "14085931"
+              - generic [ref=f3e594]:
+                - generic [ref=f3e595]: Durata
+                - generic [ref=f3e596]: 10s
+              - generic [ref=f3e597]:
+                - generic [ref=f3e598]: FPS
+                - generic [ref=f3e599]: "24"
+              - generic [ref=f3e600]:
+                - generic [ref=f3e601]: Qualità
+                - generic [ref=f3e602]: Massima
+            - group [ref=f3e603]:
+              - generic "Prompt negativo" [ref=f3e604] [cursor=pointer]
+        - article [ref=f3e605]:
+          - link "Download ↓" [ref=f3e609] [cursor=pointer]:
+            - /url: /api/media/4f087a04-e324-4e55-9ace-7b87e69d5d38/0?download=1
+          - generic [ref=f3e610]:
+            - generic [ref=f3e612]:
+              - generic [ref=f3e613]: Completata
+              - heading [level=2] [ref=f3e614]
+              - paragraph [ref=f3e615]: LTX 2.3 Dev FP8 I2V · 26 lug 2026, 18:19
+            - generic [ref=f3e616]:
+              - generic [ref=f3e617]:
+                - generic [ref=f3e618]: Output
+                - generic [ref=f3e619]: 352×640
+              - generic [ref=f3e620]:
+                - generic [ref=f3e621]: Seed
+                - generic [ref=f3e622]: "1989659419"
+              - generic [ref=f3e623]:
+                - generic [ref=f3e624]: Durata
+                - generic [ref=f3e625]: 10s
+              - generic [ref=f3e626]:
+                - generic [ref=f3e627]: FPS
+                - generic [ref=f3e628]: "24"
+              - generic [ref=f3e629]:
+                - generic [ref=f3e630]: Qualità
+                - generic [ref=f3e631]: Massima
+        - article [ref=f3e632]:
+          - generic [ref=f3e633]:
+            - link "Download 1 ↓" [ref=f3e636] [cursor=pointer]:
+              - /url: /api/media/f5fdd843-9e90-46bf-9c76-7f410f62ee6f/0?download=1
+            - link "Download 2 ↓" [ref=f3e639] [cursor=pointer]:
+              - /url: /api/media/f5fdd843-9e90-46bf-9c76-7f410f62ee6f/1?download=1
+          - generic [ref=f3e640]:
+            - generic [ref=f3e642]:
+              - generic [ref=f3e643]: Completata
+              - heading "From the room on the right, a blonde Asian girl suddenly appears. The girl wears a black thong and is topless. The video is a POV and as soon as the Asian girl appears through the right door, the person filming the scene gets up and approaches the girl." [level=2] [ref=f3e644]
+              - paragraph [ref=f3e645]: LTX 2.3 1Work · 26 lug 2026, 01:28
+            - generic [ref=f3e646]:
+              - generic [ref=f3e647]:
+                - generic [ref=f3e648]: Output
+                - generic [ref=f3e649]: 480×832
+              - generic [ref=f3e650]:
+                - generic [ref=f3e651]: Seed
+                - generic [ref=f3e652]: "1497512132"
+              - generic [ref=f3e653]:
+                - generic [ref=f3e654]: Durata
+                - generic [ref=f3e655]: 10s
+              - generic [ref=f3e656]:
+                - generic [ref=f3e657]: FPS
+                - generic [ref=f3e658]: "24"
+        - article [ref=f3e659]:
+          - link "Download ↓" [ref=f3e663] [cursor=pointer]:
+            - /url: /api/media/6f15c3e9-5323-4a2a-bb6a-d3a633992df8/0?download=1
+          - generic [ref=f3e664]:
+            - generic [ref=f3e666]:
+              - generic [ref=f3e667]: Completata
+              - 'heading "Take the anime girl as a reference. Scene: The girl walks through the streets of a fantasy market, selling swords, armories, shields, potion sellers, armor and more. Style: modern anime." [level=2] [ref=f3e668]'
+              - paragraph [ref=f3e669]: LTX 2.3 Dev FP8 I2V · 26 lug 2026, 00:31
+            - generic [ref=f3e670]:
+              - generic [ref=f3e671]:
+                - generic [ref=f3e672]: Output
+                - generic [ref=f3e673]: 640×352
+              - generic [ref=f3e674]:
+                - generic [ref=f3e675]: Seed
+                - generic [ref=f3e676]: "1469320164"
+              - generic [ref=f3e677]:
+                - generic [ref=f3e678]: Durata
+                - generic [ref=f3e679]: 10s
+              - generic [ref=f3e680]:
+                - generic [ref=f3e681]: FPS
+                - generic [ref=f3e682]: "24"
+              - generic [ref=f3e683]:
+                - generic [ref=f3e684]: Qualità
+                - generic [ref=f3e685]: Anteprima
+            - group [ref=f3e686]:
+              - generic "Prompt negativo" [ref=f3e687] [cursor=pointer]
+        - article [ref=f3e688]:
+          - link "Download ↓" [ref=f3e692] [cursor=pointer]:
+            - /url: /api/media/507b7458-0e14-423d-b515-6de019f34918/0?download=1
+          - generic [ref=f3e693]:
+            - generic [ref=f3e695]:
+              - generic [ref=f3e696]: Completata
+              - heading "The seated young woman appears as a clean monochrome pencil sketch with soft hand-drawn line work and light shading. She is already in gentle natural motion, breathing softly, with a slight shift in her shoulders and torso, a small head adjustment, and subtle delayed movement in the hair. One hand presses lightly into the surface beside her while the other remains relaxed. The sketch gradually gains richer shading, volume, and tonal depth while preserving the same pose, expression, silhouette, and camera framing. Keep the movement understated, continuous, and physically believable." [level=2] [ref=f3e697]
+              - paragraph [ref=f3e698]: LTX 2.3 Director 2 UHD · 26 lug 2026, 00:04
+            - generic [ref=f3e699]:
+              - generic [ref=f3e700]:
+                - generic [ref=f3e701]: Output
+                - generic [ref=f3e702]: 480×832
+              - generic [ref=f3e703]:
+                - generic [ref=f3e704]: Seed
+                - generic [ref=f3e705]: "563121448"
+              - generic [ref=f3e706]:
+                - generic [ref=f3e707]: Durata
+                - generic [ref=f3e708]: 10s
+              - generic [ref=f3e709]:
+                - generic [ref=f3e710]: FPS
+                - generic [ref=f3e711]: "24"
+              - generic [ref=f3e712]:
+                - generic [ref=f3e713]: Qualità
+                - generic [ref=f3e714]: Massima
+              - generic [ref=f3e715]:
+                - generic [ref=f3e716]: Scene
+                - generic [ref=f3e717]: "2"
+            - group [ref=f3e718]:
+              - generic "Continuità globale" [ref=f3e719] [cursor=pointer]
+        - article [ref=f3e720]:
+          - link "Download ↓" [ref=f3e724] [cursor=pointer]:
+            - /url: /api/media/033c41ef-31fd-40fe-b6ef-0f1ff105b647/0?download=1
+          - generic [ref=f3e725]:
+            - generic [ref=f3e727]:
+              - generic [ref=f3e728]: Completata
+              - heading "The girl moves, arranges her hair, brings her face closer to the frame, and gradually colors, turning into an anime-style photo" [level=2] [ref=f3e729]
+              - paragraph [ref=f3e730]: LTX 2.3 Director 2 UHD · 26 lug 2026, 00:02
+            - generic [ref=f3e731]:
+              - generic [ref=f3e732]:
+                - generic [ref=f3e733]: Output
+                - generic [ref=f3e734]: 480×832
+              - generic [ref=f3e735]:
+                - generic [ref=f3e736]: Seed
+                - generic [ref=f3e737]: "1258215436"
+              - generic [ref=f3e738]:
+                - generic [ref=f3e739]: Durata
+                - generic [ref=f3e740]: 10s
+              - generic [ref=f3e741]:
+                - generic [ref=f3e742]: FPS
+                - generic [ref=f3e743]: "24"
+              - generic [ref=f3e744]:
+                - generic [ref=f3e745]: Qualità
+                - generic [ref=f3e746]: Massima
+              - generic [ref=f3e747]:
+                - generic [ref=f3e748]: Scene
+                - generic [ref=f3e749]: "2"
+            - group [ref=f3e750]:
+              - generic "Continuità globale" [ref=f3e751] [cursor=pointer]
+        - article [ref=f3e752]:
+          - link "Download ↓" [ref=f3e756] [cursor=pointer]:
+            - /url: /api/media/3cae3968-3a31-41ee-a5bd-e28e5ec0c964/0?download=1
+          - generic [ref=f3e757]:
+            - generic [ref=f3e759]:
+              - generic [ref=f3e760]: Completata
+              - heading [level=2] [ref=f3e761]
+              - paragraph [ref=f3e762]: LTX 2.3 Dev FP8 I2V · 25 lug 2026, 23:54
+            - generic [ref=f3e763]:
+              - generic [ref=f3e764]:
+                - generic [ref=f3e765]: Output
+                - generic [ref=f3e766]: 480×832
+              - generic [ref=f3e767]:
+                - generic [ref=f3e768]: Seed
+                - generic [ref=f3e769]: "735681413"
+              - generic [ref=f3e770]:
+                - generic [ref=f3e771]: Durata
+                - generic [ref=f3e772]: 10s
+              - generic [ref=f3e773]:
+                - generic [ref=f3e774]: FPS
+                - generic [ref=f3e775]: "24"
+              - generic [ref=f3e776]:
+                - generic [ref=f3e777]: Qualità
+                - generic [ref=f3e778]: Massima
+        - article [ref=f3e779]:
+          - link "Download ↓" [ref=f3e783] [cursor=pointer]:
+            - /url: /api/media/512f9d32-08f7-4e41-8e71-d516d51bc886/0?download=1
+          - generic [ref=f3e784]:
+            - generic [ref=f3e786]:
+              - generic [ref=f3e787]: Completata
+              - heading [level=2] [ref=f3e788]
+              - paragraph [ref=f3e789]: LTX 2.3 Dev FP8 I2V · 25 lug 2026, 23:18
+            - generic [ref=f3e790]:
+              - generic [ref=f3e791]:
+                - generic [ref=f3e792]: Output
+                - generic [ref=f3e793]: 480×832
+              - generic [ref=f3e794]:
+                - generic [ref=f3e795]: Seed
+                - generic [ref=f3e796]: "1583279577"
+              - generic [ref=f3e797]:
+                - generic [ref=f3e798]: Durata
+                - generic [ref=f3e799]: 30s
+              - generic [ref=f3e800]:
+                - generic [ref=f3e801]: FPS
+                - generic [ref=f3e802]: "24"
+              - generic [ref=f3e803]:
+                - generic [ref=f3e804]: Qualità
+                - generic [ref=f3e805]: Massima
+        - article [ref=f3e806]:
+          - generic [ref=f3e807]:
+            - link "Download 1 ↓" [ref=f3e810] [cursor=pointer]:
+              - /url: /api/media/99a57cfa-6ba7-40a0-bab8-32a2ff40a0d4/0?download=1
+            - link "Download 2 ↓" [ref=f3e813] [cursor=pointer]:
+              - /url: /api/media/99a57cfa-6ba7-40a0-bab8-32a2ff40a0d4/1?download=1
+          - generic [ref=f3e814]:
+            - generic [ref=f3e816]:
+              - generic [ref=f3e817]: Completata
+              - heading "The girl is filming a selfie video. She zooms in on the mirror to better show off her breasts, then pans down to her thong, moving her fingers around the black thong, revealing her shaved vagina. Meanwhile, she's talking in Italian, making racy comments." [level=2] [ref=f3e818]
+              - paragraph [ref=f3e819]: LTX 2.3 1Work · 25 lug 2026, 22:51
+            - generic [ref=f3e820]:
+              - generic [ref=f3e821]:
+                - generic [ref=f3e822]: Output
+                - generic [ref=f3e823]: 480×832
+              - generic [ref=f3e824]:
+                - generic [ref=f3e825]: Seed
+                - generic [ref=f3e826]: "1964614448"
+              - generic [ref=f3e827]:
+                - generic [ref=f3e828]: Durata
+                - generic [ref=f3e829]: 20s
+              - generic [ref=f3e830]:
+                - generic [ref=f3e831]: FPS
+                - generic [ref=f3e832]: "24"
+      - button "Carica altre generazioni" [ref=f3e833] [cursor=pointer]
+  - status

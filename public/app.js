@@ -1,0 +1,1265 @@
+import { enhanceDirectorPrompts, enhanceMainPrompt } from "./prompt-assistant.js";
+import { consumeGuidedHandoff, guidedTokenFromLocation, setInputFile } from "./guided-handoff.js";
+
+const state = {
+  config: null,
+  history: [],
+  currentId: null,
+  eventSource: null,
+  historyRefreshTimer: null,
+  historyRefreshInFlight: false,
+  historyRefreshQueued: false,
+  sceneSerial: 0,
+  loraSerial: 0,
+  videoModelSelections: {},
+};
+
+const $ = (selector) => document.querySelector(selector);
+const form = $("#generator-form");
+const workflow = $("#workflow");
+const connection = $("#connection");
+const toast = $("#toast");
+
+function isImageGeneration() {
+  return $("#generationType").value === "image";
+}
+
+function isUpscaleGeneration() {
+  return $("#generationType").value === "upscale";
+}
+
+function promptAssistantContext() {
+  if (isImageGeneration()) {
+    const model = state.config?.imageModels.find((item) => item.id === $("#imageModelId").value);
+    const mode = $("#imageMode").value;
+    return {
+      target: String(model?.family || "flux2").toLowerCase(),
+      mode,
+      workflowName: `${model?.name || "Immagine"} · ${$("#imageModelFile").selectedOptions[0]?.textContent || ""}`,
+      sourceFile: mode === "text" ? null : $("#sourceImage").files[0] || null,
+    };
+  }
+  const selectedWorkflow = state.config?.workflows.find((item) => item.id === workflow.value);
+  const edit = workflow.value === "editAnything";
+  const textMode = $("#videoInputMode").value === "text";
+  const sulphur = selectedWorkflow?.id === "ltxSulphur";
+  return {
+    target: sulphur ? (edit ? "sulphur_ltxedit" : "sulphur_ltx") : (edit ? "ltxedit" : "ltx"),
+    mode: edit ? "video" : textMode ? "text" : "image",
+    workflowName: `${selectedWorkflow?.name || "LTX 2.3"} · ${$("#videoModelId").selectedOptions[0]?.textContent || ""}`,
+    sourceFile: !edit && !textMode ? $("#image").files[0] || null : null,
+  };
+}
+
+function isSulphurPromptMode() {
+  if (isImageGeneration() || isUpscaleGeneration()) return false;
+  const selectedWorkflow = state.config?.workflows.find((item) => item.id === workflow.value);
+  return selectedWorkflow?.id === "ltxSulphur";
+}
+
+function updatePromptAssistantAvailability() {
+  const qwenEditButton = $("#qwen-edit-prompt-button");
+  const kleinButton = $("#klein-prompt-button");
+  const reverseButton = $("#reverse-prompt-button");
+  const ltxArchitectButton = $("#ltx-architect-prompt-button");
+  const ltxSceneButton = $("#ltx-scene-prompt-button");
+  const sulphurPromptButton = $("#sulphur-prompt-button");
+  const directorButton = $("#director-prompt-assistant-button");
+  const enabled = Boolean(state.config?.promptAssistant?.enabled);
+  const usable = enabled && !isUpscaleGeneration() && !$("#prompt").disabled;
+  const imageUsable = usable && isImageGeneration();
+  const isDirector = !isImageGeneration() && workflow.value === "director";
+  const ltxUsable = usable && !isImageGeneration() && !isDirector;
+  const sulphurUsable = ltxUsable;
+  qwenEditButton.classList.toggle("hidden", !imageUsable);
+  kleinButton.classList.toggle("hidden", !imageUsable);
+  reverseButton.classList.toggle("hidden", !imageUsable);
+  ltxArchitectButton.classList.toggle("hidden", !ltxUsable);
+  ltxSceneButton.classList.toggle("hidden", !ltxUsable);
+  sulphurPromptButton.classList.toggle("hidden", !sulphurUsable);
+  directorButton?.classList.toggle("hidden", !enabled || !isDirector);
+  if (!enabled) $("#prompt-assistant-status").textContent = "Prompt Assistant non configurato";
+}
+
+async function api(url, options) {
+  const response = await fetch(url, options);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || `Errore ${response.status}`);
+  return payload;
+}
+
+function showToast(message) {
+  toast.textContent = message;
+  toast.classList.add("visible");
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => toast.classList.remove("visible"), 2600);
+}
+
+function escapeAttribute(text) {
+  return escapeHtml(text).replaceAll('"', "&quot;");
+}
+
+function compatibleLoras() {
+  if (isUpscaleGeneration()) return [];
+  const all = state.config?.loras || [];
+  let prefix = "LTX2.3\\";
+  if (isImageGeneration()) {
+    const model = state.config.imageModels.find((item) => item.id === $("#imageModelId").value);
+    prefix = ["qwen", "qwenedit"].includes(model?.family)
+      ? "QWEN\\"
+      : model?.family === "flux2"
+        ? "FLUX2\\"
+        : model?.family === "zimage"
+          ? "ZIMG\\"
+          : "FLUX\\";
+  }
+  return all.filter((name) => {
+    const compatiblePrefix = name.toLocaleUpperCase().startsWith(prefix.toLocaleUpperCase());
+    if (!compatiblePrefix) return false;
+    return true;
+  });
+}
+
+function loraOptions(selected = "") {
+  const available = compatibleLoras();
+  return `<option value="">Scegli una LoRA…</option>${available.map((name) =>
+    `<option value="${escapeAttribute(name)}"${name === selected ? " selected" : ""}>${escapeHtml(name)}</option>`
+  ).join("")}`;
+}
+
+function addLora(values = {}) {
+  const id = `lora_${++state.loraSerial}`;
+  const available = compatibleLoras();
+  if (!available.length) return showToast("Nessuna LoRA compatibile trovata");
+  $("#lora-list").insertAdjacentHTML("beforeend", `
+    <div class="lora-row" data-lora-id="${id}">
+      <div>
+        <label for="${id}_name">LoRA</label>
+        <select id="${id}_name" data-lora-name>${loraOptions(values.name || "")}</select>
+      </div>
+      <div>
+        <label for="${id}_strength">Forza</label>
+        <input id="${id}_strength" data-lora-strength type="number" min="-10" max="10" step="0.05" value="${Number(values.strength ?? 1)}">
+      </div>
+      <button type="button" data-remove-lora title="Rimuovi LoRA">×</button>
+    </div>`);
+  syncLoras();
+}
+
+function syncLoras() {
+  const values = [...document.querySelectorAll(".lora-row")].map((row) => ({
+    name: row.querySelector("[data-lora-name]").value,
+    strength: Number(row.querySelector("[data-lora-strength]").value),
+  })).filter((item) => item.name);
+  $("#loras").value = JSON.stringify(values);
+  $("#lora-count").textContent = `${values.length} ${values.length === 1 ? "attiva" : "attive"}`;
+  $("#lora-empty-hint").classList.toggle("hidden", document.querySelectorAll(".lora-row").length > 0);
+}
+
+function refreshLoraOptions() {
+  for (const select of document.querySelectorAll("[data-lora-name]")) {
+    const selected = select.value;
+    select.innerHTML = loraOptions(selected);
+    if (![...select.options].some((option) => option.value === selected)) select.value = "";
+  }
+  $("#add-lora").disabled = compatibleLoras().length === 0;
+  syncLoras();
+}
+
+function virtualInfluencerSelected() {
+  return Boolean($("#virtualInfluencerId")?.value);
+}
+
+function updateVirtualInfluencerRequirements() {
+  const selected = virtualInfluencerSelected();
+  $("#virtual-influencer-hint").textContent = selected
+    ? "La reference canonica verrà caricata automaticamente e il prompt includerà l’identità selezionata."
+    : "Usa una virtual influencer approvata come identità/reference automatica.";
+  if (!selected) return;
+  if (isImageGeneration() && $("#imageMode").value !== "text") {
+    $("#sourceImage").required = false;
+  }
+  if (!isImageGeneration() && workflow.value !== "editAnything" && $("#videoInputMode").value !== "text") {
+    $("#image").required = false;
+  }
+}
+
+function renderSulphurPanel(active) {
+  const panel = $("#sulphur-base-panel");
+  panel.classList.toggle("hidden", !active);
+  if (!active) return;
+  const config = state.config?.sulphur || {};
+  $("#sulphur-model-file").textContent = config.modelFile || "ltx-2.3-22b-dev-fp8.safetensors";
+  $("#sulphur-enhancer-model").textContent = config.dedicatedEnhancerConfigured
+    ? config.enhancerModel
+    : `${config.enhancerModel || "LM Studio fallback"} · fallback`;
+  $("#sulphur-summary").textContent =
+    "Usa LTX 2.3 Dev con LoRA ceil72 + Sulphur rank 768. T2V e I2V hanno template API separati.";
+  const files = config.files || [];
+  $("#sulphur-file-list").innerHTML = files.map((file) => `
+    <li>
+      <span class="sulphur-file-status ${file.installed ? "" : "missing"}">${file.installed ? "Presente" : "Manca"}</span>
+      <div>
+        <strong>${escapeHtml(file.name)}</strong>
+        <span>${escapeHtml(file.repositoryPath)} · ${Number(file.sizeGb || 0).toFixed(2)} GB</span>
+      </div>
+    </li>
+  `).join("");
+  $("#sulphur-install-note").textContent =
+    `Prompt enhancer: scarica i file dal repo SulphurAI/Sulphur-2-base e mettili in ${config.lmStudioDirectory || "LM Studio/Sulphur/promptenhancer"}.`;
+}
+
+function workflowChanged() {
+  if (isImageGeneration()) return;
+  $("#regular-scene-fields").classList.remove("hidden");
+  const item = state.config.workflows.find((entry) => entry.id === workflow.value);
+  $("#workflow-description").textContent = item?.description || "";
+  const isDirector = workflow.value === "director";
+  const isEdit = workflow.value === "editAnything";
+  const isLtxSulphur = workflow.value === "ltxSulphur";
+  const supportsTextToVideo = Boolean(item?.supportsTextToVideo);
+  const supportsVideoModels = Boolean(item?.supportsVideoModelSelection);
+  const videoModelSelect = $("#videoModelId");
+  if (supportsVideoModels) {
+    const selected = state.videoModelSelections[item.id] || item.defaultVideoModelId || "normal";
+    videoModelSelect.value = selected;
+    if (videoModelSelect.selectedOptions[0]?.disabled) {
+      const fallback = [...videoModelSelect.options].find((option) => !option.disabled);
+      if (fallback) videoModelSelect.value = fallback.value;
+    }
+    state.videoModelSelections[item.id] = videoModelSelect.value;
+  }
+  const selectedVideoModel = state.config.videoModels?.find((model) => model.id === videoModelSelect.value);
+  $("#video-model-field").classList.toggle("hidden", !supportsVideoModels);
+  videoModelSelect.disabled = !supportsVideoModels;
+  $("#video-model-description").textContent = supportsVideoModels ? selectedVideoModel?.description || "" : "";
+  $("#video-model-warning").textContent = selectedVideoModel?.available === false
+    ? `Modello non installato: ${selectedVideoModel.file}`
+    : "";
+  $("#video-model-warning").classList.toggle("hidden", !supportsVideoModels || selectedVideoModel?.available !== false);
+  renderSulphurPanel(isLtxSulphur);
+  const isTextToVideo = supportsTextToVideo && $("#videoInputMode").value === "text";
+  $("#video-input-mode-field").classList.toggle("hidden", !supportsTextToVideo);
+  $("#videoInputMode").disabled = !supportsTextToVideo;
+  $("#video-input-mode-hint").textContent = isTextToVideo
+    ? "Genera il video da zero usando soltanto il prompt, senza un fotogramma iniziale."
+    : "Usa una foto come primo fotogramma e guidane il movimento con il prompt.";
+  $("#quality-field").classList.toggle("hidden", !item?.supportsQuality);
+  $("#regular-scene-fields").classList.toggle("hidden", isDirector);
+  $("#source-image-field").classList.add("hidden");
+  $("#image-input-field").classList.toggle("hidden", isEdit || isTextToVideo);
+  $("#video-input-field").classList.toggle("hidden", !isEdit);
+  $("#resolution-field").classList.toggle("hidden", isEdit);
+  $("#orientation-field").classList.toggle("hidden", isEdit);
+  $("#director-storyboard").classList.toggle("hidden", !isDirector);
+  $("#edit-settings").classList.toggle("hidden", !isEdit);
+  $("#image").disabled = isDirector || isEdit || isTextToVideo;
+  $("#image").required = !isDirector && !isEdit && !isTextToVideo;
+  $("#video").disabled = !isEdit;
+  $("#video").required = isEdit;
+  $("#prompt").disabled = isDirector;
+  $("#prompt").required = !isDirector;
+  $("#duration").disabled = isDirector;
+  $("#resolution").disabled = isEdit;
+  $("#orientation").disabled = isEdit;
+  $("#prompt-label").textContent = isEdit ? "Istruzione di modifica" : "Prompt positivo";
+  $("#prompt").placeholder = isEdit
+    ? "Es. Replace the red car with a futuristic silver vehicle…"
+    : "Descrivi scena, movimento, camera, luce e atmosfera…";
+  $("#duration-label").textContent = isEdit ? "Durata massima" : "Durata";
+  for (const input of document.querySelectorAll("#director-storyboard input, #director-storyboard textarea")) {
+    input.disabled = !isDirector;
+  }
+  for (const input of document.querySelectorAll("#edit-settings input, #edit-settings select")) {
+    input.disabled = !isEdit;
+  }
+  if (isDirector && !$("#storyboard-scenes").children.length) {
+    addStoryboardScene({ duration: Number($("#duration").value) || 10 });
+  }
+  updateStoryboard();
+  refreshLoraOptions();
+  updatePromptAssistantAvailability();
+  updateVirtualInfluencerRequirements();
+}
+
+function upscaleOptionsChanged() {
+  const active = isUpscaleGeneration();
+  const config = state.config?.upscaling || { engines: [], models: [] };
+  const engine = config.engines.find((item) => item.id === $("#upscaleEngine").value);
+  const modelEngine = engine?.id === "model";
+  const detailers = config.detailers || {};
+  const detailerReady = active && detailers.available;
+  $("#upscale-engine-description").textContent = engine?.description || "";
+  $("#upscale-model-field").classList.toggle("hidden", !modelEngine);
+  $("#upscaleModel").disabled = !active || !modelEngine;
+  $("#upscaleAutoPurge").disabled = !active || engine?.id === "lanczos";
+  for (const id of ["#upscaleFaceDetailer", "#upscaleEyeDetailer", "#upscaleHandDetailer", "#upscaleSkinDetailer"]) {
+    $(id).disabled = !detailerReady;
+  }
+  $("#upscaleNsfwDetailer").disabled = !detailerReady || !detailers.nsfw;
+  $("#upscaleFaceDenoise").disabled = !detailerReady || !$("#upscaleFaceDetailer").checked;
+  $("#upscaleEyeDenoise").disabled = !detailerReady || !$("#upscaleEyeDetailer").checked;
+  $("#upscaleHandDenoise").disabled = !detailerReady || !$("#upscaleHandDetailer").checked;
+  $("#upscaleSkinDenoise").disabled = !detailerReady || !$("#upscaleSkinDetailer").checked;
+  $("#upscaleNsfwDenoise").disabled = !detailerReady || !detailers.nsfw || !$("#upscaleNsfwDetailer").checked;
+  for (const input of document.querySelectorAll('#upscale-presets input[name="upscalePreset"]')) {
+    input.disabled = !active;
+  }
+  const warnings = [];
+  if (engine && !engine.available) warnings.push(`${engine.name} non è disponibile nell’istanza ComfyUI attiva.`);
+  if (active && !detailers.available) warnings.push("Pre-detailer volto/occhi/mani/pelle non disponibile: manca Impact Pack, SAM o un nodo Flux/detailer richiesto.");
+  if (active && detailers.available && !detailers.nsfw) warnings.push("Pre-detailer NSFW non disponibile: manca almeno un detector anatomico Ultralytics.");
+  if (engine?.id === "rtx") warnings.push("RTX Qualità MAX usa VSR High Bitrate, denoise e deblur Ultra a 4×.");
+  if (engine?.id === "model" && /(?:^|[^0-9])8x/i.test($("#upscaleModel").value)) {
+    warnings.push("Il modello selezionato produce un output 8×: può richiedere molta RAM e spazio su disco.");
+  }
+  $("#upscale-warning").textContent = warnings.join(" ");
+  $("#upscale-warning").classList.toggle("hidden", warnings.length === 0);
+}
+
+function imageOptionsChanged(updateDefaults = false) {
+  const model = state.config.imageModels.find((item) => item.id === $("#imageModelId").value);
+  if (!model) return;
+  const modelFileSelect = $("#imageModelFile");
+  const previousModelFile = modelFileSelect.value;
+  modelFileSelect.innerHTML = model.models.map((item) =>
+    `<option value="${escapeAttribute(item.file)}">${escapeHtml(item.name)}</option>`
+  ).join("");
+  const selectedModel = model.models.find((item) => item.file === previousModelFile)
+    || model.models.find((item) => item.file === model.defaultModelFile)
+    || model.models[0];
+  if (selectedModel) modelFileSelect.value = selectedModel.file;
+  const modeSelect = $("#imageMode");
+  const previousMode = modeSelect.value;
+  const labels = {
+    text: "Text to Image",
+    image: model.family === "qwenedit"
+      ? "Image Edit 2511"
+      : model.family === "flux2"
+        ? "Image Edit / Reference"
+        : "Image to Image",
+    reference: "Reference Image · Flux Redux",
+  };
+  modeSelect.innerHTML = model.modes.map((mode) =>
+    `<option value="${mode}">${labels[mode]}</option>`
+  ).join("");
+  modeSelect.value = model.modes.includes(previousMode) ? previousMode : model.modes[0];
+  $("#image-model-description").textContent = selectedModel
+    ? `${model.description} Selezionato: ${selectedModel.name}.`
+    : model.description;
+  $("#image-model-warning").classList.toggle("hidden", model.available);
+  const modelWarnings = [];
+  if (!model.models.length) {
+    modelWarnings.push(`Nessun modello ${model.name} è installato nella cartella ${model.modelPrefix}`);
+  }
+  if (model.missingRequirements?.length) {
+    modelWarnings.push(`Componenti richiesti mancanti: ${model.missingRequirements.join(", ")}`);
+  }
+  $("#image-model-warning").textContent = model.available ? "" : `${modelWarnings.join(". ")}.`;
+  if (updateDefaults) {
+    $("#imageSteps").value = selectedModel?.defaults.steps ?? model.defaults.steps;
+    $("#imageGuidance").value = selectedModel?.defaults.guidance ?? model.defaults.guidance;
+  }
+  const mode = modeSelect.value;
+  const needsImage = mode !== "text";
+  $("#batchSize").max = model.family === "qwenedit" ? "1" : "4";
+  if (model.family === "qwenedit") $("#batchSize").value = "1";
+  $("#source-image-field").classList.toggle("hidden", !needsImage);
+  $("#sourceImage").disabled = !needsImage;
+  $("#sourceImage").required = needsImage;
+  $("#source-image-label").textContent = mode === "reference" ? "Immagine di riferimento" : "Immagine iniziale";
+  $("#source-image-copy").textContent = mode === "reference"
+    ? "Carica l’immagine di riferimento"
+    : "Carica l’immagine da modificare";
+  const nativeInstructionEdit = ["flux2", "qwenedit"].includes(model.family);
+  $("#denoise-field").classList.toggle("hidden", mode !== "image" || nativeInstructionEdit);
+  $("#denoise").disabled = mode !== "image" || nativeInstructionEdit;
+  $("#reference-strength-field").classList.toggle("hidden", mode !== "reference");
+  $("#referenceStrength").disabled = mode !== "reference";
+  $("#prompt-label").textContent = mode === "text" ? "Prompt positivo" : "Istruzione / prompt";
+  $("#prompt").placeholder = mode === "text"
+    ? "Descrivi soggetto, scena, stile, luce e composizione…"
+    : "Descrivi la modifica o il risultato desiderato…";
+  updateEnhancementOptions();
+  refreshLoraOptions();
+  updatePromptAssistantAvailability();
+  updateVirtualInfluencerRequirements();
+}
+
+function updateEnhancementOptions(enforceSafeBatch = false) {
+  const image = isImageGeneration();
+  const capabilities = state.config?.imageEnhancements || {};
+  const highres = image && $("#highresEnabled").checked;
+  const upscaleMode = image ? $("#upscaleMode").value : "none";
+  const seedvr = upscaleMode === "seedvr2";
+  const faceAvailable = Boolean(state.config?.upscaling?.detailers?.available);
+  const face = image && faceAvailable && $("#faceEnhance").checked;
+  const enhanced = highres || upscaleMode !== "none" || face;
+
+  $("#image-enhancements").classList.toggle("hidden", !image);
+  for (const input of document.querySelectorAll("#highres-settings input, #highres-settings select")) {
+    input.disabled = !highres;
+  }
+  $("#seedvr-profile-field").classList.toggle("hidden", !seedvr);
+  $("#seedvr-resolution-field").classList.toggle("hidden", !seedvr);
+  $("#seedvrProfile").disabled = !seedvr;
+  $("#seedvrResolution").disabled = !seedvr;
+  $("#faceEnhance").disabled = !image || !faceAvailable;
+  $("#face-strength-field").classList.toggle("hidden", !face);
+  $("#faceStrength").disabled = !face;
+  $("#autoPurge").disabled = !image || upscaleMode === "none";
+  $("#saveOriginal").disabled = !image || !enhanced;
+
+  const warnings = [];
+  if (!capabilities.fastUpscale) warnings.push("RealESRGAN 2× non è installato.");
+  if (!capabilities.seedvr2) warnings.push("SeedVR2 non è disponibile.");
+  if (!faceAvailable) {
+    warnings.push(
+      "Face Detailer non disponibile: manca Impact Pack, SAM, il detector volto o il modello Flux di rifinitura.",
+    );
+  }
+  if (!capabilities.phasePurge) warnings.push("VRAM Debug non è installato: purge tra generazione e upscale non disponibile.");
+  $("#enhancement-warning").textContent = warnings.join(" ");
+  $("#enhancement-warning").classList.toggle("hidden", warnings.length === 0);
+
+  for (const option of $("#upscaleMode").options) {
+    if (option.value === "fast") option.disabled = !capabilities.fastUpscale;
+    if (option.value === "seedvr2") option.disabled = !capabilities.seedvr2;
+  }
+  if (($("#upscaleMode").selectedOptions[0]?.disabled)) {
+    $("#upscaleMode").value = "none";
+  }
+  if (enforceSafeBatch && (highres || seedvr || face) && Number($("#batchSize").value) > 1) {
+    $("#batchSize").value = "1";
+    showToast("Numero immagini impostato a 1 per proteggere la VRAM");
+  }
+}
+
+function generationTypeChanged(type) {
+  const image = type === "image";
+  const upscale = type === "upscale";
+  const video = !image && !upscale;
+  $("#generationType").value = type;
+  for (const button of document.querySelectorAll("[data-generation-type]")) {
+    button.classList.toggle("active", button.dataset.generationType === type);
+  }
+  $("#video-workflow-field").classList.toggle("hidden", !video);
+  // workflowChanged() decides whether these controls are supported for the
+  // active video workflow. Switching to another generation type must clear
+  // their previous visible state as well as disabling their inputs.
+  if (!video) {
+    $("#video-input-mode-field").classList.add("hidden");
+    $("#video-model-field").classList.add("hidden");
+    $("#sulphur-base-panel").classList.add("hidden");
+  }
+  $("#image-options").classList.toggle("hidden", !image);
+  $("#virtual-influencer-field").classList.toggle("hidden", upscale);
+  $("#upscale-options").classList.toggle("hidden", !upscale);
+  $("#video-settings-grid").classList.toggle("hidden", !video);
+  $("#image-settings-grid").classList.toggle("hidden", !image);
+  $("#image-enhancements").classList.toggle("hidden", !image);
+  $("#negative-prompt-field").classList.toggle("hidden", upscale);
+  $("#lora-settings").classList.toggle("hidden", upscale);
+  $("#negativePrompt").disabled = upscale;
+  workflow.disabled = !video;
+  $("#videoInputMode").disabled = !video;
+  $("#videoModelId").disabled = !video;
+  $("#imageModelId").disabled = !image;
+  $("#imageModelFile").disabled = !image;
+  $("#imageMode").disabled = !image;
+  $("#virtualInfluencerId").disabled = upscale;
+  $("#seed").disabled = !video;
+  $("#imageSeed").disabled = !image;
+  for (const input of document.querySelectorAll("#image-settings-grid input, #image-settings-grid select")) {
+    input.disabled = !image;
+  }
+  for (const input of document.querySelectorAll("#image-enhancements input, #image-enhancements select")) {
+    input.disabled = !image;
+  }
+  for (const input of document.querySelectorAll("#upscale-options input, #upscale-options select")) {
+    input.disabled = !upscale;
+  }
+  if (image) {
+    $("#regular-scene-fields").classList.remove("hidden");
+    $("#image-input-field").classList.add("hidden");
+    $("#video-input-field").classList.add("hidden");
+    $("#image").disabled = true;
+    $("#video").disabled = true;
+    $("#director-storyboard").classList.add("hidden");
+    $("#edit-settings").classList.add("hidden");
+    $("#quality-field").classList.add("hidden");
+    $("#duration").disabled = true;
+    $("#resolution").disabled = true;
+    $("#orientation").disabled = true;
+    $("#prompt").disabled = false;
+    $("#prompt").required = true;
+    for (const input of document.querySelectorAll("#director-storyboard input, #director-storyboard textarea, #edit-settings input, #edit-settings select")) {
+      input.disabled = true;
+    }
+    imageOptionsChanged(true);
+  } else if (video) {
+    $("#source-image-field").classList.add("hidden");
+    $("#sourceImage").disabled = true;
+    $("#imageModelId").disabled = true;
+    $("#imageModelFile").disabled = true;
+    $("#imageMode").disabled = true;
+    $("#imageSeed").disabled = true;
+    workflowChanged();
+  } else {
+    $("#regular-scene-fields").classList.add("hidden");
+    $("#source-image-field").classList.add("hidden");
+    $("#image-input-field").classList.add("hidden");
+    $("#video-input-field").classList.add("hidden");
+    $("#director-storyboard").classList.add("hidden");
+    $("#edit-settings").classList.add("hidden");
+    $("#quality-field").classList.add("hidden");
+    $("#image").disabled = true;
+    $("#video").disabled = true;
+    $("#sourceImage").disabled = true;
+    $("#prompt").disabled = true;
+    $("#prompt").required = false;
+    $("#negativePrompt").disabled = true;
+    $("#upscaleImage").disabled = false;
+    $("#upscaleImage").required = true;
+    for (const input of document.querySelectorAll("#director-storyboard input, #director-storyboard textarea, #edit-settings input, #edit-settings select")) {
+      input.disabled = true;
+    }
+    upscaleOptionsChanged();
+  }
+  $("#upscaleImage").required = upscale;
+  $("#generate-button span").textContent = upscale ? "Avvia upscaling" : "Avvia generazione";
+  updateEnhancementOptions();
+  refreshLoraOptions();
+  updatePromptAssistantAvailability();
+}
+
+async function applyGuidedCreation() {
+  const token = guidedTokenFromLocation();
+  if (!token) return;
+  const handoff = await consumeGuidedHandoff(token);
+  if (!handoff?.payload?.fields) return;
+  const { fields } = handoff.payload;
+  const type = fields.generationType || "video";
+  generationTypeChanged(type);
+
+  if (type === "video") {
+    if (fields.workflowId && state.config.workflows.some((item) => item.id === fields.workflowId)) {
+      workflow.value = fields.workflowId;
+    }
+    workflowChanged();
+    if (fields.videoInputMode && !$("#videoInputMode").disabled) {
+      $("#videoInputMode").value = fields.videoInputMode;
+      workflowChanged();
+    }
+    if (fields.engine === "sulphur" && state.config.workflows.some((entry) => entry.id === "ltxSulphur")) {
+      workflow.value = "ltxSulphur";
+      workflowChanged();
+    }
+    const quality = fields.quality === "speed" ? "preview" : "max";
+    const qualityInput = document.querySelector(`[name="quality"][value="${quality}"]`);
+    if (qualityInput) qualityInput.checked = true;
+  } else if (type === "image") {
+    if (fields.imageMode) $("#imageMode").value = fields.imageMode;
+    const requestedFamily = fields.engine;
+    if (requestedFamily && requestedFamily !== "auto") {
+      const option = state.config.imageModels.find((model) => model.id === requestedFamily && model.available);
+      if (option) $("#imageModelId").value = option.id;
+    } else if (fields.imageMode !== "text") {
+      const qwenEdit = state.config.imageModels.find((model) => model.id === "qwenEdit" && model.available);
+      if (qwenEdit) $("#imageModelId").value = qwenEdit.id;
+    }
+    imageOptionsChanged(true);
+    if (fields.quality === "max") {
+      $("#highresEnabled").checked = true;
+      if ([...$("#upscaleMode").options].some((option) => option.value === "seedvr2" && !option.disabled)) {
+        $("#upscaleMode").value = "seedvr2";
+      }
+      updateEnhancementOptions(true);
+    }
+  } else {
+    const preset = fields.quality || "quality";
+    const presetInput = document.querySelector(`[name="upscalePreset"][value="${preset}"]`);
+    if (presetInput) presetInput.checked = true;
+    upscaleOptionsChanged();
+  }
+
+  const promptTarget = fields.workflowId === "director" ? $("#directorGlobalPrompt") : $("#prompt");
+  if (promptTarget && fields.prompt) {
+    promptTarget.value = fields.prompt;
+    promptTarget.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+  if (fields.workflowId === "director" && Array.isArray(fields.directorScenes)) {
+    while (document.querySelectorAll(".scene-card").length < fields.directorScenes.length) {
+      addStoryboardScene({ duration: fields.directorScenes[document.querySelectorAll(".scene-card").length]?.duration || 5 });
+    }
+    [...document.querySelectorAll(".scene-card")].forEach((card, index) => {
+      const scene = fields.directorScenes[index];
+      if (!scene) {
+        card.remove();
+        return;
+      }
+      card.querySelector("[data-scene-prompt]").value = scene.prompt || "";
+      card.querySelector("[data-scene-duration]").value = Number(scene.duration) || 5;
+      const file = handoff.files?.[`directorScene${index}`];
+      if (file) setInputFile(card.querySelector('input[type="file"]'), file);
+    });
+    updateStoryboard();
+  }
+  for (const [name, file] of Object.entries(handoff.files || {})) {
+    if (name.startsWith("directorScene")) continue;
+    setInputFile(document.querySelector(`[name="${CSS.escape(name)}"]`), file);
+  }
+  history.replaceState({}, "", location.pathname);
+  showToast("Configurazione della guida applicata. Controlla i dettagli e genera quando vuoi.");
+}
+
+function sceneCardTemplate(scene) {
+  return `
+    <article class="scene-card" data-scene-id="${scene.id}">
+      <div class="scene-card-header">
+        <div class="scene-title"><i>1</i><span>Scena 1</span><small class="scene-range">0–${scene.duration}s</small></div>
+        <div class="scene-actions">
+          <button type="button" data-scene-action="up" title="Sposta prima">↑</button>
+          <button type="button" data-scene-action="down" title="Sposta dopo">↓</button>
+          <button type="button" data-scene-action="remove" title="Rimuovi">×</button>
+        </div>
+      </div>
+      <div class="scene-card-body">
+        <label class="scene-image">
+          <input type="file" name="sceneImage_${scene.id}" accept="image/png,image/jpeg,image/webp">
+          <img alt="">
+          <span class="scene-upload-copy"><b>＋</b>Foto guida<br>opzionale</span>
+        </label>
+        <div class="scene-fields">
+          <textarea data-scene-prompt rows="4" placeholder="Azione, movimento camera, inquadratura e suono della scena…" required>${escapeHtml(scene.prompt || "")}</textarea>
+          <div class="scene-meta">
+            <div class="scene-duration">
+              <label>Durata scena</label>
+              <div class="input-suffix"><input data-scene-duration type="number" min="1" max="30" value="${scene.duration}" required><span>sec</span></div>
+            </div>
+            <div class="scene-hint">La foto viene inserita all’inizio di questa scena.</div>
+          </div>
+        </div>
+      </div>
+    </article>`;
+}
+
+function addStoryboardScene(values = {}) {
+  const cards = document.querySelectorAll(".scene-card");
+  if (cards.length >= 8) return showToast("Puoi inserire al massimo 8 scene");
+  const id = `s${Date.now()}_${++state.sceneSerial}`;
+  $("#storyboard-scenes").insertAdjacentHTML("beforeend", sceneCardTemplate({
+    id,
+    prompt: values.prompt || "",
+    duration: Number(values.duration) || 4,
+  }));
+  updateStoryboard();
+}
+
+function storyboardData() {
+  return [...document.querySelectorAll(".scene-card")].map((card) => ({
+    id: card.dataset.sceneId,
+    prompt: card.querySelector("[data-scene-prompt]").value.trim(),
+    duration: Number(card.querySelector("[data-scene-duration]").value),
+  }));
+}
+
+function storyboardAssistantData() {
+  return [...document.querySelectorAll(".scene-card")].slice(0, 3).map((card) => {
+    const fileInput = card.querySelector('input[type="file"]');
+    return {
+      id: card.dataset.sceneId,
+      duration: Number(card.querySelector("[data-scene-duration]").value),
+      promptInput: card.querySelector("[data-scene-prompt]"),
+      file: fileInput?.files?.[0] || null,
+    };
+  });
+}
+
+function updateStoryboard() {
+  const cards = [...document.querySelectorAll(".scene-card")];
+  let cursor = 0;
+  cards.forEach((card, index) => {
+    const duration = Math.max(0, Number(card.querySelector("[data-scene-duration]").value) || 0);
+    card.querySelector(".scene-title i").textContent = index + 1;
+    card.querySelector(".scene-title span").textContent = `Scena ${index + 1}`;
+    card.querySelector(".scene-range").textContent = `${cursor}–${cursor + duration}s`;
+    card.querySelector('[data-scene-action="up"]').disabled = index === 0;
+    card.querySelector('[data-scene-action="down"]').disabled = index === cards.length - 1;
+    card.querySelector('[data-scene-action="remove"]').disabled = cards.length === 1;
+    cursor += duration;
+  });
+  $("#storyboard-total").textContent = `${cursor}s`;
+  $("#add-scene").disabled = cards.length >= 8 || cursor >= 60;
+  $("#storyboard-total").style.color = cursor > 60 ? "var(--danger)" : "";
+}
+
+function setConnection(online) {
+  connection.className = `connection ${online ? "online" : "offline"}`;
+  connection.innerHTML = `<span></span>${online ? "ComfyUI online" : "ComfyUI offline"}`;
+}
+
+async function checkHealth() {
+  try {
+    await api("/api/health");
+    setConnection(true);
+  } catch {
+    setConnection(false);
+  }
+}
+
+function statusLabel(item) {
+  return {
+    queued: "In coda",
+    running: "In lavorazione",
+    completed: "Completata",
+    error: "Errore",
+    interrupted: "Annullata",
+  }[item.status] || item.status;
+}
+
+function formatDate(value) {
+  return new Intl.DateTimeFormat("it-IT", {
+    day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function videoModeLabel(inputMode) {
+  return {
+    text: "Testo → Video",
+    image: "Immagine → Video",
+    video: "Video → Video",
+  }[inputMode] || "";
+}
+
+function renderCurrent() {
+  const active = state.history.find((item) => ["queued", "running"].includes(item.status));
+  state.currentId = active?.id || null;
+  $("#current-empty").classList.toggle("hidden", Boolean(active));
+  const current = $("#current-job");
+  current.classList.toggle("hidden", !active);
+  if (!active) return;
+  const dimensions = active.width && active.height
+    ? `${active.width}×${active.height}`
+    : active.resolution;
+  const timing = active.mediaType === "image"
+    ? `${active.batchSize || 1} ${active.batchSize === 1 ? "immagine" : "immagini"}`
+    : `${active.duration}s`;
+  const inputMode = videoModeLabel(active.inputMode);
+  current.innerHTML = `
+    <h3>${escapeHtml(active.workflowName)}</h3>
+    <div class="job-meta">${inputMode ? `${escapeHtml(inputMode)} · ` : ""}${escapeHtml(dimensions)} · ${timing} · seed ${active.seed}</div>
+    <div class="progress-row">
+      <div class="progress-track"><i style="width:${active.progress || 2}%"></i></div>
+      <b>${active.progress || 0}%</b>
+    </div>
+    <button class="stop-button" data-stop="${active.id}">Annulla generazione</button>
+  `;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = String(text ?? "");
+  return div.innerHTML;
+}
+
+function renderHistory() {
+  const container = $("#history");
+  if (!container) {
+    renderCurrent();
+    return;
+  }
+  $("#history-empty").classList.toggle("hidden", state.history.length > 0);
+  container.innerHTML = state.history.map((item) => {
+    const media = item.videos?.length
+      ? `<video controls preload="metadata" playsinline src="/api/media/${item.id}/0"></video>
+         <a class="download" href="/api/media/${item.id}/0?download=1" download>Download ↓</a>`
+      : `<span class="status">${escapeHtml(statusLabel(item))}${item.status === "running" ? ` · ${item.progress || 0}%` : ""}</span>`;
+    return `
+      <article class="history-card">
+        <div class="history-media">${media}</div>
+        <div class="history-info">
+          <h3 title="${escapeHtml(item.prompt)}">${escapeHtml(item.prompt || item.workflowName)}</h3>
+          <p>${escapeHtml(item.workflowName)}${videoModeLabel(item.inputMode) ? ` · ${escapeHtml(videoModeLabel(item.inputMode))}` : ""}${item.sceneCount > 1 ? ` · ${item.sceneCount} scene` : ""} · ${item.resolution} · ${formatDate(item.createdAt)}</p>
+        </div>
+      </article>`;
+  }).join("");
+  renderCurrent();
+}
+
+async function loadHistory() {
+  state.history = await api("/api/generations");
+  renderHistory();
+}
+
+function queueHistoryRefresh(delay = 120) {
+  clearTimeout(state.historyRefreshTimer);
+  state.historyRefreshTimer = setTimeout(async () => {
+    if (state.historyRefreshInFlight) {
+      state.historyRefreshQueued = true;
+      return;
+    }
+    state.historyRefreshInFlight = true;
+    try {
+      await loadHistory();
+    } catch (error) {
+      showToast(error.message);
+    } finally {
+      state.historyRefreshInFlight = false;
+      if (state.historyRefreshQueued) {
+        state.historyRefreshQueued = false;
+        queueHistoryRefresh();
+      }
+    }
+  }, delay);
+}
+
+function applyLiveGenerationEvent(message) {
+  const item = state.history.find((entry) => entry.id === message.generationId);
+  if (!item) return;
+  if (message.type === "progress") {
+    const value = Number(message.data?.value || 0);
+    const max = Number(message.data?.max || 1);
+    item.progress = Math.max(0, Math.min(100, Math.round((value / max) * 100)));
+    item.status = "running";
+  } else if (message.type === "executing" && message.data?.node) {
+    item.status = "running";
+  }
+  renderCurrent();
+}
+
+function connectEvents() {
+  state.eventSource?.close();
+  state.eventSource = new EventSource("/api/events");
+  state.eventSource.onmessage = (event) => {
+    let message;
+    try {
+      message = JSON.parse(event.data);
+    } catch {
+      return;
+    }
+    if (message.type === "connection") setConnection(message.connected);
+    if (message.generationId && ["progress", "executing"].includes(message.type)) {
+      applyLiveGenerationEvent(message);
+    } else if (message.generationId || message.type === "generation_created") {
+      queueHistoryRefresh();
+    }
+  };
+}
+
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  $("#form-error").textContent = "";
+  const button = $("#generate-button");
+  button.disabled = true;
+  button.querySelector("span").textContent = "Invio a ComfyUI…";
+  try {
+    syncLoras();
+    const data = new FormData(form);
+    if (!isImageGeneration() && workflow.value === "director") {
+      const scenes = storyboardData();
+      const total = scenes.reduce((sum, scene) => sum + scene.duration, 0);
+      if (scenes.some((scene) => !scene.prompt)) throw new Error("Inserisci il prompt in ogni scena.");
+      if (scenes.some((scene) => !Number.isInteger(scene.duration) || scene.duration < 1 || scene.duration > 30)) {
+        throw new Error("Ogni scena deve durare da 1 a 30 secondi.");
+      }
+      if (total > 60) throw new Error("Lo storyboard non può superare 60 secondi.");
+      data.set("storyboard", JSON.stringify(scenes));
+    }
+    if (!data.get("seed")) data.delete("seed");
+    const item = await api("/api/generations", { method: "POST", body: data });
+    state.history = [item, ...state.history.filter((entry) => entry.id !== item.id)];
+    renderHistory();
+    showToast("Generazione aggiunta alla coda");
+  } catch (error) {
+    $("#form-error").textContent = error.message;
+  } finally {
+    button.disabled = false;
+    button.querySelector("span").textContent = isUpscaleGeneration() ? "Avvia upscaling" : "Avvia generazione";
+  }
+});
+
+document.addEventListener("click", async (event) => {
+  const typeButton = event.target.closest("[data-generation-type]");
+  if (typeButton) generationTypeChanged(typeButton.dataset.generationType);
+  const removeLora = event.target.closest("[data-remove-lora]");
+  if (removeLora) {
+    removeLora.closest(".lora-row").remove();
+    syncLoras();
+  }
+  const sceneAction = event.target.closest("[data-scene-action]");
+  if (sceneAction) {
+    const card = sceneAction.closest(".scene-card");
+    const action = sceneAction.dataset.sceneAction;
+    if (action === "remove" && document.querySelectorAll(".scene-card").length > 1) card.remove();
+    if (action === "up" && card.previousElementSibling) card.parentElement.insertBefore(card, card.previousElementSibling);
+    if (action === "down" && card.nextElementSibling) card.parentElement.insertBefore(card.nextElementSibling, card);
+    updateStoryboard();
+  }
+  const systemButton = event.target.closest("[data-system]");
+  if (systemButton) {
+    systemButton.disabled = true;
+    $("#system-message").textContent = "Operazione in corso…";
+    try {
+      await api(`/api/system/${systemButton.dataset.system}`, { method: "POST" });
+      $("#system-message").textContent = "Operazione completata.";
+      showToast("Memoria ComfyUI liberata");
+    } catch (error) {
+      $("#system-message").textContent = error.message;
+    } finally {
+      systemButton.disabled = false;
+    }
+  }
+  const stopButton = event.target.closest("[data-stop]");
+  if (stopButton) {
+    if (!confirm("Vuoi annullare questa generazione?")) return;
+    stopButton.disabled = true;
+    try {
+      await api(`/api/generations/${stopButton.dataset.stop}/cancel`, { method: "POST" });
+      await loadHistory();
+      showToast("Generazione annullata");
+    } catch (error) {
+      stopButton.disabled = false;
+      showToast(error.message);
+    }
+  }
+});
+
+$("#storyboard-scenes").addEventListener("input", updateStoryboard);
+$("#lora-list").addEventListener("input", syncLoras);
+$("#lora-list").addEventListener("change", syncLoras);
+$("#storyboard-scenes").addEventListener("change", (event) => {
+  if (event.target.type !== "file") return;
+  const image = event.target.closest(".scene-image");
+  const file = event.target.files[0];
+  if (!file) {
+    image.classList.remove("has-image");
+    image.querySelector("img").removeAttribute("src");
+    return;
+  }
+  image.querySelector("img").src = URL.createObjectURL(file);
+  image.classList.add("has-image");
+});
+
+$("#image").addEventListener("change", (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  $("#image-preview").src = URL.createObjectURL(file);
+  $("#dropzone").classList.add("has-image");
+});
+
+$("#sourceImage").addEventListener("change", (event) => {
+  const file = event.target.files[0];
+  const preview = $("#source-image-preview");
+  if (!file) {
+    $("#source-image-dropzone").classList.remove("has-image");
+    preview.removeAttribute("src");
+    return;
+  }
+  preview.src = URL.createObjectURL(file);
+  $("#source-image-dropzone").classList.add("has-image");
+});
+
+$("#video").addEventListener("change", (event) => {
+  const file = event.target.files[0];
+  const preview = $("#video-preview");
+  if (!file) {
+    $("#video-dropzone").classList.remove("has-video");
+    preview.removeAttribute("src");
+    $("#video-file-info").textContent = "";
+    return;
+  }
+  preview.src = URL.createObjectURL(file);
+  $("#video-dropzone").classList.add("has-video");
+  $("#video-file-info").textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(1)} MB`;
+});
+
+$("#upscaleImage").addEventListener("change", (event) => {
+  const file = event.target.files[0];
+  const preview = $("#upscale-preview");
+  if (!file) {
+    $("#upscale-dropzone").classList.remove("has-image");
+    preview.removeAttribute("src");
+    return;
+  }
+  preview.src = URL.createObjectURL(file);
+  preview.onload = () => {
+    $("#upscaleSourceWidth").value = String(preview.naturalWidth || "");
+    $("#upscaleSourceHeight").value = String(preview.naturalHeight || "");
+  };
+  $("#upscale-dropzone").classList.add("has-image");
+});
+
+for (const name of ["prompt", "negativePrompt"]) {
+  $(`#${name}`).addEventListener("input", (event) => {
+    $(`#${name === "prompt" ? "prompt" : "negative"}-count`).textContent = event.target.value.length;
+  });
+}
+
+for (const eventName of ["dragenter", "dragover"]) {
+  $("#dropzone").addEventListener(eventName, () => $("#dropzone").classList.add("dragging"));
+  $("#video-dropzone").addEventListener(eventName, () => $("#video-dropzone").classList.add("dragging"));
+  $("#source-image-dropzone").addEventListener(eventName, () => $("#source-image-dropzone").classList.add("dragging"));
+  $("#upscale-dropzone").addEventListener(eventName, () => $("#upscale-dropzone").classList.add("dragging"));
+}
+for (const eventName of ["dragleave", "drop"]) {
+  $("#dropzone").addEventListener(eventName, () => $("#dropzone").classList.remove("dragging"));
+  $("#video-dropzone").addEventListener(eventName, () => $("#video-dropzone").classList.remove("dragging"));
+  $("#source-image-dropzone").addEventListener(eventName, () => $("#source-image-dropzone").classList.remove("dragging"));
+  $("#upscale-dropzone").addEventListener(eventName, () => $("#upscale-dropzone").classList.remove("dragging"));
+}
+
+$("#random-seed").addEventListener("click", () => {
+  $("#seed").value = String(Math.floor(Math.random() * 2_147_483_647));
+});
+$("#random-image-seed").addEventListener("click", () => {
+  $("#imageSeed").value = String(Math.floor(Math.random() * 2_147_483_647));
+});
+$("#add-scene").addEventListener("click", () => addStoryboardScene());
+$("#add-lora").addEventListener("click", () => addLora());
+async function runImagePromptPreset(target, button, successMessage) {
+  const context = promptAssistantContext();
+  if (context.mode === "image" && !context.sourceFile) {
+    $("#prompt-assistant-status").textContent = "Carica prima l’immagine che il modello deve analizzare.";
+    $("#prompt-assistant-status").classList.add("prompt-assistant-error");
+    return;
+  }
+  try {
+    await enhanceMainPrompt({
+      input: $("#prompt"),
+      button,
+      status: $("#prompt-assistant-status"),
+      ...context,
+      target,
+      workflowName: `${context.workflowName} · ${target === "qwen_image_edit_architect" ? "Qwen Edit Prompt" : "Klein Prompt"}`,
+      negativeInput: $("#negativePrompt"),
+      includeNegative: isImageGeneration() && (context.mode !== "text" || target.includes("edit") || target.includes("klein")),
+    });
+    showToast(successMessage);
+  } catch {
+    // Il dettaglio resta visibile accanto al prompt.
+  }
+}
+
+$("#qwen-edit-prompt-button").addEventListener("click", () => {
+  runImagePromptPreset(
+    "qwen_image_edit_architect",
+    $("#qwen-edit-prompt-button"),
+    "Prompt Qwen Edit creato; clicca Genera quando vuoi."
+  );
+});
+
+$("#klein-prompt-button").addEventListener("click", () => {
+  runImagePromptPreset(
+    "flux2_klein_architect",
+    $("#klein-prompt-button"),
+    "Prompt Klein creato; clicca Genera quando vuoi."
+  );
+});
+
+const reversePromptDialog = $("#reverse-prompt-dialog");
+const reversePromptImage = $("#reversePromptImage");
+
+function updateReversePromptPreview() {
+  const file = reversePromptImage.files[0];
+  const preview = $("#reverse-prompt-preview");
+  if (!file) {
+    preview.removeAttribute("src");
+    $("#reverse-prompt-dropzone").classList.remove("has-image");
+    return;
+  }
+  preview.src = URL.createObjectURL(file);
+  $("#reverse-prompt-dropzone").classList.add("has-image");
+  $("#reverse-prompt-status").textContent = `${file.name} · scegli Qwen oppure Klein`;
+  $("#reverse-prompt-status").classList.remove("prompt-assistant-error");
+}
+
+$("#reverse-prompt-button").addEventListener("click", () => {
+  reversePromptDialog.showModal();
+});
+
+reversePromptImage.addEventListener("change", updateReversePromptPreview);
+
+async function runReversePrompt(target, button) {
+  const file = reversePromptImage.files[0];
+  const status = $("#reverse-prompt-status");
+  if (!file) {
+    status.textContent = "Carica prima l’immagine da analizzare.";
+    status.classList.add("prompt-assistant-error");
+    return;
+  }
+  try {
+    const payload = await enhanceMainPrompt({
+      input: $("#prompt"),
+      button,
+      status,
+      target,
+      mode: "reverse",
+      workflowName: target === "reverse_qwen" ? "Reverse Prompt · Qwen" : "Reverse Prompt · FLUX.2 Klein",
+      sourceFile: file,
+      text: "Descrivi fedelmente tutti gli elementi visibili e trasformali in un prompt di generazione.",
+    });
+    if (!payload) return;
+    reversePromptDialog.close();
+    showToast(target === "reverse_qwen"
+      ? "Reverse Prompt Qwen inserito."
+      : "Reverse Prompt Klein inserito.");
+  } catch {
+    // Il dettaglio resta nel dialog.
+  }
+}
+
+$("#reverse-prompt-qwen").addEventListener("click", () =>
+  runReversePrompt("reverse_qwen", $("#reverse-prompt-qwen")));
+$("#reverse-prompt-klein").addEventListener("click", () =>
+  runReversePrompt("reverse_klein", $("#reverse-prompt-klein")));
+
+async function runLtxPromptPreset(target, button, successMessage) {
+  const context = promptAssistantContext();
+  if (context.mode === "image" && !context.sourceFile) {
+    $("#prompt-assistant-status").textContent = "Carica prima l’immagine che il modello deve analizzare.";
+    $("#prompt-assistant-status").classList.add("prompt-assistant-error");
+    return;
+  }
+  const resolvedTarget = isSulphurPromptMode() && !target.startsWith("sulphur_")
+    ? `sulphur_${target}`
+    : target;
+  try {
+    await enhanceMainPrompt({
+      input: $("#prompt"),
+      button,
+      status: $("#prompt-assistant-status"),
+      ...context,
+      target: resolvedTarget,
+      workflowName: `${context.workflowName} · ${target === "sulphur_prompt" ? "LTX Sulphur" : target === "ltx_scenes" ? "Prompt a scene" : "Prompt Architect"}`,
+      negativeInput: $("#negativePrompt"),
+      includeNegative: true,
+    });
+    showToast(successMessage);
+  } catch {
+    // Il dettaglio resta visibile accanto al prompt.
+  }
+}
+
+$("#ltx-architect-prompt-button").addEventListener("click", () => {
+  runLtxPromptPreset(
+    "ltx_architect",
+    $("#ltx-architect-prompt-button"),
+    "Prompt LTX 2.3 creato; clicca Genera video quando vuoi."
+  );
+});
+
+$("#ltx-scene-prompt-button").addEventListener("click", () => {
+  runLtxPromptPreset(
+    "ltx_scenes",
+    $("#ltx-scene-prompt-button"),
+    "Prompt a scene creato; clicca Genera video quando vuoi."
+  );
+});
+
+$("#sulphur-prompt-button").addEventListener("click", () => {
+  runLtxPromptPreset(
+    "sulphur_prompt",
+    $("#sulphur-prompt-button"),
+    "Prompt LTX Sulphur creato; clicca Genera video quando vuoi."
+  );
+});
+
+$("#director-prompt-assistant-button").addEventListener("click", async () => {
+  const cards = document.querySelectorAll(".scene-card");
+  const status = $("#director-prompt-assistant-status");
+  if (cards.length > 3) {
+    status.textContent = "IA Director compila al massimo 3 scene: rimuovi o lascia manuali le scene successive.";
+    status.classList.add("prompt-assistant-error");
+    return;
+  }
+  try {
+    await enhanceDirectorPrompts({
+      globalInput: $("#directorGlobalPrompt"),
+      scenes: storyboardAssistantData(),
+      button: $("#director-prompt-assistant-button"),
+      status,
+    });
+    updateStoryboard();
+    showToast("Prompt Director compilati; clicca Genera quando vuoi.");
+  } catch {
+    // Il dettaglio resta visibile nel pannello Director.
+  }
+});
+workflow.addEventListener("change", workflowChanged);
+$("#videoInputMode").addEventListener("change", workflowChanged);
+$("#videoModelId").addEventListener("change", () => {
+  state.videoModelSelections[workflow.value] = $("#videoModelId").value;
+  workflowChanged();
+});
+$("#imageMode").addEventListener("change", () => imageOptionsChanged());
+$("#imageModelId").addEventListener("change", () => imageOptionsChanged(true));
+$("#imageModelFile").addEventListener("change", () => imageOptionsChanged(true));
+$("#virtualInfluencerId").addEventListener("change", () => {
+  if (isImageGeneration()) imageOptionsChanged();
+  else workflowChanged();
+});
+$("#upscaleEngine").addEventListener("change", upscaleOptionsChanged);
+$("#upscaleModel").addEventListener("change", upscaleOptionsChanged);
+$("#upscaleFaceDetailer").addEventListener("change", upscaleOptionsChanged);
+$("#upscaleEyeDetailer").addEventListener("change", upscaleOptionsChanged);
+$("#upscaleHandDetailer").addEventListener("change", upscaleOptionsChanged);
+$("#upscaleSkinDetailer").addEventListener("change", upscaleOptionsChanged);
+$("#upscaleNsfwDetailer").addEventListener("change", upscaleOptionsChanged);
+$("#highresEnabled").addEventListener("change", () => updateEnhancementOptions(true));
+$("#upscaleMode").addEventListener("change", () => updateEnhancementOptions(true));
+$("#faceEnhance").addEventListener("change", () => updateEnhancementOptions());
+$("#batchSize").addEventListener("change", () => updateEnhancementOptions(true));
+
+async function start() {
+  try {
+    state.config = await api("/api/config");
+    workflow.innerHTML = state.config.workflows.map((item) =>
+      `<option value="${item.id}">${escapeHtml(item.name)}</option>`
+    ).join("");
+    $("#videoModelId").innerHTML = state.config.videoModels.map((model) =>
+      `<option value="${escapeAttribute(model.id)}"${model.available ? "" : " disabled"}>${escapeHtml(model.shortName)}${model.available ? "" : " · non installato"}</option>`
+    ).join("");
+    $("#imageModelId").innerHTML = state.config.imageModels.map((item) =>
+      `<option value="${item.id}">${escapeHtml(item.name)}${item.available ? "" : " · non installato"}</option>`
+    ).join("");
+    const seedProfiles = state.config.imageEnhancements?.seedvr2Profiles || [];
+    $("#seedvrProfile").innerHTML = seedProfiles.map((profile) =>
+      `<option value="${escapeAttribute(profile.id)}"${profile.available ? "" : " disabled"}>${escapeHtml(profile.name)}${profile.available ? "" : " · non installato"}</option>`
+    ).join("");
+    const preferredSeedProfile = seedProfiles.find((profile) => profile.id === "balanced" && profile.available)
+      || seedProfiles.find((profile) => profile.available);
+    if (preferredSeedProfile) $("#seedvrProfile").value = preferredSeedProfile.id;
+    const upscaleConfig = state.config.upscaling || { engines: [], models: [] };
+    $("#upscaleEngine").innerHTML = upscaleConfig.engines.map((engine) =>
+      `<option value="${escapeAttribute(engine.id)}"${engine.available ? "" : " disabled"}>${escapeHtml(engine.name)}${engine.available ? "" : " · non disponibile"}</option>`
+    ).join("");
+    const preferredUpscaleEngine = upscaleConfig.engines.find((engine) => engine.id === "model" && engine.available)
+      || upscaleConfig.engines.find((engine) => engine.available);
+    if (preferredUpscaleEngine) $("#upscaleEngine").value = preferredUpscaleEngine.id;
+    $("#upscaleModel").innerHTML = upscaleConfig.models.map((name) =>
+      `<option value="${escapeAttribute(name)}">${escapeHtml(name)}</option>`
+    ).join("");
+    const preferredUpscaleModel = upscaleConfig.models.find((name) => name === "RealESRGAN_x2.pth")
+      || upscaleConfig.models[0];
+    if (preferredUpscaleModel) $("#upscaleModel").value = preferredUpscaleModel;
+    $("#video-upload-hint").textContent =
+      `MP4, WebM, MOV, MKV o AVI · max ${state.config.maxVideoUploadMb} MB`;
+    const influencers = state.config.virtualInfluencer?.availableProfiles || [];
+    $("#virtualInfluencerId").innerHTML = [
+      `<option value="">Nessuna</option>`,
+      ...influencers.map((profile) =>
+        `<option value="${escapeAttribute(profile.id)}">${escapeHtml(profile.displayName)} · ${profile.canonicalReferences} canoniche</option>`
+      ),
+    ].join("");
+    generationTypeChanged("video");
+    await applyGuidedCreation();
+    await Promise.all([checkHealth(), loadHistory()]);
+    connectEvents();
+    setInterval(checkHealth, 15000);
+  } catch (error) {
+    $("#form-error").textContent = error.message;
+  }
+}
+
+start();

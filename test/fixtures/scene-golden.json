@@ -1,0 +1,20 @@
+{
+  "description": "Synthetic, copyright-free golden expectations for SceneProfile v1",
+  "profileVersion": "1.0.0",
+  "requiredSections": [
+    "colorProfile",
+    "lightingProfile",
+    "cameraProfile",
+    "spatialProfile",
+    "temporalProfile",
+    "textureProfile",
+    "confidenceScores",
+    "analysisWarnings"
+  ],
+  "scoreCategories": 13,
+  "presetIterationLimits": {
+    "preview": 1,
+    "balanced": 2,
+    "maximum": 3
+  }
+}

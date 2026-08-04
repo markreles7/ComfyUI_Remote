@@ -1,0 +1,27 @@
+{
+  "name": "ltx-remote-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Web app Tailscale-first per controllare workflow immagine e video su ComfyUI",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "test": "node --test",
+    "validate:studio": "node scripts/validate-studio-workflows.js",
+    "validate:video-studio": "node scripts/validate-video-studio-workflows.js",
+    "validate:all": "node scripts/audit-workflows.js",
+    "validate:scene": "node scripts/validate-scene-integration.js",
+    "audit:media": "node scripts/audit-media.js",
+    "smoke:comfy": "node scripts/smoke-comfy.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "multer": "^2.0.2",
+    "ws": "^8.18.3"
+  }
+}

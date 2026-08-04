@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0c10">
+  <title>Virtual Influencer Studio · LTX Remote Studio</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/virtual-influencer.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"></span><span>LTX <b>REMOTE</b></span></a>
+    <div class="topbar-actions">
+      <nav class="primary-nav" aria-label="Navigazione principale">
+        <a href="/guided-create.html">Crea guidata</a>
+        <a href="/">Genera</a>
+        <a href="/studio.html">Image Studio</a>
+        <a href="/video-studio.html">Video Studio</a>
+        <a class="active" href="/virtual-influencer.html">Virtual Influencer</a>
+        <a href="/workflow-guide.html">Guida</a>
+        <a href="/generations.html">Generazioni</a>
+      </nav>
+      <div id="connection" class="connection checking"><span></span>Modulo</div>
+    </div>
+  </header>
+
+  <main class="virtual-page">
+    <section class="virtual-heading">
+      <div>
+        <p class="eyebrow">VIRTUAL INFLUENCER STUDIO / MILESTONE 6</p>
+        <h1>Identità sintetiche <em>coerenti.</em></h1>
+      </div>
+      <div class="virtual-status-strip">
+        <span id="min-age-pill">Età minima 21</span>
+        <span>Disclosure obbligatoria</span>
+        <span>Adult Restricted off</span>
+      </div>
+    </section>
+
+    <div class="virtual-shell">
+      <aside class="panel virtual-sidebar">
+        <div class="section-heading compact">
+          <span>01</span>
+          <div><h2>Characters</h2><p>Profili adulti e sintetici</p></div>
+        </div>
+        <form id="profile-form" class="virtual-create-form">
+          <div class="field">
+            <label for="displayName">Nome artistico</label>
+            <input id="displayName" name="displayName" required placeholder="Es. Nova Vale">
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label for="declaredAge">Età dichiarata</label>
+              <input id="declaredAge" name="declaredAge" type="number" min="21" value="21" required>
+            </div>
+            <div class="field">
+              <label for="language">Lingua</label>
+              <input id="language" name="language" value="Italiano">
+            </div>
+          </div>
+          <div class="field">
+            <label for="shortBio">Bio breve</label>
+            <textarea id="shortBio" name="shortBio" rows="3" placeholder="Personaggio adulto originale, creato con AI."></textarea>
+          </div>
+          <label class="checkline"><input name="synthetic" type="checkbox" checked> Personaggio virtuale sintetico</label>
+          <label class="checkline"><input name="noImitation" type="checkbox" checked> Non imita una persona reale</label>
+          <button class="submit-button" type="submit">Crea profilo</button>
+        </form>
+        <div id="profile-list" class="virtual-profile-list"></div>
+      </aside>
+
+      <section class="virtual-main">
+        <div class="panel virtual-dashboard">
+          <div class="section-heading compact">
+            <span>02</span>
+            <div><h2 id="selected-name">Nessun profilo selezionato</h2><p id="selected-meta">Crea o seleziona un personaggio</p></div>
+          </div>
+          <div class="virtual-metrics">
+            <div><strong id="readiness-score">0</strong><span>Readiness</span></div>
+            <div><strong id="reference-count">0</strong><span>Reference approvate</span></div>
+            <div><strong id="version-count">0</strong><span>Versioni</span></div>
+          </div>
+          <div id="dataset-warnings" class="virtual-warnings"></div>
+        </div>
+
+        <form id="bible-form" class="panel virtual-editor">
+          <div class="section-heading compact">
+            <span>03</span>
+            <div><h2>Character Bible</h2><p>Ogni salvataggio crea una nuova versione</p></div>
+          </div>
+          <div class="field-grid">
+            <div class="field"><label for="fictionalNationality">Nazionalità immaginaria</label><input id="fictionalNationality" name="fictionalNationality"></div>
+            <div class="field"><label for="fictionalCity">Città immaginaria</label><input id="fictionalCity" name="fictionalCity"></div>
+            <div class="field"><label for="narrativeProfession">Professione narrativa</label><input id="narrativeProfession" name="narrativeProfession"></div>
+            <div class="field"><label for="communicationTone">Tono comunicativo</label><input id="communicationTone" name="communicationTone"></div>
+          </div>
+          <div class="field-grid">
+            <div class="field"><label for="personalHistory">Storia personale</label><textarea id="personalHistory" name="personalHistory" rows="4"></textarea></div>
+            <div class="field"><label for="interests">Interessi</label><textarea id="interests" name="interests" rows="4" placeholder="uno per riga o separati da virgole"></textarea></div>
+            <div class="field"><label for="values">Valori</label><textarea id="values" name="values" rows="4"></textarea></div>
+            <div class="field"><label for="habits">Abitudini</label><textarea id="habits" name="habits" rows="4"></textarea></div>
+            <div class="field"><label for="personalityTraits">Tratti personalità</label><textarea id="personalityTraits" name="personalityTraits" rows="4"></textarea></div>
+            <div class="field"><label for="typicalLexicon">Lessico tipico</label><textarea id="typicalLexicon" name="typicalLexicon" rows="4"></textarea></div>
+            <div class="field"><label for="recurringPhrases">Frasi ricorrenti</label><textarea id="recurringPhrases" name="recurringPhrases" rows="4"></textarea></div>
+            <div class="field"><label for="avoidedTopics">Argomenti da evitare</label><textarea id="avoidedTopics" name="avoidedTopics" rows="4"></textarea></div>
+          </div>
+          <div class="field-grid">
+            <div class="field"><label for="faceShape">Forma viso</label><input id="faceShape" name="faceShape"></div>
+            <div class="field"><label for="eyeColorAndShape">Occhi</label><input id="eyeColorAndShape" name="eyeColorAndShape"></div>
+            <div class="field"><label for="hair">Capelli</label><input id="hair" name="hair"></div>
+            <div class="field"><label for="skinTone">Carnagione</label><input id="skinTone" name="skinTone"></div>
+            <div class="field"><label for="bodyShape">Corporatura</label><input id="bodyShape" name="bodyShape"></div>
+            <div class="field"><label for="approximateHeight">Altezza indicativa</label><input id="approximateHeight" name="approximateHeight"></div>
+            <div class="field"><label for="bodyProportions">Proporzioni corporee</label><input id="bodyProportions" name="bodyProportions"></div>
+            <div class="field"><label for="distinctiveMarks">Segni distintivi</label><input id="distinctiveMarks" name="distinctiveMarks"></div>
+            <div class="field"><label for="makeup">Trucco</label><input id="makeup" name="makeup"></div>
+            <div class="field"><label for="aestheticStyle">Stile estetico</label><input id="aestheticStyle" name="aestheticStyle"></div>
+            <div class="field"><label for="recurringAccessories">Accessori ricorrenti</label><input id="recurringAccessories" name="recurringAccessories"></div>
+            <div class="field"><label for="immutableElements">Elementi che non devono cambiare</label><input id="immutableElements" name="immutableElements"></div>
+          </div>
+          <label class="checkline"><input id="tattoosEnabled" name="tattoosEnabled" type="checkbox"> Tatuaggi configurati</label>
+          <div class="field"><label for="tattoos">Tatuaggi</label><textarea id="tattoos" name="tattoos" rows="2"></textarea></div>
+          <div id="identity-locks" class="identity-locks"></div>
+          <div class="field">
+            <label for="changeLog">Changelog versione</label>
+            <input id="changeLog" name="changeLog" placeholder="Es. Definizione volto e palette capelli">
+          </div>
+          <button class="submit-button" type="submit">Salva Character Bible</button>
+        </form>
+
+        <section class="panel virtual-dataset">
+          <div class="section-heading compact">
+            <span>04</span>
+            <div><h2>Identity Dataset</h2><p>Reference canoniche e approvazione manuale</p></div>
+          </div>
+          <form id="reference-form" class="virtual-upload-form">
+            <label class="dropzone compact-dropzone">
+              <input id="referenceImage" name="referenceImage" type="file" accept="image/png,image/jpeg,image/webp">
+              <span class="upload-icon">↗</span>
+              <strong>Carica reference sintetica</strong>
+              <small>PNG, JPG o WebP</small>
+            </label>
+            <div class="field"><label for="referenceCategories">Categorie</label><input id="referenceCategories" name="categories" placeholder="frontale, primo piano"></div>
+            <div class="field"><label for="referenceTags">Tag</label><input id="referenceTags" name="tags" placeholder="luce morbida, capelli sciolti"></div>
+            <label class="checkline"><input name="approved" type="checkbox"> Approva subito</label>
+            <label class="checkline"><input name="canonical" type="checkbox"> Canonica</label>
+            <button class="submit-button secondary" type="submit">Aggiungi reference</button>
+          </form>
+          <div id="reference-grid" class="virtual-reference-grid"></div>
+        </section>
+
+        <section class="panel virtual-versions">
+          <div class="section-heading compact">
+            <span>05</span>
+            <div><h2>Versioning</h2><p>Snapshot identitari non distruttivi</p></div>
+          </div>
+          <button id="manual-version" class="submit-button secondary" type="button">Crea versione identità</button>
+          <div id="versions-list" class="virtual-versions-list"></div>
+        </section>
+
+        <section class="panel virtual-libraries">
+          <div class="section-heading compact">
+            <span>06</span>
+            <div><h2>Outfits & Locations</h2><p>Librerie riutilizzabili per foto, video e batch</p></div>
+          </div>
+          <div class="virtual-library-grid">
+            <form id="outfit-form">
+              <div class="field"><label for="outfitName">Outfit</label><input id="outfitName" name="name" required></div>
+              <div class="field-grid">
+                <div class="field"><label for="outfitCategory">Categoria</label><select id="outfitCategory" name="category"></select></div>
+                <div class="field"><label for="outfitSensuality">Sensualità</label><input id="outfitSensuality" name="sensualityLevel" type="number" min="0" max="3" value="0"></div>
+              </div>
+              <div class="field"><label for="outfitDescription">Descrizione</label><textarea id="outfitDescription" name="description" rows="2"></textarea></div>
+              <div class="field"><label for="outfitColors">Colori</label><input id="outfitColors" name="colors"></div>
+              <div class="field"><label for="outfitMaterials">Materiali</label><input id="outfitMaterials" name="materials"></div>
+              <div class="field"><label for="outfitAccessories">Accessori</label><input id="outfitAccessories" name="accessories"></div>
+              <button class="submit-button secondary" type="submit">Salva outfit</button>
+            </form>
+            <form id="location-form">
+              <div class="field"><label for="locationName">Location</label><input id="locationName" name="name" required></div>
+              <div class="field"><label for="locationType">Categoria</label><select id="locationType" name="type"></select></div>
+              <div class="field"><label for="locationDescription">Descrizione</label><textarea id="locationDescription" name="description" rows="2"></textarea></div>
+              <div class="field"><label for="lightingPreset">Luce</label><input id="lightingPreset" name="lightingPreset"></div>
+              <div class="field"><label for="cameraPreset">Camera</label><input id="cameraPreset" name="cameraPreset"></div>
+              <button class="submit-button secondary" type="submit">Salva location</button>
+            </form>
+          </div>
+          <div id="library-list" class="virtual-library-list"></div>
+        </section>
+
+        <form id="photo-form" class="panel virtual-photo">
+          <div class="section-heading compact">
+            <span>07</span>
+            <div><h2>Generate Photo</h2><p>Influencer Photo con Identity Engine</p></div>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label for="photoModel">Modello</label>
+              <select id="photoModel" name="model">
+                <option value="flux">Flux/Klein identity-first</option>
+                <option value="qwen">Qwen Image Edit 2511</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="qualityPreset">Preset qualità</label>
+              <select id="qualityPreset" name="qualityPreset">
+                <option value="fastPreview">Fast Preview</option>
+                <option value="balanced">Balanced</option>
+                <option value="maximumConsistency">Maximum Consistency</option>
+              </select>
+            </div>
+            <div class="field"><label for="aspectRatio">Aspect ratio</label><select id="aspectRatio" name="aspectRatio"><option value="portrait">4:5</option><option value="vertical">9:16</option><option value="square">1:1</option><option value="landscape">16:9</option></select></div>
+            <div class="field"><label for="contentLevel">Sensualità</label><select id="contentLevel" name="contentLevel"><option value="0">0 Everyday</option><option value="1">1 Glamour</option><option value="2">2 Bold Fashion</option><option value="3">3 Boudoir</option></select></div>
+            <div class="field"><label for="photoOutfitId">Outfit salvato</label><select id="photoOutfitId" name="outfitId"><option value="">Manuale</option></select></div>
+            <div class="field"><label for="photoLocationId">Location salvata</label><select id="photoLocationId" name="locationId"><option value="">Manuale</option></select></div>
+            <div class="field"><label for="outfit">Outfit</label><input id="outfit" name="outfit"></div>
+            <div class="field"><label for="location">Ambiente</label><input id="location" name="location"></div>
+            <div class="field"><label for="pose">Posa</label><input id="pose" name="pose"></div>
+            <div class="field"><label for="expression">Espressione</label><input id="expression" name="expression"></div>
+            <div class="field"><label for="framing">Inquadratura</label><input id="framing" name="framing" placeholder="primo piano, mezzo busto, figura intera"></div>
+            <div class="field"><label for="orientation">Orientamento volto</label><input id="orientation" name="orientation" placeholder="frontale, tre quarti"></div>
+            <div class="field"><label for="photographicStyle">Stile fotografico</label><input id="photographicStyle" name="photographicStyle"></div>
+            <div class="field"><label for="photoSeed">Seed</label><input id="photoSeed" name="seed" type="number" min="0" placeholder="random"></div>
+          </div>
+          <div class="field"><label for="negativePrompt">Negative prompt extra</label><textarea id="negativePrompt" name="negativePrompt" rows="2"></textarea></div>
+          <button class="submit-button" type="submit">Genera Influencer Photo</button>
+        </form>
+
+        <form id="video-form" class="panel virtual-video">
+          <div class="section-heading compact">
+            <span>08</span>
+            <div><h2>Generate Video</h2><p>Influencer Video LTX 2.3 · clip brevi</p></div>
+          </div>
+          <div class="field-grid">
+            <div class="field"><label for="videoQualityPreset">Preset qualità</label><select id="videoQualityPreset" name="qualityPreset"><option value="fastPreview">Fast Preview</option><option value="balanced">Balanced</option><option value="maximumConsistency">Maximum Consistency</option></select></div>
+            <div class="field"><label for="videoAspectRatio">Aspect ratio</label><select id="videoAspectRatio" name="aspectRatio"><option value="vertical">9:16</option><option value="landscape">16:9</option><option value="portrait">4:5</option></select></div>
+            <div class="field"><label for="videoDuration">Durata</label><input id="videoDuration" name="duration" type="number" min="3" max="10" value="5"></div>
+            <div class="field"><label for="videoFps">Frame rate</label><input id="videoFps" name="fps" type="number" min="12" max="30" value="24"></div>
+            <div class="field"><label for="cameraMotion">Camera</label><input id="cameraMotion" name="cameraMotion" placeholder="static, slow push-in"></div>
+            <div class="field"><label for="motionIntensity">Movimento</label><select id="motionIntensity" name="motionIntensity"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></div>
+            <div class="field"><label for="videoContentLevel">Sensualità</label><select id="videoContentLevel" name="contentLevel"><option value="0">0 Everyday</option><option value="1">1 Glamour</option><option value="2">2 Bold Fashion</option><option value="3">3 Boudoir</option></select></div>
+            <div class="field"><label for="videoSeed">Seed</label><input id="videoSeed" name="seed" type="number" min="0" placeholder="random"></div>
+            <div class="field"><label for="videoOutfitId">Outfit salvato</label><select id="videoOutfitId" name="outfitId"><option value="">Nessuno</option></select></div>
+            <div class="field"><label for="videoLocationId">Location salvata</label><select id="videoLocationId" name="locationId"><option value="">Nessuna</option></select></div>
+          </div>
+          <div class="field"><label for="actionPrompt">Azione</label><textarea id="actionPrompt" name="actionPrompt" rows="3" placeholder="Descrivi movimento, gesto, atmosfera e continuità del personaggio"></textarea></div>
+          <div class="field"><label for="videoNegativePrompt">Negative prompt extra</label><textarea id="videoNegativePrompt" name="negativePrompt" rows="2"></textarea></div>
+          <button class="submit-button" type="submit">Genera Influencer Video</button>
+        </form>
+
+        <section class="panel virtual-review">
+          <div class="section-heading compact">
+            <span>09</span>
+            <div><h2>Review Queue & Export</h2><p>Identity score, approvazione e preset social</p></div>
+          </div>
+          <div id="generated-assets" class="virtual-generated-grid"></div>
+        </section>
+
+        <section class="panel virtual-batch">
+          <div class="section-heading compact">
+            <span>10</span>
+            <div><h2>Batch Generation</h2><p>Coda controllata con stime prima dell'avvio</p></div>
+          </div>
+          <form id="batch-form">
+            <div class="field-grid">
+              <div class="field"><label for="batchOutfits">Outfit IDs</label><input id="batchOutfits" name="outfitIds" placeholder="usa i pulsanti copia dalla libreria"></div>
+              <div class="field"><label for="batchLocations">Location IDs</label><input id="batchLocations" name="locationIds"></div>
+              <div class="field"><label for="batchPoses">Pose</label><input id="batchPoses" name="poses" placeholder="una o più, separate da virgole"></div>
+              <div class="field"><label for="batchExpressions">Espressioni</label><input id="batchExpressions" name="expressions"></div>
+              <div class="field"><label for="batchFramings">Inquadrature</label><input id="batchFramings" name="framings"></div>
+              <div class="field"><label for="batchRatios">Aspect ratio</label><input id="batchRatios" name="aspectRatios" value="portrait"></div>
+              <div class="field"><label for="batchPlatforms">Piattaforme</label><input id="batchPlatforms" name="platforms" value="manual-review"></div>
+              <div class="field"><label for="batchMaxItems">Limite output</label><input id="batchMaxItems" name="maxItems" type="number" min="1" max="24" value="12"></div>
+            </div>
+            <button class="submit-button secondary" type="submit">Prepara batch</button>
+          </form>
+          <div id="batch-list" class="virtual-batch-list"></div>
+        </section>
+
+        <section class="panel virtual-content">
+          <div class="section-heading compact">
+            <span>11</span>
+            <div><h2>Caption Engine</h2><p>Bozze coerenti con Character Bible e approvazione umana</p></div>
+          </div>
+          <form id="caption-form">
+            <div class="field-grid">
+              <div class="field"><label for="captionProjectId">Progetto</label><select id="captionProjectId" name="projectId"><option value="">Nessuno</option></select></div>
+              <div class="field"><label for="captionPlatform">Piattaforma</label><select id="captionPlatform" name="platform"></select></div>
+              <div class="field"><label for="contentCategory">Categoria</label><input id="contentCategory" name="contentCategory" value="editorial"></div>
+              <div class="field"><label for="captionObjective">Obiettivo</label><input id="captionObjective" name="objective" value="engagement"></div>
+              <div class="field"><label for="captionLanguage">Lingua</label><input id="captionLanguage" name="language" value="Italiano"></div>
+              <div class="field"><label for="captionTone">Tono</label><input id="captionTone" name="tone"></div>
+              <div class="field"><label for="captionLength">Lunghezza</label><select id="captionLength" name="length"><option value="short">Short</option><option value="medium" selected>Medium</option><option value="long">Long</option></select></div>
+              <div class="field"><label for="wordsToAvoid">Parole da evitare</label><input id="wordsToAvoid" name="wordsToAvoid"></div>
+            </div>
+            <div class="field"><label for="captionBrief">Brief</label><textarea id="captionBrief" name="brief" rows="2"></textarea></div>
+            <button class="submit-button secondary" type="submit">Crea bozza caption</button>
+          </form>
+          <div id="caption-list" class="virtual-content-list"></div>
+        </section>
+
+        <section class="panel virtual-content">
+          <div class="section-heading compact">
+            <span>12</span>
+            <div><h2>Disclosure & Voice</h2><p>Trasparenza preservata e solo voci autorizzate</p></div>
+          </div>
+          <div class="virtual-library-grid">
+            <form id="disclosure-form">
+              <div class="field"><label for="disclosureText">Disclosure</label><textarea id="disclosureText" name="defaultText" rows="2"></textarea></div>
+              <div class="field"><label for="disclosureLabel">Badge label</label><input id="disclosureLabel" name="label"></div>
+              <div class="field"><label for="captionTemplate">Template caption</label><textarea id="captionTemplate" name="captionTemplate" rows="3"></textarea></div>
+              <label class="checkline"><input id="watermarkEnabled" name="watermarkEnabled" type="checkbox"> Watermark export</label>
+              <button class="submit-button secondary" type="submit">Salva disclosure</button>
+            </form>
+            <form id="voice-form">
+              <label class="checkline"><input id="voiceEnabled" name="enabled" type="checkbox"> Voice profile attivo</label>
+              <div class="field-grid">
+                <div class="field"><label for="voiceProvider">Provider</label><input id="voiceProvider" name="provider"></div>
+                <div class="field"><label for="voiceId">Voice ID</label><input id="voiceId" name="voiceId"></div>
+                <div class="field"><label for="voiceLanguage">Lingua</label><input id="voiceLanguage" name="language" value="Italiano"></div>
+                <div class="field"><label for="voiceStyle">Stile</label><input id="voiceStyle" name="style"></div>
+              </div>
+              <label class="checkline"><input name="syntheticOriginal" type="checkbox" checked> Voce sintetica originale</label>
+              <label class="checkline"><input name="licensed" type="checkbox"> Licenza verificata</label>
+              <button class="submit-button secondary" type="submit">Salva voce</button>
+            </form>
+          </div>
+        </section>
+
+        <section class="panel virtual-content">
+          <div class="section-heading compact">
+            <span>13</span>
+            <div><h2>Content Projects</h2><p>Calendario interno, asset, caption e stato editoriale</p></div>
+          </div>
+          <form id="content-project-form">
+            <div class="field-grid">
+              <div class="field"><label for="projectTitle">Titolo</label><input id="projectTitle" name="title" required></div>
+              <div class="field"><label for="projectCampaign">Campagna</label><input id="projectCampaign" name="campaign"></div>
+              <div class="field"><label for="projectPlatform">Piattaforma</label><select id="projectPlatform" name="platform"></select></div>
+              <div class="field"><label for="projectContentType">Formato</label><select id="projectContentType" name="contentType"><option value="photo">Photo</option><option value="video">Video</option><option value="short">Short video</option></select></div>
+              <div class="field"><label for="scheduledAt">Scheduled at</label><input id="scheduledAt" name="scheduledAt" type="datetime-local"></div>
+            </div>
+            <div class="field"><label for="projectBrief">Brief</label><textarea id="projectBrief" name="brief" rows="2"></textarea></div>
+            <button class="submit-button secondary" type="submit">Crea progetto</button>
+          </form>
+          <div id="content-project-list" class="virtual-content-list"></div>
+        </section>
+
+        <section class="panel virtual-content">
+          <div class="section-heading compact">
+            <span>14</span>
+            <div><h2>Analytics</h2><p>Inserimento manuale o import CSV locale</p></div>
+          </div>
+          <form id="analytics-form">
+            <div class="field-grid">
+              <div class="field"><label for="analyticsProjectId">Progetto</label><select id="analyticsProjectId" name="projectId"><option value="">Seleziona</option></select></div>
+              <div class="field"><label for="views">Views</label><input id="views" name="views" type="number" min="0" value="0"></div>
+              <div class="field"><label for="likes">Like</label><input id="likes" name="likes" type="number" min="0" value="0"></div>
+              <div class="field"><label for="comments">Commenti</label><input id="comments" name="comments" type="number" min="0" value="0"></div>
+              <div class="field"><label for="shares">Share</label><input id="shares" name="shares" type="number" min="0" value="0"></div>
+              <div class="field"><label for="saves">Save</label><input id="saves" name="saves" type="number" min="0" value="0"></div>
+              <div class="field"><label for="completionRate">Completion rate</label><input id="completionRate" name="completionRate" type="number" min="0" max="1" step="0.01" value="0"></div>
+              <div class="field"><label for="clicks">Click</label><input id="clicks" name="clicks" type="number" min="0" value="0"></div>
+            </div>
+            <button class="submit-button secondary" type="submit">Registra analytics</button>
+          </form>
+          <form id="analytics-csv-form">
+            <div class="field"><label for="analyticsCsvProjectId">Progetto CSV</label><select id="analyticsCsvProjectId" name="projectId"><option value="">Seleziona</option></select></div>
+            <div class="field"><label for="analyticsCsv">CSV analytics</label><textarea id="analyticsCsv" name="csv" rows="4" placeholder="views,likes,comments,shares,saves,completionRate,clicks"></textarea></div>
+            <button class="submit-button secondary" type="submit">Importa CSV</button>
+          </form>
+          <div id="analytics-list" class="virtual-content-list"></div>
+        </section>
+
+        <section class="panel virtual-content">
+          <div class="section-heading compact">
+            <span>15</span>
+            <div><h2>Settings & Debug</h2><p>Cache, performance, limiti tecnici e report locale</p></div>
+          </div>
+          <div class="virtual-settings-actions">
+            <button id="debug-report-button" class="submit-button secondary" type="button">Genera debug report</button>
+            <button id="invalidate-cache-button" class="submit-button secondary" type="button">Svuota cache profilo</button>
+          </div>
+          <div id="performance-status" class="virtual-content-list"></div>
+          <pre id="debug-report-output" class="virtual-debug-output"></pre>
+        </section>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

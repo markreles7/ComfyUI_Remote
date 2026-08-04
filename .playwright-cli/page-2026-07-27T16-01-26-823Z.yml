@@ -1,0 +1,1079 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - link "LTX REMOTE" [ref=e3] [cursor=pointer]:
+      - /url: /
+    - generic [ref=e6]:
+      - navigation "Navigazione principale" [ref=e7]:
+        - link "Genera" [ref=e8] [cursor=pointer]:
+          - /url: /
+        - link "Image Studio" [ref=e9] [cursor=pointer]:
+          - /url: /studio.html
+        - link "Video Studio" [ref=e10] [cursor=pointer]:
+          - /url: /video-studio.html
+        - link "Guida" [ref=e11] [cursor=pointer]:
+          - /url: /workflow-guide.html
+        - link "Generazioni" [ref=e12] [cursor=pointer]:
+          - /url: /generations.html
+      - generic [ref=e13]: ComfyUI online
+  - main [ref=e15]:
+    - generic [ref=e16]:
+      - generic [ref=e17]:
+        - paragraph [ref=e18]: ARCHIVIO LOCALE
+        - heading [level=1] [ref=e19]:
+          - text: Le tue
+          - emphasis [ref=e20]: generazioni.
+        - paragraph [ref=e21]: Visualizza i risultati, controlla lo stato e recupera tutte le impostazioni usate.
+      - generic "Riepilogo generazioni" [ref=e22]:
+        - generic [ref=e23]:
+          - generic [ref=e24]: "82"
+          - generic [ref=e25]: Totali
+        - generic [ref=e26]:
+          - generic [ref=e27]: "80"
+          - generic [ref=e28]: Completate
+        - generic [ref=e29]:
+          - generic [ref=e30]: "0"
+          - generic [ref=e31]: Attive
+    - generic [ref=e32]:
+      - generic [ref=e33]:
+        - generic [ref=e34]: Cerca
+        - searchbox "Cerca" [ref=e35]
+      - generic [ref=e36]:
+        - generic [ref=e37]: Workflow
+        - combobox "Workflow" [ref=e38] [cursor=pointer]:
+          - option "Tutti i workflow" [selected]
+          - option "Upscaling · SeedVR2 · Qualità MAX"
+          - option "Upscaling · NVIDIA RTX VSR · Qualità MAX"
+          - option "Upscaling · AI Upscale Model · Qualità MAX"
+          - option "Flux.2 Klein 9B Base · Image to Image"
+          - option "cyberrealisticFlux v25 · Image to Image"
+          - option "moodyProMix zitV13 · Image to Image"
+          - option "Smartphone Photo Editor · Alternativa 1"
+          - option "Perfect Image Studio · Bozza Flux.2 1"
+          - option "Flux.2 Klein 9B Base · Image to Image"
+          - option "Z-Image Turbo · Text to Image"
+          - option "Flux.1 Dev · Text to Image"
+          - option "Flux.2 Klein 9B Base · Text to Image"
+          - option "LTX 2.3 Dev FP8 I2V"
+          - option "LTX 2.3 1Work"
+          - option "LTX 2.3 Director 2 UHD"
+      - generic [ref=e39]:
+        - generic [ref=e40]: Stato
+        - combobox "Stato" [ref=e41] [cursor=pointer]:
+          - option "Tutti gli stati" [selected]
+          - option "Completate"
+          - option "In lavorazione"
+          - option "In coda"
+          - option "Errori"
+          - option "Annullate"
+      - button "Aggiorna ↻" [ref=e42] [cursor=pointer]
+    - generic [ref=e43]:
+      - generic [ref=e44]:
+        - article [ref=e45]:
+          - figure [ref=e48]:
+            - link [ref=e49] [cursor=pointer]:
+              - /url: /api/image/57f8f2ee-2d5f-4e3a-af28-f441feb83f00/0
+              - img "Risultato 1" [ref=e50]
+            - link "Download ↓" [ref=e51] [cursor=pointer]:
+              - /url: /api/image/57f8f2ee-2d5f-4e3a-af28-f441feb83f00/0?download=1
+          - generic [ref=e52]:
+            - generic [ref=e54]:
+              - generic [ref=e55]: Completata
+              - heading "Upscaling · SeedVR2 · Qualità MAX" [level=2] [ref=e56]
+              - paragraph [ref=e57]: Upscaling · SeedVR2 · Qualità MAX · 27 lug 2026, 17:45
+            - generic [ref=e58]:
+              - generic [ref=e59]:
+                - generic [ref=e60]: Output
+                - generic [ref=e61]: Lato corto 2656px
+              - generic [ref=e62]:
+                - generic [ref=e63]: Seed
+                - generic [ref=e64]: "773314549"
+              - generic [ref=e65]:
+                - generic [ref=e66]: Immagini
+                - generic [ref=e67]: "1"
+              - generic [ref=e68]:
+                - generic [ref=e69]: Qualità
+                - generic [ref=e70]: Massima
+              - generic [ref=e71]:
+                - generic [ref=e72]: Motore
+                - generic [ref=e73]: SeedVR2
+              - generic [ref=e74]:
+                - generic [ref=e75]: Preset
+                - generic [ref=e76]: Qualità MAX
+              - generic [ref=e77]:
+                - generic [ref=e78]: Lato corto
+                - generic [ref=e79]: 2656px
+              - generic [ref=e80]:
+                - generic [ref=e81]: Purge VRAM
+                - generic [ref=e82]: Prima dell’upscale
+        - article [ref=e83]:
+          - figure [ref=e86]:
+            - link [ref=e87] [cursor=pointer]:
+              - /url: /api/image/0dbf2e37-49eb-4eb4-abcd-32e3ef7fcef5/0
+              - img "Risultato 1" [ref=e88]
+            - link "Download ↓" [ref=e89] [cursor=pointer]:
+              - /url: /api/image/0dbf2e37-49eb-4eb4-abcd-32e3ef7fcef5/0?download=1
+          - generic [ref=e90]:
+            - generic [ref=e92]:
+              - generic [ref=e93]: Completata
+              - heading "Upscaling · NVIDIA RTX VSR · Qualità MAX" [level=2] [ref=e94]
+              - paragraph [ref=e95]: Upscaling · NVIDIA RTX VSR · Qualità MAX · 27 lug 2026, 17:44
+            - generic [ref=e96]:
+              - generic [ref=e97]:
+                - generic [ref=e98]: Output
+                - generic [ref=e99]: 4×
+              - generic [ref=e100]:
+                - generic [ref=e101]: Seed
+                - generic [ref=e102]: "1642008659"
+              - generic [ref=e103]:
+                - generic [ref=e104]: Immagini
+                - generic [ref=e105]: "1"
+              - generic [ref=e106]:
+                - generic [ref=e107]: Qualità
+                - generic [ref=e108]: Massima
+              - generic [ref=e109]:
+                - generic [ref=e110]: Motore
+                - generic [ref=e111]: NVIDIA RTX VSR
+              - generic [ref=e112]:
+                - generic [ref=e113]: Preset
+                - generic [ref=e114]: Qualità MAX
+              - generic [ref=e115]:
+                - generic [ref=e116]: Ingrandimento
+                - generic [ref=e117]: 4×
+              - generic [ref=e118]:
+                - generic [ref=e119]: Purge VRAM
+                - generic [ref=e120]: Prima dell’upscale
+        - article [ref=e121]:
+          - figure [ref=e124]:
+            - link [ref=e125] [cursor=pointer]:
+              - /url: /api/image/6aae99bf-696c-4f7c-9424-0fe13e7eb7e3/0
+              - img "Risultato 1" [ref=e126]
+            - link "Download ↓" [ref=e127] [cursor=pointer]:
+              - /url: /api/image/6aae99bf-696c-4f7c-9424-0fe13e7eb7e3/0?download=1
+          - generic [ref=e128]:
+            - generic [ref=e130]:
+              - generic [ref=e131]: Completata
+              - heading "Upscaling · AI Upscale Model · Qualità MAX" [level=2] [ref=e132]
+              - paragraph [ref=e133]: Upscaling · AI Upscale Model · Qualità MAX · 27 lug 2026, 17:44
+            - generic [ref=e134]:
+              - generic [ref=e135]:
+                - generic [ref=e136]: Output
+                - generic [ref=e137]: Lato corto nullpx
+              - generic [ref=e138]:
+                - generic [ref=e139]: Seed
+                - generic [ref=e140]: "1998169067"
+              - generic [ref=e141]:
+                - generic [ref=e142]: Immagini
+                - generic [ref=e143]: "1"
+              - generic [ref=e144]:
+                - generic [ref=e145]: Qualità
+                - generic [ref=e146]: Massima
+              - generic [ref=e147]:
+                - generic [ref=e148]: Motore
+                - generic [ref=e149]: AI Upscale Model
+              - generic [ref=e150]:
+                - generic [ref=e151]: Preset
+                - generic [ref=e152]: Qualità MAX
+              - generic [ref=e153]:
+                - generic [ref=e154]: Modello
+                - generic [ref=e155]: remacri_original.pt
+              - generic [ref=e156]:
+                - generic [ref=e157]: Purge VRAM
+                - generic [ref=e158]: Prima dell’upscale
+        - article [ref=e159]:
+          - figure [ref=e162]:
+            - link [ref=e163] [cursor=pointer]:
+              - /url: /api/image/35205de4-8287-48d6-a1b0-ea2257392e48/0
+              - img "Risultato 1" [ref=e164]
+            - link "Download ↓" [ref=e165] [cursor=pointer]:
+              - /url: /api/image/35205de4-8287-48d6-a1b0-ea2257392e48/0?download=1
+          - generic [ref=e166]:
+            - generic [ref=e168]:
+              - generic [ref=e169]: Completata
+              - heading "Upscaling · AI Upscale Model · Qualità MAX" [level=2] [ref=e170]
+              - paragraph [ref=e171]: Upscaling · AI Upscale Model · Qualità MAX · 27 lug 2026, 17:44
+            - generic [ref=e172]:
+              - generic [ref=e173]:
+                - generic [ref=e174]: Output
+                - generic [ref=e175]: 4×
+              - generic [ref=e176]:
+                - generic [ref=e177]: Seed
+                - generic [ref=e178]: "716806500"
+              - generic [ref=e179]:
+                - generic [ref=e180]: Immagini
+                - generic [ref=e181]: "1"
+              - generic [ref=e182]:
+                - generic [ref=e183]: Qualità
+                - generic [ref=e184]: Massima
+              - generic [ref=e185]:
+                - generic [ref=e186]: Motore
+                - generic [ref=e187]: AI Upscale Model
+              - generic [ref=e188]:
+                - generic [ref=e189]: Preset
+                - generic [ref=e190]: Qualità MAX
+              - generic [ref=e191]:
+                - generic [ref=e192]: Modello
+                - generic [ref=e193]: 4xNMKDSuperscale_4xNMKDSuperscale.pt
+              - generic [ref=e194]:
+                - generic [ref=e195]: Ingrandimento
+                - generic [ref=e196]: 4×
+              - generic [ref=e197]:
+                - generic [ref=e198]: Purge VRAM
+                - generic [ref=e199]: Prima dell’upscale
+        - article [ref=e200]:
+          - figure [ref=e203]:
+            - link [ref=e204] [cursor=pointer]:
+              - /url: /api/image/fc83be00-9c5c-4ba7-bf4a-b3fff4acc22c/0
+              - img "Risultato 1" [ref=e205]
+            - link "Download ↓" [ref=e206] [cursor=pointer]:
+              - /url: /api/image/fc83be00-9c5c-4ba7-bf4a-b3fff4acc22c/0?download=1
+          - generic [ref=e207]:
+            - generic [ref=e209]:
+              - generic [ref=e210]: Completata
+              - heading "Upscaling · AI Upscale Model · Qualità MAX" [level=2] [ref=e211]
+              - paragraph [ref=e212]: Upscaling · AI Upscale Model · Qualità MAX · 27 lug 2026, 17:44
+            - generic [ref=e213]:
+              - generic [ref=e214]:
+                - generic [ref=e215]: Output
+                - generic [ref=e216]: 4×
+              - generic [ref=e217]:
+                - generic [ref=e218]: Seed
+                - generic [ref=e219]: "817305412"
+              - generic [ref=e220]:
+                - generic [ref=e221]: Immagini
+                - generic [ref=e222]: "1"
+              - generic [ref=e223]:
+                - generic [ref=e224]: Qualità
+                - generic [ref=e225]: Massima
+              - generic [ref=e226]:
+                - generic [ref=e227]: Motore
+                - generic [ref=e228]: AI Upscale Model
+              - generic [ref=e229]:
+                - generic [ref=e230]: Preset
+                - generic [ref=e231]: Qualità MAX
+              - generic [ref=e232]:
+                - generic [ref=e233]: Modello
+                - generic [ref=e234]: 4x_foolhardy_Remacri.pth
+              - generic [ref=e235]:
+                - generic [ref=e236]: Ingrandimento
+                - generic [ref=e237]: 4×
+              - generic [ref=e238]:
+                - generic [ref=e239]: Purge VRAM
+                - generic [ref=e240]: Prima dell’upscale
+        - article [ref=e241]:
+          - figure [ref=e244]:
+            - link [ref=e245] [cursor=pointer]:
+              - /url: /api/image/b2d4025c-24ed-4a3e-9648-e308522a0594/0
+              - img "Risultato 1" [ref=e246]
+            - link "Download ↓" [ref=e247] [cursor=pointer]:
+              - /url: /api/image/b2d4025c-24ed-4a3e-9648-e308522a0594/0?download=1
+          - generic [ref=e248]:
+            - generic [ref=e250]:
+              - generic [ref=e251]: Completata
+              - heading "Upscaling · SeedVR2 · Qualità MAX" [level=2] [ref=e252]
+              - paragraph [ref=e253]: Upscaling · SeedVR2 · Qualità MAX · 27 lug 2026, 17:44
+            - generic [ref=e254]:
+              - generic [ref=e255]:
+                - generic [ref=e256]: Output
+                - generic [ref=e257]: Lato corto 2656px
+              - generic [ref=e258]:
+                - generic [ref=e259]: Seed
+                - generic [ref=e260]: "661349641"
+              - generic [ref=e261]:
+                - generic [ref=e262]: Immagini
+                - generic [ref=e263]: "1"
+              - generic [ref=e264]:
+                - generic [ref=e265]: Qualità
+                - generic [ref=e266]: Massima
+              - generic [ref=e267]:
+                - generic [ref=e268]: Motore
+                - generic [ref=e269]: SeedVR2
+              - generic [ref=e270]:
+                - generic [ref=e271]: Preset
+                - generic [ref=e272]: Qualità MAX
+              - generic [ref=e273]:
+                - generic [ref=e274]: Lato corto
+                - generic [ref=e275]: 2656px
+              - generic [ref=e276]:
+                - generic [ref=e277]: Purge VRAM
+                - generic [ref=e278]: Prima dell’upscale
+        - article [ref=e279]:
+          - figure [ref=e282]:
+            - link [ref=e283] [cursor=pointer]:
+              - /url: /api/image/65b638f3-c387-4bac-a2af-654f9a7352af/0
+              - img "Risultato 1" [ref=e284]
+            - link "Download ↓" [ref=e285] [cursor=pointer]:
+              - /url: /api/image/65b638f3-c387-4bac-a2af-654f9a7352af/0?download=1
+          - generic [ref=e286]:
+            - generic [ref=e288]:
+              - generic [ref=e289]: Completata
+              - heading "Upscaling · NVIDIA RTX VSR · Qualità MAX" [level=2] [ref=e290]
+              - paragraph [ref=e291]: Upscaling · NVIDIA RTX VSR · Qualità MAX · 27 lug 2026, 17:44
+            - generic [ref=e292]:
+              - generic [ref=e293]:
+                - generic [ref=e294]: Output
+                - generic [ref=e295]: 4×
+              - generic [ref=e296]:
+                - generic [ref=e297]: Seed
+                - generic [ref=e298]: "43074533"
+              - generic [ref=e299]:
+                - generic [ref=e300]: Immagini
+                - generic [ref=e301]: "1"
+              - generic [ref=e302]:
+                - generic [ref=e303]: Qualità
+                - generic [ref=e304]: Massima
+              - generic [ref=e305]:
+                - generic [ref=e306]: Motore
+                - generic [ref=e307]: NVIDIA RTX VSR
+              - generic [ref=e308]:
+                - generic [ref=e309]: Preset
+                - generic [ref=e310]: Qualità MAX
+              - generic [ref=e311]:
+                - generic [ref=e312]: Ingrandimento
+                - generic [ref=e313]: 4×
+              - generic [ref=e314]:
+                - generic [ref=e315]: Purge VRAM
+                - generic [ref=e316]: Prima dell’upscale
+        - article [ref=e317]:
+          - generic [ref=e319]:
+            - figure [ref=e320]:
+              - link [ref=e321] [cursor=pointer]:
+                - /url: /api/image/ea18456d-aba7-4e33-b474-bbd47bd5b9fb/0
+                - img "Risultato 1" [ref=e322]
+              - link "Download 1 ↓" [ref=e323] [cursor=pointer]:
+                - /url: /api/image/ea18456d-aba7-4e33-b474-bbd47bd5b9fb/0?download=1
+            - figure [ref=e324]:
+              - link [ref=e325] [cursor=pointer]:
+                - /url: /api/image/ea18456d-aba7-4e33-b474-bbd47bd5b9fb/1
+                - img "Risultato 2" [ref=e326]
+              - link "Download 2 ↓" [ref=e327] [cursor=pointer]:
+                - /url: /api/image/ea18456d-aba7-4e33-b474-bbd47bd5b9fb/1?download=1
+          - generic [ref=e328]:
+            - generic [ref=e330]:
+              - generic [ref=e331]: Completata
+              - heading "You put in a sexy, topless, brunette girl with braids, she has a huge breast, she's positioned inside the pool next to the two guys. The girl is perfectly integrated into the photo." [level=2] [ref=e332]
+              - paragraph [ref=e333]: pornmasterFlux2Klein v4TurboFp8 · Image to Image · 27 lug 2026, 17:42
+            - generic [ref=e334]:
+              - generic [ref=e335]:
+                - generic [ref=e336]: Output
+                - generic [ref=e337]: 896×1152
+              - generic [ref=e338]:
+                - generic [ref=e339]: Seed
+                - generic [ref=e340]: "710322733"
+              - generic [ref=e341]:
+                - generic [ref=e342]: Modello
+                - generic [ref=e343]: pornmasterFlux2Klein v4TurboFp8
+              - generic [ref=e344]:
+                - generic [ref=e345]: Immagini
+                - generic [ref=e346]: "1"
+              - generic [ref=e347]:
+                - generic [ref=e348]: Step
+                - generic [ref=e349]: "8"
+              - generic [ref=e350]:
+                - generic [ref=e351]: Guidance
+                - generic [ref=e352]: "1"
+              - generic [ref=e353]:
+                - generic [ref=e354]: Denoise
+                - generic [ref=e355]: "0.6"
+              - generic [ref=e356]:
+                - generic [ref=e357]: Upscale
+                - generic [ref=e358]: SeedVR2 Massimo · 7B FP16
+              - generic [ref=e359]:
+                - generic [ref=e360]: Lato corto
+                - generic [ref=e361]: 2048px
+              - generic [ref=e362]:
+                - generic [ref=e363]: Output finale
+                - generic [ref=e364]: 2048×2633
+              - generic [ref=e365]:
+                - generic [ref=e366]: Purge VRAM
+                - generic [ref=e367]: Automatico
+        - article [ref=e368]:
+          - generic [ref=e370]:
+            - figure [ref=e371]:
+              - link [ref=e372] [cursor=pointer]:
+                - /url: /api/image/7e5d74b5-5152-44d1-b3bc-d9cab73cc2e8/0
+                - img "Risultato 1" [ref=e373]
+              - link "Download 1 ↓" [ref=e374] [cursor=pointer]:
+                - /url: /api/image/7e5d74b5-5152-44d1-b3bc-d9cab73cc2e8/0?download=1
+            - figure [ref=e375]:
+              - link [ref=e376] [cursor=pointer]:
+                - /url: /api/image/7e5d74b5-5152-44d1-b3bc-d9cab73cc2e8/1
+                - img "Risultato 2" [ref=e377]
+              - link "Download 2 ↓" [ref=e378] [cursor=pointer]:
+                - /url: /api/image/7e5d74b5-5152-44d1-b3bc-d9cab73cc2e8/1?download=1
+          - generic [ref=e379]:
+            - generic [ref=e381]:
+              - generic [ref=e382]: Completata
+              - heading "You put in a sexy, topless, brunette girl with braids, she has a huge breast, she's positioned inside the pool next to the two guys. The girl is perfectly integrated into the photo." [level=2] [ref=e383]
+              - paragraph [ref=e384]: pornmasterFlux2Klein v4TurboFp8 · Image to Image · 27 lug 2026, 17:42
+            - generic [ref=e385]:
+              - generic [ref=e386]:
+                - generic [ref=e387]: Output
+                - generic [ref=e388]: 896×1152
+              - generic [ref=e389]:
+                - generic [ref=e390]: Seed
+                - generic [ref=e391]: "1305209028"
+              - generic [ref=e392]:
+                - generic [ref=e393]: Modello
+                - generic [ref=e394]: pornmasterFlux2Klein v4TurboFp8
+              - generic [ref=e395]:
+                - generic [ref=e396]: Immagini
+                - generic [ref=e397]: "1"
+              - generic [ref=e398]:
+                - generic [ref=e399]: LoRA
+                - generic [ref=e400]: "1"
+              - generic [ref=e401]:
+                - generic [ref=e402]: Step
+                - generic [ref=e403]: "8"
+              - generic [ref=e404]:
+                - generic [ref=e405]: Guidance
+                - generic [ref=e406]: "1"
+              - generic [ref=e407]:
+                - generic [ref=e408]: Denoise
+                - generic [ref=e409]: "0.6"
+              - generic [ref=e410]:
+                - generic [ref=e411]: Upscale
+                - generic [ref=e412]: SeedVR2 Massimo · 7B FP16
+              - generic [ref=e413]:
+                - generic [ref=e414]: Lato corto
+                - generic [ref=e415]: 2048px
+              - generic [ref=e416]:
+                - generic [ref=e417]: Output finale
+                - generic [ref=e418]: 2048×2633
+              - generic [ref=e419]:
+                - generic [ref=e420]: Purge VRAM
+                - generic [ref=e421]: Automatico
+            - group [ref=e422]:
+              - generic "LoRA applicate (1)" [ref=e423] [cursor=pointer]
+        - article [ref=e424]:
+          - generic [ref=e426]:
+            - figure [ref=e427]:
+              - link [ref=e428] [cursor=pointer]:
+                - /url: /api/image/b9a15acf-b1f4-43b7-8155-45975e2f0b11/0
+                - img "Risultato 1" [ref=e429]
+              - link "Download 1 ↓" [ref=e430] [cursor=pointer]:
+                - /url: /api/image/b9a15acf-b1f4-43b7-8155-45975e2f0b11/0?download=1
+            - figure [ref=e431]:
+              - link [ref=e432] [cursor=pointer]:
+                - /url: /api/image/b9a15acf-b1f4-43b7-8155-45975e2f0b11/1
+                - img "Risultato 2" [ref=e433]
+              - link "Download 2 ↓" [ref=e434] [cursor=pointer]:
+                - /url: /api/image/b9a15acf-b1f4-43b7-8155-45975e2f0b11/1?download=1
+          - generic [ref=e435]:
+            - generic [ref=e437]:
+              - generic [ref=e438]: Completata
+              - heading "You put in a sexy, topless, brunette girl with braids, she has a huge breast, she's positioned inside the pool next to the two guys. The girl is perfectly integrated into the photo." [level=2] [ref=e439]
+              - paragraph [ref=e440]: pornmasterFlux2Klein v4TurboFp8 · Image to Image · 27 lug 2026, 17:42
+            - generic [ref=e441]:
+              - generic [ref=e442]:
+                - generic [ref=e443]: Output
+                - generic [ref=e444]: 896×1152
+              - generic [ref=e445]:
+                - generic [ref=e446]: Seed
+                - generic [ref=e447]: "1050039826"
+              - generic [ref=e448]:
+                - generic [ref=e449]: Modello
+                - generic [ref=e450]: pornmasterFlux2Klein v4TurboFp8
+              - generic [ref=e451]:
+                - generic [ref=e452]: Immagini
+                - generic [ref=e453]: "1"
+              - generic [ref=e454]:
+                - generic [ref=e455]: LoRA
+                - generic [ref=e456]: "2"
+              - generic [ref=e457]:
+                - generic [ref=e458]: Step
+                - generic [ref=e459]: "8"
+              - generic [ref=e460]:
+                - generic [ref=e461]: Guidance
+                - generic [ref=e462]: "1"
+              - generic [ref=e463]:
+                - generic [ref=e464]: Denoise
+                - generic [ref=e465]: "0.6"
+              - generic [ref=e466]:
+                - generic [ref=e467]: Upscale
+                - generic [ref=e468]: SeedVR2 Massimo · 7B FP16
+              - generic [ref=e469]:
+                - generic [ref=e470]: Lato corto
+                - generic [ref=e471]: 2048px
+              - generic [ref=e472]:
+                - generic [ref=e473]: Output finale
+                - generic [ref=e474]: 2048×2633
+              - generic [ref=e475]:
+                - generic [ref=e476]: Purge VRAM
+                - generic [ref=e477]: Automatico
+            - group [ref=e478]:
+              - generic "LoRA applicate (2)" [ref=e479] [cursor=pointer]
+        - article [ref=e480]:
+          - figure [ref=e483]:
+            - link [ref=e484] [cursor=pointer]:
+              - /url: /api/image/ffc01cc5-1de7-426a-9920-e5c1d590caaa/0
+              - img "Risultato 1" [ref=e485]
+            - link "Download ↓" [ref=e486] [cursor=pointer]:
+              - /url: /api/image/ffc01cc5-1de7-426a-9920-e5c1d590caaa/0?download=1
+          - generic [ref=e487]:
+            - generic [ref=e489]:
+              - generic [ref=e490]: Completata
+              - heading "Insert the girl from image 2 into the pool with the two boys. The girl is in the pool, topless, showing off her huge breasts and is positioned in the pool on the right next to the boys." [level=2] [ref=e491]
+              - paragraph [ref=e492]: persephoneFluxNSFWSFW 20FP16 · Image to Image · 27 lug 2026, 17:34
+            - generic [ref=e493]:
+              - generic [ref=e494]:
+                - generic [ref=e495]: Output
+                - generic [ref=e496]: 896×1152
+              - generic [ref=e497]:
+                - generic [ref=e498]: Seed
+                - generic [ref=e499]: "473893889"
+              - generic [ref=e500]:
+                - generic [ref=e501]: Modello
+                - generic [ref=e502]: persephoneFluxNSFWSFW 20FP16
+              - generic [ref=e503]:
+                - generic [ref=e504]: Immagini
+                - generic [ref=e505]: "1"
+              - generic [ref=e506]:
+                - generic [ref=e507]: Step
+                - generic [ref=e508]: "28"
+              - generic [ref=e509]:
+                - generic [ref=e510]: Guidance
+                - generic [ref=e511]: "3.5"
+              - generic [ref=e512]:
+                - generic [ref=e513]: Denoise
+                - generic [ref=e514]: "0.6"
+        - article [ref=e515]:
+          - figure [ref=e518]:
+            - link [ref=e519] [cursor=pointer]:
+              - /url: /api/image/f9fe3e89-1726-4959-af59-813130eb9e93/0
+              - img "Risultato 1" [ref=e520]
+            - link "Download ↓" [ref=e521] [cursor=pointer]:
+              - /url: /api/image/f9fe3e89-1726-4959-af59-813130eb9e93/0?download=1
+          - generic [ref=e522]:
+            - generic [ref=e524]:
+              - generic [ref=e525]: Completata
+              - heading "Insert the girl from image 2 into the pool with the two boys. The girl is in the pool, topless, showing off her huge breasts and is positioned in the pool on the right next to the boys." [level=2] [ref=e526]
+              - paragraph [ref=e527]: fluxedUpFluxNSFW 112BF16FP8 · Image to Image · 27 lug 2026, 17:34
+            - generic [ref=e528]:
+              - generic [ref=e529]:
+                - generic [ref=e530]: Output
+                - generic [ref=e531]: 896×1152
+              - generic [ref=e532]:
+                - generic [ref=e533]: Seed
+                - generic [ref=e534]: "394846035"
+              - generic [ref=e535]:
+                - generic [ref=e536]: Modello
+                - generic [ref=e537]: fluxedUpFluxNSFW 112BF16FP8
+              - generic [ref=e538]:
+                - generic [ref=e539]: Immagini
+                - generic [ref=e540]: "1"
+              - generic [ref=e541]:
+                - generic [ref=e542]: Step
+                - generic [ref=e543]: "28"
+              - generic [ref=e544]:
+                - generic [ref=e545]: Guidance
+                - generic [ref=e546]: "3.5"
+              - generic [ref=e547]:
+                - generic [ref=e548]: Denoise
+                - generic [ref=e549]: "0.6"
+        - article [ref=e550]:
+          - figure [ref=e553]:
+            - link [ref=e554] [cursor=pointer]:
+              - /url: /api/image/508eca35-b65f-448c-80f5-7921bce4e6c1/0
+              - img "Risultato 1" [ref=e555]
+            - link "Download ↓" [ref=e556] [cursor=pointer]:
+              - /url: /api/image/508eca35-b65f-448c-80f5-7921bce4e6c1/0?download=1
+          - generic [ref=e557]:
+            - generic [ref=e559]:
+              - generic [ref=e560]: Completata
+              - heading "Insert the girl from image 2 into the pool with the two boys. The girl is in the pool, topless, showing off her huge breasts and is positioned in the pool on the right next to the boys." [level=2] [ref=e561]
+              - paragraph [ref=e562]: cyberrealisticFlux v25 · Image to Image · 27 lug 2026, 17:34
+            - generic [ref=e563]:
+              - generic [ref=e564]:
+                - generic [ref=e565]: Output
+                - generic [ref=e566]: 896×1152
+              - generic [ref=e567]:
+                - generic [ref=e568]: Seed
+                - generic [ref=e569]: "260162185"
+              - generic [ref=e570]:
+                - generic [ref=e571]: Modello
+                - generic [ref=e572]: cyberrealisticFlux v25
+              - generic [ref=e573]:
+                - generic [ref=e574]: Immagini
+                - generic [ref=e575]: "1"
+              - generic [ref=e576]:
+                - generic [ref=e577]: Step
+                - generic [ref=e578]: "28"
+              - generic [ref=e579]:
+                - generic [ref=e580]: Guidance
+                - generic [ref=e581]: "3.5"
+              - generic [ref=e582]:
+                - generic [ref=e583]: Denoise
+                - generic [ref=e584]: "0.6"
+        - article [ref=e585]:
+          - figure [ref=e588]:
+            - link [ref=e589] [cursor=pointer]:
+              - /url: /api/image/acc8b064-469f-4508-91cc-28e802406f1f/0
+              - img "Risultato 1" [ref=e590]
+            - link "Download ↓" [ref=e591] [cursor=pointer]:
+              - /url: /api/image/acc8b064-469f-4508-91cc-28e802406f1f/0?download=1
+          - generic [ref=e592]:
+            - generic [ref=e594]:
+              - generic [ref=e595]: Completata
+              - heading "Insert the girl from image 2 into the pool with the two boys. The girl is in the pool, topless, showing off her huge breasts and is positioned in the pool on the right next to the boys." [level=2] [ref=e596]
+              - paragraph [ref=e597]: Z-Image Turbo BF16 · Image to Image · 27 lug 2026, 17:34
+            - generic [ref=e598]:
+              - generic [ref=e599]:
+                - generic [ref=e600]: Output
+                - generic [ref=e601]: 896×1152
+              - generic [ref=e602]:
+                - generic [ref=e603]: Seed
+                - generic [ref=e604]: "750350768"
+              - generic [ref=e605]:
+                - generic [ref=e606]: Modello
+                - generic [ref=e607]: Z-Image Turbo BF16
+              - generic [ref=e608]:
+                - generic [ref=e609]: Immagini
+                - generic [ref=e610]: "1"
+              - generic [ref=e611]:
+                - generic [ref=e612]: Step
+                - generic [ref=e613]: "8"
+              - generic [ref=e614]:
+                - generic [ref=e615]: Guidance
+                - generic [ref=e616]: "1"
+              - generic [ref=e617]:
+                - generic [ref=e618]: Denoise
+                - generic [ref=e619]: "0.6"
+        - article [ref=e620]:
+          - figure [ref=e623]:
+            - link [ref=e624] [cursor=pointer]:
+              - /url: /api/image/ee206294-fcc0-4ee9-98f1-5acf61921460/0
+              - img "Risultato 1" [ref=e625]
+            - link "Download ↓" [ref=e626] [cursor=pointer]:
+              - /url: /api/image/ee206294-fcc0-4ee9-98f1-5acf61921460/0?download=1
+          - generic [ref=e627]:
+            - generic [ref=e629]:
+              - generic [ref=e630]: Completata
+              - heading "Insert the girl from image 2 into the pool with the two boys. The girl is in the pool, topless, showing off her huge breasts and is positioned in the pool on the right next to the boys." [level=2] [ref=e631]
+              - paragraph [ref=e632]: moodyProMix zitV13 · Image to Image · 27 lug 2026, 17:34
+            - generic [ref=e633]:
+              - generic [ref=e634]:
+                - generic [ref=e635]: Output
+                - generic [ref=e636]: 896×1152
+              - generic [ref=e637]:
+                - generic [ref=e638]: Seed
+                - generic [ref=e639]: "965204541"
+              - generic [ref=e640]:
+                - generic [ref=e641]: Modello
+                - generic [ref=e642]: moodyProMix zitV13
+              - generic [ref=e643]:
+                - generic [ref=e644]: Immagini
+                - generic [ref=e645]: "1"
+              - generic [ref=e646]:
+                - generic [ref=e647]: Step
+                - generic [ref=e648]: "8"
+              - generic [ref=e649]:
+                - generic [ref=e650]: Guidance
+                - generic [ref=e651]: "1"
+              - generic [ref=e652]:
+                - generic [ref=e653]: Denoise
+                - generic [ref=e654]: "0.6"
+        - article [ref=e655]:
+          - figure [ref=e658]:
+            - link [ref=e659] [cursor=pointer]:
+              - /url: /api/image/4f1e397a-55b5-4c0d-ace8-ae640f583407/0
+              - img "Risultato 1" [ref=e660]
+            - link "Download ↓" [ref=e661] [cursor=pointer]:
+              - /url: /api/image/4f1e397a-55b5-4c0d-ace8-ae640f583407/0?download=1
+          - generic [ref=e662]:
+            - generic [ref=e664]:
+              - generic [ref=e665]: Completata
+              - heading "Insert the girl from image 2 into the pool with the two boys. The girl is in the pool, topless, showing off her huge breasts and is positioned in the pool on the right next to the boys." [level=2] [ref=e666]
+              - paragraph [ref=e667]: pornmasterFlux2Klein v4TurboFp8 · Image to Image · 27 lug 2026, 17:34
+            - generic [ref=e668]:
+              - generic [ref=e669]:
+                - generic [ref=e670]: Output
+                - generic [ref=e671]: 896×1152
+              - generic [ref=e672]:
+                - generic [ref=e673]: Seed
+                - generic [ref=e674]: "280699737"
+              - generic [ref=e675]:
+                - generic [ref=e676]: Modello
+                - generic [ref=e677]: pornmasterFlux2Klein v4TurboFp8
+              - generic [ref=e678]:
+                - generic [ref=e679]: Immagini
+                - generic [ref=e680]: "1"
+              - generic [ref=e681]:
+                - generic [ref=e682]: Step
+                - generic [ref=e683]: "8"
+              - generic [ref=e684]:
+                - generic [ref=e685]: Guidance
+                - generic [ref=e686]: "1"
+              - generic [ref=e687]:
+                - generic [ref=e688]: Denoise
+                - generic [ref=e689]: "0.6"
+        - article [ref=e690]:
+          - figure [ref=e693]:
+            - link [ref=e694] [cursor=pointer]:
+              - /url: /api/image/effae982-4d86-4914-bc52-29ad15ef03df/0
+              - img "Risultato 1" [ref=e695]
+            - link "Download ↓" [ref=e696] [cursor=pointer]:
+              - /url: /api/image/effae982-4d86-4914-bc52-29ad15ef03df/0?download=1
+          - generic [ref=e697]:
+            - generic [ref=e699]:
+              - generic [ref=e700]: Completata
+              - heading "Insert the girl from image 2 into the pool with the two boys. The girl is in the pool, topless, showing off her huge breasts and is positioned in the pool on the right next to the boys." [level=2] [ref=e701]
+              - paragraph [ref=e702]: pornmasterFlux2Klein v4TurboFp8 · Image to Image · 27 lug 2026, 17:34
+            - generic [ref=e703]:
+              - generic [ref=e704]:
+                - generic [ref=e705]: Output
+                - generic [ref=e706]: 896×1152
+              - generic [ref=e707]:
+                - generic [ref=e708]: Seed
+                - generic [ref=e709]: "809908993"
+              - generic [ref=e710]:
+                - generic [ref=e711]: Modello
+                - generic [ref=e712]: pornmasterFlux2Klein v4TurboFp8
+              - generic [ref=e713]:
+                - generic [ref=e714]: Immagini
+                - generic [ref=e715]: "1"
+              - generic [ref=e716]:
+                - generic [ref=e717]: LoRA
+                - generic [ref=e718]: "1"
+              - generic [ref=e719]:
+                - generic [ref=e720]: Step
+                - generic [ref=e721]: "8"
+              - generic [ref=e722]:
+                - generic [ref=e723]: Guidance
+                - generic [ref=e724]: "1"
+              - generic [ref=e725]:
+                - generic [ref=e726]: Denoise
+                - generic [ref=e727]: "0.6"
+            - group [ref=e728]:
+              - generic "LoRA applicate (1)" [ref=e729] [cursor=pointer]
+        - article [ref=e730]:
+          - generic [ref=e732]:
+            - generic [ref=e735]: Errore
+            - generic [ref=e736]: "'NoneType' object is not callable"
+          - generic [ref=e737]:
+            - generic [ref=e739]:
+              - generic [ref=e740]: Errore
+              - 'heading "Insert the girl in picture 1 into the pool. The girl is inside the pool, leaning against the side of the pool, topless revealing her huge tits, and wearing a black lace thong underneath. Don''t change the setting or the pool, it perfectly integrates the girl into the picture. Control targets: original preservation 100%, edit intensity 50%, reference identity 80%, pose adherence 70%, creative freedom 30%. Preserve every unrequested element of the original smartphone photograph. Match camera perspective, scale, depth, contact shadows, reflections, occlusion, white balance, sensor texture and ambient lighting. The edit must look naturally captured in the original amateur photograph, not pasted or studio-lit." [level=2] [ref=e741]'
+              - paragraph [ref=e742]: Smartphone Photo Editor · Alternativa 2 · 27 lug 2026, 17:31
+              - paragraph [ref=e743]: Progetto Studio · drafts · Alternativa 2
+            - generic [ref=e744]:
+              - generic [ref=e745]:
+                - generic [ref=e746]: Output
+                - generic [ref=e747]: 1632×1232
+              - generic [ref=e748]:
+                - generic [ref=e749]: Seed
+                - generic [ref=e750]: "1"
+              - generic [ref=e751]:
+                - generic [ref=e752]: Modello
+                - generic [ref=e753]: pornmasterFlux2Klein v4TurboFp8
+              - generic [ref=e754]:
+                - generic [ref=e755]: Immagini
+                - generic [ref=e756]: "1"
+              - generic [ref=e757]:
+                - generic [ref=e758]: Step
+                - generic [ref=e759]: "8"
+              - generic [ref=e760]:
+                - generic [ref=e761]: Guidance
+                - generic [ref=e762]: "1"
+              - generic [ref=e763]:
+                - generic [ref=e764]: Denoise
+                - generic [ref=e765]: "0.25"
+              - generic [ref=e766]:
+                - generic [ref=e767]: Output finale
+                - generic [ref=e768]: 1632×1232
+              - generic [ref=e769]:
+                - generic [ref=e770]: Detailer volto
+                - generic [ref=e771]: "0.22"
+              - generic [ref=e772]:
+                - generic [ref=e773]: Detailer mani
+                - generic [ref=e774]: "0.28"
+        - article [ref=e775]:
+          - generic [ref=e777]:
+            - generic [ref=e780]: Errore
+            - generic [ref=e781]: "'NoneType' object is not callable"
+          - generic [ref=e782]:
+            - generic [ref=e784]:
+              - generic [ref=e785]: Errore
+              - 'heading "Insert the girl in picture 1 into the pool. The girl is inside the pool, leaning against the side of the pool, topless revealing her huge tits, and wearing a black lace thong underneath. Don''t change the setting or the pool, it perfectly integrates the girl into the picture. Control targets: original preservation 100%, edit intensity 50%, reference identity 80%, pose adherence 70%, creative freedom 30%. Preserve every unrequested element of the original smartphone photograph. Match camera perspective, scale, depth, contact shadows, reflections, occlusion, white balance, sensor texture and ambient lighting. The edit must look naturally captured in the original amateur photograph, not pasted or studio-lit." [level=2] [ref=e786]'
+              - paragraph [ref=e787]: Smartphone Photo Editor · Alternativa 1 · 27 lug 2026, 17:31
+              - paragraph [ref=e788]: Progetto Studio · drafts · Alternativa 1
+            - generic [ref=e789]:
+              - generic [ref=e790]:
+                - generic [ref=e791]: Output
+                - generic [ref=e792]: 1632×1232
+              - generic [ref=e793]:
+                - generic [ref=e794]: Seed
+                - generic [ref=e795]: "0"
+              - generic [ref=e796]:
+                - generic [ref=e797]: Modello
+                - generic [ref=e798]: pornmasterFlux2Klein v4TurboFp8
+              - generic [ref=e799]:
+                - generic [ref=e800]: Immagini
+                - generic [ref=e801]: "1"
+              - generic [ref=e802]:
+                - generic [ref=e803]: Step
+                - generic [ref=e804]: "8"
+              - generic [ref=e805]:
+                - generic [ref=e806]: Guidance
+                - generic [ref=e807]: "1"
+              - generic [ref=e808]:
+                - generic [ref=e809]: Denoise
+                - generic [ref=e810]: "0.25"
+              - generic [ref=e811]:
+                - generic [ref=e812]: Output finale
+                - generic [ref=e813]: 1632×1232
+              - generic [ref=e814]:
+                - generic [ref=e815]: Detailer volto
+                - generic [ref=e816]: "0.22"
+              - generic [ref=e817]:
+                - generic [ref=e818]: Detailer mani
+                - generic [ref=e819]: "0.28"
+        - article [ref=e820]:
+          - generic [ref=e822]:
+            - figure [ref=e823]:
+              - link [ref=e824] [cursor=pointer]:
+                - /url: /api/image/9d47e696-1b79-4f28-811a-0e2d7c0e6ab1/0
+                - img "Risultato 1" [ref=e825]
+              - link "Download 1 ↓" [ref=e826] [cursor=pointer]:
+                - /url: /api/image/9d47e696-1b79-4f28-811a-0e2d7c0e6ab1/0?download=1
+            - figure [ref=e827]:
+              - link [ref=e828] [cursor=pointer]:
+                - /url: /api/image/9d47e696-1b79-4f28-811a-0e2d7c0e6ab1/1
+                - img "Risultato 2" [ref=e829]
+              - link "Download 2 ↓" [ref=e830] [cursor=pointer]:
+                - /url: /api/image/9d47e696-1b79-4f28-811a-0e2d7c0e6ab1/1?download=1
+          - generic [ref=e831]:
+            - generic [ref=e833]:
+              - generic [ref=e834]: Completata
+              - 'heading "Insert the girl in picture 1 into the pool. The girl is inside the pool, leaning against the side of the pool, topless revealing her huge tits, and wearing a black lace thong underneath. Don''t change the setting or the pool, it perfectly integrates the girl into the picture. Control targets: original preservation 100%, edit intensity 50%, reference identity 80%, pose adherence 70%, creative freedom 30%. Preserve every unrequested element of the original smartphone photograph. Match camera perspective, scale, depth, contact shadows, reflections, occlusion, white balance, sensor texture and ambient lighting. The edit must look naturally captured in the original amateur photograph, not pasted or studio-lit." [level=2] [ref=e835]'
+              - paragraph [ref=e836]: Smartphone Photo Editor · Alternativa 2 · 27 lug 2026, 17:31
+              - paragraph [ref=e837]: Progetto Studio · drafts · Alternativa 2
+            - generic [ref=e838]:
+              - generic [ref=e839]:
+                - generic [ref=e840]: Output
+                - generic [ref=e841]: 1632×1232
+              - generic [ref=e842]:
+                - generic [ref=e843]: Seed
+                - generic [ref=e844]: "1"
+              - generic [ref=e845]:
+                - generic [ref=e846]: Modello
+                - generic [ref=e847]: pornmasterFlux2Klein v4TurboFp8
+              - generic [ref=e848]:
+                - generic [ref=e849]: Immagini
+                - generic [ref=e850]: "1"
+              - generic [ref=e851]:
+                - generic [ref=e852]: Step
+                - generic [ref=e853]: "8"
+              - generic [ref=e854]:
+                - generic [ref=e855]: Guidance
+                - generic [ref=e856]: "1"
+              - generic [ref=e857]:
+                - generic [ref=e858]: Denoise
+                - generic [ref=e859]: "0.25"
+              - generic [ref=e860]:
+                - generic [ref=e861]: Output finale
+                - generic [ref=e862]: 1632×1232
+              - generic [ref=e863]:
+                - generic [ref=e864]: Detailer volto
+                - generic [ref=e865]: "0.22"
+              - generic [ref=e866]:
+                - generic [ref=e867]: Detailer mani
+                - generic [ref=e868]: "0.28"
+        - article [ref=e869]:
+          - generic [ref=e871]:
+            - figure [ref=e872]:
+              - link [ref=e873] [cursor=pointer]:
+                - /url: /api/image/3a7399e6-1903-4b7b-b57a-9b5d49b4100f/0
+                - img "Risultato 1" [ref=e874]
+              - link "Download 1 ↓" [ref=e875] [cursor=pointer]:
+                - /url: /api/image/3a7399e6-1903-4b7b-b57a-9b5d49b4100f/0?download=1
+            - figure [ref=e876]:
+              - link [ref=e877] [cursor=pointer]:
+                - /url: /api/image/3a7399e6-1903-4b7b-b57a-9b5d49b4100f/1
+                - img "Risultato 2" [ref=e878]
+              - link "Download 2 ↓" [ref=e879] [cursor=pointer]:
+                - /url: /api/image/3a7399e6-1903-4b7b-b57a-9b5d49b4100f/1?download=1
+          - generic [ref=e880]:
+            - generic [ref=e882]:
+              - generic [ref=e883]: Completata
+              - 'heading "Insert the girl in picture 1 into the pool. The girl is inside the pool, leaning against the side of the pool, topless revealing her huge tits, and wearing a black lace thong underneath. Don''t change the setting or the pool, it perfectly integrates the girl into the picture. Control targets: original preservation 100%, edit intensity 50%, reference identity 80%, pose adherence 70%, creative freedom 30%. Preserve every unrequested element of the original smartphone photograph. Match camera perspective, scale, depth, contact shadows, reflections, occlusion, white balance, sensor texture and ambient lighting. The edit must look naturally captured in the original amateur photograph, not pasted or studio-lit." [level=2] [ref=e884]'
+              - paragraph [ref=e885]: Smartphone Photo Editor · Alternativa 1 · 27 lug 2026, 17:31
+              - paragraph [ref=e886]: Progetto Studio · drafts · Alternativa 1
+            - generic [ref=e887]:
+              - generic [ref=e888]:
+                - generic [ref=e889]: Output
+                - generic [ref=e890]: 1632×1232
+              - generic [ref=e891]:
+                - generic [ref=e892]: Seed
+                - generic [ref=e893]: "0"
+              - generic [ref=e894]:
+                - generic [ref=e895]: Modello
+                - generic [ref=e896]: pornmasterFlux2Klein v4TurboFp8
+              - generic [ref=e897]:
+                - generic [ref=e898]: Immagini
+                - generic [ref=e899]: "1"
+              - generic [ref=e900]:
+                - generic [ref=e901]: Step
+                - generic [ref=e902]: "8"
+              - generic [ref=e903]:
+                - generic [ref=e904]: Guidance
+                - generic [ref=e905]: "1"
+              - generic [ref=e906]:
+                - generic [ref=e907]: Denoise
+                - generic [ref=e908]: "0.25"
+              - generic [ref=e909]:
+                - generic [ref=e910]: Output finale
+                - generic [ref=e911]: 1632×1232
+              - generic [ref=e912]:
+                - generic [ref=e913]: Detailer volto
+                - generic [ref=e914]: "0.22"
+              - generic [ref=e915]:
+                - generic [ref=e916]: Detailer mani
+                - generic [ref=e917]: "0.28"
+        - article [ref=e918]:
+          - figure [ref=e921]:
+            - link [ref=e922] [cursor=pointer]:
+              - /url: /api/image/b6620b26-0beb-4dca-b02c-7f4c563dd0a3/0
+              - img "Risultato 1" [ref=e923]
+            - link "Download ↓" [ref=e924] [cursor=pointer]:
+              - /url: /api/image/b6620b26-0beb-4dca-b02c-7f4c563dd0a3/0?download=1
+          - generic [ref=e925]:
+            - generic [ref=e927]:
+              - generic [ref=e928]: Completata
+              - heading "Don't change the pool or the environment, but put a sexy girl in the pool Create a controlled variation while preserving composition, character identity and color continuity." [level=2] [ref=e929]
+              - paragraph [ref=e930]: Perfect Image Studio · Variazione controllata · 27 lug 2026, 17:25
+              - paragraph [ref=e931]: Progetto Studio · variations · Variazione controllata
+            - generic [ref=e932]:
+              - generic [ref=e933]:
+                - generic [ref=e934]: Output
+                - generic [ref=e935]: 1632×1232
+              - generic [ref=e936]:
+                - generic [ref=e937]: Seed
+                - generic [ref=e938]: "1087661420"
+              - generic [ref=e939]:
+                - generic [ref=e940]: Modello
+                - generic [ref=e941]: Flux.2 Klein 9B Base
+              - generic [ref=e942]:
+                - generic [ref=e943]: Immagini
+                - generic [ref=e944]: "1"
+              - generic [ref=e945]:
+                - generic [ref=e946]: Step
+                - generic [ref=e947]: "8"
+              - generic [ref=e948]:
+                - generic [ref=e949]: Guidance
+                - generic [ref=e950]: "1"
+              - generic [ref=e951]:
+                - generic [ref=e952]: Denoise
+                - generic [ref=e953]: "0.25"
+              - generic [ref=e954]:
+                - generic [ref=e955]: Output finale
+                - generic [ref=e956]: 1632×1232
+              - generic [ref=e957]:
+                - generic [ref=e958]: Detailer volto
+                - generic [ref=e959]: "0.22"
+              - generic [ref=e960]:
+                - generic [ref=e961]: Detailer mani
+                - generic [ref=e962]: "0.28"
+        - article [ref=e963]:
+          - generic [ref=e965]:
+            - figure [ref=e966]:
+              - link [ref=e967] [cursor=pointer]:
+                - /url: /api/image/81d82821-2092-4539-a787-91f6520795c8/0
+                - img "Risultato 1" [ref=e968]
+              - link "Download 1 ↓" [ref=e969] [cursor=pointer]:
+                - /url: /api/image/81d82821-2092-4539-a787-91f6520795c8/0?download=1
+            - figure [ref=e970]:
+              - link [ref=e971] [cursor=pointer]:
+                - /url: /api/image/81d82821-2092-4539-a787-91f6520795c8/1
+                - img "Risultato 2" [ref=e972]
+              - link "Download 2 ↓" [ref=e973] [cursor=pointer]:
+                - /url: /api/image/81d82821-2092-4539-a787-91f6520795c8/1?download=1
+          - generic [ref=e974]:
+            - generic [ref=e976]:
+              - generic [ref=e977]: Completata
+              - 'heading "Do not change the pool and the setting, insert the girl from image 1 into the drawn mask, inside the pool, topless, with only a black lace thong. The girl has a satisfied and happy expression. Control targets: original preservation 100%, edit intensity 50%, reference identity 80%, pose adherence 70%, creative freedom 30%. Preserve every unrequested element of the original smartphone photograph. Match camera perspective, scale, depth, contact shadows, reflections, occlusion, white balance, sensor texture and ambient lighting. The edit must look naturally captured in the original amateur photograph, not pasted or studio-lit." [level=2] [ref=e978]'
+              - paragraph [ref=e979]: Smartphone Photo Editor · Alternativa 2 · 27 lug 2026, 17:25
+              - paragraph [ref=e980]: Progetto Studio · drafts · Alternativa 2
+            - generic [ref=e981]:
+              - generic [ref=e982]:
+                - generic [ref=e983]: Output
+                - generic [ref=e984]: 1632×1232
+              - generic [ref=e985]:
+                - generic [ref=e986]: Seed
+                - generic [ref=e987]: "1"
+              - generic [ref=e988]:
+                - generic [ref=e989]: Modello
+                - generic [ref=e990]: pornmasterFlux2Klein v4TurboFp8
+              - generic [ref=e991]:
+                - generic [ref=e992]: Immagini
+                - generic [ref=e993]: "1"
+              - generic [ref=e994]:
+                - generic [ref=e995]: Step
+                - generic [ref=e996]: "8"
+              - generic [ref=e997]:
+                - generic [ref=e998]: Guidance
+                - generic [ref=e999]: "1"
+              - generic [ref=e1000]:
+                - generic [ref=e1001]: Denoise
+                - generic [ref=e1002]: "0.25"
+              - generic [ref=e1003]:
+                - generic [ref=e1004]: Output finale
+                - generic [ref=e1005]: 1632×1232
+              - generic [ref=e1006]:
+                - generic [ref=e1007]: Detailer volto
+                - generic [ref=e1008]: "0.22"
+              - generic [ref=e1009]:
+                - generic [ref=e1010]: Detailer mani
+                - generic [ref=e1011]: "0.28"
+        - article [ref=e1012]:
+          - generic [ref=e1014]:
+            - figure [ref=e1015]:
+              - link [ref=e1016] [cursor=pointer]:
+                - /url: /api/image/7057c042-5461-41c3-bd07-d6fa76bdfbc1/0
+                - img "Risultato 1" [ref=e1017]
+              - link "Download 1 ↓" [ref=e1018] [cursor=pointer]:
+                - /url: /api/image/7057c042-5461-41c3-bd07-d6fa76bdfbc1/0?download=1
+            - figure [ref=e1019]:
+              - link [ref=e1020] [cursor=pointer]:
+                - /url: /api/image/7057c042-5461-41c3-bd07-d6fa76bdfbc1/1
+                - img "Risultato 2" [ref=e1021]
+              - link "Download 2 ↓" [ref=e1022] [cursor=pointer]:
+                - /url: /api/image/7057c042-5461-41c3-bd07-d6fa76bdfbc1/1?download=1
+          - generic [ref=e1023]:
+            - generic [ref=e1025]:
+              - generic [ref=e1026]: Completata
+              - 'heading "Do not change the pool and the setting, insert the girl from image 1 into the drawn mask, inside the pool, topless, with only a black lace thong. The girl has a satisfied and happy expression. Control targets: original preservation 100%, edit intensity 50%, reference identity 80%, pose adherence 70%, creative freedom 30%. Preserve every unrequested element of the original smartphone photograph. Match camera perspective, scale, depth, contact shadows, reflections, occlusion, white balance, sensor texture and ambient lighting. The edit must look naturally captured in the original amateur photograph, not pasted or studio-lit." [level=2] [ref=e1027]'
+              - paragraph [ref=e1028]: Smartphone Photo Editor · Alternativa 1 · 27 lug 2026, 17:25
+              - paragraph [ref=e1029]: Progetto Studio · drafts · Alternativa 1
+            - generic [ref=e1030]:
+              - generic [ref=e1031]:
+                - generic [ref=e1032]: Output
+                - generic [ref=e1033]: 1632×1232
+              - generic [ref=e1034]:
+                - generic [ref=e1035]: Seed
+                - generic [ref=e1036]: "0"
+              - generic [ref=e1037]:
+                - generic [ref=e1038]: Modello
+                - generic [ref=e1039]: pornmasterFlux2Klein v4TurboFp8
+              - generic [ref=e1040]:
+                - generic [ref=e1041]: Immagini
+                - generic [ref=e1042]: "1"
+              - generic [ref=e1043]:
+                - generic [ref=e1044]: Step
+                - generic [ref=e1045]: "8"
+              - generic [ref=e1046]:
+                - generic [ref=e1047]: Guidance
+                - generic [ref=e1048]: "1"
+              - generic [ref=e1049]:
+                - generic [ref=e1050]: Denoise
+                - generic [ref=e1051]: "0.25"
+              - generic [ref=e1052]:
+                - generic [ref=e1053]: Output finale
+                - generic [ref=e1054]: 1632×1232
+              - generic [ref=e1055]:
+                - generic [ref=e1056]: Detailer volto
+                - generic [ref=e1057]: "0.22"
+              - generic [ref=e1058]:
+                - generic [ref=e1059]: Detailer mani
+                - generic [ref=e1060]: "0.28"
+      - button "Carica altre generazioni" [ref=e1061] [cursor=pointer]
+  - status

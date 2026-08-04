@@ -1,0 +1,737 @@
+- generic [ref=e1]:
+  - banner [ref=e2]:
+    - link "LTX REMOTE" [ref=e3] [cursor=pointer]:
+      - /url: /
+    - generic [ref=e6]:
+      - navigation "Navigazione principale" [ref=e7]:
+        - link "Genera" [ref=e8] [cursor=pointer]:
+          - /url: /
+        - link "Image Studio" [ref=e9] [cursor=pointer]:
+          - /url: /studio.html
+        - link "Video Studio" [ref=e10] [cursor=pointer]:
+          - /url: /video-studio.html
+        - link "Guida" [ref=e11] [cursor=pointer]:
+          - /url: /workflow-guide.html
+        - link "Generazioni" [ref=e12] [cursor=pointer]:
+          - /url: /generations.html
+      - generic [ref=e13]: ComfyUI online
+  - main [ref=e15]:
+    - generic [ref=e17]:
+      - paragraph [ref=e18]: EDITING / STORYBOARD / PERFECT IMAGE
+      - heading [level=1] [ref=e19]:
+        - text: Costruisci il tuo
+        - emphasis [ref=e20]: master.
+      - paragraph [ref=e21]: "Workflow guidati e multi-stadio: conserva le reference, confronta le bozze e anima gli shot approvati con LTX 2.3."
+    - generic [ref=e22]:
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - generic [ref=e25]: "01"
+          - generic [ref=e26]:
+            - heading "Nuovo progetto" [level=2] [ref=e27]
+            - paragraph [ref=e28]: Ogni stadio e risultato resta recuperabile
+        - generic [ref=e29]:
+          - generic [ref=e30]:
+            - generic [ref=e31]: Workflow
+            - button "Apri la guida di Editor Guidato" [ref=e129] [cursor=pointer]:
+              - generic [ref=e33]: "?"
+              - text: Guida rapida
+          - combobox "Workflow" [ref=e34] [cursor=pointer]:
+            - option "Editor Guidato" [selected]
+            - option "Storyboard Director"
+            - option "LTX First / Last Frame"
+            - option "Character & Location Bible"
+            - option "Perfect Image Studio"
+          - paragraph [ref=e130]: Inserisci, rimuovi o modifica persone, animali, oggetti, stile e luce indicando con precisione area, relazione e guida strutturale.
+        - generic [ref=e35]:
+          - generic [ref=e36]: Nome progetto
+          - textbox "Nome progetto" [ref=e37]:
+            - /placeholder: Es. Piscina · scena tramonto
+        - generic [ref=e39]:
+          - generic [ref=e40]: Fotografia principale / reference master
+          - generic [ref=e41]:
+            - button "↗ Carica una foto Orientamento EXIF e proporzioni vengono conservati" [ref=e42] [cursor=pointer]
+            - generic [ref=e43]: ↗
+            - strong [ref=e44]: Carica una foto
+            - generic [ref=e45]: Orientamento EXIF e proporzioni vengono conservati
+        - generic [ref=e131]:
+          - generic [ref=e132]:
+            - generic [ref=e133]: "1"
+            - generic [ref=e134]:
+              - paragraph [ref=e135]: Cosa vuoi fare?
+              - paragraph [ref=e136]: "Scegli l’obiettivo: l’editor prepara automaticamente prompt, maschera e modello."
+          - radiogroup "Tipo di modifica" [ref=e137]:
+            - generic [ref=e138] [cursor=pointer]:
+              - radio "Persona Aggiungi una persona"
+              - generic [ref=e139]: ＋
+              - generic [ref=e140]: Persona
+              - generic [ref=e141]: Aggiungi una persona
+            - generic [ref=e142] [cursor=pointer]:
+              - radio "Animale Aggiungi un animale"
+              - generic [ref=e143]: ＋
+              - generic [ref=e144]: Animale
+              - generic [ref=e145]: Aggiungi un animale
+            - generic [ref=e146] [cursor=pointer]:
+              - radio "Oggetto Aggiungi un elemento"
+              - generic [ref=e147]: ＋
+              - generic [ref=e148]: Oggetto
+              - generic [ref=e149]: Aggiungi un elemento
+            - generic [ref=e150] [cursor=pointer]:
+              - radio "Sostituisci Cambia un elemento"
+              - generic [ref=e151]: ⇄
+              - generic [ref=e152]: Sostituisci
+              - generic [ref=e153]: Cambia un elemento
+            - generic [ref=e154] [cursor=pointer]:
+              - radio "Rimuovi Ricostruisci lo sfondo"
+              - generic [ref=e155]: −
+              - generic [ref=e156]: Rimuovi
+              - generic [ref=e157]: Ricostruisci lo sfondo
+            - generic [ref=e158] [cursor=pointer]:
+              - radio "Modifica Abito, colore o dettaglio"
+              - generic [ref=e159]: ◇
+              - generic [ref=e160]: Modifica
+              - generic [ref=e161]: Abito, colore o dettaglio
+            - generic [ref=e162] [cursor=pointer]:
+              - radio "Sfondo Cambia l’ambiente"
+              - generic [ref=e163]: ▧
+              - generic [ref=e164]: Sfondo
+              - generic [ref=e165]: Cambia l’ambiente
+            - generic [ref=e166] [cursor=pointer]:
+              - radio "Stile Cambia il look globale" [checked] [active]
+              - generic [ref=e167]: ✦
+              - generic [ref=e168]: Stile
+              - generic [ref=e169]: Cambia il look globale
+            - generic [ref=e170] [cursor=pointer]:
+              - radio "Luce Ora, meteo e atmosfera"
+              - generic [ref=e171]: ☼
+              - generic [ref=e172]: Luce
+              - generic [ref=e173]: Ora, meteo e atmosfera
+          - generic [ref=e174]:
+            - generic [ref=e175]: "2"
+            - generic [ref=e176]:
+              - paragraph [ref=e177]: Descrivi il risultato
+              - paragraph [ref=e178]: Usa parole normali; i vincoli tecnici vengono aggiunti automaticamente.
+          - generic [ref=e179]:
+            - generic [ref=e180]:
+              - generic [ref=e181]: Dove deve trovarsi?
+              - textbox "Dove deve trovarsi?" [ref=e182]:
+                - /placeholder: Es. alla mia destra, dentro la piscina
+            - generic [ref=e183]:
+              - generic [ref=e184]: Davanti o dietro?
+              - combobox "Davanti o dietro?" [ref=e185] [cursor=pointer]:
+                - option "Automatico" [selected]
+                - option "Davanti al soggetto"
+                - option "Accanto, stessa profondità"
+                - option "Dietro al soggetto"
+                - option "Parzialmente coperto dall’ambiente"
+            - generic [ref=e186]:
+              - generic [ref=e187]: Cosa sta facendo?
+              - textbox "Cosa sta facendo?" [ref=e188]:
+                - /placeholder: Es. mi guarda, sorride e appoggia una mano sulla mia spalla
+            - generic [ref=e189]:
+              - generic [ref=e190]: Contatto con la scena
+              - textbox "Contatto con la scena" [ref=e191]:
+                - /placeholder: Es. immersa fino alla vita, increspature e riflessi nell’acqua
+          - generic [ref=e192]:
+            - generic [ref=e193]: Cosa non deve cambiare?
+            - textbox "Cosa non deve cambiare?" [ref=e194]:
+              - /placeholder: Es. il mio volto, corpo, posa, piscina, sfondo e illuminazione
+          - generic [ref=e195]:
+            - generic [ref=e196]: "3"
+            - generic [ref=e197]:
+              - paragraph [ref=e198]: Guida visiva facoltativa
+              - paragraph [ref=e199]: Per una posa o una sagoma precisa puoi caricare una foto, uno sketch o una mappa Depth.
+          - generic [ref=e200]:
+            - generic [ref=e201]:
+              - generic [ref=e202]: Tipo di guida
+              - combobox "Tipo di guida" [ref=e203] [cursor=pointer]:
+                - option "Automatico · consigliato" [selected]
+                - option "Contorni · Canny"
+                - option "Sketch / disegno"
+                - option "Profondità · Depth"
+                - option "Nessuna guida strutturale"
+              - paragraph [ref=e204]: Senza guida separata Qwen usa foto, maschera e reference; caricando una guida verranno estratti i contorni.
+            - generic [ref=e205]:
+              - generic [ref=e206]: Precisione guida
+              - slider "Precisione guida" [ref=e207]: "0.75"
+              - status [ref=e208]: 0,75
+          - group [ref=e209]:
+            - generic "Contorni avanzati Soglie Canny" [ref=e210] [cursor=pointer]
+        - generic [ref=e246]:
+          - paragraph [ref=e247]: Reference opzionali
+          - generic [ref=e248]:
+            - generic [ref=e249]:
+              - generic [ref=e250]: Persona
+              - button "Persona" [ref=e251] [cursor=pointer]
+            - generic [ref=e252]:
+              - generic [ref=e253]: Posa / abito
+              - button "Posa / abito" [ref=e254] [cursor=pointer]
+            - generic [ref=e255]:
+              - generic [ref=e256]: Stile / location
+              - button "Stile / location" [ref=e257] [cursor=pointer]
+          - paragraph [ref=e258]: Nell’Editor Guidato usa Persona per l’identità, Posa / abito per il corpo e Stile / location per l’aspetto della scena.
+        - generic [ref=e46]:
+          - generic [ref=e47]:
+            - generic [ref=e48]: Prompt globale / istruzione
+            - generic [ref=e49]:
+              - button "✦ IA + Genera" [ref=e50] [cursor=pointer]
+              - generic [ref=e51]: "0"
+          - textbox "Prompt globale / istruzione" [ref=e52]:
+            - /placeholder: Descrivi stile, resa, palette e materiale fotografico desiderati…
+          - paragraph [ref=e53]: Analizza la foto sorgente quando presente
+        - generic [ref=e54]:
+          - generic [ref=e55]: Prompt negativo
+          - textbox "Prompt negativo" [ref=e56]:
+            - /placeholder: Artefatti o modifiche da evitare…
+        - generic [ref=e57]:
+          - generic [ref=e58]:
+            - generic [ref=e59]: Comportamento
+            - combobox "Comportamento" [ref=e60] [cursor=pointer]:
+              - option "Conservativo"
+              - option "Bilanciato" [selected]
+              - option "Creativo"
+          - generic [ref=e61]:
+            - generic [ref=e62]: Alternative
+            - combobox "Alternative" [ref=e63] [cursor=pointer]:
+              - option "2" [selected]
+              - option "3"
+              - option "4"
+          - generic [ref=e64]:
+            - generic [ref=e65]: Ambito
+            - combobox "Ambito" [disabled] [ref=e66] [cursor=pointer]:
+              - option "Locale / maschera"
+              - option "Globale" [selected]
+          - generic [ref=e67]:
+            - generic [ref=e68]: Seed
+            - textbox "Seed" [ref=e69]:
+              - /placeholder: Random
+        - generic [ref=e70]:
+          - paragraph [ref=e71]: Controlli di fedeltà
+          - generic [ref=e72]:
+            - checkbox "Riduzione rumore molto leggera sulla copia di lavoro (l’originale resta intatto)" [checked] [ref=e73]
+            - text: Riduzione rumore molto leggera sulla copia di lavoro (l’originale resta intatto)
+          - generic [ref=e74]:
+            - generic [ref=e75]:
+              - generic [ref=e76]: Conservazione originale %
+              - spinbutton "Conservazione originale %" [ref=e77]: "100"
+            - generic [ref=e78]:
+              - generic [ref=e79]: Intensità modifica %
+              - spinbutton "Intensità modifica %" [ref=e80]: "50"
+            - generic [ref=e81]:
+              - generic [ref=e82]: Aderenza persona %
+              - spinbutton "Aderenza persona %" [ref=e83]: "80"
+            - generic [ref=e84]:
+              - generic [ref=e85]: Aderenza posa %
+              - spinbutton "Aderenza posa %" [ref=e86]: "70"
+            - generic [ref=e87]:
+              - generic [ref=e88]: Libertà creativa %
+              - spinbutton "Libertà creativa %" [ref=e89]: "30"
+        - generic [ref=e90]:
+          - paragraph [ref=e91]: Modelli per gli stadi
+          - generic [ref=e259]:
+            - generic [ref=e260]: Qwen editing guidato
+            - combobox "Qwen editing guidato" [ref=e261] [cursor=pointer]:
+              - option "BigLove Gwen 2 · MXFP8" [selected]
+              - option "BigLove Gwen 2 · NF4 leggero"
+        - generic [ref=e105]:
+          - paragraph [ref=e106]: Output master
+          - generic [ref=e107]:
+            - generic [ref=e108]:
+              - generic [ref=e109]: Upscale finale
+              - combobox "Upscale finale" [ref=e110] [cursor=pointer]:
+                - option "Stessa risoluzione / nessun upscale"
+                - option "SeedVR2 Leggero · 3B FP8" [selected]
+                - option "SeedVR2 Massimo · 7B FP16"
+                - option "RTX VSR · veloce e fedele"
+                - option "RealESRGAN 2× · tradizionale"
+            - generic [ref=e111]:
+              - checkbox "Conserva anche lo stadio prima dell’upscale" [checked] [ref=e112]
+              - text: Conserva anche lo stadio prima dell’upscale
+        - generic [ref=e114]:
+          - generic [ref=e115]:
+            - paragraph [ref=e116]: LoRA aggiuntive
+            - paragraph [ref=e117]: Filtrate per la famiglia usata nello stadio.
+          - button "＋ LoRA" [ref=e118] [cursor=pointer]
+        - button "Crea progetto→" [ref=e119] [cursor=pointer]
+        - alert
+      - complementary [ref=e120]:
+        - generic [ref=e121]:
+          - generic [ref=e122]:
+            - generic [ref=e123]: "02"
+            - generic [ref=e124]:
+              - heading "Progetti guidati" [level=2] [ref=e125]
+              - paragraph [ref=e126]: Bozze, selezioni, master e clip
+          - generic [ref=e262]:
+            - article [ref=e263]:
+              - generic [ref=e264]:
+                - heading "Ragazzo e ragazza in casa" [level=3] [ref=e265]
+                - generic [ref=e266]: In lavorazione
+              - paragraph [ref=e267]: Modifica la reference image, mantieni lo stile della foto, l'ambientazione, il ragazzo e l'inquadratura. Inserisci la ragazza dell'immagine 2 seduta con gambe incrociate sul divano dietro al ragazzo. Mantieni i vestiti della ragazza e le scarpe.
+              - generic [ref=e268]:
+                - heading "drafts" [level=4] [ref=e269]
+                - generic [ref=e270]:
+                  - generic [ref=e271]:
+                    - generic [ref=e272]: Alternativa 1
+                    - generic [ref=e273]: In coda
+                  - button "Annulla generazione" [ref=e275] [cursor=pointer]
+                - generic [ref=e276]:
+                  - generic [ref=e277]:
+                    - generic [ref=e278]: Alternativa 2
+                    - generic [ref=e279]: In coda
+                  - button "Annulla generazione" [ref=e281] [cursor=pointer]
+            - article [ref=e282]:
+              - generic [ref=e283]:
+                - heading "Ragazzo e ragazza in casa" [level=3] [ref=e284]
+                - generic [ref=e285]: Completato
+              - paragraph [ref=e286]: Modifica la reference image, mantieni lo stile della foto, l'ambientazione, il ragazzo e l'inquadratura. Inserisci la ragazza dell'immagine 2 seduta con gambe incrociate sul divano dietro al ragazzo. Mantieni i vestiti della ragazza e le scarpe.
+              - generic [ref=e287]:
+                - heading "drafts" [level=4] [ref=e288]
+                - generic [ref=e289]:
+                  - generic [ref=e290]:
+                    - generic [ref=e291]: Alternativa 1
+                    - generic [ref=e292]: Completato
+                  - generic [ref=e293]:
+                    - figure [ref=e294]:
+                      - link [ref=e295] [cursor=pointer]:
+                        - /url: /api/image/7d35aeca-37d2-40ba-9e6c-a59d0ab96171/0
+                        - img "Prima" [ref=e296]
+                    - figure [ref=e297]:
+                      - link [ref=e298] [cursor=pointer]:
+                        - /url: /api/image/7d35aeca-37d2-40ba-9e6c-a59d0ab96171/1
+                        - img "Risultato" [ref=e299]
+                      - button "Usa questo risultato" [ref=e300] [cursor=pointer]
+                  - generic [ref=e301]:
+                    - button "Variazione" [ref=e302] [cursor=pointer]
+                    - button "Qualità Flux.2" [ref=e303] [cursor=pointer]
+                - generic [ref=e304]:
+                  - generic [ref=e305]:
+                    - generic [ref=e306]: Alternativa 2
+                    - generic [ref=e307]: Errore
+                  - paragraph [ref=e309]: ComfyUI ha terminato il workflow con un errore.
+            - article [ref=e310]:
+              - generic [ref=e311]:
+                - heading "Piscina 1" [level=3] [ref=e312]
+                - generic [ref=e313]: Errore
+              - paragraph [ref=e314]: "Seamlessly insert the topless girl from Image 2 into the current scene (Image 1), placing her standing beside the white Suzuki \"Polizia Locale\" car on the right side, near the front passenger door. She must integrate perfectly with the environment—matching the bright daylight, sharp shadows, and realistic textures of the asphalt, vehicle paint, and surrounding foliage. Preserve all original source properties: the exact position and lighting of the police cars, the yellow parking lines, the crosswalk markings, the background buildings, trees, and sky. Ensure her pose, skin tone, hair, and clothing (or lack thereof) blend naturally with the sunlit outdoor setting, avoiding any clipping or mismatched edges. Maintain the camera angle and depth of field so she appears as if she was originally standing there in the same moment."
+              - generic [ref=e315]:
+                - heading "drafts" [level=4] [ref=e316]
+                - generic [ref=e318]:
+                  - generic [ref=e319]: Alternativa 1
+                  - generic [ref=e320]: Annullato
+                - generic [ref=e323]:
+                  - generic [ref=e324]: Alternativa 2
+                  - generic [ref=e325]: Annullato
+            - article [ref=e327]:
+              - generic [ref=e328]:
+                - heading "Piscina 1" [level=3] [ref=e329]
+                - generic [ref=e330]: Completato
+              - paragraph [ref=e331]: "An image-editing instruction for a guided ComfyUI workflow: Seamlessly insert the topless girl from Image 2 into the current scene (Image 1), placing her standing beside the white Suzuki \"Polizia Locale\" car on the right side, near the front passenger door. She must integrate perfectly with the environment—matching the bright daylight, sharp shadows, and realistic textures of the asphalt, vehicle paint, and surrounding foliage. Preserve all original source properties: the exact position and lighting of the police cars, the yellow parking lines, the crosswalk markings, the background buildings, trees, and sky. Ensure her pose, skin tone, hair, and clothing (or lack thereof) blend naturally with the sunlit outdoor setting, avoiding any clipping or mismatched edges. Maintain the camera angle and depth of field so she appears as if she was originally standing there in the same moment."
+              - generic [ref=e332]:
+                - heading "drafts" [level=4] [ref=e333]
+                - generic [ref=e334]:
+                  - generic [ref=e335]:
+                    - generic [ref=e336]: Alternativa 1
+                    - generic [ref=e337]: Completato
+                  - generic [ref=e338]:
+                    - figure [ref=e339]:
+                      - link [ref=e340] [cursor=pointer]:
+                        - /url: /api/image/cf201bc7-776a-4d8f-8556-56d2ba8490e8/0
+                        - img "Prima" [ref=e341]
+                    - figure [ref=e342]:
+                      - link [ref=e343] [cursor=pointer]:
+                        - /url: /api/image/cf201bc7-776a-4d8f-8556-56d2ba8490e8/1
+                        - img "Risultato" [ref=e344]
+                      - button "Usa questo risultato" [ref=e345] [cursor=pointer]
+                  - generic [ref=e346]:
+                    - button "Variazione" [ref=e347] [cursor=pointer]
+                    - button "Qualità Flux.2" [ref=e348] [cursor=pointer]
+                - generic [ref=e349]:
+                  - generic [ref=e350]:
+                    - generic [ref=e351]: Alternativa 2
+                    - generic [ref=e352]: Completato
+                  - generic [ref=e353]:
+                    - figure [ref=e354]:
+                      - link [ref=e355] [cursor=pointer]:
+                        - /url: /api/image/89ecd3a0-92a9-4e21-84d2-53af999d8e30/0
+                        - img "Prima" [ref=e356]
+                    - figure [ref=e357]:
+                      - link [ref=e358] [cursor=pointer]:
+                        - /url: /api/image/89ecd3a0-92a9-4e21-84d2-53af999d8e30/1
+                        - img "Risultato" [ref=e359]
+                      - button "Usa questo risultato" [ref=e360] [cursor=pointer]
+                  - generic [ref=e361]:
+                    - button "Variazione" [ref=e362] [cursor=pointer]
+                    - button "Qualità Flux.2" [ref=e363] [cursor=pointer]
+              - generic [ref=e364]:
+                - heading "quality" [level=4] [ref=e365]
+                - generic [ref=e366]:
+                  - generic [ref=e367]:
+                    - generic [ref=e368]: Flux.2 qualità
+                    - generic [ref=e369]: Completato
+                  - generic [ref=e370]:
+                    - figure [ref=e371]:
+                      - link [ref=e372] [cursor=pointer]:
+                        - /url: /api/image/0d797610-e518-4930-8123-ade1cbd802e4/0
+                        - img "Prima" [ref=e373]
+                    - figure [ref=e374]:
+                      - link [ref=e375] [cursor=pointer]:
+                        - /url: /api/image/0d797610-e518-4930-8123-ade1cbd802e4/1
+                        - img "Risultato" [ref=e376]
+                      - button "Usa questo risultato" [ref=e377] [cursor=pointer]
+                  - button "Master finale" [ref=e379] [cursor=pointer]
+            - article [ref=e380]:
+              - generic [ref=e381]:
+                - heading "Ragazzo e piscina" [level=3] [ref=e382]
+                - generic [ref=e383]: In lavorazione
+              - paragraph [ref=e384]: Don't change the frame, objects, setting and the guy posing. Add the girl to the pool, lying down, with her legs resting on the pool backrest.
+              - generic [ref=e385]:
+                - heading "drafts" [level=4] [ref=e386]
+                - generic [ref=e387]:
+                  - generic [ref=e388]:
+                    - generic [ref=e389]: Alternativa 1
+                    - generic [ref=e390]: Completato
+                  - figure [ref=e392]:
+                    - link [ref=e393] [cursor=pointer]:
+                      - /url: /api/image/a3760690-9696-4adc-a2f2-e78ff8146a61/0
+                      - img "Risultato" [ref=e394]
+                    - button "Usa questo risultato" [ref=e395] [cursor=pointer]
+                  - generic [ref=e396]:
+                    - button "Variazione" [ref=e397] [cursor=pointer]
+                    - button "Qualità Flux.2" [ref=e398] [cursor=pointer]
+                - generic [ref=e399]:
+                  - generic [ref=e400]:
+                    - generic [ref=e401]: Alternativa 2
+                    - generic [ref=e402]: In coda
+                  - button "Annulla generazione" [ref=e404] [cursor=pointer]
+            - article [ref=e405]:
+              - generic [ref=e406]:
+                - heading "Scena 1 - Fallout" [level=3] [ref=e407]
+                - generic [ref=e408]: Completato
+              - paragraph [ref=e409]: Don't change anything about the scene, it perfectly integrates the man from image 2 into the cinematic scene. The man is on the left of the scene, next to the man on the left
+              - generic [ref=e410]:
+                - heading "drafts" [level=4] [ref=e411]
+                - generic [ref=e412]:
+                  - generic [ref=e413]:
+                    - generic [ref=e414]: Alternativa 1
+                    - generic [ref=e415]: Completato
+                  - figure [ref=e417]:
+                    - link [ref=e418] [cursor=pointer]:
+                      - /url: /api/image/237101dc-54ea-4ff9-b155-9ed96daad64a/0
+                      - img "Risultato" [ref=e419]
+                    - button "Usa questo risultato" [ref=e420] [cursor=pointer]
+                  - generic [ref=e421]:
+                    - button "Variazione" [ref=e422] [cursor=pointer]
+                    - button "Qualità Flux.2" [ref=e423] [cursor=pointer]
+                - generic [ref=e424]:
+                  - generic [ref=e425]:
+                    - generic [ref=e426]: Alternativa 2
+                    - generic [ref=e427]: Completato
+                  - figure [ref=e429]:
+                    - link [ref=e430] [cursor=pointer]:
+                      - /url: /api/image/5f1d35d7-3d4c-48c0-b267-c529d3d0f8fd/0
+                      - img "Risultato" [ref=e431]
+                    - button "Usa questo risultato" [ref=e432] [cursor=pointer]
+                  - generic [ref=e433]:
+                    - button "Variazione" [ref=e434] [cursor=pointer]
+                    - button "Qualità Flux.2" [ref=e435] [cursor=pointer]
+            - article [ref=e436]:
+              - generic [ref=e437]:
+                - heading "Character & Location Bible · close-up portrait" [level=3] [ref=e438]
+                - generic [ref=e439]: Completato
+              - paragraph [ref=e440]: Keep the face, hair, body build, and red costume identical; generate photographic front, profile, three-quarter, and full-body views.
+              - generic [ref=e441]:
+                - heading "bible" [level=4] [ref=e442]
+                - generic [ref=e443]:
+                  - generic [ref=e444]:
+                    - generic [ref=e445]: close-up portrait
+                    - generic [ref=e446]: Completato
+                  - figure [ref=e448]:
+                    - link [ref=e449] [cursor=pointer]:
+                      - /url: /api/image/d2b52fe2-b94b-454a-a8e5-99cb42cba394/0
+                      - img "Risultato" [ref=e450]
+                    - button "Usa questo risultato" [ref=e451] [cursor=pointer]
+                - generic [ref=e452]:
+                  - generic [ref=e453]:
+                    - generic [ref=e454]: full body front view
+                    - generic [ref=e455]: Completato
+                  - figure [ref=e457]:
+                    - link [ref=e458] [cursor=pointer]:
+                      - /url: /api/image/491fc165-6d36-4988-b0f0-0ec43db168d8/0
+                      - img "Risultato" [ref=e459]
+                    - button "Usa questo risultato" [ref=e460] [cursor=pointer]
+                - generic [ref=e461]:
+                  - generic [ref=e462]:
+                    - generic [ref=e463]: left profile
+                    - generic [ref=e464]: Completato
+                  - figure [ref=e466]:
+                    - link [ref=e467] [cursor=pointer]:
+                      - /url: /api/image/067babac-ce29-436d-9b1c-e5ed28930a5f/0
+                      - img "Risultato" [ref=e468]
+                    - button "Usa questo risultato" [ref=e469] [cursor=pointer]
+                - generic [ref=e470]:
+                  - generic [ref=e471]:
+                    - generic [ref=e472]: three-quarter view
+                    - generic [ref=e473]: Completato
+                  - figure [ref=e475]:
+                    - link [ref=e476] [cursor=pointer]:
+                      - /url: /api/image/a32fe00d-0559-4366-a919-5b93f1e96a6b/0
+                      - img "Risultato" [ref=e477]
+                    - button "Usa questo risultato" [ref=e478] [cursor=pointer]
+                - generic [ref=e479]:
+                  - generic [ref=e480]:
+                    - generic [ref=e481]: rear view
+                    - generic [ref=e482]: Completato
+                  - figure [ref=e484]:
+                    - link [ref=e485] [cursor=pointer]:
+                      - /url: /api/image/0fcb1f4f-feb6-43bd-b48a-2ecb8851dfc8/0
+                      - img "Risultato" [ref=e486]
+                    - button "Usa questo risultato" [ref=e487] [cursor=pointer]
+                - generic [ref=e488]:
+                  - generic [ref=e489]:
+                    - generic [ref=e490]: expressions sheet
+                    - generic [ref=e491]: Completato
+                  - figure [ref=e493]:
+                    - link [ref=e494] [cursor=pointer]:
+                      - /url: /api/image/93500f45-5700-46ec-ba67-7b53ee0c1256/0
+                      - img "Risultato" [ref=e495]
+                    - button "Usa questo risultato" [ref=e496] [cursor=pointer]
+              - generic [ref=e497]:
+                - heading "quality" [level=4] [ref=e498]
+                - generic [ref=e499]:
+                  - generic [ref=e500]:
+                    - generic [ref=e501]: Flux.2 qualità
+                    - generic [ref=e502]: Completato
+                  - figure [ref=e504]:
+                    - link [ref=e505] [cursor=pointer]:
+                      - /url: /api/image/e077f5f7-8e17-42be-8c97-d76536a515c2/0
+                      - img "Risultato" [ref=e506]
+                    - button "Usa questo risultato" [ref=e507] [cursor=pointer]
+                  - button "Master finale" [ref=e509] [cursor=pointer]
+            - article [ref=e510]:
+              - generic [ref=e511]:
+                - heading "Marcus Power" [level=3] [ref=e512]
+                - generic [ref=e513]: Completato
+              - paragraph [ref=e514]: It uses the reference image to create a new realistic fantasy storyboard. The boy wears medieval clothes, with a sword, a cape and potions on his belt. The boy is walking through a market where there are vendors displaying their wares, gunsmiths with swords and shields displayed on the stalls and lots of people filling the street.
+              - generic [ref=e515]:
+                - heading "storyboard" [level=4] [ref=e516]
+                - generic [ref=e517]:
+                  - generic [ref=e518]:
+                    - generic [ref=e519]: Establishing shot
+                    - generic [ref=e520]: Completato
+                  - figure [ref=e522]:
+                    - link [ref=e523] [cursor=pointer]:
+                      - /url: /api/image/d7f2448e-2824-4dbd-a9a9-8b8e6d062435/0
+                      - img "Risultato" [ref=e524]
+                    - button "Usa questo risultato" [ref=e525] [cursor=pointer]
+                - generic [ref=e526]:
+                  - generic [ref=e527]:
+                    - generic [ref=e528]: Medium shot
+                    - generic [ref=e529]: Completato
+                  - figure [ref=e531]:
+                    - link [ref=e532] [cursor=pointer]:
+                      - /url: /api/image/78b060f5-2dc8-48c4-b346-d94f6c59b54d/0
+                      - img "Risultato" [ref=e533]
+                    - button "Usa questo risultato" [ref=e534] [cursor=pointer]
+                - generic [ref=e535]:
+                  - generic [ref=e536]:
+                    - generic [ref=e537]: Close-up
+                    - generic [ref=e538]: Completato
+                  - figure [ref=e540]:
+                    - link [ref=e541] [cursor=pointer]:
+                      - /url: /api/image/3f5f0576-09b9-41a1-8938-eee59dcc468b/0
+                      - img "Risultato" [ref=e542]
+                    - button "Usa questo risultato" [ref=e543] [cursor=pointer]
+              - button "Anima tutte le coppie con LTX 2.3" [ref=e544] [cursor=pointer]
+            - article [ref=e545]:
+              - generic [ref=e546]:
+                - heading "Ragazza in piscina 1" [level=3] [ref=e547]
+                - generic [ref=e548]: Errore
+              - paragraph [ref=e549]: Insert the girl in picture 1 into the pool. The girl is inside the pool, leaning against the side of the pool, topless revealing her huge tits, and wearing a black lace thong underneath. Don't change the setting or the pool, it perfectly integrates the girl into the picture.
+              - generic [ref=e550]:
+                - heading "drafts" [level=4] [ref=e551]
+                - generic [ref=e552]:
+                  - generic [ref=e553]:
+                    - generic [ref=e554]: Alternativa 1
+                    - generic [ref=e555]: Errore
+                  - paragraph [ref=e557]: "'NoneType' object is not callable"
+                - generic [ref=e558]:
+                  - generic [ref=e559]:
+                    - generic [ref=e560]: Alternativa 2
+                    - generic [ref=e561]: Errore
+                  - paragraph [ref=e563]: "'NoneType' object is not callable"
+            - article [ref=e564]:
+              - generic [ref=e565]:
+                - heading "Ragazza in piscina 1" [level=3] [ref=e566]
+                - generic [ref=e567]: Completato
+              - paragraph [ref=e568]: Insert the girl in picture 1 into the pool. The girl is inside the pool, leaning against the side of the pool, topless revealing her huge tits, and wearing a black lace thong underneath. Don't change the setting or the pool, it perfectly integrates the girl into the picture.
+              - generic [ref=e569]:
+                - heading "drafts" [level=4] [ref=e570]
+                - generic [ref=e571]:
+                  - generic [ref=e572]:
+                    - generic [ref=e573]: Alternativa 1
+                    - generic [ref=e574]: Completato
+                  - generic [ref=e575]:
+                    - figure [ref=e576]:
+                      - link [ref=e577] [cursor=pointer]:
+                        - /url: /api/image/3a7399e6-1903-4b7b-b57a-9b5d49b4100f/0
+                        - img "Prima" [ref=e578]
+                    - figure [ref=e579]:
+                      - link [ref=e580] [cursor=pointer]:
+                        - /url: /api/image/3a7399e6-1903-4b7b-b57a-9b5d49b4100f/1
+                        - img "Risultato" [ref=e581]
+                      - button "Usa questo risultato" [ref=e582] [cursor=pointer]
+                  - generic [ref=e583]:
+                    - button "Variazione" [ref=e584] [cursor=pointer]
+                    - button "Qualità Flux.2" [ref=e585] [cursor=pointer]
+                - generic [ref=e586]:
+                  - generic [ref=e587]:
+                    - generic [ref=e588]: Alternativa 2
+                    - generic [ref=e589]: Completato
+                  - generic [ref=e590]:
+                    - figure [ref=e591]:
+                      - link [ref=e592] [cursor=pointer]:
+                        - /url: /api/image/9d47e696-1b79-4f28-811a-0e2d7c0e6ab1/0
+                        - img "Prima" [ref=e593]
+                    - figure [ref=e594]:
+                      - link [ref=e595] [cursor=pointer]:
+                        - /url: /api/image/9d47e696-1b79-4f28-811a-0e2d7c0e6ab1/1
+                        - img "Risultato" [ref=e596]
+                      - button "Usa questo risultato" [ref=e597] [cursor=pointer]
+                  - generic [ref=e598]:
+                    - button "Variazione" [ref=e599] [cursor=pointer]
+                    - button "Qualità Flux.2" [ref=e600] [cursor=pointer]
+              - generic [ref=e601]:
+                - heading "quality" [level=4] [ref=e602]
+                - generic [ref=e603]:
+                  - generic [ref=e604]:
+                    - generic [ref=e605]: Flux.2 qualità
+                    - generic [ref=e606]: Completato
+                  - generic [ref=e607]:
+                    - figure [ref=e608]:
+                      - link [ref=e609] [cursor=pointer]:
+                        - /url: /api/image/ff9a42ad-43e0-4e81-9986-5c9c73a86091/0
+                        - img "Prima" [ref=e610]
+                    - figure [ref=e611]:
+                      - link [ref=e612] [cursor=pointer]:
+                        - /url: /api/image/ff9a42ad-43e0-4e81-9986-5c9c73a86091/1
+                        - img "Risultato" [ref=e613]
+                      - button "Usa questo risultato" [ref=e614] [cursor=pointer]
+                  - button "Master finale" [ref=e616] [cursor=pointer]
+                - generic [ref=e617]:
+                  - generic [ref=e618]:
+                    - generic [ref=e619]: Flux.2 qualità
+                    - generic [ref=e620]: Completato
+                  - generic [ref=e621]:
+                    - figure [ref=e622]:
+                      - link [ref=e623] [cursor=pointer]:
+                        - /url: /api/image/a0f0c7fe-2774-4ee3-9705-0293ce1d0481/0
+                        - img "Prima" [ref=e624]
+                    - figure [ref=e625]:
+                      - link [ref=e626] [cursor=pointer]:
+                        - /url: /api/image/a0f0c7fe-2774-4ee3-9705-0293ce1d0481/1
+                        - img "Risultato" [ref=e627]
+                      - button "Usa questo risultato" [ref=e628] [cursor=pointer]
+                  - button "Master finale" [ref=e630] [cursor=pointer]
+            - article [ref=e631]:
+              - generic [ref=e632]:
+                - heading "Ragazza sexy in piscina" [level=3] [ref=e633]
+                - generic [ref=e634]: Completato
+              - paragraph [ref=e635]: Do not change the pool and the setting, insert the girl from image 1 into the drawn mask, inside the pool, topless, with only a black lace thong. The girl has a satisfied and happy expression.
+              - generic [ref=e636]:
+                - heading "drafts" [level=4] [ref=e637]
+                - generic [ref=e638]:
+                  - generic [ref=e639]:
+                    - generic [ref=e640]: Alternativa 1
+                    - generic [ref=e641]: Completato
+                  - generic [ref=e642]:
+                    - figure [ref=e643]:
+                      - link [ref=e644] [cursor=pointer]:
+                        - /url: /api/image/7057c042-5461-41c3-bd07-d6fa76bdfbc1/0
+                        - img "Prima" [ref=e645]
+                    - figure [ref=e646]:
+                      - link [ref=e647] [cursor=pointer]:
+                        - /url: /api/image/7057c042-5461-41c3-bd07-d6fa76bdfbc1/1
+                        - img "Risultato" [ref=e648]
+                      - button "Usa questo risultato" [ref=e649] [cursor=pointer]
+                  - generic [ref=e650]:
+                    - button "Variazione" [ref=e651] [cursor=pointer]
+                    - button "Qualità Flux.2" [ref=e652] [cursor=pointer]
+                - generic [ref=e653]:
+                  - generic [ref=e654]:
+                    - generic [ref=e655]: Alternativa 2
+                    - generic [ref=e656]: Completato
+                  - generic [ref=e657]:
+                    - figure [ref=e658]:
+                      - link [ref=e659] [cursor=pointer]:
+                        - /url: /api/image/81d82821-2092-4539-a787-91f6520795c8/0
+                        - img "Prima" [ref=e660]
+                    - figure [ref=e661]:
+                      - link [ref=e662] [cursor=pointer]:
+                        - /url: /api/image/81d82821-2092-4539-a787-91f6520795c8/1
+                        - img "Risultato" [ref=e663]
+                      - button "Usa questo risultato" [ref=e664] [cursor=pointer]
+                  - generic [ref=e665]:
+                    - button "Variazione" [ref=e666] [cursor=pointer]
+                    - button "Qualità Flux.2" [ref=e667] [cursor=pointer]
+              - generic [ref=e668]:
+                - heading "quality" [level=4] [ref=e669]
+                - generic [ref=e670]:
+                  - generic [ref=e671]:
+                    - generic [ref=e672]: Flux.2 qualità
+                    - generic [ref=e673]: Completato
+                  - generic [ref=e674]:
+                    - figure [ref=e675]:
+                      - link [ref=e676] [cursor=pointer]:
+                        - /url: /api/image/19459a84-043f-4f0c-b482-2fba4e1ad53c/0
+                        - img "Prima" [ref=e677]
+                    - figure [ref=e678]:
+                      - link [ref=e679] [cursor=pointer]:
+                        - /url: /api/image/19459a84-043f-4f0c-b482-2fba4e1ad53c/1
+                        - img "Risultato" [ref=e680]
+                      - button "Usa questo risultato" [ref=e681] [cursor=pointer]
+                  - button "Master finale" [ref=e683] [cursor=pointer]
+            - article [ref=e684]:
+              - generic [ref=e685]:
+                - heading "Sexy girl, completely naked brunette with big tits in the pool" [level=3] [ref=e686]
+                - generic [ref=e687]: Completato
+              - paragraph [ref=e688]: Don't change the pool or the environment, but put a sexy girl in the pool
+              - generic [ref=e689]:
+                - heading "drafts" [level=4] [ref=e690]
+                - generic [ref=e691]:
+                  - generic [ref=e692]:
+                    - generic [ref=e693]: Bozza Flux.2 1
+                    - generic [ref=e694]: Completato
+                  - figure [ref=e696]:
+                    - link [ref=e697] [cursor=pointer]:
+                      - /url: /api/image/e8173f71-a525-4d38-aced-c957fde8092b/0
+                      - img "Risultato" [ref=e698]
+                    - button "Usa questo risultato" [ref=e699] [cursor=pointer]
+                  - generic [ref=e700]:
+                    - button "Variazione" [ref=e701] [cursor=pointer]
+                    - button "Qualità Flux.2" [ref=e702] [cursor=pointer]
+                - generic [ref=e703]:
+                  - generic [ref=e704]:
+                    - generic [ref=e705]: Bozza Z-Image 1
+                    - generic [ref=e706]: Completato
+                  - figure [ref=e708]:
+                    - link [ref=e709] [cursor=pointer]:
+                      - /url: /api/image/d7e31b61-c814-4129-9e1d-5ec634e9f990/0
+                      - img "Risultato" [ref=e710]
+                    - button "Usa questo risultato" [ref=e711] [cursor=pointer]
+                  - generic [ref=e712]:
+                    - button "Variazione" [ref=e713] [cursor=pointer]
+                    - button "Qualità Flux.2" [ref=e714] [cursor=pointer]
+              - generic [ref=e715]:
+                - heading "variations" [level=4] [ref=e716]
+                - generic [ref=e717]:
+                  - generic [ref=e718]:
+                    - generic [ref=e719]: Variazione controllata
+                    - generic [ref=e720]: Completato
+                  - figure [ref=e722]:
+                    - link [ref=e723] [cursor=pointer]:
+                      - /url: /api/image/b6620b26-0beb-4dca-b02c-7f4c563dd0a3/0
+                      - img "Risultato" [ref=e724]
+                    - button "Usa questo risultato" [ref=e725] [cursor=pointer]
+                  - generic [ref=e726]:
+                    - button "Variazione" [ref=e727] [cursor=pointer]
+                    - button "Qualità Flux.2" [ref=e728] [cursor=pointer]
+  - status

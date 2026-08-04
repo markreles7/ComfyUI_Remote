@@ -1,0 +1,141 @@
+- generic [ref=e1]:
+  - banner [ref=e2]:
+    - link "LTX REMOTE" [ref=e3] [cursor=pointer]:
+      - /url: /
+    - generic [ref=e6]:
+      - navigation "Navigazione principale" [ref=e7]:
+        - link "Genera" [ref=e8] [cursor=pointer]:
+          - /url: /
+        - link "Image Studio" [ref=e9] [cursor=pointer]:
+          - /url: /studio.html
+        - link "Video Studio" [ref=e10] [cursor=pointer]:
+          - /url: /video-studio.html
+        - link "Guida" [ref=e11] [cursor=pointer]:
+          - /url: /workflow-guide.html
+        - link "Generazioni" [ref=e12] [cursor=pointer]:
+          - /url: /generations.html
+      - generic [ref=e13]: ComfyUI online
+  - main [ref=e15]:
+    - generic [ref=e17]:
+      - paragraph [ref=e18]: ACTOR REPLACEMENT / INTERACTIVE SCENE / LIPDUB
+      - heading [level=1] [ref=e19]:
+        - text: Entra nella
+        - emphasis [ref=e20]: scena.
+      - paragraph [ref=e21]: Sostituisci un interprete oppure aggiungi un nuovo personaggio con azioni, dialoghi e risposte sincronizzate.
+    - generic [ref=e22]:
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - generic [ref=e25]: "01"
+          - generic [ref=e26]:
+            - heading "Nuovo progetto video" [level=2] [ref=e27]
+            - paragraph [ref=e28]: Workflow guidato a stadi, con preflight delle dipendenze
+        - group "Workflow" [ref=e29]:
+          - generic [ref=e31]:
+            - radio "Actor Replacement Viso o corpo, recitazione e audio originali" [ref=e32]
+            - generic [ref=e33]:
+              - generic [ref=e34]: Actor Replacement
+              - generic [ref=e35]: Viso o corpo, recitazione e audio originali
+          - generic [ref=e36]:
+            - radio "Interactive Scene Nuovo personaggio, copione e risposte" [checked] [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]: Interactive Scene
+              - generic [ref=e40]: Nuovo personaggio, copione e risposte
+        - status [ref=e41]:
+          - generic [ref=e106]: ✓
+          - generic [ref=e107]:
+            - generic [ref=e108]: Interactive Scene pronto
+            - paragraph [ref=e109]: Ingredients installato · LipDub disponibile
+        - generic [ref=e42]:
+          - generic [ref=e43]: Nome progetto
+          - textbox "Nome progetto" [ref=e44]:
+            - /placeholder: Es. Scena film · inserimento John
+        - generic [ref=e110]:
+          - generic [ref=e111]:
+            - generic [ref=e112]: Keyframe master / reference sheet
+            - generic [ref=e113]:
+              - button "＋ Carica l’immagine con te già posizionato Può essere preparata con Multi-Reference Composer o Smartphone Photo Editor" [ref=e114] [cursor=pointer]
+              - generic [ref=e115]: ＋
+              - strong [ref=e116]: Carica l’immagine con te già posizionato
+              - generic [ref=e117]: Può essere preparata con Multi-Reference Composer o Smartphone Photo Editor
+          - generic [ref=e118]:
+            - generic [ref=e119]: Descrizione delle persone nel reference sheet
+            - textbox "Descrizione delle persone nel reference sheet" [ref=e120]:
+              - /placeholder: "Da sinistra: Attore A… Al centro: John… A destra: Attrice B…"
+          - generic [ref=e121]:
+            - generic [ref=e122]: Regia della scena e azioni
+            - textbox "Regia della scena e azioni" [ref=e123]:
+              - /placeholder: I tre personaggi restano nella stessa posizione. John si rivolge all’attore a sinistra, che ascolta e poi risponde…
+          - generic [ref=e124]:
+            - generic [ref=e125]:
+              - generic [ref=e126]: Durata
+              - spinbutton "Durata" [ref=e127]: "10"
+            - generic [ref=e128]:
+              - generic [ref=e129]: Movimento camera
+              - combobox "Movimento camera" [ref=e130] [cursor=pointer]:
+                - option "Statica"
+                - option "Handheld leggero" [selected]
+                - option "Dolly in lento"
+                - option "Dolly out lento"
+                - option "Pan sugli interlocutori"
+          - generic [ref=e131]:
+            - generic [ref=e132]:
+              - generic [ref=e133]:
+                - paragraph [ref=e134]: Copione multi-personaggio
+                - paragraph [ref=e135]: Una battuta per riga, nell’ordine in cui deve essere pronunciata.
+              - button "＋ Battuta" [active] [ref=e136] [cursor=pointer]
+            - generic [ref=e137]:
+              - generic [ref=e151]:
+                - generic [ref=e152]: "01"
+                - textbox "Personaggio battuta 1" [ref=e153]:
+                  - /placeholder: Personaggio
+                  - text: John
+                - textbox "Testo battuta 1" [ref=e154]:
+                  - /placeholder: Battuta…
+                  - text: Posso unirmi a voi?
+                - textbox "Recitazione battuta 1" [ref=e155]:
+                  - /placeholder: tono / sguardo
+                  - text: con tono naturale
+                - button "Rimuovi battuta 1" [ref=e156] [cursor=pointer]: ×
+              - generic [ref=e157]:
+                - generic [ref=e158]: "02"
+                - textbox "Personaggio battuta 2" [ref=e159]:
+                  - /placeholder: Personaggio
+                  - text: Attore 1
+                - textbox "Testo battuta 2" [ref=e160]:
+                  - /placeholder: Battuta…
+                  - text: Certo, vieni qui.
+                - textbox "Recitazione battuta 2" [ref=e161]:
+                  - /placeholder: tono / sguardo
+                  - text: risponde guardando John
+                - button "Rimuovi battuta 2" [ref=e162] [cursor=pointer]: ×
+              - generic [ref=e163]:
+                - generic [ref=e164]: "03"
+                - textbox "Personaggio battuta 3" [ref=e165]:
+                  - /placeholder: Personaggio
+                - textbox "Testo battuta 3" [ref=e166]:
+                  - /placeholder: Battuta…
+                - textbox "Recitazione battuta 3" [ref=e167]:
+                  - /placeholder: tono / sguardo
+                - button "Rimuovi battuta 3" [ref=e168] [cursor=pointer]: ×
+        - generic [ref=e81]:
+          - generic [ref=e82]:
+            - paragraph [ref=e83]: Identity e Style LoRA
+            - paragraph [ref=e84]: Puoi concatenare più LoRA LTX 2.3 con forza indipendente.
+          - button "＋ LoRA" [ref=e85] [cursor=pointer]
+        - group [ref=e86]:
+          - generic "Impostazioni avanzate qualità, maschera e seed" [ref=e87] [cursor=pointer]
+        - button "Crea progetto Video Studio→" [ref=e88] [cursor=pointer]
+        - alert
+      - complementary [ref=e89]:
+        - generic [ref=e90]:
+          - generic [ref=e91]:
+            - generic [ref=e92]: "02"
+            - generic [ref=e93]:
+              - heading "Progetti video" [level=2] [ref=e94]
+              - paragraph [ref=e95]: Sostituzione, scena e LipDub
+          - paragraph [ref=e96]: Nessun progetto Video Studio.
+        - generic [ref=e97]:
+          - paragraph [ref=e98]: PIPELINE CONSIGLIATA
+          - heading "Lavora uno shot alla volta" [level=3] [ref=e99]
+          - paragraph [ref=e100]: Se nei 10 secondi c’è uno stacco di montaggio, dividi prima la clip. Tracking, identità e lip-sync saranno molto più stabili.
+  - status

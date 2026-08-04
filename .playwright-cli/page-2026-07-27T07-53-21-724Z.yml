@@ -1,0 +1,108 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - link "LTX REMOTE" [ref=e3] [cursor=pointer]:
+      - /url: /
+    - generic [ref=e6]:
+      - navigation "Navigazione principale" [ref=e7]:
+        - link "Genera" [ref=e8] [cursor=pointer]:
+          - /url: /
+        - link "Image Studio" [ref=e9] [cursor=pointer]:
+          - /url: /studio.html
+        - link "Video Studio" [ref=e10] [cursor=pointer]:
+          - /url: /video-studio.html
+        - link "Guida" [ref=e11] [cursor=pointer]:
+          - /url: /workflow-guide.html
+        - link "Generazioni" [ref=e12] [cursor=pointer]:
+          - /url: /generations.html
+      - generic [ref=e13]: Connessione…
+  - main [ref=e15]:
+    - generic [ref=e17]:
+      - paragraph [ref=e18]: ACTOR REPLACEMENT / INTERACTIVE SCENE / LIPDUB
+      - heading [level=1] [ref=e19]:
+        - text: Entra nella
+        - emphasis [ref=e20]: scena.
+      - paragraph [ref=e21]: Sostituisci un interprete oppure aggiungi un nuovo personaggio con azioni, dialoghi e risposte sincronizzate.
+    - generic [ref=e22]:
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - generic [ref=e25]: "01"
+          - generic [ref=e26]:
+            - heading "Nuovo progetto video" [level=2] [ref=e27]
+            - paragraph [ref=e28]: Workflow guidato a stadi, con preflight delle dipendenze
+        - group "Workflow" [ref=e29]:
+          - generic [ref=e31]:
+            - radio "Actor Replacement Viso o corpo, recitazione e audio originali" [checked] [ref=e32]
+            - generic [ref=e33]:
+              - generic [ref=e34]: Actor Replacement
+              - generic [ref=e35]: Viso o corpo, recitazione e audio originali
+          - generic [ref=e36]:
+            - radio "Interactive Scene Nuovo personaggio, copione e risposte" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]: Interactive Scene
+              - generic [ref=e40]: Nuovo personaggio, copione e risposte
+        - status [ref=e41]
+        - generic [ref=e42]:
+          - generic [ref=e43]: Nome progetto
+          - textbox "Nome progetto" [ref=e44]:
+            - /placeholder: Es. Scena film · inserimento John
+        - generic [ref=e45]:
+          - generic [ref=e46]:
+            - generic [ref=e47]: Spezzone originale
+            - generic [ref=e48]:
+              - button "▶ Carica la scena Consigliati uno shot continuo e massimo 10 secondi" [ref=e49] [cursor=pointer]
+              - generic [ref=e50]: ▶
+              - strong [ref=e51]: Carica la scena
+              - generic [ref=e52]: Consigliati uno shot continuo e massimo 10 secondi
+          - generic [ref=e53]:
+            - generic [ref=e54]:
+              - generic [ref=e55]: Cosa sostituire
+              - combobox "Cosa sostituire" [ref=e56] [cursor=pointer]:
+                - option "Solo viso" [selected]
+                - option "Corpo completo"
+            - generic [ref=e57]:
+              - generic [ref=e58]: Motore
+              - combobox "Motore" [ref=e59] [cursor=pointer]
+            - generic [ref=e60]:
+              - generic [ref=e61]: Attore da sostituire
+              - textbox "Attore da sostituire" [ref=e62]:
+                - /placeholder: Es. uomo a sinistra, giacca blu
+            - generic [ref=e63]:
+              - generic [ref=e64]: Durata da elaborare
+              - spinbutton "Durata da elaborare" [ref=e65]: "10"
+          - generic [ref=e67]:
+            - generic [ref=e68]: Reference della nuova identità
+            - generic [ref=e69]:
+              - button "ID Carica un primo piano" [ref=e70] [cursor=pointer]
+              - generic [ref=e71]: ID
+              - strong [ref=e72]: Carica un primo piano
+            - paragraph [ref=e73]: Usata da Tracked Inpaint. Il fallback richiede invece una Identity LoRA.
+          - generic [ref=e74]:
+            - generic [ref=e75]: Descrizione della nuova identità e del risultato
+            - textbox "Descrizione della nuova identità e del risultato" [ref=e76]:
+              - /placeholder: La persona della reference sostituisce l’uomo a sinistra. Mantieni camera, luce, gesti e interazioni…
+          - generic [ref=e77]:
+            - generic [ref=e78]: Dialogo originale / trascrizione
+            - textbox "Dialogo originale / trascrizione" [ref=e79]:
+              - /placeholder: Testo pronunciato dall’attore, utile al successivo passaggio LipDub…
+        - generic [ref=e81]:
+          - generic [ref=e82]:
+            - paragraph [ref=e83]: Identity e Style LoRA
+            - paragraph [ref=e84]: Puoi concatenare più LoRA LTX 2.3 con forza indipendente.
+          - button "＋ LoRA" [ref=e85] [cursor=pointer]
+        - group [ref=e86]:
+          - generic "Impostazioni avanzate qualità, maschera e seed" [ref=e87] [cursor=pointer]
+        - button "Crea progetto Video Studio→" [ref=e88] [cursor=pointer]
+        - alert
+      - complementary [ref=e89]:
+        - generic [ref=e90]:
+          - generic [ref=e91]:
+            - generic [ref=e92]: "02"
+            - generic [ref=e93]:
+              - heading "Progetti video" [level=2] [ref=e94]
+              - paragraph [ref=e95]: Sostituzione, scena e LipDub
+          - paragraph [ref=e96]: Nessun progetto Video Studio.
+        - generic [ref=e97]:
+          - paragraph [ref=e98]: PIPELINE CONSIGLIATA
+          - heading "Lavora uno shot alla volta" [level=3] [ref=e99]
+          - paragraph [ref=e100]: Se nei 10 secondi c’è uno stacco di montaggio, dividi prima la clip. Tracking, identità e lip-sync saranno molto più stabili.
+  - status

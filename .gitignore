@@ -1,0 +1,50 @@
+@"
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# ComfyUI - file pesanti e locali
+models/
+input/
+output/
+temp/
+user/
+custom_nodes/**/__pycache__/
+
+# Modelli AI
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.bin
+*.gguf
+*.onnx
+
+# Archivi e video
+*.zip
+*.7z
+*.rar
+*.mp4
+*.mov
+*.avi
+*.webm
+
+# Log e file temporanei
+*.log
+*.tmp
+*.bak
+
+# Configurazioni sensibili
+.env
+.env.*
+config.local.*
+secrets.*
+"@ | Set-Content .gitignore -Encoding UTF8

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0c10">
+  <title>Crea guidata · LTX Remote Studio</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/guided-create.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"></span><span>LTX <b>REMOTE</b></span></a>
+    <div class="topbar-actions">
+      <nav class="primary-nav" aria-label="Navigazione principale">
+        <a class="active" href="/guided-create.html">Crea guidata</a>
+        <a href="/">Genera</a>
+        <a href="/studio.html">Image Studio</a>
+        <a href="/video-studio.html">Video Studio</a>
+        <a href="/virtual-influencer.html">Virtual Influencer</a>
+        <a href="/workflow-guide.html">Guida</a>
+        <a href="/generations.html">Generazioni</a>
+      </nav>
+      <div id="connection" class="connection checking"><span></span>Connessione…</div>
+    </div>
+  </header>
+
+  <main class="guided-create-page">
+    <section class="guided-create-hero">
+      <p class="eyebrow">ASSISTENTE CREATIVO / STEP BY STEP</p>
+      <h1>Dimmi cosa vuoi creare.<br><em>Ti porto fino al workflow giusto.</em></h1>
+      <p>Parliamo con parole semplici. Alla fine troverai foto, prompt, modello e impostazioni già preparati nella schermata corretta.</p>
+    </section>
+
+    <div class="guided-create-layout">
+      <section class="guided-chat panel" aria-label="Conversazione guidata">
+        <div class="guided-chat-head">
+          <div>
+            <span class="guided-orb" aria-hidden="true"></span>
+            <div><b>Assistente Creativo</b><small id="guided-step-label">Scelta iniziale</small></div>
+          </div>
+          <button id="guided-reset" class="secondary-button" type="button">Ricomincia</button>
+        </div>
+        <div id="guided-messages" class="guided-messages" aria-live="polite"></div>
+        <div id="guided-composer" class="guided-composer"></div>
+      </section>
+
+      <aside class="guided-summary panel">
+        <p class="eyebrow">PROGETTO IN PREPARAZIONE</p>
+        <h2 id="guided-summary-title">Nessuna scelta</h2>
+        <p id="guided-summary-description">Le tue risposte comporranno qui una scheda semplice e sempre modificabile.</p>
+        <div id="guided-summary-items" class="guided-summary-items"></div>
+        <div id="guided-readiness" class="guided-readiness"></div>
+        <button id="guided-continue" class="primary-action" type="button" disabled>Apri il workflow preparato →</button>
+        <p class="guided-privacy">Le reference restano nel browser fino al passaggio alla schermata di generazione. LM Studio viene usato solo quando scegli l’ottimizzazione IA.</p>
+      </aside>
+    </div>
+    <div id="toast" class="toast"></div>
+  </main>
+</body>
+</html>

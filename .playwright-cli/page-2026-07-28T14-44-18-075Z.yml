@@ -1,0 +1,74 @@
+- generic [ref=f8e4]:
+  - banner [ref=f8e6]:
+    - link [ref=f8e16] [cursor=pointer]:
+      - /url: /
+      - img "Tensor.Art" [ref=f8e18]
+    - search [ref=f8e20]:
+      - searchbox "Cerca" [ref=f8e23]
+    - generic [ref=f8e36]:
+      - generic [ref=f8e37]:
+        - generic [ref=f8e38]: Crea
+        - button "Pubblica" [ref=f8e51] [cursor=pointer]
+      - link [ref=f8e67] [cursor=pointer]:
+        - /url: https://discord.com/invite/qYjANGqBED
+      - link [ref=f8e72] [cursor=pointer]:
+        - /url: /updates
+      - button [ref=f8e81] [cursor=pointer]
+  - main [ref=f8e86]:
+    - navigation [ref=f8e88]:
+      - link [ref=f8e89] [cursor=pointer]:
+        - /url: /
+        - paragraph [ref=f8e93]: Home
+      - link [ref=f8e94] [cursor=pointer]:
+        - /url: /library
+        - paragraph [ref=f8e98]: Libreria
+      - link "New Forge" [ref=f8e99] [cursor=pointer]:
+        - /url: /forge
+        - generic [ref=f8e100]: New
+        - paragraph [ref=f8e104]: Forge
+      - link [ref=f8e105] [cursor=pointer]:
+        - /url: /models
+        - paragraph [ref=f8e109]: Modelli
+      - link [ref=f8e110] [cursor=pointer]:
+        - /url: /templates
+        - paragraph [ref=f8e114]: Strumenti AI
+      - link [ref=f8e115] [cursor=pointer]:
+        - /url: /posts
+        - paragraph [ref=f8e119]: Post
+      - link [ref=f8e120] [cursor=pointer]:
+        - /url: /workflows
+        - paragraph [ref=f8e124]: Flussi di lavoro
+      - link [ref=f8e125] [cursor=pointer]:
+        - /url: /articles
+        - paragraph [ref=f8e129]: Articoli
+      - link [ref=f8e130] [cursor=pointer]:
+        - /url: /events
+        - paragraph [ref=f8e134]: Eventi
+      - link [ref=f8e135] [cursor=pointer]:
+        - /url: /leaderboard
+        - paragraph [ref=f8e139]: Classifica
+      - link [ref=f8e140] [cursor=pointer]:
+        - /url: /channels/107
+        - paragraph [ref=f8e143]: Personaggio
+      - link [ref=f8e144] [cursor=pointer]:
+        - /url: /channels/101
+        - paragraph [ref=f8e147]: Anime
+      - link [ref=f8e148] [cursor=pointer]:
+        - /url: /channels/100
+        - paragraph [ref=f8e151]: Realistico
+      - link [ref=f8e152] [cursor=pointer]:
+        - /url: /channels/108
+        - paragraph [ref=f8e155]: Illustrazione
+      - link [ref=f8e156] [cursor=pointer]:
+        - /url: /channels/109
+        - paragraph [ref=f8e159]: Fantascienza
+      - link [ref=f8e160] [cursor=pointer]:
+        - /url: /channels/110
+        - paragraph [ref=f8e163]: Design Visivo
+      - link [ref=f8e164] [cursor=pointer]:
+        - /url: /channels/111
+        - paragraph [ref=f8e167]: Design dello Spazio
+      - link [ref=f8e168] [cursor=pointer]:
+        - /url: /channels/112
+        - paragraph [ref=f8e171]: Progettazione del Gioco
+    - generic [ref=f8e172]: Niente qui ancora

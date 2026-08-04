@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0c10">
+  <title>LTX Remote Studio</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/app.js"></script>
+  <script type="module" src="/scene-integration.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span>LTX <b>REMOTE</b></span>
+    </a>
+    <div class="topbar-actions">
+      <nav class="primary-nav" aria-label="Navigazione principale">
+        <a href="/guided-create.html">Crea guidata</a>
+        <a class="active" href="/">Genera</a>
+        <a href="/studio.html">Image Studio</a>
+        <a href="/video-studio.html">Video Studio</a>
+        <a href="/virtual-influencer.html">Virtual Influencer</a>
+        <a href="/workflow-guide.html">Guida</a>
+        <a href="/generations.html">Generazioni</a>
+      </nav>
+      <div id="connection" class="connection checking"><span></span>Connessione…</div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">COMFYUI / IMAGE + VIDEO + UPSCALE</p>
+        <h1>Crea, trasforma<br>e <em>dirigi.</em></h1>
+      </div>
+      <div class="hero-copy">
+        <p>Il tuo studio generativo remoto. Crea immagini, modifica reference, ingrandisci foto e dirigi video usando la macchina di casa.</p>
+        <a class="guided-entry-link" href="/guided-create.html">Non sai quale workflow usare? <b>Inizia dalla Crea guidata →</b></a>
+      </div>
+    </section>
+
+    <div class="workspace">
+      <form id="generator-form" class="panel generator">
+        <div class="section-heading">
+          <span>01</span>
+          <div><h2>Nuova generazione</h2><p>Configura la tua sequenza</p></div>
+        </div>
+
+        <input id="generationType" name="generationType" type="hidden" value="video">
+        <div class="generation-type-switch" role="group" aria-label="Tipo di generazione">
+          <button class="active" type="button" data-generation-type="video"><span>▶</span><b>Video</b><small>LTX 2.3</small></button>
+          <button type="button" data-generation-type="image"><span>◆</span><b>Immagine</b><small>Flux / Qwen / Z-Image</small></button>
+          <button type="button" data-generation-type="upscale"><span>↗</span><b>Upscaling</b><small>AI / RTX</small></button>
+        </div>
+
+        <div id="video-workflow-field" class="field">
+          <label for="workflow">Workflow</label>
+          <select id="workflow" name="workflowId"></select>
+          <p id="workflow-description" class="hint"></p>
+        </div>
+
+        <div id="video-input-mode-field" class="field hidden">
+          <label for="videoInputMode">Modalità video</label>
+          <select id="videoInputMode" name="videoInputMode" disabled>
+            <option value="image" selected>Immagine → Video</option>
+            <option value="text">Testo → Video</option>
+          </select>
+          <p id="video-input-mode-hint" class="hint">Usa una foto come primo fotogramma e guidane il movimento con il prompt.</p>
+        </div>
+
+        <div id="video-model-field" class="field hidden">
+          <label for="videoModelId">Modello video</label>
+          <select id="videoModelId" name="videoModelId" disabled></select>
+          <p id="video-model-description" class="hint"></p>
+          <p id="video-model-warning" class="model-warning hidden"></p>
+        </div>
+
+        <section id="sulphur-base-panel" class="sulphur-panel hidden">
+          <div>
+            <p class="eyebrow">LTX 2.3 SULPHUR</p>
+            <h3>Pipeline dedicata</h3>
+            <p id="sulphur-summary">LTX Dev con LoRA Sulphur e prompt enhancer dedicato.</p>
+          </div>
+          <div class="sulphur-panel-grid">
+            <div>
+              <span>Base video</span>
+              <b id="sulphur-model-file">ltx-2.3-22b-dev-fp8.safetensors</b>
+            </div>
+            <div>
+              <span>Prompt enhancer LM Studio</span>
+              <b id="sulphur-enhancer-model">Fallback locale</b>
+            </div>
+          </div>
+          <ul id="sulphur-file-list" class="sulphur-file-list"></ul>
+          <p id="sulphur-install-note" class="storyboard-note"></p>
+        </section>
+
+        <section id="image-options" class="image-options hidden">
+          <div class="field-grid">
+            <div class="field">
+              <label for="imageMode">Modalità</label>
+              <select id="imageMode" name="imageMode" disabled>
+                <option value="text">Text to Image</option>
+                <option value="image">Image to Image</option>
+                <option value="reference">Reference Image</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="imageModelId">Famiglia / workflow</label>
+              <select id="imageModelId" name="imageModelId" disabled></select>
+            </div>
+            <div class="field">
+              <label for="imageModelFile">Modello installato</label>
+              <select id="imageModelFile" name="imageModelFile" disabled></select>
+              <p id="image-model-description" class="hint"></p>
+            </div>
+          </div>
+          <p id="image-model-warning" class="model-warning hidden"></p>
+        </section>
+
+        <div id="virtual-influencer-field" class="field hidden">
+          <label for="virtualInfluencerId">Influencer reference</label>
+          <select id="virtualInfluencerId" name="virtualInfluencerId" disabled>
+            <option value="">Nessuna</option>
+          </select>
+          <p id="virtual-influencer-hint" class="hint">Usa una virtual influencer approvata come identità/reference automatica.</p>
+        </div>
+
+        <section id="upscale-options" class="image-options hidden">
+          <div class="field">
+            <label>Foto da ingrandire</label>
+            <label id="upscale-dropzone" class="dropzone">
+              <input id="upscaleImage" name="upscaleImage" type="file" accept="image/png,image/jpeg,image/webp" disabled>
+              <input id="upscaleSourceWidth" name="upscaleSourceWidth" type="hidden">
+              <input id="upscaleSourceHeight" name="upscaleSourceHeight" type="hidden">
+              <img id="upscale-preview" alt="">
+              <span class="upload-icon">↗</span>
+              <strong>Trascina o scegli una foto</strong>
+              <small>PNG, JPG o WebP · viene conservato il rapporto originale</small>
+            </label>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label for="upscaleEngine">Motore di upscaling</label>
+              <select id="upscaleEngine" name="upscaleEngine" disabled></select>
+              <p id="upscale-engine-description" class="hint"></p>
+            </div>
+            <div id="upscale-model-field" class="field hidden">
+              <label for="upscaleModel">Modello AI locale</label>
+              <select id="upscaleModel" name="upscaleModel" disabled></select>
+            </div>
+          </div>
+          <fieldset id="upscale-presets" class="quality upscale-quality">
+            <legend>Preset</legend>
+            <label><input type="radio" name="upscalePreset" value="speed" disabled><span><b>Velocità</b><small>Rapido · VRAM ridotta</small></span></label>
+            <label><input type="radio" name="upscalePreset" value="quality" checked disabled><span><b>Qualità</b><small>Bilanciato · consigliato</small></span></label>
+            <label><input type="radio" name="upscalePreset" value="max" disabled><span><b>Qualità MAX</b><small>Massimo dettaglio</small></span></label>
+          </fieldset>
+          <div class="toggle-list">
+            <label>
+              <input id="upscaleAutoPurge" name="upscaleAutoPurge" type="checkbox" checked disabled>
+              <span><b>Purge VRAM prima dell’upscaling</b><small>Consigliato quando il lavoro precedente usava Flux, Z‑Image o LTX.</small></span>
+            </label>
+          </div>
+          <div class="toggle-list">
+            <label>
+              <input id="upscaleFaceDetailer" name="upscaleFaceDetailer" type="checkbox" disabled>
+              <span><b>Pre-detailer volto</b><small>Rifinisce volto e pelle prima di SeedVR2/RTX/AI upscale.</small></span>
+            </label>
+            <label>
+              <input id="upscaleEyeDetailer" name="upscaleEyeDetailer" type="checkbox" disabled>
+              <span><b>Pre-detailer occhi</b><small>Migliora sguardo, iride e palpebre con intervento leggero.</small></span>
+            </label>
+            <label>
+              <input id="upscaleHandDetailer" name="upscaleHandDetailer" type="checkbox" disabled>
+              <span><b>Pre-detailer mani</b><small>Corregge dita e mani prima dell’upscale finale.</small></span>
+            </label>
+            <label>
+              <input id="upscaleSkinDetailer" name="upscaleSkinDetailer" type="checkbox" disabled>
+              <span><b>Pre-detailer pelle/fisico</b><small>Riduce pelle grattata o texturizzata male su corpo e busto.</small></span>
+            </label>
+            <label>
+              <input id="upscaleNsfwDetailer" name="upscaleNsfwDetailer" type="checkbox" disabled>
+              <span><b>Pre-detailer NSFW anatomia</b><small>Seno, capezzoli, vagina, ano e pene. Avanzato, disattivato di default.</small></span>
+            </label>
+          </div>
+          <div class="field-grid compact-grid">
+            <div class="field"><label for="upscaleFaceDenoise">Denoise volto</label><input id="upscaleFaceDenoise" name="upscaleFaceDenoise" type="number" min=".05" max=".45" step=".01" value=".18" disabled></div>
+            <div class="field"><label for="upscaleEyeDenoise">Denoise occhi</label><input id="upscaleEyeDenoise" name="upscaleEyeDenoise" type="number" min=".04" max=".35" step=".01" value=".14" disabled></div>
+            <div class="field"><label for="upscaleHandDenoise">Denoise mani</label><input id="upscaleHandDenoise" name="upscaleHandDenoise" type="number" min=".05" max=".55" step=".01" value=".24" disabled></div>
+            <div class="field"><label for="upscaleSkinDenoise">Denoise pelle/fisico</label><input id="upscaleSkinDenoise" name="upscaleSkinDenoise" type="number" min=".04" max=".28" step=".01" value=".12" disabled></div>
+            <div class="field"><label for="upscaleNsfwDenoise">Denoise NSFW</label><input id="upscaleNsfwDenoise" name="upscaleNsfwDenoise" type="number" min=".04" max=".30" step=".01" value=".12" disabled></div>
+          </div>
+          <p id="upscale-warning" class="model-warning hidden"></p>
+          <p class="storyboard-note">I motori cloud a pagamento non vengono utilizzati. Il risultato viene salvato nella pagina Generazioni.</p>
+        </section>
+
+        <div id="regular-scene-fields">
+          <div id="source-image-field" class="field hidden">
+            <label id="source-image-label">Immagine iniziale</label>
+            <label id="source-image-dropzone" class="dropzone">
+              <input id="sourceImage" name="sourceImage" type="file" accept="image/png,image/jpeg,image/webp" disabled>
+              <img id="source-image-preview" alt="">
+              <span class="upload-icon">↗</span>
+              <strong id="source-image-copy">Trascina o scegli un’immagine</strong>
+              <small>PNG, JPG o WebP · max 30 MB</small>
+            </label>
+          </div>
+
+          <div id="image-input-field" class="field">
+            <label>Fotogramma iniziale</label>
+            <label id="dropzone" class="dropzone">
+              <input id="image" name="image" type="file" accept="image/png,image/jpeg,image/webp" required>
+              <img id="image-preview" alt="">
+              <span class="upload-icon">↗</span>
+              <strong>Trascina o scegli un’immagine</strong>
+              <small>PNG, JPG o WebP · max 30 MB</small>
+            </label>
+          </div>
+
+          <div id="video-input-field" class="field hidden">
+            <label>Video da modificare</label>
+            <label id="video-dropzone" class="dropzone video-dropzone">
+              <input id="video" name="video" type="file" accept="video/mp4,video/webm,video/quicktime,video/x-matroska,video/x-msvideo,.mp4,.webm,.mov,.mkv,.avi">
+              <video id="video-preview" muted playsinline></video>
+              <span class="upload-icon">▶</span>
+              <strong>Trascina o scegli un video</strong>
+              <small id="video-upload-hint">MP4, WebM, MOV, MKV o AVI</small>
+            </label>
+            <p id="video-file-info" class="hint"></p>
+          </div>
+
+          <div class="field">
+            <div class="label-row">
+              <label id="prompt-label" for="prompt">Prompt positivo</label>
+              <div class="prompt-assistant-tools">
+                <button id="qwen-edit-prompt-button" class="prompt-assistant-button hidden" type="button">✦ Qwen Edit</button>
+                <button id="klein-prompt-button" class="prompt-assistant-button hidden" type="button">✦ Klein</button>
+                <button id="reverse-prompt-button" class="prompt-assistant-button hidden" type="button">⌁ Reverse Prompt</button>
+                <button id="ltx-architect-prompt-button" class="prompt-assistant-button hidden" type="button">✦ LTX Prompt</button>
+                <button id="ltx-scene-prompt-button" class="prompt-assistant-button hidden" type="button">✦ LTX Scene</button>
+                <button id="sulphur-prompt-button" class="prompt-assistant-button hidden" type="button">✦ LTX Sulphur</button>
+                <span id="prompt-count">0</span>
+              </div>
+            </div>
+            <textarea id="prompt" name="prompt" rows="6" placeholder="Descrivi scena, movimento, camera, luce e atmosfera…" required></textarea>
+            <p id="prompt-assistant-status" class="prompt-assistant-status">LM Studio locale · il modello viene scaricato dopo il prompt</p>
+          </div>
+        </div>
+
+        <section id="director-storyboard" class="director-storyboard hidden">
+          <div class="storyboard-heading">
+            <div>
+              <p class="eyebrow">DIRECTOR TIMELINE</p>
+              <h3>Storyboard sequenziale</h3>
+              <p>Ogni scena controlla un intervallo della timeline. La foto è opzionale.</p>
+            </div>
+            <div class="storyboard-total"><b id="storyboard-total">0s</b><span>totale</span></div>
+          </div>
+
+          <div class="field">
+            <div class="label-row">
+              <label for="directorGlobalPrompt">Continuità globale <span class="optional">opzionale</span></label>
+              <button id="director-prompt-assistant-button" class="prompt-assistant-button hidden" type="button">✦ IA Director</button>
+            </div>
+            <textarea id="directorGlobalPrompt" name="directorGlobalPrompt" rows="3" placeholder="Personaggio, stile, luce o ambiente da mantenere in tutte le scene…"></textarea>
+            <p id="director-prompt-assistant-status" class="prompt-assistant-status">Scrivi qui l’idea globale: LM Studio compilerà continuità e scene, senza generare.</p>
+            <p class="hint">Viene combinata con il prompt specifico di ogni scena.</p>
+          </div>
+
+          <div id="storyboard-scenes" class="storyboard-scenes"></div>
+          <button id="add-scene" class="add-scene-button" type="button"><span>＋</span> Aggiungi scena</button>
+          <p class="storyboard-note">Massimo 8 scene e 60 secondi complessivi. Senza foto, la scena usa solo il prompt.</p>
+        </section>
+
+        <div id="negative-prompt-field" class="field">
+          <div class="label-row"><label for="negativePrompt">Prompt negativo</label><span id="negative-count">0</span></div>
+          <textarea id="negativePrompt" name="negativePrompt" rows="3" placeholder="Artefatti o risultati da evitare…"></textarea>
+        </div>
+
+        <div id="video-settings-grid" class="field-grid">
+          <div id="resolution-field" class="field">
+            <label for="resolution">Risoluzione</label>
+            <select id="resolution" name="resolution">
+              <option value="360p">360p · Veloce</option>
+              <option value="480p" selected>480p · Bilanciata</option>
+              <option value="720p">720p · Alta</option>
+            </select>
+          </div>
+          <div id="orientation-field" class="field">
+            <label for="orientation">Orientamento</label>
+            <select id="orientation" name="orientation">
+              <option value="landscape">Orizzontale</option>
+              <option value="portrait">Verticale</option>
+            </select>
+          </div>
+          <div class="field">
+            <label id="duration-label" for="duration">Durata</label>
+            <div class="input-suffix"><input id="duration" name="duration" type="number" min="1" max="30" value="10" required><span>sec</span></div>
+            <p class="hint">24 FPS fissi</p>
+          </div>
+          <div class="field">
+            <label for="seed">Seed</label>
+            <div class="seed-control">
+              <input id="seed" name="seed" inputmode="numeric" placeholder="Random">
+              <button id="random-seed" type="button" title="Genera seed casuale">↻</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="image-settings-grid" class="field-grid hidden">
+          <div class="field">
+            <label for="imageResolution">Formato</label>
+            <select id="imageResolution" name="imageResolution" disabled>
+              <option value="square">Quadrata · 1024×1024</option>
+              <option value="portrait" selected>Ritratto · 896×1152</option>
+              <option value="landscape">Orizzontale · 1152×896</option>
+              <option value="wide">Wide · 1344×768</option>
+              <option value="vertical">Verticale · 768×1344</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="batchSize">Numero immagini</label>
+            <input id="batchSize" name="batchSize" type="number" min="1" max="4" value="1" disabled>
+          </div>
+          <div class="field">
+            <label for="imageSteps">Sampling steps</label>
+            <input id="imageSteps" name="imageSteps" type="number" min="1" max="50" value="28" disabled>
+          </div>
+          <div class="field">
+            <label for="imageGuidance">Guidance / CFG</label>
+            <input id="imageGuidance" name="imageGuidance" type="number" min="0" max="20" step="0.1" value="3.5" disabled>
+          </div>
+          <div class="field">
+            <label for="imageSeed">Seed</label>
+            <div class="seed-control">
+              <input id="imageSeed" name="seed" inputmode="numeric" placeholder="Random" disabled>
+              <button id="random-image-seed" type="button" title="Genera seed casuale">↻</button>
+            </div>
+          </div>
+          <div id="denoise-field" class="field hidden">
+            <label for="denoise">Denoise</label>
+            <input id="denoise" name="denoise" type="number" min="0.05" max="1" step="0.05" value="0.6" disabled>
+            <p class="hint">Basso conserva maggiormente l’immagine.</p>
+          </div>
+          <div id="reference-strength-field" class="field hidden">
+            <label for="referenceStrength">Intensità reference</label>
+            <input id="referenceStrength" name="referenceStrength" type="number" min="0" max="2" step="0.05" value="1" disabled>
+          </div>
+        </div>
+
+        <details id="image-enhancements" class="advanced-settings hidden">
+          <summary>Miglioramento finale <span>Highres Fix, upscale realistico e protezione VRAM</span></summary>
+          <div class="advanced-settings-body">
+            <div class="toggle-list">
+              <label>
+                <input id="highresEnabled" name="highresEnabled" type="checkbox" disabled>
+                <span><b>Highres Fix</b><small>Secondo passaggio diffusion a denoise basso per generare dettagli reali.</small></span>
+              </label>
+            </div>
+            <div id="highres-settings" class="field-grid">
+              <div class="field">
+                <label for="highresScale">Ingrandimento Highres</label>
+                <select id="highresScale" name="highresScale" disabled>
+                  <option value="1.25">1,25×</option>
+                  <option value="1.5" selected>1,5× · consigliato</option>
+                  <option value="2">2× · VRAM elevata</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="highresSteps">Step di rifinitura</label>
+                <input id="highresSteps" name="highresSteps" type="number" min="4" max="30" value="10" disabled>
+              </div>
+              <div class="field">
+                <label for="highresDenoise">Denoise rifinitura</label>
+                <input id="highresDenoise" name="highresDenoise" type="number" min="0.1" max="0.5" step="0.05" value="0.25" disabled>
+                <p class="hint">0,20–0,30 preserva maggiormente composizione e identità.</p>
+              </div>
+            </div>
+
+            <div class="field-grid">
+              <div class="field">
+                <label for="upscaleMode">Upscale finale</label>
+                <select id="upscaleMode" name="upscaleMode" disabled>
+                  <option value="none">Nessuno</option>
+                  <option value="fast">RealESRGAN 2× · rapido</option>
+                  <option value="seedvr2">SeedVR2 · alta qualità realistica</option>
+                </select>
+              </div>
+              <div id="seedvr-profile-field" class="field hidden">
+                <label for="seedvrProfile">Profilo SeedVR2</label>
+                <select id="seedvrProfile" name="seedvrProfile" disabled></select>
+              </div>
+              <div id="seedvr-resolution-field" class="field hidden">
+                <label for="seedvrResolution">Lato corto finale</label>
+                <select id="seedvrResolution" name="seedvrResolution" disabled>
+                  <option value="1536">1536 px · VRAM ridotta</option>
+                  <option value="2048" selected>2048 px · consigliato</option>
+                  <option value="2656">2656 px · qualità massima</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="toggle-list">
+              <label>
+                <input id="faceEnhance" name="faceDetailer" type="checkbox" disabled>
+                <span><b>Face Detailer</b><small>Rileva e rifinisce i volti prima di Highres Fix e SeedVR2. Compatibile con Flux, Klein, Qwen e Z‑Image.</small></span>
+              </label>
+              <label>
+                <input id="autoPurge" name="autoPurge" type="checkbox" checked disabled>
+                <span><b>Purge VRAM automatico</b><small>Scarica Flux/Z‑Image prima di caricare SeedVR2 o RealESRGAN.</small></span>
+              </label>
+              <label>
+                <input id="saveOriginal" name="saveOriginal" type="checkbox" checked disabled>
+                <span><b>Conserva anche l’originale</b><small>Salva il risultato base insieme alla versione migliorata.</small></span>
+              </label>
+            </div>
+            <div id="face-strength-field" class="field hidden">
+              <label for="faceStrength">Denoise Face Detailer</label>
+              <input id="faceStrength" name="faceDetailerDenoise" type="number" min="0.05" max="0.45" step="0.01" value="0.18" disabled>
+            </div>
+            <p id="enhancement-warning" class="model-warning hidden"></p>
+            <p class="storyboard-note">Highres Fix e SeedVR2 elaborano una sola immagine alla volta per ridurre il rischio di OOM.</p>
+          </div>
+        </details>
+
+        <details id="edit-settings" class="advanced-settings hidden">
+          <summary>Impostazioni V2V avanzate <span>Regola il workflow Edit Anything</span></summary>
+          <div class="advanced-settings-body">
+            <div class="field-grid">
+              <div class="field">
+                <label for="maxDimension">Lato massimo</label>
+                <select id="maxDimension" name="maxDimension" disabled>
+                  <option value="640">640 px · Anteprima</option>
+                  <option value="768">768 px</option>
+                  <option value="960" selected>960 px · Workflow</option>
+                  <option value="1280">1280 px · Alta</option>
+                </select>
+                <p class="hint">Mantiene il rapporto del video.</p>
+              </div>
+              <div class="field">
+                <label for="steps">Sampling steps</label>
+                <input id="steps" name="steps" type="number" min="1" max="50" value="8" disabled>
+              </div>
+              <div class="field">
+                <label for="cfg">CFG</label>
+                <input id="cfg" name="cfg" type="number" min="0" max="20" step="0.1" value="1" disabled>
+              </div>
+              <div class="field">
+                <label for="nagScale">NAG scale</label>
+                <input id="nagScale" name="nagScale" type="number" min="0" max="30" step="0.1" value="11" disabled>
+              </div>
+              <div class="field">
+                <label for="editStrength">Intensità Edit Anything</label>
+                <input id="editStrength" name="editStrength" type="number" min="0" max="2" step="0.05" value="1" disabled>
+              </div>
+              <div class="field">
+                <label for="auxiliaryLoraStrength">Intensità LoRA aggiuntiva</label>
+                <input id="auxiliaryLoraStrength" name="auxiliaryLoraStrength" type="number" min="0" max="2" step="0.05" value="0.95" disabled>
+              </div>
+            </div>
+            <div class="toggle-list">
+              <label><input id="promptEnhancer" name="promptEnhancer" type="checkbox" disabled><span><b>Prompt enhancer</b><small>Normalizza l’istruzione in inglese tramite il modello del workflow.</small></span></label>
+              <label><input id="useInputAudio" name="useInputAudio" type="checkbox" checked disabled><span><b>Mantieni audio originale</b><small>Riutilizza la traccia audio del video sorgente.</small></span></label>
+              <label><input id="auxiliaryLora" name="auxiliaryLora" type="checkbox" disabled><span><b>LoRA aggiuntiva del workflow</b><small>Abilita la LoRA “breastsway” inclusa nel JSON originale.</small></span></label>
+            </div>
+          </div>
+        </details>
+
+        <fieldset id="quality-field" class="field quality">
+          <legend>Qualità</legend>
+          <label><input type="radio" name="quality" value="preview" checked><span><b>Anteprima</b><small>Rapida · 1 passaggio</small></span></label>
+          <label><input type="radio" name="quality" value="max"><span><b>Massima</b><small>Finale · 2 passaggi</small></span></label>
+        </fieldset>
+
+        <section class="scene-integration-mount" data-scene-integration></section>
+
+        <section id="lora-settings" class="lora-settings">
+          <div class="lora-heading">
+            <div>
+              <p class="eyebrow">MODEL ADD-ONS</p>
+              <h3>LoRA</h3>
+              <p>Applica una o più LoRA in sequenza al workflow selezionato.</p>
+            </div>
+            <span id="lora-count">0 attive</span>
+          </div>
+          <input id="loras" name="loras" type="hidden" value="[]">
+          <div id="lora-list" class="lora-list"></div>
+          <button id="add-lora" class="add-scene-button" type="button"><span>＋</span> Aggiungi LoRA</button>
+          <p id="lora-empty-hint" class="storyboard-note">Nessuna LoRA applicata. Puoi aggiungerne quante ne servono.</p>
+        </section>
+
+        <button id="generate-button" class="primary-button" type="submit">
+          <span>Avvia generazione</span><b>→</b>
+        </button>
+        <p id="form-error" class="form-error" role="alert"></p>
+      </form>
+
+      <aside class="side-column">
+        <section class="panel current">
+          <div class="section-heading compact">
+            <span>02</span>
+            <div><h2>In lavorazione</h2><p>Stato in tempo reale</p></div>
+          </div>
+          <div id="current-empty" class="empty-state">
+            <div class="orbit"><i></i></div>
+            <p>Nessuna generazione attiva</p>
+            <small>Il prossimo lavoro apparirà qui</small>
+          </div>
+          <article id="current-job" class="current-job hidden"></article>
+        </section>
+
+        <section class="panel system">
+          <div class="section-heading compact">
+            <span>03</span>
+            <div><h2>Sistema</h2><p>Gestione memoria ComfyUI</p></div>
+          </div>
+          <div class="system-actions">
+            <button data-system="cache"><span>Cache</span><b>Svuota</b></button>
+            <button data-system="models"><span>Models</span><b>Scarica</b></button>
+            <button data-system="vram"><span>VRAM</span><b>Libera</b></button>
+            <button data-system="ram"><span>RAM</span><b>Libera</b></button>
+          </div>
+          <button class="danger-button" data-system="all">Pulizia completa</button>
+          <p id="system-message" class="system-message"></p>
+        </section>
+      </aside>
+    </div>
+
+  </main>
+
+  <dialog id="reverse-prompt-dialog" class="reverse-prompt-dialog">
+    <form method="dialog" class="reverse-prompt-modal">
+      <header>
+        <div>
+          <p class="eyebrow">LM STUDIO VISION</p>
+          <h2>Reverse Prompt</h2>
+          <p>Carica un’immagine: il modello locale la descrive come prompt pronto per il generatore scelto.</p>
+        </div>
+        <button id="reverse-prompt-close" class="dialog-close" type="submit" value="cancel" aria-label="Chiudi">×</button>
+      </header>
+      <label id="reverse-prompt-dropzone" class="dropzone reverse-prompt-dropzone">
+        <input id="reversePromptImage" type="file" accept="image/png,image/jpeg,image/webp">
+        <img id="reverse-prompt-preview" alt="">
+        <span class="upload-icon">↗</span>
+        <strong>Trascina o scegli l’immagine da descrivere</strong>
+        <small>PNG, JPG o WebP · max 30 MB</small>
+      </label>
+      <div class="reverse-prompt-actions">
+        <button id="reverse-prompt-qwen" class="primary-action" type="button">Genera per Qwen</button>
+        <button id="reverse-prompt-klein" class="primary-action" type="button">Genera per Klein</button>
+      </div>
+      <p id="reverse-prompt-status" class="prompt-assistant-status">Il prompt sostituirà il contenuto della casella principale; la generazione non partirà automaticamente.</p>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status"></div>
+</body>
+</html>

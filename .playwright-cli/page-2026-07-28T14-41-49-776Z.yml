@@ -1,0 +1,646 @@
+- generic [ref=f2e4]:
+  - banner [ref=f2e6]:
+    - link [ref=f2e16] [cursor=pointer]:
+      - /url: /
+      - img "Tensor.Art" [ref=f2e18]
+    - search [ref=f2e20]:
+      - search [ref=f2e21]:
+        - generic "Cerca" [ref=f2e23]:
+          - searchbox "Cerca" [ref=f2e25]
+    - generic [ref=f2e38]:
+      - generic [ref=f2e39]:
+        - generic [ref=f2e40]: Crea
+        - button "Pubblica" [ref=f2e53] [cursor=pointer]
+      - link [ref=f2e69] [cursor=pointer]:
+        - /url: https://discord.com/invite/qYjANGqBED
+      - link [ref=f2e74] [cursor=pointer]:
+        - /url: /updates
+      - button [ref=f2e83] [cursor=pointer]
+  - main [ref=f2e88]:
+    - generic [ref=f2e90]:
+      - navigation [ref=f2e91]:
+        - link [ref=f2e92] [cursor=pointer]:
+          - /url: /
+          - paragraph [ref=f2e94]: Home
+        - link [ref=f2e95] [cursor=pointer]:
+          - /url: /library
+          - paragraph [ref=f2e97]: Libreria
+        - link "Forge New" [ref=f2e98] [cursor=pointer]:
+          - /url: /forge
+          - paragraph [ref=f2e100]: Forge
+          - generic [ref=f2e101]: New
+        - link [ref=f2e102] [cursor=pointer]:
+          - /url: /models
+          - paragraph [ref=f2e104]: Modelli
+        - link [ref=f2e105] [cursor=pointer]:
+          - /url: /templates
+          - paragraph [ref=f2e107]: Strumenti AI
+        - link [ref=f2e108] [cursor=pointer]:
+          - /url: /posts
+          - paragraph [ref=f2e110]: Post
+        - link [ref=f2e111] [cursor=pointer]:
+          - /url: /workflows
+          - paragraph [ref=f2e113]: Flussi di lavoro
+        - link [ref=f2e114] [cursor=pointer]:
+          - /url: /articles
+          - paragraph [ref=f2e116]: Articoli
+        - link [ref=f2e117] [cursor=pointer]:
+          - /url: /events
+          - paragraph [ref=f2e119]: Eventi
+        - link [ref=f2e120] [cursor=pointer]:
+          - /url: /leaderboard
+          - paragraph [ref=f2e122]: Classifica
+        - generic [ref=f2e123]:
+          - heading "Canale" [level=2] [ref=f2e124]
+          - generic [ref=f2e125]:
+            - link [ref=f2e126] [cursor=pointer]:
+              - /url: /channels/107
+              - paragraph [ref=f2e128]: Personaggio
+            - link [ref=f2e129] [cursor=pointer]:
+              - /url: /channels/101
+              - paragraph [ref=f2e131]: Anime
+            - link [ref=f2e132] [cursor=pointer]:
+              - /url: /channels/100
+              - paragraph [ref=f2e134]: Realistico
+            - link [ref=f2e135] [cursor=pointer]:
+              - /url: /channels/108
+              - paragraph [ref=f2e137]: Illustrazione
+            - link [ref=f2e138] [cursor=pointer]:
+              - /url: /channels/109
+              - paragraph [ref=f2e140]: Fantascienza
+            - link [ref=f2e141] [cursor=pointer]:
+              - /url: /channels/110
+              - paragraph [ref=f2e143]: Design Visivo
+            - link [ref=f2e144] [cursor=pointer]:
+              - /url: /channels/111
+              - paragraph [ref=f2e146]: Design dello Spazio
+            - link [ref=f2e147] [cursor=pointer]:
+              - /url: /channels/112
+              - paragraph [ref=f2e149]: Progettazione del Gioco
+      - separator [ref=f2e150]
+      - generic [ref=f2e151]:
+        - list [ref=f2e152]:
+          - listitem [ref=f2e153]:
+            - link "TAMS" [ref=f2e154] [cursor=pointer]:
+              - /url: https://tams.tensor.art
+          - listitem [ref=f2e155]:
+            - link "Instagram" [ref=f2e161] [cursor=pointer]:
+              - /url: https://www.instagram.com/tensor.art
+          - listitem [ref=f2e162]:
+            - link "TiKTok" [ref=f2e171] [cursor=pointer]:
+              - /url: https://www.tiktok.com/@tensor.art
+          - listitem [ref=f2e172]:
+            - link "Twitter" [ref=f2e177] [cursor=pointer]:
+              - /url: https://twitter.com/TensorArt
+          - listitem [ref=f2e178]:
+            - link "Reddit" [ref=f2e184] [cursor=pointer]:
+              - /url: https://www.reddit.com/r/TensorArt_HUB/
+          - listitem [ref=f2e185]:
+            - link "Informativa sulla Privacy" [ref=f2e186] [cursor=pointer]:
+              - /url: /about/privacy-policy
+          - listitem [ref=f2e187]:
+            - link "Termini di Servizio" [ref=f2e188] [cursor=pointer]:
+              - /url: /about/terms-of-service-new
+        - list [ref=f2e189]:
+          - listitem [ref=f2e190]:
+            - link "Report Compliance Issue" [ref=f2e191] [cursor=pointer]:
+              - /url: mailto:compliance@tensor.art?subject=Compliance%20Report%20-%20[Select%20Issue%20Type]&body=Dear%20Tensor.art%20Compliance%20Team%2C%0D%0A%0D%0AI%20would%20like%20to%20report%20a%20compliance%20concern%20regarding%20content%20on%20your%20platform.%0D%0A%0D%0A%5B%20%5D%20Child%20Safety%20%2F%20Minor%20Protection%0D%0A%5B%20%5D%20Intellectual%20Property%20%2F%20Copyright%20Infringement%0D%0A%5B%20%5D%20Unauthorized%20Use%20of%20Real%20Person%27s%20Likeness%20%2F%20Deepfake%0D%0A%5B%20%5D%20Other%20Compliance%20Issue%0D%0A%0D%0ADetails%20of%20the%20Issue%3A%0D%0A--------------------------------%0D%0A%0D%0AContent%20URL%20(if%20applicable)%3A%20%0D%0A%0D%0ADescription%20of%20Concern%3A%0D%0A%0D%0A%0D%0AYour%20Information%20(Optional)%3A%0D%0A--------------------------------%0D%0AName%3A%20%0D%0AEmail%3A%20%0D%0ARelationship%20to%20Content%3A%20%5B%20%5D%20Content%20Owner%20%5B%20%5D%20Authorized%20Representative%20%5B%20%5D%20Concerned%20User%20%5B%20%5D%20Other%0D%0A%0D%0AAdditional%20Information%3A%0D%0A%0D%0A%0D%0ABy%20submitting%20this%20report%2C%20I%20affirm%20that%20the%20information%20provided%20is%20accurate%20to%20the%20best%20of%20my%20knowledge.%0D%0A%0D%0AThank%20you%20for%20your%20attention%20to%20this%20matter.%0D%0A%0D%0ASincerely%2C%0D%0A%5BYour%20Name%5D
+          - listitem [ref=f2e192]:
+            - generic [ref=f2e193]: ©TENSOR tensor.art 2026
+    - generic [ref=f2e195]:
+      - generic [ref=f2e196]:
+        - heading "Flussi di lavoro" [level=1] [ref=f2e197]
+        - link [ref=f2e198] [cursor=pointer]:
+          - /url: /new/workflow
+          - button [ref=f2e199]
+      - generic [ref=f2e206]:
+        - generic [ref=f2e207]:
+          - button [ref=f2e208] [cursor=pointer]
+          - list [ref=f2e215]:
+            - listitem [ref=f2e216]:
+              - link "TUTTO" [ref=f2e217] [cursor=pointer]:
+                - /url: /workflows?tag=all
+            - listitem [ref=f2e219]:
+              - link "FACE" [ref=f2e220] [cursor=pointer]:
+                - /url: /workflows?tag=596561087587943171
+            - listitem [ref=f2e222]:
+              - link "CLOTHES" [ref=f2e223] [cursor=pointer]:
+                - /url: /workflows?tag=601773112006066768
+            - listitem [ref=f2e225]:
+              - link "CHARACTER" [ref=f2e226] [cursor=pointer]:
+                - /url: /workflows?tag=596245544930640021
+            - listitem [ref=f2e228]:
+              - link "UPSCALE" [ref=f2e229] [cursor=pointer]:
+                - /url: /workflows?tag=644963535331270101
+            - listitem [ref=f2e231]:
+              - link "IP ADAPTER" [ref=f2e232] [cursor=pointer]:
+                - /url: /workflows?tag=685024043920952527
+            - listitem [ref=f2e234]:
+              - link "INPAINT" [ref=f2e235] [cursor=pointer]:
+                - /url: /workflows?tag=640092862029111756
+            - listitem [ref=f2e237]:
+              - link "OUTPAINT" [ref=f2e238] [cursor=pointer]:
+                - /url: /workflows?tag=709218994858502135
+            - listitem [ref=f2e240]:
+              - link "CONTROLNET" [ref=f2e241] [cursor=pointer]:
+                - /url: /workflows?tag=612810263397251168
+            - listitem [ref=f2e243]:
+              - link "IMG2IMG" [ref=f2e244] [cursor=pointer]:
+                - /url: /workflows?tag=614419209686045456
+            - listitem [ref=f2e246]:
+              - link "VIDEO" [ref=f2e247] [cursor=pointer]:
+                - /url: /workflows?tag=631560913790575780
+            - listitem [ref=f2e249]:
+              - link "ANIMATEDIFF" [ref=f2e250] [cursor=pointer]:
+                - /url: /workflows?tag=649779662548954270
+            - listitem [ref=f2e252]:
+              - link "IMG2VID" [ref=f2e253] [cursor=pointer]:
+                - /url: /workflows?tag=756078638541202584
+            - listitem [ref=f2e255]:
+              - link "LCM" [ref=f2e256] [cursor=pointer]:
+                - /url: /workflows?tag=659154871781588434
+            - listitem [ref=f2e258]:
+              - link "LORA" [ref=f2e259] [cursor=pointer]:
+                - /url: /workflows?tag=596161861787844639
+            - listitem [ref=f2e261]:
+              - link "SD3" [ref=f2e262] [cursor=pointer]:
+                - /url: /workflows?tag=717763054905004650
+            - listitem [ref=f2e264]:
+              - link "SDXL" [ref=f2e265] [cursor=pointer]:
+                - /url: /workflows?tag=612161207939431725
+            - listitem [ref=f2e267]:
+              - link "Turbo" [ref=f2e268] [cursor=pointer]:
+                - /url: /workflows?tag=631494419106914796
+            - listitem [ref=f2e270]:
+              - link "SVD" [ref=f2e271] [cursor=pointer]:
+                - /url: /workflows?tag=687958064929864751
+            - listitem [ref=f2e273]:
+              - link "StableZero123" [ref=f2e274] [cursor=pointer]:
+                - /url: /workflows?tag=756079162527218617
+        - generic [ref=f2e278]:
+          - article [ref=f2e279]:
+            - link "803928057443474741 14 Nodes Flux with Lora + Upscale ADHDTV Studios ADHDTV Studios 5.2K 326" [ref=f2e280] [cursor=pointer]:
+              - /url: /workflows/803953762807931708
+              - generic [ref=f2e281]:
+                - generic [ref=f2e282]:
+                  - img "803928057443474741" [ref=f2e284]
+                  - paragraph [ref=f2e286]: 14 Nodes
+                - generic [ref=f2e288]:
+                  - heading "Flux with Lora + Upscale" [level=3] [ref=f2e289]
+                  - generic [ref=f2e290]:
+                    - generic [ref=f2e291]:
+                      - img "ADHDTV Studios" [ref=f2e294]
+                      - generic "ADHDTV Studios" [ref=f2e295]
+                    - generic [ref=f2e296]:
+                      - generic [ref=f2e297]: 5.2K
+                      - generic [ref=f2e302]: "326"
+          - article [ref=f2e307]:
+            - link "891205019477479044 14 Nodes Wan2.2 Image To Video SuperRedPig SuperRedPig 4.6K 210" [ref=f2e308] [cursor=pointer]:
+              - /url: /workflows/891205496218853643
+              - generic [ref=f2e309]:
+                - generic [ref=f2e310]:
+                  - img "891205019477479044" [ref=f2e312]
+                  - paragraph [ref=f2e314]: 14 Nodes
+                - generic [ref=f2e316]:
+                  - heading "Wan2.2 Image To Video" [level=3] [ref=f2e317]
+                  - generic [ref=f2e318]:
+                    - generic [ref=f2e319]:
+                      - img "SuperRedPig" [ref=f2e322]
+                      - generic "SuperRedPig" [ref=f2e323]
+                    - generic [ref=f2e324]:
+                      - generic [ref=f2e325]: 4.6K
+                      - generic [ref=f2e330]: "210"
+          - article [ref=f2e335]:
+            - link "814744786534767204 19 Nodes FACE SWAP WORKS (workflow) creativeguy creativeguy 2.1K 195" [ref=f2e336] [cursor=pointer]:
+              - /url: /workflows/814744863844180023
+              - generic [ref=f2e337]:
+                - generic [ref=f2e338]:
+                  - img "814744786534767204" [ref=f2e340]
+                  - paragraph [ref=f2e342]: 19 Nodes
+                - generic [ref=f2e344]:
+                  - heading "FACE SWAP WORKS (workflow)" [level=3] [ref=f2e345]
+                  - generic [ref=f2e346]:
+                    - generic [ref=f2e347]:
+                      - img "creativeguy" [ref=f2e350]
+                      - generic "creativeguy" [ref=f2e351]
+                    - generic [ref=f2e352]:
+                      - generic [ref=f2e353]: 2.1K
+                      - generic [ref=f2e358]: "195"
+          - article [ref=f2e363]:
+            - link "878295660972013981 3 Nodes Multi-Expression Portrait Generator Fihaaaade Fihaaaade 1.5K 190" [ref=f2e364] [cursor=pointer]:
+              - /url: /workflows/878295700700460734
+              - generic [ref=f2e365]:
+                - generic [ref=f2e366]:
+                  - img "878295660972013981" [ref=f2e368]
+                  - paragraph [ref=f2e370]: 3 Nodes
+                - generic [ref=f2e372]:
+                  - heading "Multi-Expression Portrait Generator" [level=3] [ref=f2e373]
+                  - generic [ref=f2e374]:
+                    - generic [ref=f2e375]:
+                      - img "Fihaaaade" [ref=f2e378]
+                      - generic "Fihaaaade" [ref=f2e379]
+                    - generic [ref=f2e380]:
+                      - generic [ref=f2e381]: 1.5K
+                      - generic [ref=f2e386]: "190"
+          - article [ref=f2e391]:
+            - link "795504793337673649 11 Nodes Kiwi Workflow changkiwi changkiwi 860 126" [ref=f2e392] [cursor=pointer]:
+              - /url: /workflows/795504831992379743
+              - generic [ref=f2e393]:
+                - generic [ref=f2e394]:
+                  - img "795504793337673649" [ref=f2e396]
+                  - paragraph [ref=f2e398]: 11 Nodes
+                - generic [ref=f2e400]:
+                  - heading "Kiwi Workflow" [level=3] [ref=f2e401]
+                  - generic [ref=f2e402]:
+                    - generic [ref=f2e403]:
+                      - img "changkiwi" [ref=f2e406]
+                      - generic "changkiwi" [ref=f2e407]
+                    - generic [ref=f2e408]:
+                      - generic [ref=f2e409]: "860"
+                      - generic [ref=f2e414]: "126"
+          - article [ref=f2e419]:
+            - link "19 Nodes [Accelerate] FusionX+ Latest i2V Workflow Fihaaaade Fihaaaade 747 86" [ref=f2e420] [cursor=pointer]:
+              - /url: /workflows/877917420382113139
+              - generic [ref=f2e421]:
+                - paragraph [ref=f2e432]: 19 Nodes
+                - generic [ref=f2e434]:
+                  - heading "[Accelerate] FusionX+ Latest i2V Workflow" [level=3] [ref=f2e435]
+                  - generic [ref=f2e436]:
+                    - generic [ref=f2e437]:
+                      - img "Fihaaaade" [ref=f2e440]
+                      - generic "Fihaaaade" [ref=f2e441]
+                    - generic [ref=f2e442]:
+                      - generic [ref=f2e443]: "747"
+                      - generic [ref=f2e448]: "86"
+          - article [ref=f2e453]:
+            - link "879284762949254526 24 Nodes Flux Kontext multi-image fusion（3Images） SuperRedPig SuperRedPig 935 114" [ref=f2e454] [cursor=pointer]:
+              - /url: /workflows/879284827373701369
+              - generic [ref=f2e455]:
+                - generic [ref=f2e456]:
+                  - img "879284762949254526" [ref=f2e458]
+                  - paragraph [ref=f2e460]: 24 Nodes
+                - generic [ref=f2e462]:
+                  - heading "Flux Kontext multi-image fusion（3Images）" [level=3] [ref=f2e463]
+                  - generic [ref=f2e464]:
+                    - generic [ref=f2e465]:
+                      - img "SuperRedPig" [ref=f2e468]
+                      - generic "SuperRedPig" [ref=f2e469]
+                    - generic [ref=f2e470]:
+                      - generic [ref=f2e471]: "935"
+                      - generic [ref=f2e476]: "114"
+          - article [ref=f2e481]:
+            - link "893562955449252558 18 Nodes Wan 2.2 First & Last Frame annnnnie annnnnie 711 75" [ref=f2e482] [cursor=pointer]:
+              - /url: /workflows/893563308710329827
+              - generic [ref=f2e483]:
+                - generic [ref=f2e484]:
+                  - img "893562955449252558" [ref=f2e486]
+                  - paragraph [ref=f2e488]: 18 Nodes
+                - generic [ref=f2e490]:
+                  - heading "Wan 2.2 First & Last Frame" [level=3] [ref=f2e491]
+                  - generic [ref=f2e492]:
+                    - generic [ref=f2e493]:
+                      - img "annnnnie" [ref=f2e496]
+                      - generic "annnnnie" [ref=f2e497]
+                    - generic [ref=f2e498]:
+                      - generic [ref=f2e499]: "711"
+                      - generic [ref=f2e504]: "75"
+          - article [ref=f2e509]:
+            - link "879043510341225553 4 Nodes Expression Editor (Expression-to-Video) Fihaaaade Fihaaaade 609 121" [ref=f2e510] [cursor=pointer]:
+              - /url: /workflows/879043557585866191
+              - generic [ref=f2e511]:
+                - generic [ref=f2e512]:
+                  - generic [ref=f2e513]:
+                    - img "879043510341225553" [ref=f2e514]
+                    - paragraph [ref=f2e515]
+                  - paragraph [ref=f2e521]: 4 Nodes
+                - generic [ref=f2e523]:
+                  - heading "Expression Editor (Expression-to-Video)" [level=3] [ref=f2e524]
+                  - generic [ref=f2e525]:
+                    - generic [ref=f2e526]:
+                      - img "Fihaaaade" [ref=f2e529]
+                      - generic "Fihaaaade" [ref=f2e530]
+                    - generic [ref=f2e531]:
+                      - generic [ref=f2e532]: "609"
+                      - generic [ref=f2e537]: "121"
+          - article [ref=f2e542]:
+            - link "785909909412686460 Image To Video-[img2vid]-V1.0+Upscale Tresm Tresm 660 59" [ref=f2e543] [cursor=pointer]:
+              - /url: /workflows/785657575789288678
+              - generic [ref=f2e544]:
+                - img "785909909412686460" [ref=f2e547]
+                - generic [ref=f2e550]:
+                  - heading "Image To Video-[img2vid]-V1.0+Upscale" [level=3] [ref=f2e551]
+                  - generic [ref=f2e552]:
+                    - generic [ref=f2e553]:
+                      - img "Tresm" [ref=f2e556]
+                      - generic "Tresm" [ref=f2e557]
+                    - generic [ref=f2e558]:
+                      - generic [ref=f2e559]: "660"
+                      - generic [ref=f2e564]: "59"
+          - article [ref=f2e569]:
+            - link "803954823679550572 20 Nodes FLUX.1 Redux - AI 圖像變化生成器 夢遊 夢遊 376 48" [ref=f2e570] [cursor=pointer]:
+              - /url: /workflows/803967906135200390
+              - generic [ref=f2e571]:
+                - generic [ref=f2e572]:
+                  - img "803954823679550572" [ref=f2e574]
+                  - paragraph [ref=f2e576]: 20 Nodes
+                - generic [ref=f2e578]:
+                  - heading "FLUX.1 Redux - AI 圖像變化生成器" [level=3] [ref=f2e579]
+                  - generic [ref=f2e580]:
+                    - generic [ref=f2e581]:
+                      - img "夢遊" [ref=f2e584]
+                      - generic "夢遊" [ref=f2e585]
+                    - generic [ref=f2e586]:
+                      - generic [ref=f2e587]: "376"
+                      - generic [ref=f2e592]: "48"
+          - article [ref=f2e597]:
+            - link "799064505196903134 11 Nodes FLUX ILLUSTRATION ChugAx ChugAx 261 42" [ref=f2e598] [cursor=pointer]:
+              - /url: /workflows/799067090752569378
+              - generic [ref=f2e599]:
+                - generic [ref=f2e600]:
+                  - img "799064505196903134" [ref=f2e602]
+                  - paragraph [ref=f2e604]: 11 Nodes
+                - generic [ref=f2e606]:
+                  - heading "FLUX ILLUSTRATION" [level=3] [ref=f2e607]
+                  - generic [ref=f2e608]:
+                    - generic [ref=f2e609]:
+                      - img "ChugAx" [ref=f2e612]
+                      - generic "ChugAx" [ref=f2e613]
+                    - generic [ref=f2e614]:
+                      - generic [ref=f2e615]: "261"
+                      - generic [ref=f2e620]: "42"
+          - article [ref=f2e625]:
+            - link "772277159229208582 24 Nodes Afros's Flux Workflow Afroman4peace Afroman4peace 257 70" [ref=f2e626] [cursor=pointer]:
+              - /url: /workflows/772277803474360537
+              - generic [ref=f2e627]:
+                - generic [ref=f2e628]:
+                  - img "772277159229208582" [ref=f2e630]
+                  - paragraph [ref=f2e632]: 24 Nodes
+                - generic [ref=f2e634]:
+                  - heading "Afros's Flux Workflow" [level=3] [ref=f2e635]
+                  - generic [ref=f2e636]:
+                    - generic [ref=f2e637]:
+                      - img "Afroman4peace" [ref=f2e640]
+                      - generic "Afroman4peace" [ref=f2e641]
+                    - generic [ref=f2e642]:
+                      - generic [ref=f2e643]: "257"
+                      - generic [ref=f2e648]: "70"
+          - article [ref=f2e653]:
+            - link "878224927155579006 19 Nodes Live Wallpaper｜Auto Prompt｜HD 720P Fihaaaade Fihaaaade 205 35" [ref=f2e654] [cursor=pointer]:
+              - /url: /workflows/878221092823511246
+              - generic [ref=f2e655]:
+                - generic [ref=f2e656]:
+                  - generic [ref=f2e657]:
+                    - img "878224927155579006" [ref=f2e658]
+                    - paragraph [ref=f2e659]
+                  - paragraph [ref=f2e665]: 19 Nodes
+                - generic [ref=f2e667]:
+                  - heading "Live Wallpaper｜Auto Prompt｜HD 720P" [level=3] [ref=f2e668]
+                  - generic [ref=f2e669]:
+                    - generic [ref=f2e670]:
+                      - img "Fihaaaade" [ref=f2e673]
+                      - generic "Fihaaaade" [ref=f2e674]
+                    - generic [ref=f2e675]:
+                      - generic [ref=f2e676]: "205"
+                      - generic [ref=f2e681]: "35"
+          - article [ref=f2e686]:
+            - link "824923725882375366 32 Nodes Enhance Image with SUPIR + UPSCALE Ai magic 2u Ai magic 2u 97 15" [ref=f2e687] [cursor=pointer]:
+              - /url: /workflows/824922304248158170
+              - generic [ref=f2e688]:
+                - generic [ref=f2e689]:
+                  - img "824923725882375366" [ref=f2e691]
+                  - paragraph [ref=f2e693]: 32 Nodes
+                - generic [ref=f2e695]:
+                  - heading "Enhance Image with SUPIR + UPSCALE" [level=3] [ref=f2e696]
+                  - generic [ref=f2e697]:
+                    - generic [ref=f2e698]:
+                      - img "Ai magic 2u" [ref=f2e701]
+                      - generic "Ai magic 2u" [ref=f2e702]
+                    - generic [ref=f2e703]:
+                      - generic [ref=f2e704]: "97"
+                      - generic [ref=f2e709]: "15"
+          - article [ref=f2e714]:
+            - link "10 Nodes Image to Video coax_ai Coax Coax 57 19" [ref=f2e715] [cursor=pointer]:
+              - /url: /workflows/804885616092325558
+              - generic [ref=f2e716]:
+                - paragraph [ref=f2e727]: 10 Nodes
+                - generic [ref=f2e729]:
+                  - heading "Image to Video coax_ai" [level=3] [ref=f2e730]
+                  - generic [ref=f2e731]:
+                    - generic [ref=f2e732]:
+                      - img "Coax" [ref=f2e735]
+                      - generic "Coax" [ref=f2e736]
+                    - generic [ref=f2e737]:
+                      - generic [ref=f2e738]: "57"
+                      - generic [ref=f2e743]: "19"
+          - article [ref=f2e748]:
+            - link "777782856331109134 29 Nodes XMD user_757652250129693969 user_757652250129693969 57 16" [ref=f2e749] [cursor=pointer]:
+              - /url: /workflows/777782886395882881
+              - generic [ref=f2e750]:
+                - generic [ref=f2e751]:
+                  - img "777782856331109134" [ref=f2e753]
+                  - paragraph [ref=f2e755]: 29 Nodes
+                - generic [ref=f2e757]:
+                  - heading "XMD" [level=3] [ref=f2e758]
+                  - generic [ref=f2e759]:
+                    - generic [ref=f2e760]:
+                      - img "user_757652250129693969" [ref=f2e763]
+                      - generic "user_757652250129693969" [ref=f2e764]
+                    - generic [ref=f2e765]:
+                      - generic [ref=f2e766]: "57"
+                      - generic [ref=f2e771]: "16"
+          - article [ref=f2e776]:
+            - link "818870081147674844 13 Nodes Flux - text to image SuperRedPig SuperRedPig 59 9" [ref=f2e777] [cursor=pointer]:
+              - /url: /workflows/818870106917479131
+              - generic [ref=f2e778]:
+                - generic [ref=f2e779]:
+                  - img "818870081147674844" [ref=f2e781]
+                  - paragraph [ref=f2e783]: 13 Nodes
+                - generic [ref=f2e785]:
+                  - heading "Flux - text to image" [level=3] [ref=f2e786]
+                  - generic [ref=f2e787]:
+                    - generic [ref=f2e788]:
+                      - img "SuperRedPig" [ref=f2e791]
+                      - generic "SuperRedPig" [ref=f2e792]
+                    - generic [ref=f2e793]:
+                      - generic [ref=f2e794]: "59"
+                      - generic [ref=f2e799]: "9"
+          - article [ref=f2e804]:
+            - link "805987236563681220 12 Nodes workflow to create radio button Coax Coax 40 18" [ref=f2e805] [cursor=pointer]:
+              - /url: /workflows/805990998940433008
+              - generic [ref=f2e806]:
+                - generic [ref=f2e807]:
+                  - img "805987236563681220" [ref=f2e809]
+                  - paragraph [ref=f2e811]: 12 Nodes
+                - generic [ref=f2e813]:
+                  - heading "workflow to create radio button" [level=3] [ref=f2e814]
+                  - generic [ref=f2e815]:
+                    - generic [ref=f2e816]:
+                      - img "Coax" [ref=f2e819]
+                      - generic "Coax" [ref=f2e820]
+                    - generic [ref=f2e821]:
+                      - generic [ref=f2e822]: "40"
+                      - generic [ref=f2e827]: "18"
+          - article [ref=f2e832]:
+            - link "789730076664120755 Nudify user_789711586834097921 user_789711586834097921 6.1K 283" [ref=f2e833] [cursor=pointer]:
+              - /url: /workflows/789730132498696384
+              - generic [ref=f2e834]:
+                - img "789730076664120755" [ref=f2e837]
+                - generic [ref=f2e840]:
+                  - heading "Nudify" [level=3] [ref=f2e841]
+                  - generic [ref=f2e842]:
+                    - generic [ref=f2e843]:
+                      - img "user_789711586834097921" [ref=f2e846]
+                      - generic "user_789711586834097921" [ref=f2e847]
+                    - generic [ref=f2e848]:
+                      - generic [ref=f2e849]: 6.1K
+                      - generic [ref=f2e854]: "283"
+          - article [ref=f2e859]:
+            - link "951823831410978383 36 Nodes Basic_IL_2.0_comfyui_Conndyai Conndy Conndy 265 22" [ref=f2e860] [cursor=pointer]:
+              - /url: /workflows/951821307043939699
+              - generic [ref=f2e861]:
+                - generic [ref=f2e862]:
+                  - img "951823831410978383" [ref=f2e864]
+                  - paragraph [ref=f2e866]: 36 Nodes
+                - generic [ref=f2e868]:
+                  - heading "Basic_IL_2.0_comfyui_Conndyai" [level=3] [ref=f2e869]
+                  - generic [ref=f2e870]:
+                    - generic [ref=f2e871]:
+                      - img "Conndy" [ref=f2e874]
+                      - generic "Conndy" [ref=f2e875]
+                    - generic [ref=f2e876]:
+                      - generic [ref=f2e877]: "265"
+                      - generic [ref=f2e882]: "22"
+          - article [ref=f2e887]:
+            - link "891419853741678693 Testworkflow Social Media Content CeTho CeTho 1.5K 85" [ref=f2e888] [cursor=pointer]:
+              - /url: /workflows/891419883806450045
+              - generic [ref=f2e889]:
+                - img "891419853741678693" [ref=f2e892]
+                - generic [ref=f2e895]:
+                  - heading "Testworkflow Social Media Content" [level=3] [ref=f2e896]
+                  - generic [ref=f2e897]:
+                    - generic [ref=f2e898]:
+                      - img "CeTho" [ref=f2e901]
+                      - generic "CeTho" [ref=f2e902]
+                    - generic [ref=f2e903]:
+                      - generic [ref=f2e904]: 1.5K
+                      - generic [ref=f2e909]: "85"
+          - article [ref=f2e914]:
+            - link "877908878765866373 5 Nodes Flux Kontext｜Multi-Angle Photography｜Sports Model Fihaaaade Fihaaaade 494 47" [ref=f2e915] [cursor=pointer]:
+              - /url: /workflows/877908921715539896
+              - generic [ref=f2e916]:
+                - generic [ref=f2e917]:
+                  - img "877908878765866373" [ref=f2e919]
+                  - paragraph [ref=f2e921]: 5 Nodes
+                - generic [ref=f2e923]:
+                  - heading "Flux Kontext｜Multi-Angle Photography｜Sports Model" [level=3] [ref=f2e924]
+                  - generic [ref=f2e925]:
+                    - generic [ref=f2e926]:
+                      - img "Fihaaaade" [ref=f2e929]
+                      - generic "Fihaaaade" [ref=f2e930]
+                    - generic [ref=f2e931]:
+                      - generic [ref=f2e932]: "494"
+                      - generic [ref=f2e937]: "47"
+          - article [ref=f2e942]:
+            - link "950962419885177759 16 Nodes Qwen-Image-2512+Lighting V2 4steps OléaSTeR OléaSTeR 76 2" [ref=f2e943] [cursor=pointer]:
+              - /url: /workflows/950962455318638565
+              - generic [ref=f2e944]:
+                - generic [ref=f2e945]:
+                  - img "950962419885177759" [ref=f2e947]
+                  - paragraph [ref=f2e949]: 16 Nodes
+                - generic [ref=f2e951]:
+                  - heading "Qwen-Image-2512+Lighting V2 4steps" [level=3] [ref=f2e952]
+                  - generic [ref=f2e953]:
+                    - generic [ref=f2e954]:
+                      - img "OléaSTeR" [ref=f2e957]
+                      - generic "OléaSTeR" [ref=f2e958]
+                    - generic [ref=f2e959]:
+                      - generic [ref=f2e960]: "76"
+                      - generic [ref=f2e965]: "2"
+          - article [ref=f2e970]:
+            - link "929927214110116195 一图生成15视角【真人 动漫均可】 bennyboy830 bennyboy830 114 14" [ref=f2e971] [cursor=pointer]:
+              - /url: /workflows/929927304304429838
+              - generic [ref=f2e972]:
+                - img "929927214110116195" [ref=f2e975]
+                - generic [ref=f2e978]:
+                  - heading "一图生成15视角【真人 动漫均可】" [level=3] [ref=f2e979]
+                  - generic [ref=f2e980]:
+                    - generic [ref=f2e981]:
+                      - img "bennyboy830" [ref=f2e984]
+                      - generic "bennyboy830" [ref=f2e985]
+                    - generic [ref=f2e986]:
+                      - generic [ref=f2e987]: "114"
+                      - generic [ref=f2e992]: "14"
+          - article [ref=f2e997]:
+            - link "873778001769198068 ワークフロー(comfyUI)Text2Img ノード説明あり jewel-pt jewel-pt 290 51" [ref=f2e998] [cursor=pointer]:
+              - /url: /workflows/873787012610536469
+              - generic [ref=f2e999]:
+                - img "873778001769198068" [ref=f2e1002]
+                - generic [ref=f2e1005]:
+                  - heading "ワークフロー(comfyUI)Text2Img ノード説明あり" [level=3] [ref=f2e1006]
+                  - generic [ref=f2e1007]:
+                    - generic [ref=f2e1008]:
+                      - img "jewel-pt" [ref=f2e1011]
+                      - generic "jewel-pt" [ref=f2e1012]
+                    - generic [ref=f2e1013]:
+                      - generic [ref=f2e1014]: "290"
+                      - generic [ref=f2e1019]: "51"
+          - article [ref=f2e1024]:
+            - link "1025063236166279119 31 Nodes 角色替换 幕后黑手 幕后黑手 1" [ref=f2e1025] [cursor=pointer]:
+              - /url: /workflows/1025064262663466289
+              - generic [ref=f2e1026]:
+                - generic [ref=f2e1027]:
+                  - img "1025063236166279119" [ref=f2e1029]
+                  - paragraph [ref=f2e1031]: 31 Nodes
+                - generic [ref=f2e1033]:
+                  - heading "角色替换" [level=3] [ref=f2e1034]
+                  - generic [ref=f2e1035]:
+                    - generic [ref=f2e1036]:
+                      - img "幕后黑手" [ref=f2e1039]
+                      - generic "幕后黑手" [ref=f2e1040]
+                    - generic [ref=f2e1041]: "1"
+          - article [ref=f2e1047]:
+            - link "950538202744101252 Nano banana pro user_950536369866847427 user_950536369866847427 87 7" [ref=f2e1048] [cursor=pointer]:
+              - /url: /workflows/950538334814403966
+              - generic [ref=f2e1049]:
+                - img "950538202744101252" [ref=f2e1052]
+                - generic [ref=f2e1055]:
+                  - heading "Nano banana pro" [level=3] [ref=f2e1056]
+                  - generic [ref=f2e1057]:
+                    - generic [ref=f2e1058]:
+                      - img "user_950536369866847427" [ref=f2e1061]
+                      - generic "user_950536369866847427" [ref=f2e1062]
+                    - generic [ref=f2e1063]:
+                      - generic [ref=f2e1064]: "87"
+                      - generic [ref=f2e1069]: "7"
+          - article [ref=f2e1074]:
+            - link "925752815136063151 23 Nodes CS Character Turn Design SD15 ChamberSu ChamberSu 104 12" [ref=f2e1075] [cursor=pointer]:
+              - /url: /workflows/925752913920311526
+              - generic [ref=f2e1076]:
+                - generic [ref=f2e1077]:
+                  - img "925752815136063151" [ref=f2e1079]
+                  - paragraph [ref=f2e1081]: 23 Nodes
+                - generic [ref=f2e1083]:
+                  - heading "CS Character Turn Design SD15" [level=3] [ref=f2e1084]
+                  - generic [ref=f2e1085]:
+                    - generic [ref=f2e1086]:
+                      - img "ChamberSu" [ref=f2e1089]
+                      - generic "ChamberSu" [ref=f2e1090]
+                    - generic [ref=f2e1091]:
+                      - generic [ref=f2e1092]: "104"
+                      - generic [ref=f2e1097]: "12"
+          - article [ref=f2e1102]:
+            - link "913474237002463457 33 Nodes Illustrious picture bgff bgff 348 24" [ref=f2e1103] [cursor=pointer]:
+              - /url: /workflows/913474498995470009
+              - generic [ref=f2e1104]:
+                - generic [ref=f2e1105]:
+                  - img "913474237002463457" [ref=f2e1107]
+                  - paragraph [ref=f2e1109]: 33 Nodes
+                - generic [ref=f2e1111]:
+                  - heading "Illustrious picture" [level=3] [ref=f2e1112]
+                  - generic [ref=f2e1113]:
+                    - generic [ref=f2e1114]:
+                      - img "bgff" [ref=f2e1117]
+                      - generic "bgff" [ref=f2e1118]
+                    - generic [ref=f2e1119]:
+                      - generic [ref=f2e1120]: "348"
+                      - generic [ref=f2e1125]: "24"

@@ -1,0 +1,146 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - link "LTX REMOTE" [ref=e3] [cursor=pointer]:
+      - /url: /
+    - generic [ref=e6]:
+      - navigation "Navigazione principale" [ref=e7]:
+        - link "Genera" [ref=e8] [cursor=pointer]:
+          - /url: /
+        - link "Image Studio" [ref=e9] [cursor=pointer]:
+          - /url: /studio.html
+        - link "Video Studio" [ref=e10] [cursor=pointer]:
+          - /url: /video-studio.html
+        - link "Guida" [ref=e11] [cursor=pointer]:
+          - /url: /workflow-guide.html
+        - link "Generazioni" [ref=e12] [cursor=pointer]:
+          - /url: /generations.html
+      - generic [ref=e13]: ComfyUI online
+  - main [ref=e15]:
+    - generic [ref=e16]:
+      - generic [ref=e17]:
+        - paragraph [ref=e18]: COMFYUI / IMAGE + VIDEO + UPSCALE
+        - heading [level=1] [ref=e19]:
+          - text: Crea, trasformae
+          - emphasis [ref=e20]: dirigi.
+      - paragraph [ref=e21]: Il tuo studio generativo remoto. Crea immagini, modifica reference, ingrandisci foto e dirigi video usando la macchina di casa.
+    - generic [ref=e22]:
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - generic [ref=e25]: "01"
+          - generic [ref=e26]:
+            - heading "Nuova generazione" [level=2] [ref=e27]
+            - paragraph [ref=e28]: Configura la tua sequenza
+        - group "Tipo di generazione" [ref=e29]:
+          - button "▶ Video LTX 2.3" [ref=e30] [cursor=pointer]:
+            - generic [ref=e31]: ▶
+            - generic [ref=e32]: Video
+            - generic [ref=e33]: LTX 2.3
+          - button "◆ Immagine Flux / Z-Image" [ref=e34] [cursor=pointer]:
+            - generic [ref=e35]: ◆
+            - generic [ref=e36]: Immagine
+            - generic [ref=e37]: Flux / Z-Image
+          - button "↗ Upscaling AI / RTX" [ref=e38] [cursor=pointer]:
+            - generic [ref=e39]: ↗
+            - generic [ref=e40]: Upscaling
+            - generic [ref=e41]: AI / RTX
+        - generic [ref=e42]:
+          - generic [ref=e43]: Workflow
+          - combobox "Workflow" [ref=e44] [cursor=pointer]:
+            - option "LTX 2.3 1Work"
+            - option "LTX 2.3 Dev FP8"
+            - option "LTX 2.3 Director 2 UHD"
+            - option "LTX 2.3 V2V Edit Anything" [selected]
+          - paragraph [ref=e135]: Modifica un video esistente tramite istruzioni testuali, mantenendo movimento e audio opzionale.
+        - generic [ref=e140]:
+          - generic [ref=e141]: Modello video
+          - combobox "Modello video" [ref=e142] [cursor=pointer]:
+            - option "LTX 2.3 normale"
+            - option "DaSiWa DragonLeap v4" [selected]
+          - paragraph [ref=e143]: Fine-tune DaSiWa FP8 da 27,6 GB, più pesante ma ottimizzato per qualità, prompt e audio.
+        - generic [ref=e45]:
+          - generic [ref=e193]:
+            - generic [ref=e194]: Video da modificare
+            - generic [ref=e195]:
+              - button "▶ Trascina o scegli un video MP4, WebM, MOV, MKV o AVI · max 512 MB" [ref=e196] [cursor=pointer]
+              - generic [ref=e197]: ▶
+              - strong [ref=e198]: Trascina o scegli un video
+              - generic [ref=e199]: MP4, WebM, MOV, MKV o AVI · max 512 MB
+            - paragraph
+          - generic [ref=e53]:
+            - generic [ref=e54]:
+              - generic [ref=e55]: Istruzione di modifica
+              - generic [ref=e56]: "0"
+            - textbox "Istruzione di modifica" [ref=e200]:
+              - /placeholder: Es. Replace the red car with a futuristic silver vehicle…
+        - generic [ref=e58]:
+          - generic [ref=e59]:
+            - generic [ref=e60]: Prompt negativo
+            - generic [ref=e61]: "0"
+          - textbox "Prompt negativo" [ref=e62]:
+            - /placeholder: Artefatti o risultati da evitare…
+        - generic [ref=e63]:
+          - generic [ref=e70]:
+            - generic [ref=e71]: Durata massima
+            - generic [ref=e72]:
+              - spinbutton "Durata massima" [ref=e201]: "10"
+              - generic [ref=e74]: sec
+            - paragraph [ref=e75]: 24 FPS fissi
+          - generic [ref=e76]:
+            - generic [ref=e77]: Seed
+            - generic [ref=e78]:
+              - textbox "Seed" [ref=e79]:
+                - /placeholder: Random
+              - button "↻" [ref=e80] [cursor=pointer]
+        - group [ref=e202]:
+          - generic "Impostazioni V2V avanzate Regola il workflow Edit Anything" [ref=e203] [cursor=pointer]
+          - option "640 px · Anteprima"
+          - option "768 px"
+          - option "960 px · Workflow" [selected]
+          - option "1280 px · Alta"
+        - generic [ref=e93]:
+          - generic [ref=e94]:
+            - generic [ref=e95]:
+              - paragraph [ref=e96]: MODEL ADD-ONS
+              - heading "LoRA" [level=3] [ref=e97]
+              - paragraph [ref=e98]: Applica una o più LoRA in sequenza al workflow selezionato.
+            - generic [ref=e99]: 0 attive
+          - button "＋ Aggiungi LoRA" [ref=e100] [cursor=pointer]
+          - paragraph [ref=e101]: Nessuna LoRA applicata. Puoi aggiungerne quante ne servono.
+        - button "Avvia generazione →" [ref=e102] [cursor=pointer]:
+          - generic [ref=e103]: Avvia generazione
+          - generic [ref=e104]: →
+        - alert [ref=e105]
+      - complementary [ref=e106]:
+        - generic [ref=e107]:
+          - generic [ref=e108]:
+            - generic [ref=e109]: "02"
+            - generic [ref=e110]:
+              - heading "In lavorazione" [level=2] [ref=e111]
+              - paragraph [ref=e112]: Stato in tempo reale
+          - article [ref=e144]:
+            - heading "LTX 2.3 1Work" [level=3] [ref=e145]
+            - generic [ref=e146]: Immagine → Video · 352×640 · 10s · seed 1892863629
+            - generic [ref=e147]: 0%
+            - button "Annulla generazione" [ref=e151] [cursor=pointer]
+        - generic [ref=e117]:
+          - generic [ref=e118]:
+            - generic [ref=e119]: "03"
+            - generic [ref=e120]:
+              - heading "Sistema" [level=2] [ref=e121]
+              - paragraph [ref=e122]: Gestione memoria ComfyUI
+          - generic [ref=e123]:
+            - button "Cache Svuota" [ref=e124] [cursor=pointer]:
+              - generic [ref=e125]: Cache
+              - text: Svuota
+            - button "Models Scarica" [ref=e126] [cursor=pointer]:
+              - generic [ref=e127]: Models
+              - text: Scarica
+            - button "VRAM Libera" [ref=e128] [cursor=pointer]:
+              - generic [ref=e129]: VRAM
+              - text: Libera
+            - button "RAM Libera" [ref=e130] [cursor=pointer]:
+              - generic [ref=e131]: RAM
+              - text: Libera
+          - button "Pulizia completa" [ref=e132] [cursor=pointer]
+          - paragraph [ref=e133]
+  - status

@@ -1,0 +1,7 @@
+opencv-python>=4.10
+numpy>=2.0
+scipy>=1.13
+scikit-image>=0.24
+Pillow>=10
+onnxruntime>=1.20
+insightface==0.7.3

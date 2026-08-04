@@ -1,0 +1,216 @@
+- generic [ref=e1]:
+  - banner [ref=e2]:
+    - link "LTX REMOTE" [ref=e3] [cursor=pointer]:
+      - /url: /
+    - generic [ref=e6]:
+      - navigation "Navigazione principale" [ref=e7]:
+        - link "Crea guidata" [ref=e8] [cursor=pointer]:
+          - /url: /guided-create.html
+        - link "Genera" [ref=e9] [cursor=pointer]:
+          - /url: /
+        - link "Image Studio" [ref=e10] [cursor=pointer]:
+          - /url: /studio.html
+        - link "Video Studio" [ref=e11] [cursor=pointer]:
+          - /url: /video-studio.html
+        - link "Guida" [ref=e12] [cursor=pointer]:
+          - /url: /workflow-guide.html
+        - link "Generazioni" [ref=e13] [cursor=pointer]:
+          - /url: /generations.html
+      - generic [ref=e14]: ComfyUI online
+  - main [ref=e16]:
+    - generic [ref=e17]:
+      - generic [ref=e18]:
+        - paragraph [ref=e19]: COMFYUI / IMAGE + VIDEO + UPSCALE
+        - heading [level=1] [ref=e20]:
+          - text: Crea, trasformae
+          - emphasis [ref=e21]: dirigi.
+      - generic [ref=e22]:
+        - paragraph [ref=e23]: Il tuo studio generativo remoto. Crea immagini, modifica reference, ingrandisci foto e dirigi video usando la macchina di casa.
+        - link "Non sai quale workflow usare? Inizia dalla Crea guidata →" [ref=e24] [cursor=pointer]:
+          - /url: /guided-create.html
+          - text: Non sai quale workflow usare?
+          - generic [ref=e25]: Inizia dalla Crea guidata →
+    - generic [ref=e26]:
+      - generic [ref=e27]:
+        - generic [ref=e28]:
+          - generic [ref=e29]: "01"
+          - generic [ref=e30]:
+            - heading "Nuova generazione" [level=2] [ref=e31]
+            - paragraph [ref=e32]: Configura la tua sequenza
+        - group "Tipo di generazione" [ref=e33]:
+          - button "▶ Video LTX 2.3" [ref=e34] [cursor=pointer]:
+            - generic [ref=e35]: ▶
+            - generic [ref=e36]: Video
+            - generic [ref=e37]: LTX 2.3
+          - button "◆ Immagine Flux / Qwen / Z-Image" [ref=e38] [cursor=pointer]:
+            - generic [ref=e39]: ◆
+            - generic [ref=e40]: Immagine
+            - generic [ref=e41]: Flux / Qwen / Z-Image
+          - button "↗ Upscaling AI / RTX" [ref=e42] [cursor=pointer]:
+            - generic [ref=e43]: ↗
+            - generic [ref=e44]: Upscaling
+            - generic [ref=e45]: AI / RTX
+        - generic [ref=e173]:
+          - generic [ref=e174]:
+            - generic [ref=e175]: Modalità
+            - combobox "Modalità" [ref=e176] [cursor=pointer]:
+              - option "Text to Image" [selected]
+              - option "Image to Image"
+              - option "Reference Image · Flux Redux"
+          - generic [ref=e177]:
+            - generic [ref=e178]: Famiglia / workflow
+            - combobox "Famiglia / workflow" [ref=e179] [cursor=pointer]:
+              - option "Flux.1" [selected]
+              - option "Flux.2"
+              - option "Z-Image"
+              - option "Qwen Text to Image"
+              - option "Qwen Image Edit 2511"
+          - generic [ref=e180]:
+            - generic [ref=e181]: Modello installato
+            - combobox "Modello installato" [ref=e182] [cursor=pointer]:
+              - option "cyberrealisticFlux v25"
+              - option "Flux.1 Dev" [selected]
+              - option "fluxedUpFluxNSFW 112BF16FP8"
+              - option "persephoneFluxNSFWSFW 20FP16"
+            - paragraph [ref=e183]: "Modelli Flux.1 compatibili, con img2img e Flux Redux reference. Selezionato: Flux.1 Dev."
+        - generic [ref=e57]:
+          - generic [ref=e58]:
+            - generic [ref=e59]: Prompt positivo
+            - generic [ref=e60]:
+              - button "✦ IA + Genera" [ref=e61] [cursor=pointer]
+              - button "✦ Qwen Edit" [ref=e184] [cursor=pointer]
+              - button "✦ Klein" [ref=e185] [cursor=pointer]
+              - generic [ref=e62]: "0"
+          - textbox "Prompt positivo" [ref=e63]:
+            - /placeholder: Descrivi soggetto, scena, stile, luce e composizione…
+          - paragraph [ref=e64]: LM Studio locale · il modello viene scaricato dopo il prompt
+        - generic [ref=e65]:
+          - generic [ref=e66]:
+            - generic [ref=e67]: Prompt negativo
+            - generic [ref=e68]: "0"
+          - textbox "Prompt negativo" [ref=e69]:
+            - /placeholder: Artefatti o risultati da evitare…
+        - generic [ref=e186]:
+          - generic [ref=e187]:
+            - generic [ref=e188]: Formato
+            - combobox "Formato" [ref=e189] [cursor=pointer]:
+              - option "Quadrata · 1024×1024"
+              - option "Ritratto · 896×1152" [selected]
+              - option "Orizzontale · 1152×896"
+              - option "Wide · 1344×768"
+              - option "Verticale · 768×1344"
+          - generic [ref=e190]:
+            - generic [ref=e191]: Numero immagini
+            - spinbutton "Numero immagini" [ref=e192]: "1"
+          - generic [ref=e193]:
+            - generic [ref=e194]: Sampling steps
+            - spinbutton "Sampling steps" [ref=e195]: "28"
+          - generic [ref=e196]:
+            - generic [ref=e197]: Guidance / CFG
+            - spinbutton "Guidance / CFG" [ref=e198]: "3.5"
+          - generic [ref=e199]:
+            - generic [ref=e200]: Seed
+            - generic [ref=e201]:
+              - textbox "Seed" [ref=e202]:
+                - /placeholder: Random
+              - button "↻" [ref=e203] [cursor=pointer]
+        - group [ref=e204]:
+          - generic "Miglioramento finale Highres Fix, upscale realistico e protezione VRAM" [active] [ref=e205] [cursor=pointer]
+          - generic [ref=e207]:
+            - generic [ref=e209] [cursor=pointer]:
+              - checkbox "Highres Fix Secondo passaggio diffusion a denoise basso per generare dettagli reali." [ref=e210]
+              - generic [ref=e211]:
+                - generic [ref=e212]: Highres Fix
+                - generic [ref=e213]: Secondo passaggio diffusion a denoise basso per generare dettagli reali.
+            - generic [ref=e214]:
+              - generic [ref=e215]:
+                - generic [ref=e216]: Ingrandimento Highres
+                - combobox "Ingrandimento Highres" [disabled] [ref=e217] [cursor=pointer]:
+                  - option "1,25×"
+                  - option "1,5× · consigliato" [selected]
+                  - option "2× · VRAM elevata"
+              - generic [ref=e218]:
+                - generic [ref=e219]: Step di rifinitura
+                - spinbutton "Step di rifinitura" [disabled] [ref=e220]: "10"
+              - generic [ref=e221]:
+                - generic [ref=e222]: Denoise rifinitura
+                - spinbutton "Denoise rifinitura" [disabled] [ref=e223]: "0.25"
+                - paragraph [ref=e224]: 0,20–0,30 preserva maggiormente composizione e identità.
+            - generic [ref=e226]:
+              - generic [ref=e227]: Upscale finale
+              - combobox "Upscale finale" [ref=e228] [cursor=pointer]:
+                - option "Nessuno" [selected]
+                - option "RealESRGAN 2× · rapido"
+                - option "SeedVR2 · alta qualità realistica"
+            - generic [ref=e229]:
+              - generic [ref=e230] [cursor=pointer]:
+                - checkbox "Face Detailer Rileva e rifinisce i volti prima di Highres Fix e SeedVR2. Compatibile con Flux, Klein, Qwen e Z‑Image." [ref=e231]
+                - generic [ref=e232]:
+                  - generic [ref=e233]: Face Detailer
+                  - generic [ref=e234]: Rileva e rifinisce i volti prima di Highres Fix e SeedVR2. Compatibile con Flux, Klein, Qwen e Z‑Image.
+              - generic [ref=e235] [cursor=pointer]:
+                - checkbox "Purge VRAM automatico Scarica Flux/Z‑Image prima di caricare SeedVR2 o RealESRGAN." [checked] [disabled] [ref=e236]
+                - generic [ref=e237]:
+                  - generic [ref=e238]: Purge VRAM automatico
+                  - generic [ref=e239]: Scarica Flux/Z‑Image prima di caricare SeedVR2 o RealESRGAN.
+              - generic [ref=e240] [cursor=pointer]:
+                - checkbox "Conserva anche l’originale Salva il risultato base insieme alla versione migliorata." [checked] [disabled] [ref=e241]
+                - generic [ref=e242]:
+                  - generic [ref=e243]: Conserva anche l’originale
+                  - generic [ref=e244]: Salva il risultato base insieme alla versione migliorata.
+            - paragraph [ref=e245]: Highres Fix e SeedVR2 elaborano una sola immagine alla volta per ridurre il rischio di OOM.
+        - generic [ref=e102]:
+          - generic [ref=e103]:
+            - paragraph [ref=e104]: SCENE INTEGRATION
+            - heading "Integra soggetto e scena" [level=3] [ref=e105]
+            - paragraph [ref=e106]: Analizza luce, colore, camera, profondità, movimento e texture prima della generazione.
+          - generic [ref=e107]:
+            - checkbox "Abilita" [ref=e108]
+            - generic [ref=e109]: Abilita
+        - generic [ref=e110]:
+          - generic [ref=e111]:
+            - generic [ref=e112]:
+              - paragraph [ref=e113]: MODEL ADD-ONS
+              - heading "LoRA" [level=3] [ref=e114]
+              - paragraph [ref=e115]: Applica una o più LoRA in sequenza al workflow selezionato.
+            - generic [ref=e116]: 0 attive
+          - button "＋ Aggiungi LoRA" [ref=e117] [cursor=pointer]
+          - paragraph [ref=e118]: Nessuna LoRA applicata. Puoi aggiungerne quante ne servono.
+        - button "Avvia generazione →" [ref=e119] [cursor=pointer]:
+          - generic [ref=e120]: Avvia generazione
+          - generic [ref=e121]: →
+        - alert [ref=e122]
+      - complementary [ref=e123]:
+        - generic [ref=e124]:
+          - generic [ref=e125]:
+            - generic [ref=e126]: "02"
+            - generic [ref=e127]:
+              - heading "In lavorazione" [level=2] [ref=e128]
+              - paragraph [ref=e129]: Stato in tempo reale
+          - article [ref=e163]:
+            - heading "Qwen Image 2512 FP8 · Text to Image" [level=3] [ref=e246]
+            - generic [ref=e247]: 896×1152 · 1 immagine · seed 394780942
+            - generic [ref=e248]: 0%
+            - button "Annulla generazione" [ref=e252] [cursor=pointer]
+        - generic [ref=e134]:
+          - generic [ref=e135]:
+            - generic [ref=e136]: "03"
+            - generic [ref=e137]:
+              - heading "Sistema" [level=2] [ref=e138]
+              - paragraph [ref=e139]: Gestione memoria ComfyUI
+          - generic [ref=e140]:
+            - button "Cache Svuota" [ref=e141] [cursor=pointer]:
+              - generic [ref=e142]: Cache
+              - text: Svuota
+            - button "Models Scarica" [ref=e143] [cursor=pointer]:
+              - generic [ref=e144]: Models
+              - text: Scarica
+            - button "VRAM Libera" [ref=e145] [cursor=pointer]:
+              - generic [ref=e146]: VRAM
+              - text: Libera
+            - button "RAM Libera" [ref=e147] [cursor=pointer]:
+              - generic [ref=e148]: RAM
+              - text: Libera
+          - button "Pulizia completa" [ref=e149] [cursor=pointer]
+          - paragraph [ref=e150]
+  - status

@@ -1,0 +1,5 @@
+The NF4 parameter-loading implementation is adapted from
+https://github.com/comfyanonymous/ComfyUI_bitsandbytes_NF4
+and is distributed under the GNU Affero General Public License v3.0.
+
+SPDX-License-Identifier: AGPL-3.0-only

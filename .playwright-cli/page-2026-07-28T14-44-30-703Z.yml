@@ -1,0 +1,185 @@
+- generic [ref=f10e4]:
+  - banner [ref=f10e6]:
+    - link [ref=f10e16] [cursor=pointer]:
+      - /url: /
+      - img "Tensor.Art" [ref=f10e18]
+    - search [ref=f10e20]:
+      - search [ref=f10e21]:
+        - generic "Cerca" [ref=f10e23]:
+          - searchbox "Cerca" [ref=f10e25]
+    - generic [ref=f10e38]:
+      - generic [ref=f10e39]:
+        - generic [ref=f10e40]: Crea
+        - button "Pubblica" [ref=f10e53] [cursor=pointer]
+      - link [ref=f10e69] [cursor=pointer]:
+        - /url: https://discord.com/invite/qYjANGqBED
+      - link [ref=f10e74] [cursor=pointer]:
+        - /url: /posts?tag=dailyTheme#tags
+      - link "16" [ref=f10e79] [cursor=pointer]:
+        - /url: /updates
+      - button "Accedi" [ref=f10e88] [cursor=pointer]
+      - button [ref=f10e91] [cursor=pointer]
+  - main [ref=f10e96]:
+    - navigation [ref=f10e98]:
+      - link [ref=f10e99] [cursor=pointer]:
+        - /url: /
+        - paragraph [ref=f10e103]: Home
+      - link [ref=f10e104] [cursor=pointer]:
+        - /url: /library
+        - paragraph [ref=f10e108]: Libreria
+      - link "New Forge" [ref=f10e109] [cursor=pointer]:
+        - /url: /forge
+        - generic [ref=f10e110]: New
+        - paragraph [ref=f10e114]: Forge
+      - link [ref=f10e115] [cursor=pointer]:
+        - /url: /models
+        - paragraph [ref=f10e119]: Modelli
+      - link [ref=f10e120] [cursor=pointer]:
+        - /url: /templates
+        - paragraph [ref=f10e124]: Strumenti AI
+      - link [ref=f10e125] [cursor=pointer]:
+        - /url: /posts
+        - paragraph [ref=f10e129]: Post
+      - link [ref=f10e130] [cursor=pointer]:
+        - /url: /workflows
+        - paragraph [ref=f10e134]: Flussi di lavoro
+      - link [ref=f10e135] [cursor=pointer]:
+        - /url: /articles
+        - paragraph [ref=f10e139]: Articoli
+      - link [ref=f10e140] [cursor=pointer]:
+        - /url: /events
+        - paragraph [ref=f10e144]: Eventi
+      - link [ref=f10e145] [cursor=pointer]:
+        - /url: /leaderboard
+        - paragraph [ref=f10e149]: Classifica
+      - link [ref=f10e150] [cursor=pointer]:
+        - /url: /channels/107
+        - paragraph [ref=f10e153]: Personaggio
+      - link [ref=f10e154] [cursor=pointer]:
+        - /url: /channels/101
+        - paragraph [ref=f10e157]: Anime
+      - link [ref=f10e158] [cursor=pointer]:
+        - /url: /channels/100
+        - paragraph [ref=f10e161]: Realistico
+      - link [ref=f10e162] [cursor=pointer]:
+        - /url: /channels/108
+        - paragraph [ref=f10e165]: Illustrazione
+      - link [ref=f10e166] [cursor=pointer]:
+        - /url: /channels/109
+        - paragraph [ref=f10e169]: Fantascienza
+      - link [ref=f10e170] [cursor=pointer]:
+        - /url: /channels/110
+        - paragraph [ref=f10e173]: Design Visivo
+      - link [ref=f10e174] [cursor=pointer]:
+        - /url: /channels/111
+        - paragraph [ref=f10e177]: Design dello Spazio
+      - link [ref=f10e178] [cursor=pointer]:
+        - /url: /channels/112
+        - paragraph [ref=f10e181]: Progettazione del Gioco
+    - article [ref=f10e184]:
+      - generic [ref=f10e185]:
+        - generic [ref=f10e186]:
+          - generic [ref=f10e187]:
+            - img "AI generated image" [ref=f10e191] [cursor=pointer]
+            - generic:
+              - button [ref=f10e195] [cursor=pointer]
+              - button [ref=f10e200] [cursor=pointer]
+          - generic [ref=f10e206]:
+            - generic [ref=f10e207]:
+              - generic [ref=f10e208]: Image2Video ltx
+              - generic [ref=f10e212]:
+                - button [ref=f10e214] [cursor=pointer]
+                - button [ref=f10e221] [cursor=pointer]
+                - button [ref=f10e230] [cursor=pointer]
+            - generic [ref=f10e238]:
+              - link "Jacky Jacky" [ref=f10e239] [cursor=pointer]:
+                - /url: /u/941454218064100350
+                - img "Jacky" [ref=f10e242]
+                - generic [ref=f10e243]: Jacky
+              - separator [ref=f10e244]
+              - paragraph [ref=f10e245]:
+                - text: "Aggiornato:"
+                - time [ref=f10e246]: Jun 9, 2026 5:11 AM
+              - generic [ref=f10e247]: "16"
+          - list [ref=f10e253]:
+            - listitem [ref=f10e254]:
+              - link "Anime" [ref=f10e255] [cursor=pointer]:
+                - /url: /channels/101?tab=templates
+            - listitem [ref=f10e256]:
+              - link "CARTOON" [ref=f10e257] [cursor=pointer]:
+                - /url: /tag/595825982460395613
+            - listitem [ref=f10e258]:
+              - link "COMIC" [ref=f10e259] [cursor=pointer]:
+                - /url: /tag/601273134863124110
+            - listitem [ref=f10e260]:
+              - link "MANHWA" [ref=f10e261] [cursor=pointer]:
+                - /url: /tag/610690194525398657
+            - listitem [ref=f10e262]:
+              - link "DONGHUA" [ref=f10e263] [cursor=pointer]:
+                - /url: /tag/628739335025372961
+          - generic [ref=f10e265]:
+            - generic [ref=f10e270]:
+              - generic [ref=f10e271]: Post Correlati
+              - generic [ref=f10e274]: Commenti
+            - generic [ref=f10e279]: Nessun post ancora
+        - generic [ref=f10e285]:
+          - generic [ref=f10e286]:
+            - generic [ref=f10e292]:
+              - generic [ref=f10e294]: Prova
+              - generic [ref=f10e297]: Risultato
+            - generic [ref=f10e304]:
+              - generic [ref=f10e306]:
+                - generic [ref=f10e309]:
+                  - generic [ref=f10e310]: First Image
+                  - generic [ref=f10e319] [cursor=pointer]:
+                    - generic [ref=f10e325]: Clicca o trascina un file in quest'area per caricarlo
+                    - button "Seleziona dall'area di lavoro Libreria" [ref=f10e328]:
+                      - generic [ref=f10e330]:
+                        - generic [ref=f10e331]: Seleziona dall'area di lavoro
+                        - generic [ref=f10e338]: Libreria
+                - generic [ref=f10e348]:
+                  - generic [ref=f10e349]: Last Image
+                  - generic [ref=f10e358] [cursor=pointer]:
+                    - generic [ref=f10e364]: Clicca o trascina un file in quest'area per caricarlo
+                    - button "Seleziona dall'area di lavoro Libreria" [ref=f10e367]:
+                      - generic [ref=f10e369]:
+                        - generic [ref=f10e370]: Seleziona dall'area di lavoro
+                        - generic [ref=f10e377]: Libreria
+                - generic [ref=f10e387]:
+                  - generic [ref=f10e388]: Positive
+                  - generic [ref=f10e391]:
+                    - textbox [ref=f10e395]
+                    - generic [ref=f10e397]:
+                      - button [ref=f10e399] [cursor=pointer]
+                      - button [ref=f10e406] [cursor=pointer]
+                      - button [ref=f10e413] [cursor=pointer]
+                - generic [ref=f10e421]:
+                  - generic [ref=f10e422]: "[124]TensorArt_PromptText"
+                  - generic [ref=f10e425]:
+                    - textbox [ref=f10e429]: shaking camera, blur, distorted limbs, jitter, fast motion, hair flying, wild hair movement, camera rotation, character turning around, back view, side profile, face turning away
+                    - generic [ref=f10e437]:
+                      - button [ref=f10e439] [cursor=pointer]
+                      - button [ref=f10e446] [cursor=pointer]
+                      - button [ref=f10e453] [cursor=pointer]
+                - generic [ref=f10e461]:
+                  - generic [ref=f10e462]: Time
+                  - generic [ref=f10e464]:
+                    - generic [ref=f10e465] [cursor=pointer]: 2s
+                    - generic [ref=f10e466] [cursor=pointer]: 3s
+                    - generic [ref=f10e467] [cursor=pointer]: 4s
+                    - generic [ref=f10e468] [cursor=pointer]: 5s
+                    - generic [ref=f10e469] [cursor=pointer]: 6s
+                    - generic [ref=f10e470] [cursor=pointer]: 7s
+                    - generic [ref=f10e471] [cursor=pointer]: 8s
+                    - generic [ref=f10e472] [cursor=pointer]: 9s
+                    - generic [ref=f10e473] [cursor=pointer]: 10s
+                    - generic [ref=f10e474] [cursor=pointer]: 11s
+                    - generic [ref=f10e475] [cursor=pointer]: 12s
+              - generic [ref=f10e477]:
+                - button [ref=f10e479] [cursor=pointer]:
+                  - paragraph [ref=f10e483]: Go
+                - paragraph [ref=f10e490] [cursor=pointer]: ≈14.3
+          - generic [ref=f10e496]:
+            - text: "Questo strumento AI supporta servizi API:"
+            - link "Visualizza i parametri dell'API" [ref=f10e497] [cursor=pointer]:
+              - /url: /apis/aitool/1008040408166456048

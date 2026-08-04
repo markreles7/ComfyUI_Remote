@@ -1,0 +1,512 @@
+- generic [ref=e4]:
+  - banner [ref=e6]:
+    - link [ref=e16] [cursor=pointer]:
+      - /url: /
+      - img "Tensor.Art" [ref=e18]
+    - search [ref=e20]:
+      - search [ref=e21]:
+        - generic "Cerca" [ref=e23]:
+          - searchbox "Cerca" [ref=e25]
+    - generic [ref=e38]:
+      - generic [ref=e39]:
+        - generic [ref=e40]: Crea
+        - button "Pubblica" [ref=e53] [cursor=pointer]
+      - link [ref=e69] [cursor=pointer]:
+        - /url: https://discord.com/invite/qYjANGqBED
+      - link [ref=e74] [cursor=pointer]:
+        - /url: /updates
+      - button [ref=e83] [cursor=pointer]
+  - main [ref=e88]:
+    - generic [ref=e90]:
+      - navigation [ref=e91]:
+        - link [ref=e92] [cursor=pointer]:
+          - /url: /
+          - paragraph [ref=e94]: Home
+        - link [ref=e95] [cursor=pointer]:
+          - /url: /library
+          - paragraph [ref=e97]: Libreria
+        - link "Forge New" [ref=e98] [cursor=pointer]:
+          - /url: /forge
+          - paragraph [ref=e100]: Forge
+          - generic [ref=e101]: New
+        - link [ref=e102] [cursor=pointer]:
+          - /url: /models
+          - paragraph [ref=e104]: Modelli
+        - link [ref=e105] [cursor=pointer]:
+          - /url: /templates
+          - paragraph [ref=e107]: Strumenti AI
+        - link [ref=e108] [cursor=pointer]:
+          - /url: /posts
+          - paragraph [ref=e110]: Post
+        - link [ref=e111] [cursor=pointer]:
+          - /url: /workflows
+          - paragraph [ref=e113]: Flussi di lavoro
+        - link [ref=e114] [cursor=pointer]:
+          - /url: /articles
+          - paragraph [ref=e116]: Articoli
+        - link [ref=e117] [cursor=pointer]:
+          - /url: /events
+          - paragraph [ref=e119]: Eventi
+        - link [ref=e120] [cursor=pointer]:
+          - /url: /leaderboard
+          - paragraph [ref=e122]: Classifica
+        - generic [ref=e123]:
+          - heading "Canale" [level=2] [ref=e124]
+          - generic [ref=e125]:
+            - link [ref=e126] [cursor=pointer]:
+              - /url: /channels/107
+              - paragraph [ref=e128]: Personaggio
+            - link [ref=e129] [cursor=pointer]:
+              - /url: /channels/101
+              - paragraph [ref=e131]: Anime
+            - link [ref=e132] [cursor=pointer]:
+              - /url: /channels/100
+              - paragraph [ref=e134]: Realistico
+            - link [ref=e135] [cursor=pointer]:
+              - /url: /channels/108
+              - paragraph [ref=e137]: Illustrazione
+            - link [ref=e138] [cursor=pointer]:
+              - /url: /channels/109
+              - paragraph [ref=e140]: Fantascienza
+            - link [ref=e141] [cursor=pointer]:
+              - /url: /channels/110
+              - paragraph [ref=e143]: Design Visivo
+            - link [ref=e144] [cursor=pointer]:
+              - /url: /channels/111
+              - paragraph [ref=e146]: Design dello Spazio
+            - link [ref=e147] [cursor=pointer]:
+              - /url: /channels/112
+              - paragraph [ref=e149]: Progettazione del Gioco
+      - separator [ref=e150]
+      - generic [ref=e151]:
+        - list [ref=e152]:
+          - listitem [ref=e153]:
+            - link "TAMS" [ref=e154] [cursor=pointer]:
+              - /url: https://tams.tensor.art
+          - listitem [ref=e155]:
+            - link "Instagram" [ref=e161] [cursor=pointer]:
+              - /url: https://www.instagram.com/tensor.art
+          - listitem [ref=e162]:
+            - link "TiKTok" [ref=e171] [cursor=pointer]:
+              - /url: https://www.tiktok.com/@tensor.art
+          - listitem [ref=e172]:
+            - link "Twitter" [ref=e177] [cursor=pointer]:
+              - /url: https://twitter.com/TensorArt
+          - listitem [ref=e178]:
+            - link "Reddit" [ref=e184] [cursor=pointer]:
+              - /url: https://www.reddit.com/r/TensorArt_HUB/
+          - listitem [ref=e185]:
+            - link "Informativa sulla Privacy" [ref=e186] [cursor=pointer]:
+              - /url: /about/privacy-policy
+          - listitem [ref=e187]:
+            - link "Termini di Servizio" [ref=e188] [cursor=pointer]:
+              - /url: /about/terms-of-service-new
+        - list [ref=e189]:
+          - listitem [ref=e190]:
+            - link "Report Compliance Issue" [ref=e191] [cursor=pointer]:
+              - /url: mailto:compliance@tensor.art?subject=Compliance%20Report%20-%20[Select%20Issue%20Type]&body=Dear%20Tensor.art%20Compliance%20Team%2C%0D%0A%0D%0AI%20would%20like%20to%20report%20a%20compliance%20concern%20regarding%20content%20on%20your%20platform.%0D%0A%0D%0A%5B%20%5D%20Child%20Safety%20%2F%20Minor%20Protection%0D%0A%5B%20%5D%20Intellectual%20Property%20%2F%20Copyright%20Infringement%0D%0A%5B%20%5D%20Unauthorized%20Use%20of%20Real%20Person%27s%20Likeness%20%2F%20Deepfake%0D%0A%5B%20%5D%20Other%20Compliance%20Issue%0D%0A%0D%0ADetails%20of%20the%20Issue%3A%0D%0A--------------------------------%0D%0A%0D%0AContent%20URL%20(if%20applicable)%3A%20%0D%0A%0D%0ADescription%20of%20Concern%3A%0D%0A%0D%0A%0D%0AYour%20Information%20(Optional)%3A%0D%0A--------------------------------%0D%0AName%3A%20%0D%0AEmail%3A%20%0D%0ARelationship%20to%20Content%3A%20%5B%20%5D%20Content%20Owner%20%5B%20%5D%20Authorized%20Representative%20%5B%20%5D%20Concerned%20User%20%5B%20%5D%20Other%0D%0A%0D%0AAdditional%20Information%3A%0D%0A%0D%0A%0D%0ABy%20submitting%20this%20report%2C%20I%20affirm%20that%20the%20information%20provided%20is%20accurate%20to%20the%20best%20of%20my%20knowledge.%0D%0A%0D%0AThank%20you%20for%20your%20attention%20to%20this%20matter.%0D%0A%0D%0ASincerely%2C%0D%0A%5BYour%20Name%5D
+          - listitem [ref=e192]:
+            - generic [ref=e193]: ©TENSOR tensor.art 2026
+    - generic [ref=e195]:
+      - generic [ref=e199]:
+        - link [ref=e200] [cursor=pointer]:
+          - /url: https://tensor.art/blackboard/personaX
+        - link [ref=e203] [cursor=pointer]:
+          - /url: https://tensor.art/blackboard/notice727
+        - link [ref=e206] [cursor=pointer]:
+          - /url: https://tensor.art/forge
+        - link [ref=e209] [cursor=pointer]:
+          - /url: https://tensor.art/forge
+      - generic [ref=e212]:
+        - heading "In evidenza" [level=2] [ref=e214]
+        - generic [ref=e217]:
+          - button "hot OC Creator Crea un personaggio originale da zero" [ref=e218] [cursor=pointer]:
+            - generic [ref=e219]: hot
+            - generic [ref=e226]:
+              - generic "OC Creator" [ref=e228]
+              - paragraph [ref=e229]: Crea un personaggio originale da zero
+          - button "Anime Lab Personaggi anime, scene e movimento stilizzato." [ref=e230] [cursor=pointer]:
+            - generic [ref=e238]:
+              - generic "Anime Lab" [ref=e240]
+              - paragraph [ref=e241]: Personaggi anime, scene e movimento stilizzato.
+          - button "new Design Agent Chatta per generare, modificare e perfezionare i tuoi design all'istante." [ref=e242] [cursor=pointer]:
+            - generic [ref=e243]: new
+            - generic [ref=e250]:
+              - generic "Design Agent" [ref=e252]
+              - paragraph [ref=e253]: Chatta per generare, modificare e perfezionare i tuoi design all'istante.
+          - button "Photoreal Studio Genera fotografie realistiche e scene iper-realistiche." [ref=e254] [cursor=pointer]:
+            - generic [ref=e263]:
+              - generic "Photoreal Studio" [ref=e265]
+              - paragraph [ref=e266]: Genera fotografie realistiche e scene iper-realistiche.
+          - button "Modifica Intelligente Modifica, migliora o trasforma facilmente qualsiasi immagine." [ref=e267] [cursor=pointer]:
+            - generic [ref=e274]:
+              - generic "Modifica Intelligente" [ref=e276]
+              - paragraph [ref=e277]: Modifica, migliora o trasforma facilmente qualsiasi immagine.
+          - button "Avatar Digitale Un Tu virtuale per qualsiasi spazio digitale" [ref=e278] [cursor=pointer]:
+            - generic [ref=e285]:
+              - generic "Avatar Digitale" [ref=e287]
+              - paragraph [ref=e288]: Un Tu virtuale per qualsiasi spazio digitale
+          - button "Crea da Riferimento Crea qualsiasi video/immagine dal tuo riferimento/personaggio" [ref=e289] [cursor=pointer]:
+            - generic [ref=e299]:
+              - generic "Crea da Riferimento" [ref=e301]
+              - paragraph [ref=e302]: Crea qualsiasi video/immagine dal tuo riferimento/personaggio
+          - button "Movimento & Riferimento Posa Guida pose, movimenti e composizione della fotocamera." [ref=e303] [cursor=pointer]:
+            - generic [ref=e310]:
+              - generic "Movimento & Riferimento Posa" [ref=e312]
+              - paragraph [ref=e313]: Guida pose, movimenti e composizione della fotocamera.
+          - button "Tendenze SNS Remix le creazioni di tendenza all'istante" [ref=e314] [cursor=pointer]:
+            - generic [ref=e321]:
+              - generic "Tendenze SNS" [ref=e323]
+              - paragraph [ref=e324]: Remix le creazioni di tendenza all'istante
+          - button "Brand Design Crea loghi, elementi visivi del brand e risorse di marketing in pochi secondi." [ref=e325] [cursor=pointer]:
+            - generic [ref=e333]:
+              - generic "Brand Design" [ref=e335]
+              - paragraph [ref=e336]: Crea loghi, elementi visivi del brand e risorse di marketing in pochi secondi.
+      - generic [ref=e338]:
+        - heading "Modelli" [level=2] [ref=e340]
+        - generic [ref=e341]:
+          - list [ref=e343]:
+            - listitem [ref=e344]:
+              - generic [ref=e345] [cursor=pointer]: Tendenze Calde
+            - listitem [ref=e347]:
+              - generic [ref=e348] [cursor=pointer]: Manga
+            - listitem [ref=e350]:
+              - generic [ref=e351] [cursor=pointer]: Niji Style
+            - listitem [ref=e353]:
+              - generic [ref=e354] [cursor=pointer]: VTuber
+            - listitem [ref=e356]:
+              - generic [ref=e357] [cursor=pointer]: Fotografia
+            - listitem [ref=e359]:
+              - generic [ref=e360] [cursor=pointer]: E-commerce
+            - listitem [ref=e362]:
+              - generic [ref=e363] [cursor=pointer]: 3D & CGI
+            - listitem [ref=e365]:
+              - generic [ref=e366] [cursor=pointer]: Chibi
+            - listitem [ref=e368]:
+              - generic [ref=e369] [cursor=pointer]: Arte Vintage
+            - listitem [ref=e371]:
+              - generic [ref=e372] [cursor=pointer]: Accogliente e Ristoratore
+          - link [ref=e374] [cursor=pointer]:
+            - /url: /models
+        - generic [ref=e379]:
+          - link [ref=e380] [cursor=pointer]:
+            - /url: /models/1022624069478009625/Krea-2-sweet-anime-DQ-2.0
+            - article [ref=e381]:
+              - generic [ref=e382]:
+                - img "1022623832181091873" [ref=e384]
+                - generic [ref=e385]: CHECKPOINT KREA_2
+                - generic [ref=e389]: EXCLUSIVE
+              - generic [ref=e391]:
+                - heading "Krea-2 sweet anime-DQ-2.0" [level=3] [ref=e392]
+                - generic [ref=e393]:
+                  - generic [ref=e394]:
+                    - img "DQ" [ref=e397]
+                    - paragraph [ref=e398]: DQ
+                  - generic [ref=e400]:
+                    - generic [ref=e401]: 2.1K
+                    - generic [ref=e406]: "74"
+          - link [ref=e411] [cursor=pointer]:
+            - /url: /models/1002209440306353368/Shikimi-Artist-Style-v1
+            - article [ref=e412]:
+              - generic [ref=e413]:
+                - img "1002282978736357159" [ref=e415]
+                - generic [ref=e416]: LORA Anima
+                - button [ref=e420]
+                - generic [ref=e427]: EXCLUSIVE
+              - generic [ref=e429]:
+                - heading "Shikimi - Artist Style-v1" [level=3] [ref=e430]
+                - generic [ref=e431]:
+                  - generic [ref=e432]:
+                    - img "Azriaelis" [ref=e435]
+                    - paragraph [ref=e444]: Azriaelis
+                  - generic [ref=e446]:
+                    - generic [ref=e447]: "616"
+                    - generic [ref=e452]: "112"
+          - link [ref=e457] [cursor=pointer]:
+            - /url: /models/1018562779541440663/Candid-Grain-Style-(ANIMA)-beta-v3
+            - article [ref=e458]:
+              - generic [ref=e459]:
+                - img "1018564021860756530" [ref=e461]
+                - generic [ref=e462]: LORA Anima
+                - generic [ref=e466]: EARLY ACCESS
+              - generic [ref=e468]:
+                - heading "Candid Grain Style (ANIMA) -beta-v3" [level=3] [ref=e469]
+                - generic [ref=e470]:
+                  - generic [ref=e471]:
+                    - img "amesugary" [ref=e474]
+                    - paragraph [ref=e483]: amesugary
+                  - generic [ref=e485]:
+                    - generic [ref=e486]: "65"
+                    - generic [ref=e491]: "15"
+          - link [ref=e496] [cursor=pointer]:
+            - /url: /models/997805551565978155/MAXIM-Midjourney-Paint-texture-Z-Image-v1
+            - article [ref=e497]:
+              - generic [ref=e498]:
+                - img "997811651493283588" [ref=e500]
+                - generic [ref=e501]: LORA Z-Image
+                - generic [ref=e505]: EXCLUSIVE
+              - generic [ref=e507]:
+                - heading "MAXIM - Midjourney Paint texture -Z-Image v1" [level=3] [ref=e508]
+                - generic [ref=e509]:
+                  - generic [ref=e510]:
+                    - img "FINNNNNNNNNN" [ref=e513]
+                    - paragraph [ref=e522]: FINNNNNNNNNN
+                  - generic [ref=e524]:
+                    - generic [ref=e525]: 232K
+                    - generic [ref=e530]: 2.7K
+          - link [ref=e535] [cursor=pointer]:
+            - /url: /models/1006547383045115247/DaylightAllure-Artist-Style-v1
+            - article [ref=e536]:
+              - generic [ref=e537]:
+                - img "1006549327591541563" [ref=e539]
+                - generic [ref=e540]: LORA Anima
+                - generic [ref=e544]: EARLY ACCESS
+              - generic [ref=e546]:
+                - heading "DaylightAllure - Artist Style-v1" [level=3] [ref=e547]
+                - generic [ref=e548]:
+                  - generic [ref=e549]:
+                    - img "Azriaelis" [ref=e552]
+                    - paragraph [ref=e561]: Azriaelis
+                  - generic [ref=e563]:
+                    - generic [ref=e564]: "295"
+                    - generic [ref=e569]: "73"
+          - link [ref=e574] [cursor=pointer]:
+            - /url: /models/1016848571120549412/Chuby-Mi-Artist-Style-v1
+            - article [ref=e575]:
+              - generic [ref=e576]:
+                - img "1017289452734674321" [ref=e578]
+                - generic [ref=e579]: LORA Anima
+              - generic [ref=e584]:
+                - heading "Chuby Mi - Artist Style-v1" [level=3] [ref=e585]
+                - generic [ref=e586]:
+                  - generic [ref=e587]:
+                    - img "Azriaelis" [ref=e590]
+                    - paragraph [ref=e599]: Azriaelis
+                  - generic [ref=e601]:
+                    - generic [ref=e602]: "57"
+                    - generic [ref=e607]: "24"
+          - link [ref=e612] [cursor=pointer]:
+            - /url: /models/1024190474115640627/Dear-You-Clean-Manhwa-Style-Anima-V1.0
+            - article [ref=e613]:
+              - generic [ref=e614]:
+                - img "1024191582217212698" [ref=e616]
+                - generic [ref=e618]:
+                  - generic [ref=e619]: LORA Anima
+                  - generic [ref=e621]: Aggiornato
+                - generic [ref=e622]: EXCLUSIVE
+              - generic [ref=e624]:
+                - heading "Dear You - Clean Manhwa Style-Anima-V1.0" [level=3] [ref=e625]
+                - generic [ref=e626]:
+                  - generic [ref=e627]:
+                    - img "riiwa" [ref=e630]
+                    - paragraph [ref=e639]: riiwa
+                  - generic [ref=e641]:
+                    - generic [ref=e642]: 10K
+                    - generic [ref=e647]: "157"
+          - link [ref=e652] [cursor=pointer]:
+            - /url: /models/999209373437823837/RizmiX-Wonder-Illustrious-Anime-XL-V2
+            - article [ref=e653]:
+              - generic [ref=e654]:
+                - img "999254274099683215" [ref=e656]
+                - generic [ref=e657]: CHECKPOINT Illustrious
+                - generic [ref=e661]: EXCLUSIVE
+              - generic [ref=e663]:
+                - heading "RizmiX Wonder Illustrious Anime XL-V2" [level=3] [ref=e664]
+                - generic [ref=e665]:
+                  - generic [ref=e666]:
+                    - img "Risk_Art" [ref=e669]
+                    - paragraph [ref=e678]: Risk_Art
+                  - generic [ref=e680]:
+                    - generic [ref=e681]: 819K
+                    - generic [ref=e686]: 3.3K
+          - link [ref=e691] [cursor=pointer]:
+            - /url: /models/1002084040146187038/Mochi-V1
+            - article [ref=e692]:
+              - generic [ref=e693]:
+                - img "1002161852068693077" [ref=e695]
+                - generic [ref=e696]: LORA Anima
+                - generic [ref=e700]: EXCLUSIVE
+              - generic [ref=e702]:
+                - heading "Mochi 🍡-V1" [level=3] [ref=e703]
+                - generic [ref=e704]:
+                  - generic [ref=e705]:
+                    - img "PinkCotton 🎐" [ref=e708]
+                    - paragraph [ref=e709]: PinkCotton 🎐
+                  - generic [ref=e711]:
+                    - generic [ref=e712]: "519"
+                    - generic [ref=e717]: "102"
+          - link [ref=e722] [cursor=pointer]:
+            - /url: /models/997257829419087821/ToxicEchoIL-v3
+            - article [ref=e723]:
+              - generic [ref=e724]:
+                - img "997273134535038325" [ref=e726]
+                - generic [ref=e727]: CHECKPOINT Illustrious
+                - generic [ref=e731]: EXCLUSIVE
+              - generic [ref=e733]:
+                - heading "ToxicEchoIL-v3" [level=3] [ref=e734]
+                - generic [ref=e735]:
+                  - generic [ref=e736]:
+                    - img "SuiginToxic" [ref=e739]
+                    - paragraph [ref=e740]: SuiginToxic
+                  - generic [ref=e742]:
+                    - generic [ref=e743]: 660K
+                    - generic [ref=e748]: 3.7K
+          - link [ref=e753] [cursor=pointer]:
+            - /url: /models/1003681422235419473/PastelAnimA-v1
+            - article [ref=e754]:
+              - generic [ref=e755]:
+                - img "1003691643183860008" [ref=e757]
+                - generic [ref=e758]: CHECKPOINT Anima
+                - generic [ref=e762]: EXCLUSIVE
+              - generic [ref=e764]:
+                - heading "Pastel📍AnimA-v1" [level=3] [ref=e765]
+                - generic [ref=e766]:
+                  - generic [ref=e767]:
+                    - img "NukeA.I" [ref=e770]
+                    - paragraph [ref=e779]: NukeA.I
+                  - generic [ref=e781]:
+                    - generic [ref=e782]: 7.1K
+                    - generic [ref=e787]: "247"
+          - link [ref=e792] [cursor=pointer]:
+            - /url: /models/1020746014497238908/JMK2-v0.9(test)
+            - article [ref=e793]:
+              - generic [ref=e794]:
+                - img "1020756375032041623" [ref=e796]
+                - generic [ref=e797]: LORA KREA_2
+                - generic [ref=e801]: EXCLUSIVE
+              - generic [ref=e803]:
+                - heading "JMK2-v0.9(test)" [level=3] [ref=e804]
+                - generic [ref=e805]:
+                  - generic [ref=e806]:
+                    - img "NukeA.I" [ref=e809]
+                    - paragraph [ref=e818]: NukeA.I
+                  - generic [ref=e820]:
+                    - generic [ref=e821]: 8.9K
+                    - generic [ref=e826]: "115"
+          - link [ref=e831] [cursor=pointer]:
+            - /url: /models/997779185835456573/Cat-Tower-(NoobAI-XL-checkpoint)-ChenkinNoob-v1.2
+            - article [ref=e832]:
+              - generic [ref=e833]:
+                - img "997770723676163770" [ref=e835]
+                - generic [ref=e836]: CHECKPOINT NoobAI
+              - generic [ref=e841]:
+                - heading "Cat Tower (NoobAI XL checkpoint)-ChenkinNoob v1.2" [level=3] [ref=e842]
+                - generic [ref=e843]:
+                  - generic [ref=e844]:
+                    - img "miaomiao" [ref=e847]
+                    - paragraph [ref=e848]: miaomiao
+                  - generic [ref=e850]:
+                    - generic [ref=e851]: 390K
+                    - generic [ref=e856]: "803"
+          - link [ref=e861] [cursor=pointer]:
+            - /url: /models/1018219159609212551/Artistic-texture-V1
+            - article [ref=e862]:
+              - generic [ref=e863]:
+                - img "1018222039384729727" [ref=e865]
+                - generic [ref=e866]: CHECKPOINT Illustrious
+                - generic [ref=e870]: EXCLUSIVE
+              - generic [ref=e872]:
+                - heading "Artistic texture-V1" [level=3] [ref=e873]
+                - generic [ref=e874]:
+                  - generic [ref=e875]:
+                    - img "Light01" [ref=e878]
+                    - paragraph [ref=e887]: Light01
+                  - generic [ref=e889]:
+                    - generic [ref=e890]: 1.9K
+                    - generic [ref=e895]: "100"
+          - link [ref=e900] [cursor=pointer]:
+            - /url: /models/1014831514891867332/Ao-Fujimori-Artist-Style-v1
+            - article [ref=e901]:
+              - generic [ref=e902]:
+                - img "1015330522445912957" [ref=e904]
+                - generic [ref=e905]: LORA Anima
+                - generic [ref=e909]: EARLY ACCESS
+              - generic [ref=e911]:
+                - heading "Ao Fujimori - Artist Style-v1" [level=3] [ref=e912]
+                - generic [ref=e913]:
+                  - generic [ref=e914]:
+                    - img "Azriaelis" [ref=e917]
+                    - paragraph [ref=e926]: Azriaelis
+                  - generic [ref=e928]:
+                    - generic [ref=e929]: "196"
+                    - generic [ref=e934]: "24"
+          - link [ref=e939] [cursor=pointer]:
+            - /url: /models/1000408500389547272/Nini-Dreamcelain-1
+            - article [ref=e940]:
+              - generic [ref=e941]:
+                - img "1000414365167423200" [ref=e943]
+                - generic [ref=e944]: LORA Z-Image-Turbo
+                - generic [ref=e948]: EXCLUSIVE
+              - generic [ref=e950]:
+                - heading "⋆ Nini Dreamcelain ⋆-1" [level=3] [ref=e951]
+                - generic [ref=e952]:
+                  - generic [ref=e953]:
+                    - img "Nini Nozomi" [ref=e956]
+                    - paragraph [ref=e965]: Nini Nozomi
+                  - generic [ref=e967]:
+                    - generic [ref=e968]: 36K
+                    - generic [ref=e973]: "452"
+          - link [ref=e978] [cursor=pointer]:
+            - /url: /models/1015950511712509857/Anima-flyx3My-private-model-Anima_v1.0
+            - article [ref=e979]:
+              - generic [ref=e980]:
+                - img "1015949462666801660" [ref=e982]
+                - generic [ref=e983]: LORA Anima
+                - generic [ref=e987]: EARLY ACCESS
+              - generic [ref=e989]:
+                - heading "[Anima] 【flyx3】My private model/私人模型分享-Anima_v1.0" [level=3] [ref=e990]
+                - generic [ref=e991]:
+                  - generic [ref=e992]:
+                    - img "flyx3" [ref=e995]
+                    - paragraph [ref=e996]: flyx3
+                  - generic [ref=e998]:
+                    - generic [ref=e999]: "62"
+                    - generic [ref=e1004]: "35"
+          - link [ref=e1009] [cursor=pointer]:
+            - /url: /models/1005709521898740200/acyantree-Artist-Style-v1
+            - article [ref=e1010]:
+              - generic [ref=e1011]:
+                - img "1005715072070221604" [ref=e1013]
+                - generic [ref=e1014]: LORA Anima
+                - generic [ref=e1018]: EXCLUSIVE
+              - generic [ref=e1020]:
+                - heading "acyantree - Artist Style-v1" [level=3] [ref=e1021]
+                - generic [ref=e1022]:
+                  - generic [ref=e1023]:
+                    - img "Azriaelis" [ref=e1026]
+                    - paragraph [ref=e1035]: Azriaelis
+                  - generic [ref=e1037]:
+                    - generic [ref=e1038]: 1K
+                    - generic [ref=e1043]: "102"
+          - link [ref=e1048] [cursor=pointer]:
+            - /url: /models/1020836237801425422/LEO-DEVIN-V1.1
+            - article [ref=e1049]:
+              - generic [ref=e1050]:
+                - img "1021528571497174539" [ref=e1052]
+                - generic [ref=e1053]: CHECKPOINT Illustrious
+                - generic [ref=e1057]: EXCLUSIVE
+              - generic [ref=e1059]:
+                - heading "LEO DEVIN-V1.1" [level=3] [ref=e1060]
+                - generic [ref=e1061]:
+                  - generic [ref=e1062]:
+                    - img "*Devin*" [ref=e1065]
+                    - paragraph [ref=e1074]: "*Devin*"
+                  - generic [ref=e1076]:
+                    - generic [ref=e1077]: 21K
+                    - generic [ref=e1082]: "177"
+          - link [ref=e1087] [cursor=pointer]:
+            - /url: /models/1007332464412117024/Moonstar-Semi-Realistic-Azriael's-Boys-v2
+            - article [ref=e1088]:
+              - generic [ref=e1089]:
+                - img "1007347705103559417" [ref=e1091]
+                - generic [ref=e1092]: LORA Anima
+                - generic [ref=e1096]: EXCLUSIVE
+              - generic [ref=e1098]:
+                - heading "Moonstar - Semi Realistic - Azriael's Boys-v2" [level=3] [ref=e1099]
+                - generic [ref=e1100]:
+                  - generic [ref=e1101]:
+                    - img "Azriaelis" [ref=e1104]
+                    - paragraph [ref=e1113]: Azriaelis
+                  - generic [ref=e1115]:
+                    - generic [ref=e1116]: "846"
+                    - generic [ref=e1121]: "77"

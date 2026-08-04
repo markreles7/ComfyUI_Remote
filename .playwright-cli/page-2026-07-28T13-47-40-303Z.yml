@@ -1,0 +1,164 @@
+- generic [ref=e1]:
+  - main [ref=e9]:
+    - generic [ref=e10]:
+      - generic "Progress Bar by rgthree. right-click for rgthree menu." [ref=e12]: Idle
+      - generic [ref=e17]:
+        - generic [ref=e18]:
+          - generic [ref=e19]: ↹ Resize Feed
+          - generic:
+            - generic "Controls the maximum size of the image feed panel (25vh)":
+              - generic: Feed Size...
+              - slider: "25"
+            - generic "Controls the number of columns in the feed (4 columns). Click label to set custom value.":
+              - generic: Column count...
+              - slider: "4"
+        - generic [ref=e20]:
+          - button "Clear" [ref=e21] [cursor=pointer]
+          - button "❌" [ref=e22] [cursor=pointer]
+      - generic [ref=e23]:
+        - text: .. .. .. ▼ ▼
+        - generic:
+          - generic [ref=e26]:
+            - group [ref=e30]:
+              - button "Unsaved Workflow • Close" [pressed] [ref=e31] [cursor=pointer]:
+                - generic [ref=e33]:
+                  - generic [ref=e34]: Unsaved Workflow
+                  - generic [ref=e35]:
+                    - generic [ref=e36]: •
+                    - button "Close" [ref=e37]:
+                      - generic [ref=e38]: 
+            - button "Create a new blank workflow" [ref=e39] [cursor=pointer]:
+              - generic [ref=e40]: 
+          - generic:
+            - navigation [ref=e42]:
+              - generic [ref=e43]:
+                - generic [ref=e44]:
+                  - button "Assets (a)" [ref=e50] [cursor=pointer]
+                  - button "Node Library (n)" [ref=e54] [cursor=pointer]
+                  - button "Model Library (m)" [ref=e58] [cursor=pointer]
+                  - button "Workflows (w)" [active] [ref=e62] [cursor=pointer]
+                  - button "Apps" [ref=e66] [cursor=pointer]
+                  - button "NodesMap" [ref=e70] [cursor=pointer]:
+                    - generic [ref=e71]: 
+                  - 'button "MTB: Browse inputs and outputs directories." [ref=e74] [cursor=pointer]':
+                    - generic [ref=e75]: 
+                  - button "Templates" [ref=e78] [cursor=pointer]
+                - generic [ref=e82]:
+                  - button "Help Center" [ref=e83] [cursor=pointer]:
+                    - generic [ref=e84]: 
+                  - button "Toggle Bottom Panel" [ref=e87] [cursor=pointer]
+                  - button "Keyboard Shortcuts (Ctrl + Shift + k)" [ref=e91] [cursor=pointer]
+                  - button "Settings (Ctrl + ,)" [ref=e95] [cursor=pointer]
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic [ref=e99]:
+                          - button "Enter app mode" [ref=e100] [cursor=pointer]
+                          - button "Workflow actions" [ref=e102] [cursor=pointer]:
+                            - generic [ref=e103]: Graph
+                        - text: 
+                    - generic:
+                      - generic:
+                        - button "Extensions" [ref=e106] [cursor=pointer]
+                        - generic [ref=e109]:
+                          - generic [ref=e111]:
+                            - generic [ref=e112]:
+                              - generic "Drag system monitor" [ref=e113]: ⠿
+                              - generic [ref=e114]:
+                                - generic "8 threads" [ref=e603]:
+                                  - generic [ref=e604]: CPU
+                                  - strong [ref=e605]: 44%
+                                - generic "11.9 GiB / 31.9 GiB" [ref=e606]:
+                                  - generic [ref=e607]: RAM
+                                  - strong [ref=e608]: 37%
+                                - generic "1.1 GiB / 47.6 GiB" [ref=e609]:
+                                  - generic [ref=e610]: SWAP
+                                  - strong [ref=e611]: 2%
+                                - 'generic "E:\\: 829.2 GiB / 931.5 GiB" [ref=e612]':
+                                  - generic [ref=e613]: DISK
+                                  - strong [ref=e614]: 89%
+                                - generic "NVIDIA:0 — NVIDIA GeForce RTX 4070 SUPER; GPU utilization" [ref=e615]:
+                                  - generic [ref=e616]: GPU0 Util
+                                  - strong [ref=e617]: 10%
+                                - generic "NVIDIA:0 — NVIDIA GeForce RTX 4070 SUPER; VRAM 661.0 MiB / 12.0 GiB" [ref=e618]:
+                                  - generic [ref=e619]: GPU0 VRAM
+                                  - strong [ref=e620]: 5%
+                                - generic "NVIDIA:0 — NVIDIA GeForce RTX 4070 SUPER; GPU temperature" [ref=e621]:
+                                  - generic [ref=e622]: GPU0 Temp
+                                  - strong [ref=e623]: 47°
+                                - generic "Other:ROOT\\DISPLAY\\0000 — Meta Virtual Monitor; GPU utilization" [ref=e624]:
+                                  - generic [ref=e625]: GPU0 Util
+                                  - strong [ref=e626]: n/a
+                                - generic "Other:ROOT\\DISPLAY\\0000 — Meta Virtual Monitor; VRAM n/a / n/a" [ref=e627]:
+                                  - generic [ref=e628]: GPU0 VRAM
+                                  - strong [ref=e629]: n/a
+                                - generic "Other:ROOT\\DISPLAY\\0000 — Meta Virtual Monitor; GPU temperature" [ref=e630]:
+                                  - generic [ref=e631]: GPU0 Temp
+                                  - strong [ref=e632]: n/a
+                              - button "DaSiWa node settings" [ref=e145] [cursor=pointer]: ⚙
+                            - generic [ref=e146]:
+                              - button "rgthree-comfy" [ref=e147] [cursor=pointer]
+                              - button "󰃀" [ref=e156] [cursor=pointer]
+                            - generic [ref=e159]:
+                              - generic "29%" [ref=e633]: CPU
+                              - 'generic "37% - 11.98 GB / 31.94 GB Max: 11.98 GB" [ref=e634]':
+                                - generic [ref=e166]: RAM
+                                - generic [ref=e167]: 37%
+                              - 'generic "0: NVIDIA GeForce RTX 4070 SUPER - 46°" [ref=e635]':
+                                - generic [ref=e171]: Temp
+                                - generic [ref=e172]: 46°
+                              - 'generic "0: NVIDIA GeForce RTX 4070 SUPER - 7% - 949.59 MB / 11.99 GB Max: 11.98 GB" [ref=e636]':
+                                - generic [ref=e176]: VRAM
+                                - generic [ref=e177]: 7%
+                              - 'generic "0: NVIDIA GeForce RTX 4070 SUPER - 20%" [ref=e637]':
+                                - generic [ref=e181]: GPU
+                                - generic [ref=e182]: 20%
+                            - button "Show Image Feed 🐍" [disabled] [ref=e186]:
+                              - generic [ref=e187]: 󰋹
+                              - text: Show Image Feed 🐍
+                          - region [ref=e190]:
+                            - generic [ref=e192]:
+                              - generic [ref=e193]: .. .. ..
+                              - generic [ref=e194]:
+                                - generic "Batch Count" [ref=e195]:
+                                  - generic [ref=e196]:
+                                    - textbox "Batch Count" [ref=e197]: "1"
+                                    - generic [ref=e198]:
+                                      - button "Increment" [ref=e199] [cursor=pointer]
+                                      - button "Decrement" [disabled]
+                                - button "Run" [ref=e200] [cursor=pointer]
+                                - button "Run" [ref=e202] [cursor=pointer]
+                              - button "Cancel current run" [disabled]
+                              - button "0 active Expand job queue" [ref=e534] [cursor=pointer]:
+                                - generic [ref=e204]: 0 active
+                                - generic [ref=e205]: Expand job queue
+                          - button "Toggle properties panel" [ref=e207] [cursor=pointer]
+                      - alert [ref=e209]:
+                        - generic [ref=e210]:
+                          - generic [ref=e211]: 1 ERROR
+                          - button "Close" [ref=e212] [cursor=pointer]
+                        - list [ref=e215]:
+                          - listitem [ref=e216]:
+                            - generic [ref=e218]: 1 required model is missing
+                        - generic [ref=e219]:
+                          - button "Dismiss" [ref=e220] [cursor=pointer]
+                          - button "Show missing models" [ref=e221] [cursor=pointer]
+                - generic:
+                  - toolbar "Canvas Toolbar" [ref=e222]:
+                    - button "Canvas Mode" [ref=e223] [cursor=pointer]
+                    - button "Fit View (.)" [ref=e229] [cursor=pointer]
+                    - button "Zoom Controls" [ref=e231] [cursor=pointer]:
+                      - generic [ref=e232]: 90%
+                    - button "Show Minimap (ALT + SHIFT + M)" [ref=e236] [cursor=pointer]
+                    - button "Show Links" [ref=e238] [cursor=pointer]
+                  - text: 
+        - generic:
+          - generic "The text to be encoded." [ref=e241]:
+            - textbox "text" [ref=e242]: anime RPG game style, cute anime girl with gigantic fennec ears and a big fluffy fox tail with long wavy blonde hair and large blue eyes blonde colored eyelashes wearing a pink sweater a large oversized gold trimmed black winter coat and a long blue maxi skirt and a red scarf, she is sitting beside a campfire in the wilderness at night playing guitar with a milky way galaxy sky
+          - generic "The text to be encoded." [ref=e243]:
+            - textbox "text" [ref=e244]: low quality, bad anatomy, extra digits, missing digits, extra limbs, missing limbs
+    - text: 
+  - text: ×

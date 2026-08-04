@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0c10">
+  <title>Generazioni · LTX Remote Studio</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/generations.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span>LTX <b>REMOTE</b></span>
+    </a>
+    <div class="topbar-actions">
+      <nav class="primary-nav" aria-label="Navigazione principale">
+        <a href="/guided-create.html">Crea guidata</a>
+        <a href="/">Genera</a>
+        <a href="/studio.html">Image Studio</a>
+        <a href="/video-studio.html">Video Studio</a>
+        <a href="/virtual-influencer.html">Virtual Influencer</a>
+        <a href="/workflow-guide.html">Guida</a>
+        <a class="active" href="/generations.html">Generazioni</a>
+      </nav>
+      <div id="connection" class="connection checking"><span></span>Connessione…</div>
+    </div>
+  </header>
+
+  <main class="gallery-page">
+    <section class="gallery-hero">
+      <div>
+        <p class="eyebrow">ARCHIVIO LOCALE</p>
+        <h1>Le tue <em>generazioni.</em></h1>
+        <p>Visualizza i risultati, controlla lo stato e recupera tutte le impostazioni usate.</p>
+      </div>
+      <div class="gallery-stats" aria-label="Riepilogo generazioni">
+        <div><b id="stat-total">0</b><span>Totali</span></div>
+        <div><b id="stat-completed">0</b><span>Completate</span></div>
+        <div><b id="stat-active">0</b><span>Attive</span></div>
+        <div><b id="stat-archived">0</b><span>Archiviate</span></div>
+      </div>
+    </section>
+
+    <section class="gallery-toolbar panel">
+      <div class="field">
+        <label for="history-search">Cerca</label>
+        <input id="history-search" type="search" placeholder="Prompt o workflow…">
+      </div>
+      <div class="field">
+        <label for="history-workflow">Workflow</label>
+        <select id="history-workflow"><option value="">Tutti i workflow</option></select>
+      </div>
+      <div class="field">
+        <label for="history-status">Stato</label>
+        <select id="history-status">
+          <option value="">Tutti gli stati</option>
+          <option value="completed">Completate</option>
+          <option value="running">In lavorazione</option>
+          <option value="queued">In coda</option>
+          <option value="error">Errori</option>
+          <option value="interrupted">Annullate</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="history-archive">Visualizzazione</label>
+        <select id="history-archive">
+          <option value="visible">Non archiviate</option>
+          <option value="archived">Solo archiviate</option>
+          <option value="all">Tutte</option>
+        </select>
+      </div>
+      <button id="refresh-history" class="ghost-button" type="button">Aggiorna ↻</button>
+    </section>
+
+    <section class="archive-toolbar panel" aria-label="Azioni archivio">
+      <span><b id="archive-selected-count">0</b> selezionate</span>
+      <div>
+        <button id="select-visible-history" class="ghost-button" type="button">Seleziona visibili</button>
+        <button id="clear-history-selection" class="ghost-button" type="button" disabled>Deseleziona</button>
+        <button id="archive-selected-history" class="archive-button" type="button" disabled>Archivia selezionate</button>
+        <button id="restore-selected-history" class="ghost-button" type="button" disabled>Ripristina selezionate</button>
+      </div>
+    </section>
+
+    <section aria-live="polite">
+      <div id="history" class="generation-gallery"></div>
+      <button id="history-load-more" class="ghost-button hidden" type="button">Carica altre generazioni</button>
+      <div id="history-empty" class="history-empty">Non hai ancora eseguito nessuna generazione.</div>
+      <div id="history-no-results" class="history-empty hidden">Nessuna generazione corrisponde ai filtri.</div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status"></div>
+</body>
+</html>

@@ -1,0 +1,130 @@
+- generic [active] [ref=f3e1]:
+  - banner [ref=f3e2]:
+    - link "LTX REMOTE" [ref=f3e3] [cursor=pointer]:
+      - /url: /
+    - generic [ref=f3e6]:
+      - navigation "Navigazione principale" [ref=f3e7]:
+        - link "Genera" [ref=f3e8] [cursor=pointer]:
+          - /url: /
+        - link "Image Studio" [ref=f3e9] [cursor=pointer]:
+          - /url: /studio.html
+        - link "Video Studio" [ref=f3e10] [cursor=pointer]:
+          - /url: /video-studio.html
+        - link "Guida" [ref=f3e11] [cursor=pointer]:
+          - /url: /workflow-guide.html
+        - link "Generazioni" [ref=f3e12] [cursor=pointer]:
+          - /url: /generations.html
+      - generic [ref=f3e13]: ComfyUI online
+  - main [ref=f3e15]:
+    - generic [ref=f3e17]:
+      - paragraph [ref=f3e18]: ACTOR REPLACEMENT / INTERACTIVE SCENE / LIPDUB
+      - heading [level=1] [ref=f3e19]:
+        - text: Entra nella
+        - emphasis [ref=f3e20]: scena.
+      - paragraph [ref=f3e21]: Sostituisci un interprete oppure aggiungi un nuovo personaggio con azioni, dialoghi e risposte sincronizzate.
+    - generic [ref=f3e22]:
+      - generic [ref=f3e23]:
+        - generic [ref=f3e24]:
+          - generic [ref=f3e25]: "01"
+          - generic [ref=f3e26]:
+            - heading "Nuovo progetto video" [level=2] [ref=f3e27]
+            - paragraph [ref=f3e28]: Workflow guidato a stadi, con preflight delle dipendenze
+        - group "Workflow" [ref=f3e29]:
+          - generic [ref=f3e31]:
+            - radio "Actor Replacement Viso o corpo, recitazione e audio originali" [ref=f3e32]
+            - generic [ref=f3e33]:
+              - generic [ref=f3e34]: Actor Replacement
+              - generic [ref=f3e35]: Viso o corpo, recitazione e audio originali
+          - generic [ref=f3e36]:
+            - radio "Interactive Scene Nuovo personaggio, copione e risposte" [checked] [ref=f3e37]
+            - generic [ref=f3e38]:
+              - generic [ref=f3e39]: Interactive Scene
+              - generic [ref=f3e40]: Nuovo personaggio, copione e risposte
+        - status [ref=f3e41]:
+          - generic [ref=f3e42]: ✓
+          - generic [ref=f3e43]:
+            - generic [ref=f3e44]: Interactive Scene pronto
+            - paragraph [ref=f3e45]: Ingredients installato · LipDub disponibile
+        - generic [ref=f3e46]:
+          - generic [ref=f3e47]: Nome progetto
+          - textbox "Nome progetto" [ref=f3e48]:
+            - /placeholder: Es. Scena film · inserimento John
+        - generic [ref=f3e49]:
+          - generic [ref=f3e50]:
+            - generic [ref=f3e51]: Keyframe master / reference sheet
+            - generic [ref=f3e52]:
+              - button "＋ Carica l’immagine con te già posizionato Può essere preparata con Multi-Reference Composer o Smartphone Photo Editor" [ref=f3e53] [cursor=pointer]
+              - generic [ref=f3e54]: ＋
+              - strong [ref=f3e55]: Carica l’immagine con te già posizionato
+              - generic [ref=f3e56]: Può essere preparata con Multi-Reference Composer o Smartphone Photo Editor
+          - generic [ref=f3e57]:
+            - generic [ref=f3e58]: Descrizione delle persone nel reference sheet
+            - textbox "Descrizione delle persone nel reference sheet" [ref=f3e59]:
+              - /placeholder: "Da sinistra: Attore A… Al centro: John… A destra: Attrice B…"
+          - generic [ref=f3e60]:
+            - generic [ref=f3e61]: Regia della scena e azioni
+            - textbox "Regia della scena e azioni" [ref=f3e62]:
+              - /placeholder: I tre personaggi restano nella stessa posizione. John si rivolge all’attore a sinistra, che ascolta e poi risponde…
+          - generic [ref=f3e63]:
+            - generic [ref=f3e64]:
+              - generic [ref=f3e65]: Durata
+              - spinbutton "Durata" [ref=f3e66]: "10"
+            - generic [ref=f3e67]:
+              - generic [ref=f3e68]: Movimento camera
+              - combobox "Movimento camera" [ref=f3e69] [cursor=pointer]:
+                - option "Statica"
+                - option "Handheld leggero" [selected]
+                - option "Dolly in lento"
+                - option "Dolly out lento"
+                - option "Pan sugli interlocutori"
+          - generic [ref=f3e70]:
+            - generic [ref=f3e71]:
+              - generic [ref=f3e72]:
+                - paragraph [ref=f3e73]: Copione multi-personaggio
+                - paragraph [ref=f3e74]: Una battuta per riga, nell’ordine in cui deve essere pronunciata.
+              - button "＋ Battuta" [ref=f3e75] [cursor=pointer]
+            - generic [ref=f3e76]:
+              - generic [ref=f3e77]:
+                - generic [ref=f3e78]: "01"
+                - textbox "Personaggio battuta 1" [ref=f3e79]:
+                  - /placeholder: Personaggio
+                  - text: John
+                - textbox "Testo battuta 1" [ref=f3e80]:
+                  - /placeholder: Battuta…
+                - textbox "Recitazione battuta 1" [ref=f3e81]:
+                  - /placeholder: tono / sguardo
+                  - text: con tono naturale
+                - button "Rimuovi battuta 1" [ref=f3e82] [cursor=pointer]: ×
+              - generic [ref=f3e83]:
+                - generic [ref=f3e84]: "02"
+                - textbox "Personaggio battuta 2" [ref=f3e85]:
+                  - /placeholder: Personaggio
+                  - text: Attore 1
+                - textbox "Testo battuta 2" [ref=f3e86]:
+                  - /placeholder: Battuta…
+                - textbox "Recitazione battuta 2" [ref=f3e87]:
+                  - /placeholder: tono / sguardo
+                  - text: risponde guardando John
+                - button "Rimuovi battuta 2" [ref=f3e88] [cursor=pointer]: ×
+        - generic [ref=f3e90]:
+          - generic [ref=f3e91]:
+            - paragraph [ref=f3e92]: Identity e Style LoRA
+            - paragraph [ref=f3e93]: Puoi concatenare più LoRA LTX 2.3 con forza indipendente.
+          - button "＋ LoRA" [ref=f3e94] [cursor=pointer]
+        - group [ref=f3e95]:
+          - generic "Impostazioni avanzate qualità, maschera e seed" [ref=f3e96] [cursor=pointer]
+        - button "Crea progetto Video Studio→" [ref=f3e97] [cursor=pointer]
+        - alert
+      - complementary [ref=f3e98]:
+        - generic [ref=f3e99]:
+          - generic [ref=f3e100]:
+            - generic [ref=f3e101]: "02"
+            - generic [ref=f3e102]:
+              - heading "Progetti video" [level=2] [ref=f3e103]
+              - paragraph [ref=f3e104]: Sostituzione, scena e LipDub
+          - paragraph [ref=f3e105]: Nessun progetto Video Studio.
+        - generic [ref=f3e106]:
+          - paragraph [ref=f3e107]: PIPELINE CONSIGLIATA
+          - heading "Lavora uno shot alla volta" [level=3] [ref=f3e108]
+          - paragraph [ref=f3e109]: Se nei 10 secondi c’è uno stacco di montaggio, dividi prima la clip. Tracking, identità e lip-sync saranno molto più stabili.
+  - status

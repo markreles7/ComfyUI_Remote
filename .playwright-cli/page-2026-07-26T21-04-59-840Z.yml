@@ -1,0 +1,202 @@
+- generic [active] [ref=f2e1]:
+  - banner [ref=f2e2]:
+    - link [ref=f2e3] [cursor=pointer]:
+      - /url: /
+    - generic [ref=f2e5]:
+      - navigation "Navigazione principale" [ref=f2e6]:
+        - link "Genera" [ref=f2e7] [cursor=pointer]:
+          - /url: /
+        - link "Image Studio" [ref=f2e8] [cursor=pointer]:
+          - /url: /studio.html
+        - link "Generazioni" [ref=f2e9] [cursor=pointer]:
+          - /url: /generations.html
+      - generic [ref=f2e10]: ComfyUI online
+  - main [ref=f2e12]:
+    - generic [ref=f2e14]:
+      - paragraph [ref=f2e15]: EDITING / STORYBOARD / PERFECT IMAGE
+      - heading [level=1] [ref=f2e16]:
+        - text: Costruisci il tuo
+        - emphasis [ref=f2e17]: master.
+      - paragraph [ref=f2e18]: "Workflow guidati e multi-stadio: conserva le reference, confronta le bozze e anima gli shot approvati con LTX 2.3."
+    - generic [ref=f2e19]:
+      - generic [ref=f2e20]:
+        - generic [ref=f2e21]:
+          - generic [ref=f2e22]: "01"
+          - generic [ref=f2e23]:
+            - heading "Nuovo progetto" [level=2] [ref=f2e24]
+            - paragraph [ref=f2e25]: Ogni stadio e risultato resta recuperabile
+        - generic [ref=f2e26]:
+          - generic [ref=f2e27]: Workflow
+          - combobox "Workflow" [ref=f2e28] [cursor=pointer]:
+            - option "Smartphone Photo Editor" [selected]
+            - option "Smart Image Editor"
+            - option "Inpainting intelligente"
+            - option "Multi-Reference Composer"
+            - option "Storyboard Director"
+            - option "LTX First / Last Frame"
+            - option "Character & Location Bible"
+            - option "Camera, posa e composizione"
+            - option "Relighting e continuità"
+            - option "Perfect Image Studio"
+          - paragraph [ref=f2e29]: Editing fotografico protetto con maschera, alternative Flux.2 e rifinitura guidata.
+        - generic [ref=f2e30]:
+          - generic [ref=f2e31]: Nome progetto
+          - textbox "Nome progetto" [ref=f2e32]:
+            - /placeholder: Es. Piscina · scena tramonto
+        - generic [ref=f2e34]:
+          - generic [ref=f2e35]: Fotografia principale / reference master
+          - generic [ref=f2e36]:
+            - button "↗ Carica una foto Orientamento EXIF e proporzioni vengono conservati" [ref=f2e37] [cursor=pointer]
+            - generic [ref=f2e38]: ↗
+            - strong [ref=f2e39]: Carica una foto
+            - generic [ref=f2e40]: Orientamento EXIF e proporzioni vengono conservati
+        - generic [ref=f2e41]:
+          - generic [ref=f2e42]:
+            - generic [ref=f2e43]:
+              - generic [ref=f2e44]: Zona da modificare
+              - combobox "Zona da modificare" [ref=f2e45] [cursor=pointer]:
+                - option "Maschera manuale"
+                - option "Maschera automatica SAM" [selected]
+                - option "Intera immagine"
+            - generic [ref=f2e163]:
+              - generic [ref=f2e164]: Elemento da selezionare
+              - textbox "Elemento da selezionare" [ref=f2e165]:
+                - /placeholder: es. swimming pool water
+              - generic [ref=f2e166]: Motore di analisi
+              - combobox "Motore di analisi" [ref=f2e167] [cursor=pointer]:
+                - option "SAM + GroundingDINO · rapido" [selected]
+                - option "Florence 2 · analisi semantica"
+          - generic [ref=f2e57]:
+            - generic [ref=f2e58]:
+              - generic [ref=f2e59]: Espansione maschera
+              - spinbutton "Espansione maschera" [ref=f2e60]: "32"
+            - generic [ref=f2e61]:
+              - generic [ref=f2e62]: Sfumatura
+              - spinbutton "Sfumatura" [ref=f2e63]: "24"
+            - generic [ref=f2e64]:
+              - generic [ref=f2e65]: Contesto
+              - spinbutton "Contesto" [ref=f2e66]: "35"
+            - generic [ref=f2e67]:
+              - generic [ref=f2e68]: Soglia automatica
+              - spinbutton "Soglia automatica" [ref=f2e69]: ".3"
+        - generic [ref=f2e70]:
+          - paragraph [ref=f2e71]: Reference opzionali
+          - generic [ref=f2e72]:
+            - generic [ref=f2e73]:
+              - generic [ref=f2e74]: Persona
+              - button "Persona" [ref=f2e75] [cursor=pointer]
+            - generic [ref=f2e76]:
+              - generic [ref=f2e77]: Posa / abito
+              - button "Posa / abito" [ref=f2e78] [cursor=pointer]
+            - generic [ref=f2e79]:
+              - generic [ref=f2e80]: Stile / location
+              - button "Stile / location" [ref=f2e81] [cursor=pointer]
+          - paragraph [ref=f2e82]: Flux.2 riceve le reference nello stesso ordine. Il prompt può riferirsi a Immagine 1, 2, 3 e 4.
+        - generic [ref=f2e83]:
+          - generic [ref=f2e84]:
+            - generic [ref=f2e85]: Prompt globale / istruzione
+            - generic [ref=f2e86]: "0"
+          - textbox "Prompt globale / istruzione" [ref=f2e87]:
+            - /placeholder: Descrivi il risultato e specifica ciò che deve rimanere invariato…
+        - generic [ref=f2e88]:
+          - generic [ref=f2e89]: Prompt negativo
+          - textbox "Prompt negativo" [ref=f2e90]:
+            - /placeholder: Artefatti o modifiche da evitare…
+        - generic [ref=f2e91]:
+          - generic [ref=f2e92]:
+            - generic [ref=f2e93]: Comportamento
+            - combobox "Comportamento" [ref=f2e94] [cursor=pointer]:
+              - option "Conservativo"
+              - option "Bilanciato" [selected]
+              - option "Creativo"
+          - generic [ref=f2e95]:
+            - generic [ref=f2e96]: Alternative
+            - combobox "Alternative" [ref=f2e97] [cursor=pointer]:
+              - option "2" [selected]
+              - option "3"
+              - option "4"
+          - generic [ref=f2e98]:
+            - generic [ref=f2e99]: Ambito
+            - combobox "Ambito" [disabled] [ref=f2e100] [cursor=pointer]:
+              - option "Locale / maschera" [selected]
+              - option "Globale"
+          - generic [ref=f2e101]:
+            - generic [ref=f2e102]: Seed
+            - textbox "Seed" [ref=f2e103]:
+              - /placeholder: Random
+        - generic [ref=f2e104]:
+          - paragraph [ref=f2e105]: Controlli di fedeltà
+          - generic [ref=f2e106]:
+            - checkbox "Riduzione rumore molto leggera sulla copia di lavoro (l’originale resta intatto)" [checked] [ref=f2e107]
+            - text: Riduzione rumore molto leggera sulla copia di lavoro (l’originale resta intatto)
+          - generic [ref=f2e108]:
+            - generic [ref=f2e109]:
+              - generic [ref=f2e110]: Conservazione originale %
+              - spinbutton "Conservazione originale %" [ref=f2e111]: "100"
+            - generic [ref=f2e112]:
+              - generic [ref=f2e113]: Intensità modifica %
+              - spinbutton "Intensità modifica %" [ref=f2e114]: "50"
+            - generic [ref=f2e115]:
+              - generic [ref=f2e116]: Aderenza persona %
+              - spinbutton "Aderenza persona %" [ref=f2e117]: "80"
+            - generic [ref=f2e118]:
+              - generic [ref=f2e119]: Aderenza posa %
+              - spinbutton "Aderenza posa %" [ref=f2e120]: "70"
+            - generic [ref=f2e121]:
+              - generic [ref=f2e122]: Libertà creativa %
+              - spinbutton "Libertà creativa %" [ref=f2e123]: "30"
+        - generic [ref=f2e124]:
+          - paragraph [ref=f2e125]: Modelli per gli stadi
+          - generic [ref=f2e126]:
+            - generic [ref=f2e127]:
+              - generic [ref=f2e128]: Flux.2 bozze
+              - combobox "Flux.2 bozze" [ref=f2e129] [cursor=pointer]:
+                - option "Flux.2 Klein 9B Base"
+                - option "pornmasterFlux2Klein v4TurboFp8" [selected]
+            - generic [ref=f2e130]:
+              - generic [ref=f2e131]: Flux.2 qualità
+              - combobox "Flux.2 qualità" [ref=f2e132] [cursor=pointer]:
+                - option "Flux.2 Klein 9B Base" [selected]
+                - option "pornmasterFlux2Klein v4TurboFp8"
+            - generic [ref=f2e133]:
+              - generic [ref=f2e134]: Z-Image bozze
+              - combobox "Z-Image bozze" [ref=f2e135] [cursor=pointer]:
+                - option "moodyProMix zitV13"
+                - option "Z-Image Turbo BF16" [selected]
+            - generic [ref=f2e136]:
+              - generic [ref=f2e137]: Flux.1 refine
+              - combobox "Flux.1 refine" [ref=f2e138] [cursor=pointer]:
+                - option "cyberrealisticFlux v25" [selected]
+                - option "Flux.1 Dev"
+                - option "fluxedUpFluxNSFW 112BF16FP8"
+                - option "persephoneFluxNSFWSFW 20FP16"
+        - generic [ref=f2e139]:
+          - paragraph [ref=f2e140]: Output master
+          - generic [ref=f2e141]:
+            - generic [ref=f2e142]:
+              - generic [ref=f2e143]: Upscale finale
+              - combobox "Upscale finale" [ref=f2e144] [cursor=pointer]:
+                - option "Stessa risoluzione / nessun upscale"
+                - option "SeedVR2 3B · consigliato" [selected]
+                - option "SeedVR2 7B Sharp · MAX"
+                - option "RTX VSR · veloce e fedele"
+                - option "RealESRGAN 2× · tradizionale"
+            - generic [ref=f2e145]:
+              - checkbox "Conserva anche lo stadio prima dell’upscale" [checked] [ref=f2e146]
+              - text: Conserva anche lo stadio prima dell’upscale
+        - generic [ref=f2e148]:
+          - generic [ref=f2e149]:
+            - paragraph [ref=f2e150]: LoRA aggiuntive
+            - paragraph [ref=f2e151]: Filtrate per la famiglia usata nello stadio.
+          - button "＋ LoRA" [ref=f2e152] [cursor=pointer]
+        - button "Crea progetto→" [ref=f2e153] [cursor=pointer]
+        - alert
+      - complementary [ref=f2e154]:
+        - generic [ref=f2e155]:
+          - generic [ref=f2e156]:
+            - generic [ref=f2e157]: "02"
+            - generic [ref=f2e158]:
+              - heading "Progetti guidati" [level=2] [ref=f2e159]
+              - paragraph [ref=f2e160]: Bozze, selezioni, master e clip
+          - paragraph [ref=f2e161]: Nessun progetto Studio.
+  - status
