@@ -20,7 +20,7 @@
   "3": {
     "inputs": {
       "video_latent": [
-        "13",
+        "14",
         0
       ],
       "audio_latent": [
@@ -352,7 +352,7 @@
   "32": {
     "inputs": {
       "video_latent": [
-        "21",
+        "22",
         0
       ],
       "audio_latent": [

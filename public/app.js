@@ -28,6 +28,10 @@ function isUpscaleGeneration() {
   return $("#generationType").value === "upscale";
 }
 
+function isLtxUpscaleGeneration() {
+  return $("#generationType").value === "ltxUpscale";
+}
+
 function promptAssistantContext() {
   if (isImageGeneration()) {
     const model = state.config?.imageModels.find((item) => item.id === $("#imageModelId").value);
@@ -438,96 +442,238 @@ function updateEnhancementOptions(enforceSafeBatch = false) {
 function generationTypeChanged(type) {
   const image = type === "image";
   const upscale = type === "upscale";
-  const video = !image && !upscale;
+  const ltxUpscale = type === "ltxUpscale";
+  const video = type === "video";
+
   $("#generationType").value = type;
+
   for (const button of document.querySelectorAll("[data-generation-type]")) {
-    button.classList.toggle("active", button.dataset.generationType === type);
+    button.classList.toggle(
+      "active",
+      button.dataset.generationType === type,
+    );
   }
+
   $("#video-workflow-field").classList.toggle("hidden", !video);
-  // workflowChanged() decides whether these controls are supported for the
-  // active video workflow. Switching to another generation type must clear
-  // their previous visible state as well as disabling their inputs.
+
   if (!video) {
     $("#video-input-mode-field").classList.add("hidden");
     $("#video-model-field").classList.add("hidden");
     $("#sulphur-base-panel").classList.add("hidden");
   }
+
   $("#image-options").classList.toggle("hidden", !image);
-  $("#virtual-influencer-field").classList.toggle("hidden", upscale);
   $("#upscale-options").classList.toggle("hidden", !upscale);
+  $("#ltx-upscale-options").classList.toggle("hidden", !ltxUpscale);
+
+  $("#virtual-influencer-field").classList.toggle(
+    "hidden",
+    upscale || ltxUpscale,
+  );
+
   $("#video-settings-grid").classList.toggle("hidden", !video);
   $("#image-settings-grid").classList.toggle("hidden", !image);
   $("#image-enhancements").classList.toggle("hidden", !image);
-  $("#negative-prompt-field").classList.toggle("hidden", upscale);
-  $("#lora-settings").classList.toggle("hidden", upscale);
-  $("#negativePrompt").disabled = upscale;
+
+  $("#negative-prompt-field").classList.toggle(
+    "hidden",
+    upscale || ltxUpscale,
+  );
+
+  $("#lora-settings").classList.toggle(
+    "hidden",
+    upscale || ltxUpscale,
+  );
+
+  $("#negativePrompt").disabled = upscale || ltxUpscale;
+
   workflow.disabled = !video;
   $("#videoInputMode").disabled = !video;
   $("#videoModelId").disabled = !video;
+
   $("#imageModelId").disabled = !image;
   $("#imageModelFile").disabled = !image;
   $("#imageMode").disabled = !image;
-  $("#virtualInfluencerId").disabled = upscale;
+
+  $("#virtualInfluencerId").disabled = upscale || ltxUpscale;
+
   $("#seed").disabled = !video;
   $("#imageSeed").disabled = !image;
-  for (const input of document.querySelectorAll("#image-settings-grid input, #image-settings-grid select")) {
+
+  for (const input of document.querySelectorAll(
+    "#image-settings-grid input, #image-settings-grid select",
+  )) {
     input.disabled = !image;
   }
-  for (const input of document.querySelectorAll("#image-enhancements input, #image-enhancements select")) {
+
+  for (const input of document.querySelectorAll(
+    "#image-enhancements input, #image-enhancements select",
+  )) {
     input.disabled = !image;
   }
-  for (const input of document.querySelectorAll("#upscale-options input, #upscale-options select")) {
+
+  for (const input of document.querySelectorAll(
+    "#upscale-options input, #upscale-options select",
+  )) {
     input.disabled = !upscale;
   }
+
+  for (const input of document.querySelectorAll(
+    "#ltx-upscale-options input, " +
+    "#ltx-upscale-options select, " +
+    "#ltx-upscale-options textarea, " +
+    "#ltx-upscale-options button",
+  )) {
+    input.disabled = !ltxUpscale;
+  }
+
   if (image) {
     $("#regular-scene-fields").classList.remove("hidden");
+
     $("#image-input-field").classList.add("hidden");
     $("#video-input-field").classList.add("hidden");
+
     $("#image").disabled = true;
     $("#video").disabled = true;
+
     $("#director-storyboard").classList.add("hidden");
     $("#edit-settings").classList.add("hidden");
     $("#quality-field").classList.add("hidden");
+
     $("#duration").disabled = true;
     $("#resolution").disabled = true;
     $("#orientation").disabled = true;
+
     $("#prompt").disabled = false;
     $("#prompt").required = true;
-    for (const input of document.querySelectorAll("#director-storyboard input, #director-storyboard textarea, #edit-settings input, #edit-settings select")) {
+
+    $("#upscaleImage").required = false;
+    $("#ltxUpscaleVideo").required = false;
+
+    for (const input of document.querySelectorAll(
+      "#director-storyboard input, " +
+      "#director-storyboard textarea, " +
+      "#edit-settings input, " +
+      "#edit-settings select",
+    )) {
       input.disabled = true;
     }
+
     imageOptionsChanged(true);
   } else if (video) {
+    $("#regular-scene-fields").classList.remove("hidden");
+
     $("#source-image-field").classList.add("hidden");
     $("#sourceImage").disabled = true;
+
     $("#imageModelId").disabled = true;
     $("#imageModelFile").disabled = true;
     $("#imageMode").disabled = true;
     $("#imageSeed").disabled = true;
+
+    $("#upscaleImage").required = false;
+    $("#ltxUpscaleVideo").required = false;
+
     workflowChanged();
-  } else {
+  } else if (upscale) {
     $("#regular-scene-fields").classList.add("hidden");
+
     $("#source-image-field").classList.add("hidden");
     $("#image-input-field").classList.add("hidden");
     $("#video-input-field").classList.add("hidden");
+
     $("#director-storyboard").classList.add("hidden");
     $("#edit-settings").classList.add("hidden");
     $("#quality-field").classList.add("hidden");
+
     $("#image").disabled = true;
     $("#video").disabled = true;
     $("#sourceImage").disabled = true;
+
     $("#prompt").disabled = true;
     $("#prompt").required = false;
     $("#negativePrompt").disabled = true;
+
     $("#upscaleImage").disabled = false;
     $("#upscaleImage").required = true;
-    for (const input of document.querySelectorAll("#director-storyboard input, #director-storyboard textarea, #edit-settings input, #edit-settings select")) {
+
+    $("#ltxUpscaleVideo").required = false;
+
+    for (const input of document.querySelectorAll(
+      "#director-storyboard input, " +
+      "#director-storyboard textarea, " +
+      "#edit-settings input, " +
+      "#edit-settings select",
+    )) {
       input.disabled = true;
     }
+
     upscaleOptionsChanged();
+  } else if (ltxUpscale) {
+    $("#regular-scene-fields").classList.add("hidden");
+
+    $("#source-image-field").classList.add("hidden");
+    $("#image-input-field").classList.add("hidden");
+    $("#video-input-field").classList.add("hidden");
+
+    $("#director-storyboard").classList.add("hidden");
+    $("#edit-settings").classList.add("hidden");
+    $("#quality-field").classList.add("hidden");
+
+    $("#image").disabled = true;
+    $("#video").disabled = true;
+    $("#sourceImage").disabled = true;
+
+    $("#prompt").disabled = true;
+    $("#prompt").required = false;
+    $("#negativePrompt").disabled = true;
+
+    $("#upscaleImage").disabled = true;
+    $("#upscaleImage").required = false;
+
+    $("#ltxUpscaleVideo").disabled = false;
+    $("#ltxUpscaleVideo").required = true;
+
+    const config = state.config?.ltxUpscale;
+
+    $("#ltx-upscale-warning").textContent =
+      config?.available === false
+        ? [
+            config.missingNodes?.length
+              ? `Nodi mancanti: ${config.missingNodes.join(", ")}`
+              : "",
+            config.missingFiles?.length
+              ? `File mancanti: ${config.missingFiles.join(", ")}`
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" · ")
+        : "";
+
+    $("#ltx-upscale-warning").classList.toggle(
+      "hidden",
+      config?.available !== false,
+    );
+
+    for (const input of document.querySelectorAll(
+      "#director-storyboard input, " +
+      "#director-storyboard textarea, " +
+      "#edit-settings input, " +
+      "#edit-settings select",
+    )) {
+      input.disabled = true;
+    }
   }
+
   $("#upscaleImage").required = upscale;
-  $("#generate-button span").textContent = upscale ? "Avvia upscaling" : "Avvia generazione";
+  $("#ltxUpscaleVideo").required = ltxUpscale;
+
+  $("#generate-button span").textContent = upscale
+    ? "Avvia upscaling"
+    : ltxUpscale
+      ? "Avvia Upscale LTX"
+      : "Avvia generazione";
+
   updateEnhancementOptions();
   refreshLoraOptions();
   updatePromptAssistantAvailability();
@@ -856,6 +1002,96 @@ form.addEventListener("submit", async (event) => {
   try {
     syncLoras();
     const data = new FormData(form);
+
+    if (isLtxUpscaleGeneration()) {
+      const config = state.config?.ltxUpscale;
+
+      if (config?.available === false) {
+        const details = [
+          config.missingNodes?.length
+            ? `Nodi mancanti: ${config.missingNodes.join(", ")}`
+            : "",
+          config.missingFiles?.length
+            ? `File mancanti: ${config.missingFiles.join(", ")}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" · ");
+
+        throw new Error(
+          details || "La pipeline Upscale LTX non è disponibile.",
+        );
+      }
+
+      const sourceVideo = $("#ltxUpscaleVideo").files[0];
+
+      if (!sourceVideo) {
+        throw new Error(
+          "Carica il video da elaborare con Upscale LTX.",
+        );
+      }
+
+      if (
+        state.config?.maxVideoUploadMb &&
+        sourceVideo.size >
+          state.config.maxVideoUploadMb * 1024 * 1024
+      ) {
+        throw new Error(
+          `Il video supera il limite di ${state.config.maxVideoUploadMb} MB.`,
+        );
+      }
+
+      /*
+       * Il server usa già il campo multipart "video".
+       * Rimuoviamo quindi il nome specifico della UI e riutilizziamo
+       * il campo video accettato dalla route esistente.
+       */
+      data.delete("ltxUpscaleVideo");
+      data.set("video", sourceVideo, sourceVideo.name);
+
+      const sourceDuration = Number(
+         $("#ltx-upscale-preview").dataset.duration,
+       );
+
+      if (Number.isFinite(sourceDuration) && sourceDuration > 0) {
+        data.set(
+          "ltxUpscaleSourceDuration",
+          String(sourceDuration),
+        );
+      }
+
+      /*
+       * Il builder usa i nomi generici prompt, negativePrompt e seed.
+       */
+      data.set(
+        "prompt",
+        $("#ltxUpscalePrompt").value.trim() || "upscale",
+      );
+
+      data.set(
+        "negativePrompt",
+        $("#ltxUpscaleNegativePrompt").value.trim(),
+      );
+
+      const ltxSeed = $("#ltxUpscaleSeed").value.trim();
+
+      if (ltxSeed) {
+        data.set("seed", ltxSeed);
+      } else {
+        data.delete("seed");
+      }
+
+      /*
+       * Una checkbox non selezionata normalmente sparisce dal FormData.
+       * La inviamo esplicitamente per permettere davvero di togliere
+       * l'audio.
+       */
+      data.set(
+        "ltxUpscaleKeepAudio",
+        String($("#ltxUpscaleKeepAudio").checked),
+      );
+    }
+
     if (!isImageGeneration() && workflow.value === "director") {
       const scenes = storyboardData();
       const total = scenes.reduce((sum, scene) => sum + scene.duration, 0);
@@ -875,7 +1111,12 @@ form.addEventListener("submit", async (event) => {
     $("#form-error").textContent = error.message;
   } finally {
     button.disabled = false;
-    button.querySelector("span").textContent = isUpscaleGeneration() ? "Avvia upscaling" : "Avvia generazione";
+    button.querySelector("span").textContent =
+      isUpscaleGeneration()
+        ? "Avvia upscaling"
+        : isLtxUpscaleGeneration()
+          ? "Avvia Upscale LTX"
+          : "Avvia generazione";
   }
 });
 
@@ -974,6 +1215,109 @@ $("#video").addEventListener("change", (event) => {
   $("#video-file-info").textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(1)} MB`;
 });
 
+
+function applyLtxUpscalePreset() {
+  const preset = $("#ltxUpscalePreset").value;
+
+  const values = {
+    balanced: {
+      steps: 12,
+      distilledStrength: 0.6,
+      loraStrength: 1,
+      guideStrength: 1,
+      crf: 13,
+    },
+    quality: {
+      steps: 16,
+      distilledStrength: 0.65,
+      loraStrength: 1,
+      guideStrength: 1,
+      crf: 10,
+    },
+    max: {
+      steps: 20,
+      distilledStrength: 0.7,
+      loraStrength: 1.05,
+      guideStrength: 1,
+      crf: 8,
+    },
+  }[preset];
+
+  if (!values) return;
+
+  $("#ltxUpscaleSteps").value = String(values.steps);
+  $("#ltxUpscaleDistilledStrength").value =
+    String(values.distilledStrength);
+  $("#ltxUpscaleLoraStrength").value =
+    String(values.loraStrength);
+  $("#ltxUpscaleGuideStrength").value =
+    String(values.guideStrength);
+  $("#ltxUpscaleCrf").value = String(values.crf);
+}
+
+$("#ltxUpscalePreset").addEventListener(
+  "change",
+  applyLtxUpscalePreset,
+);
+
+$("#random-ltx-upscale-seed").addEventListener(
+  "click",
+  () => {
+    $("#ltxUpscaleSeed").value = String(
+      Math.floor(Math.random() * Number.MAX_SAFE_INTEGER),
+    );
+  },
+);
+
+$("#ltxUpscaleVideo").addEventListener("change", (event) => {
+  const file = event.target.files[0];
+  const preview = $("#ltx-upscale-preview");
+  const dropzone = $("#ltx-upscale-dropzone");
+  const info = $("#ltx-upscale-file-info");
+
+  if (!file) {
+    dropzone.classList.remove("has-video");
+    preview.pause();
+    preview.removeAttribute("src");
+    preview.load();
+    info.textContent = "";
+    delete preview.dataset.duration;
+    return;
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+
+  preview.src = objectUrl;
+  dropzone.classList.add("has-video");
+
+  const sizeMb = (file.size / 1024 / 1024).toFixed(1);
+
+  info.textContent = `${file.name} · ${sizeMb} MB`;
+
+  preview.onloadedmetadata = () => {
+    const duration = Number.isFinite(preview.duration)
+      ? preview.duration
+      : 0;
+      preview.dataset.duration = String(duration);
+
+    const minutes = Math.floor(duration / 60);
+    const seconds = Math.floor(duration % 60);
+    const durationLabel = minutes
+      ? `${minutes}:${String(seconds).padStart(2, "0")}`
+      : `${seconds}s`;
+
+    info.textContent =
+      `${file.name} · ${sizeMb} MB · ${durationLabel}`;
+
+    URL.revokeObjectURL(objectUrl);
+  };
+
+  preview.onerror = () => {
+    info.textContent =
+      `${file.name} · ${sizeMb} MB · anteprima non disponibile`;
+  };
+});
+
 $("#upscaleImage").addEventListener("change", (event) => {
   const file = event.target.files[0];
   const preview = $("#upscale-preview");
@@ -997,16 +1341,56 @@ for (const name of ["prompt", "negativePrompt"]) {
 }
 
 for (const eventName of ["dragenter", "dragover"]) {
-  $("#dropzone").addEventListener(eventName, () => $("#dropzone").classList.add("dragging"));
-  $("#video-dropzone").addEventListener(eventName, () => $("#video-dropzone").classList.add("dragging"));
-  $("#source-image-dropzone").addEventListener(eventName, () => $("#source-image-dropzone").classList.add("dragging"));
-  $("#upscale-dropzone").addEventListener(eventName, () => $("#upscale-dropzone").classList.add("dragging"));
+  $("#dropzone").addEventListener(
+    eventName,
+    () => $("#dropzone").classList.add("dragging"),
+  );
+
+  $("#video-dropzone").addEventListener(
+    eventName,
+    () => $("#video-dropzone").classList.add("dragging"),
+  );
+
+  $("#source-image-dropzone").addEventListener(
+    eventName,
+    () => $("#source-image-dropzone").classList.add("dragging"),
+  );
+
+  $("#upscale-dropzone").addEventListener(
+    eventName,
+    () => $("#upscale-dropzone").classList.add("dragging"),
+  );
+
+  $("#ltx-upscale-dropzone").addEventListener(
+    eventName,
+    () => $("#ltx-upscale-dropzone").classList.add("dragging"),
+  );
 }
 for (const eventName of ["dragleave", "drop"]) {
-  $("#dropzone").addEventListener(eventName, () => $("#dropzone").classList.remove("dragging"));
-  $("#video-dropzone").addEventListener(eventName, () => $("#video-dropzone").classList.remove("dragging"));
-  $("#source-image-dropzone").addEventListener(eventName, () => $("#source-image-dropzone").classList.remove("dragging"));
-  $("#upscale-dropzone").addEventListener(eventName, () => $("#upscale-dropzone").classList.remove("dragging"));
+  $("#dropzone").addEventListener(
+    eventName,
+    () => $("#dropzone").classList.remove("dragging"),
+  );
+
+  $("#video-dropzone").addEventListener(
+    eventName,
+    () => $("#video-dropzone").classList.remove("dragging"),
+  );
+
+  $("#source-image-dropzone").addEventListener(
+    eventName,
+    () => $("#source-image-dropzone").classList.remove("dragging"),
+  );
+
+  $("#upscale-dropzone").addEventListener(
+    eventName,
+    () => $("#upscale-dropzone").classList.remove("dragging"),
+  );
+
+  $("#ltx-upscale-dropzone").addEventListener(
+    eventName,
+    () => $("#ltx-upscale-dropzone").classList.remove("dragging"),
+  );
 }
 
 $("#random-seed").addEventListener("click", () => {
@@ -1252,6 +1636,7 @@ async function start() {
         `<option value="${escapeAttribute(profile.id)}">${escapeHtml(profile.displayName)} · ${profile.canonicalReferences} canoniche</option>`
       ),
     ].join("");
+    applyLtxUpscalePreset();
     generationTypeChanged("video");
     await applyGuidedCreation();
     await Promise.all([checkHealth(), loadHistory()]);

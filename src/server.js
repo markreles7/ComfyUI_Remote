@@ -35,6 +35,11 @@ import {
 } from "./studio-workflows.js";
 import { buildUpscaleWorkflow, upscaleConfig } from "./upscale-workflows.js";
 import {
+  buildLtxUpscaleWorkflow,
+  ltxUpscaleConfig,
+  LTX_UPSCALE_REQUIRED_NODES,
+} from "./ltx-upscale-workflows.js";
+import {
   buildVideoStudioInitialJob,
   buildVideoStudioLipdubJob,
   videoStudioConfig,
@@ -172,17 +177,40 @@ const comfy = new ComfyClient({
         const value = Number(event.data?.value || 0);
         const max = Number(event.data?.max || 1);
         const progress = Math.max(0, Math.min(100, Math.round((value / max) * 100)));
-        if (record.status !== "running" || record.progress !== progress) {
-          // Il valore live resta in memoria; il risultato finale viene persistito dal polling.
+        const firstRunningEvent = record.status !== "running" && !record.startedAt;
+
+        if (firstRunningEvent) {
+          store.update(record.id, {
+            status: "running",
+            progress,
+            startedAt: new Date().toISOString(),
+          });
+        } else if (record.status !== "running" || record.progress !== progress) {
+          // Gli aggiornamenti live successivi restano in memoria.
           store.update(record.id, { status: "running", progress }, { persist: false });
         }
-      } else if (event.type === "executing" && event.data?.node && record.status !== "running") {
-        store.update(record.id, { status: "running" }, { persist: false });
+      } else if (
+        event.type === "executing"
+        && event.data?.node
+        && record.status !== "running"
+      ) {
+        const patch = { status: "running" };
+        if (!record.startedAt) patch.startedAt = new Date().toISOString();
+
+        // Il primo passaggio a running viene persistito una sola volta.
+        store.update(record.id, patch, { persist: Boolean(patch.startedAt) });
       } else if (event.type === "execution_error") {
+        const finishedAt = new Date().toISOString();
+        const startedAtMs = Date.parse(record.startedAt || "");
+        const finishedAtMs = Date.parse(finishedAt);
+
         store.update(record.id, {
           status: "error",
           error: event.data?.exception_message || "Errore durante la generazione.",
-          finishedAt: new Date().toISOString(),
+          finishedAt,
+          durationMs: Number.isFinite(startedAtMs)
+            ? Math.max(0, finishedAtMs - startedAtMs)
+            : null,
         });
         scheduleIdlePurge();
       }
@@ -1228,6 +1256,35 @@ app.get("/api/config", async (_request, response) => {
   } catch {
     // La configurazione resta utilizzabile anche se ComfyUI è momentaneamente offline.
   }
+
+  let ltxUpscale;
+
+  try {
+    const nodeDefinitions = await Promise.all(
+      LTX_UPSCALE_REQUIRED_NODES.map((name) =>
+        objectDefinition(name),
+      ),
+    );
+
+    const availableNodes =
+      LTX_UPSCALE_REQUIRED_NODES.filter(
+        (_name, index) => Boolean(nodeDefinitions[index]),
+      );
+
+    ltxUpscale = ltxUpscaleConfig({
+      availableNodes,
+      installedCheckpoints: [
+        ...installedImageModels,
+        ...installedImageCheckpoints,
+      ],
+      installedLoras,
+      installedTextEncoders: installedImageClips,
+      installedVaes: installedImageVaes,
+    });
+  } catch {
+    ltxUpscale = ltxUpscaleConfig();
+  }
+
   response.json({
     workflows: Object.values(WORKFLOWS).map(({ file: _file, ...item }) => item),
     videoModels: videoModelConfig(installedImageModels),
@@ -1245,6 +1302,7 @@ app.get("/api/config", async (_request, response) => {
     maxVideoUploadMb,
     imageEnhancements: enhancements,
     upscaling,
+    ltxUpscale,
     studio: studioConfig({
       modelPatches: installedModelPatches,
       preprocessors: studioPreprocessors,
@@ -2185,8 +2243,12 @@ app.post("/api/generations", upload.any(), async (request, response, next) => {
       ? "image"
       : request.body.generationType === "upscale"
         ? "upscale"
-        : "video";
-    const selectedLoras = generationType === "upscale" ? [] : parseLoras(request.body.loras);
+        : request.body.generationType === "ltxUpscale"
+          ? "ltxUpscale"
+          : "video";
+    const selectedLoras = ["upscale", "ltxUpscale"].includes(generationType)
+      ? []
+      : parseLoras(request.body.loras);
     if (selectedLoras.length) {
       const loraInfo = await comfy.objectInfo("LoraLoaderModelOnly");
       const installedLoras = comboOptions(loraInfo?.LoraLoaderModelOnly?.input?.required?.lora_name);
@@ -2195,9 +2257,12 @@ app.post("/api/generations", upload.any(), async (request, response, next) => {
     let uploaded = null;
     let directorScenes = [];
     let availableUpscaleModels = [];
-    const influencer = generationType === "upscale"
+    const influencer = ["upscale", "ltxUpscale"].includes(generationType)
       ? null
-      : await uploadVirtualInfluencerSelection(request.body.virtualInfluencerId, 4);
+      : await uploadVirtualInfluencerSelection(
+          request.body.virtualInfluencerId,
+          4,
+        );
     if (influencer) request.body = withVirtualInfluencerPrompt(request.body, influencer);
 
     if (generationType === "image") {
@@ -2271,6 +2336,99 @@ app.post("/api/generations", upload.any(), async (request, response, next) => {
       validateUploadSize(imageFile, maxUploadMb, "L'immagine");
       uploaded = await comfy.uploadImage(imageFile);
       availableUpscaleModels = capabilities.models;
+    
+    } else if (generationType === "ltxUpscale") {
+      const runtimeConfig = await (async () => {
+        try {
+          const [
+            modelInfo,
+            checkpointInfo,
+            clipInfo,
+            vaeInfo,
+            loraInfo,
+            ...nodeDefinitions
+          ] = await Promise.all([
+            comfy.objectInfo("UNETLoader"),
+            comfy.objectInfo("CheckpointLoaderSimple"),
+            comfy.objectInfo("CLIPLoader"),
+            comfy.objectInfo("VAELoader"),
+            comfy.objectInfo("LoraLoaderModelOnly"),
+            ...LTX_UPSCALE_REQUIRED_NODES.map((name) =>
+              objectDefinition(name),
+            ),
+          ]);
+
+          const availableNodes =
+            LTX_UPSCALE_REQUIRED_NODES.filter(
+              (_name, index) => Boolean(nodeDefinitions[index]),
+            );
+
+          return ltxUpscaleConfig({
+            availableNodes,
+
+            installedCheckpoints: [
+              ...comboOptions(
+                modelInfo?.UNETLoader?.input?.required?.unet_name,
+              ),
+          ...comboOptions(
+                checkpointInfo?.CheckpointLoaderSimple?.input?.required
+                  ?.ckpt_name,
+              ),
+            ],
+
+            installedLoras: comboOptions(
+              loraInfo?.LoraLoaderModelOnly?.input?.required?.lora_name,
+            ),
+
+            installedTextEncoders: comboOptions(
+              clipInfo?.CLIPLoader?.input?.required?.clip_name,
+            ),
+
+            installedVaes: comboOptions(
+              vaeInfo?.VAELoader?.input?.required?.vae_name,
+            ),
+          });
+        } catch {
+          return ltxUpscaleConfig();
+        }
+      })();
+
+      if (!runtimeConfig.available) {
+        const details = [
+          runtimeConfig.missingNodes?.length
+            ? `Nodi mancanti: ${runtimeConfig.missingNodes.join(", ")}`
+            : "",
+          runtimeConfig.missingFiles?.length
+            ? `File mancanti: ${runtimeConfig.missingFiles.join(", ")}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" · ");
+
+        throw new Error(
+          details ||
+            "La pipeline LTX 2.3 Upscale IC-LoRA non è disponibile.",
+        );
+      }
+
+      const videoFile = files.find(
+        (file) => file.fieldname === "video",
+      );
+
+      if (!videoFile || !videoFile.mimetype.startsWith("video/")) {
+        throw new Error(
+          "Carica un video MP4, WebM, MOV, MKV o AVI per Upscale LTX.",
+        );
+      }
+
+      validateUploadSize(
+        videoFile,
+        maxVideoUploadMb,
+        "Il video",
+      );
+
+      uploaded = await comfy.uploadInput(videoFile);
+
     } else if (request.body.workflowId === "director") {
       let storyboard;
       try {
@@ -2315,11 +2473,31 @@ app.post("/api/generations", upload.any(), async (request, response, next) => {
     }
 
     let job = generationType === "image"
-      ? buildImageWorkflow(request.body.imageModelId, request.body, uploaded, selectedLoras)
+      ? buildImageWorkflow(
+          request.body.imageModelId,
+          request.body,
+          uploaded,
+          selectedLoras,
+        )
       : generationType === "upscale"
-        ? buildUpscaleWorkflow(request.body, uploaded, availableUpscaleModels)
-        : buildWorkflow(request.body.workflowId, request.body, uploaded, directorScenes, selectedLoras);
-    if (generationType !== "upscale") {
+        ? buildUpscaleWorkflow(
+            request.body,
+            uploaded,
+            availableUpscaleModels,
+          )
+        : generationType === "ltxUpscale"
+          ? buildLtxUpscaleWorkflow(
+              request.body,
+              uploaded,
+            )
+          : buildWorkflow(
+              request.body.workflowId,
+              request.body,
+              uploaded,
+              directorScenes,
+              selectedLoras,
+            );
+    if (!["upscale", "ltxUpscale"].includes(generationType)) {
       job = await integrateSceneJob(job, request.body);
     }
     const { workflow, metadata } = job;
@@ -2776,7 +2954,10 @@ setInterval(async () => {
                 height: height ?? null,
               })),
               error: `ComfyUI ha prodotto un'immagine con dimensioni non valide (${invalidImage.width}×${invalidImage.height}). Il risultato è stato bloccato per evitare di considerare riuscito un output corrotto.`,
-              finishedAt: new Date().toISOString(),
+              finishedAt,
+              durationMs: Number.isFinite(startedAtMs)
+                ? Math.max(0, Date.parse(finishedAt) - startedAtMs)
+                : null,
             });
             broadcast({ type: "generation_updated", generationId: item.id, data: updated });
             scheduleIdlePurge();
@@ -2790,6 +2971,8 @@ setInterval(async () => {
           const ratioDrift = expectedRatio && actualRatio
             ? Math.abs(actualRatio / expectedRatio - 1)
             : 0;
+          const finishedAt = new Date().toISOString();
+          const startedAtMs = Date.parse(item.startedAt || "");
           const updated = store.update(item.id, {
             status: "completed",
             progress: 100,
@@ -2812,7 +2995,10 @@ setInterval(async () => {
                   finalHeight: primaryImage.height,
                 }
               : item.imageSettings,
-            finishedAt: new Date().toISOString(),
+            finishedAt,
+            durationMs: Number.isFinite(startedAtMs)
+              ? Math.max(0, Date.parse(finishedAt) - startedAtMs)
+              : null,
           });
           broadcast({ type: "generation_updated", generationId: item.id, data: updated });
           const influencerAsset = virtualInfluencerStore.updateGeneratedAssetFromGeneration(updated);
@@ -2834,18 +3020,28 @@ setInterval(async () => {
           }
           scheduleIdlePurge();
         } else if (completed) {
+          const finishedAt = new Date().toISOString();
+          const startedAtMs = Date.parse(item.startedAt || "");
           const updated = store.update(item.id, {
             status: "error",
             error: "ComfyUI ha completato il workflow ma non ha prodotto nessun file visualizzabile o scaricabile.",
-            finishedAt: new Date().toISOString(),
+            finishedAt,
+            durationMs: Number.isFinite(startedAtMs)
+              ? Math.max(0, Date.parse(finishedAt) - startedAtMs)
+              : null,
           });
           broadcast({ type: "generation_updated", generationId: item.id, data: updated });
           scheduleIdlePurge();
         } else if (statusText === "error") {
+          const finishedAt = new Date().toISOString();
+          const startedAtMs = Date.parse(item.startedAt || "");
           const updated = store.update(item.id, {
             status: "error",
             error: "ComfyUI ha terminato il workflow con un errore.",
-            finishedAt: new Date().toISOString(),
+            finishedAt,
+            durationMs: Number.isFinite(startedAtMs)
+              ? Math.max(0, Date.parse(finishedAt) - startedAtMs)
+              : null,
           });
           broadcast({ type: "generation_updated", generationId: item.id, data: updated });
           scheduleIdlePurge();

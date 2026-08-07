@@ -1,5 +1,4 @@
-@"
-# Python
+﻿# Python
 __pycache__/
 *.py[cod]
 *.pyd
@@ -10,6 +9,14 @@ env/
 # IDE
 .vscode/
 .idea/
+
+# Runtime/local data
+.data/
+*.backup-*
+*.backup*
+*.bak
+*.log
+*.tmp
 
 # ComfyUI - file pesanti e locali
 models/
@@ -37,14 +44,8 @@ custom_nodes/**/__pycache__/
 *.avi
 *.webm
 
-# Log e file temporanei
-*.log
-*.tmp
-*.bak
-
 # Configurazioni sensibili
 .env
 .env.*
 config.local.*
 secrets.*
-"@ | Set-Content .gitignore -Encoding UTF8

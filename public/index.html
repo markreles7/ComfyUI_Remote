@@ -54,9 +54,29 @@
 
         <input id="generationType" name="generationType" type="hidden" value="video">
         <div class="generation-type-switch" role="group" aria-label="Tipo di generazione">
-          <button class="active" type="button" data-generation-type="video"><span>▶</span><b>Video</b><small>LTX 2.3</small></button>
-          <button type="button" data-generation-type="image"><span>◆</span><b>Immagine</b><small>Flux / Qwen / Z-Image</small></button>
-          <button type="button" data-generation-type="upscale"><span>↗</span><b>Upscaling</b><small>AI / RTX</small></button>
+          <button class="active" type="button" data-generation-type="video">
+            <span>▶</span>
+            <b>Video</b>
+            <small>LTX 2.3</small>
+          </button>
+
+          <button type="button" data-generation-type="image">
+            <span>◆</span>
+            <b>Immagine</b>
+            <small>Flux / Qwen / Z-Image</small>
+          </button>
+
+          <button type="button" data-generation-type="upscale">
+            <span>↗</span>
+            <b>Upscaling</b>
+            <small>AI / RTX</small>
+          </button>
+
+          <button type="button" data-generation-type="ltxUpscale">
+            <span>⇈</span>
+            <b>Upscale LTX</b>
+            <small>IC-LoRA video</small>
+          </button>
         </div>
 
         <div id="video-workflow-field" class="field">
@@ -199,6 +219,230 @@
           </div>
           <p id="upscale-warning" class="model-warning hidden"></p>
           <p class="storyboard-note">I motori cloud a pagamento non vengono utilizzati. Il risultato viene salvato nella pagina Generazioni.</p>
+        </section>
+
+
+        <section id="ltx-upscale-options" class="image-options hidden">
+
+          <div class="field">
+            <label>Video da migliorare</label>
+
+            <label id="ltx-upscale-dropzone" class="dropzone video-dropzone">
+              <input
+                id="ltxUpscaleVideo"
+                name="ltxUpscaleVideo"
+                type="file"
+                accept="video/mp4,video/webm,video/quicktime,video/x-matroska,video/x-msvideo,.mp4,.webm,.mov,.mkv,.avi"
+                disabled
+              >
+
+              <video
+                id="ltx-upscale-preview"
+                muted
+                playsinline
+              ></video>
+
+              <span class="upload-icon">⇈</span>
+
+              <strong>Trascina o scegli un video</strong>
+
+              <small>
+                MP4, WebM, MOV, MKV o AVI · secondo passaggio generativo LTX
+              </small>
+            </label>
+
+            <p id="ltx-upscale-file-info" class="hint"></p>
+          </div>
+
+          <div class="field-grid">
+
+            <div class="field">
+              <label for="ltxUpscalePreset">Preset</label>
+
+              <select
+                id="ltxUpscalePreset"
+                name="ltxUpscalePreset"
+                disabled
+              >
+                <option value="balanced" selected>Bilanciato</option>
+                <option value="quality">Qualità</option>
+                <option value="max">Qualità MAX</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="ltxUpscaleScale">Fattore di upscale</label>
+
+              <select
+                id="ltxUpscaleScale"
+                name="ltxUpscaleScale"
+                disabled
+              >
+                <option value="1.5">1,5×</option>
+                <option value="2" selected>2×</option>
+                <option value="3">3×</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="ltxUpscaleFrameLoadCap">Numero massimo fotogrammi</label>
+
+              <input
+                id="ltxUpscaleFrameLoadCap"
+                name="ltxUpscaleFrameLoadCap"
+                type="number"
+                min="1"
+                max="1000"
+                step="1"
+                value="121"
+                disabled
+              >
+
+              <p class="hint">121 fotogrammi corrispondono a circa 5 secondi a 24 FPS.</p>
+            </div>
+
+            <div class="field">
+              <label for="ltxUpscaleSeed">Seed</label>
+
+              <div class="seed-control">
+                <input
+                  id="ltxUpscaleSeed"
+                  name="ltxUpscaleSeed"
+                  inputmode="numeric"
+                  placeholder="Random"
+                  disabled
+                >
+
+                <button
+                  id="random-ltx-upscale-seed"
+                  type="button"
+                  title="Genera seed casuale"
+                  disabled
+                >↻</button>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="field">
+            <div class="label-row">
+              <label for="ltxUpscalePrompt">Prompt</label>
+            </div>
+
+            <textarea
+              id="ltxUpscalePrompt"
+              name="ltxUpscalePrompt"
+              rows="3"
+              disabled
+            >upscale</textarea>
+
+            <p class="hint">Per il comportamento originale della IC-LoRA lascia semplicemente “upscale”.</p>
+          </div>
+
+          <div class="field">
+            <label for="ltxUpscaleNegativePrompt">Prompt negativo</label>
+
+            <textarea
+              id="ltxUpscaleNegativePrompt"
+              name="ltxUpscaleNegativePrompt"
+              rows="3"
+              disabled
+            >pc game, console game, video game, cartoon, childish, ugly, noise, glitch, warble, identity drift, changed face, changed clothes, temporal flicker, distorted anatomy</textarea>
+          </div>
+
+          <fieldset class="quality upscale-quality">
+            <legend>Impostazioni audio</legend>
+
+            <label>
+              <input
+                id="ltxUpscaleKeepAudio"
+                name="ltxUpscaleKeepAudio"
+                type="checkbox"
+                checked
+                disabled
+              >
+
+              <span>
+                <b>Mantieni audio originale</b>
+                <small>Riutilizza la traccia audio del video sorgente.</small>
+              </span>
+            </label>
+          </fieldset>
+
+          <details id="ltx-upscale-advanced" class="advanced-settings">
+            <summary>
+              Impostazioni avanzate
+              <span>Steps, forza LoRA, guida e qualità video</span>
+            </summary>
+
+            <div class="advanced-settings-body">
+              <div class="field-grid">
+
+                <div class="field">
+                  <label for="ltxUpscaleSteps">Sampling steps</label>
+                  <input id="ltxUpscaleSteps" name="ltxUpscaleSteps" type="number" min="4" max="30" step="1" value="12" disabled>
+                </div>
+
+                <div class="field">
+                  <label for="ltxUpscaleDistilledStrength">Distilled 1.1 strength</label>
+                  <input id="ltxUpscaleDistilledStrength" name="ltxUpscaleDistilledStrength" type="number" min="0" max="2" step="0.05" value="0.6" disabled>
+                </div>
+
+                <div class="field">
+                  <label for="ltxUpscaleLoraStrength">Upscale IC-LoRA strength</label>
+                  <input id="ltxUpscaleLoraStrength" name="ltxUpscaleLoraStrength" type="number" min="0" max="2" step="0.05" value="1" disabled>
+                </div>
+
+                <div class="field">
+                  <label for="ltxUpscaleGuideStrength">Guide strength</label>
+                  <input id="ltxUpscaleGuideStrength" name="ltxUpscaleGuideStrength" type="number" min="0" max="2" step="0.05" value="1" disabled>
+                </div>
+
+                <div class="field">
+                  <label for="ltxUpscaleCrf">CRF video</label>
+                  <input id="ltxUpscaleCrf" name="ltxUpscaleCrf" type="number" min="0" max="51" step="1" value="13" disabled>
+                  <p class="hint">Un valore più basso produce un file più grande e meno compresso.</p>
+                </div>
+
+              </div>
+            </div>
+          </details>
+
+          <section class="sulphur-panel">
+            <div>
+              <p class="eyebrow">LTX 2.3 UPSCALE IC-LORA</p>
+              <h3>Pipeline generativa dedicata</h3>
+              <p>
+                Ricostruisce il dettaglio tramite un secondo passaggio LTX.
+                Può reinterpretare leggermente volti, texture e piccoli elementi.
+              </p>
+            </div>
+
+            <div class="sulphur-panel-grid">
+              <div>
+                <span>Modello base</span>
+                <b>ltx-2.3-22b-dev-fp8.safetensors</b>
+              </div>
+
+              <div>
+                <span>LoRA tecnica</span>
+                <b>Distilled 1.1 Dynamic · 0.60</b>
+              </div>
+
+              <div>
+                <span>LoRA upscale</span>
+                <b>LTX 2.3 Upscale IC-LoRA · 1.00</b>
+              </div>
+            </div>
+          </section>
+
+          <p id="ltx-upscale-warning" class="model-warning hidden"></p>
+
+          <p class="storyboard-note">
+            Questa modalità è diversa da SeedVR2 o RTX: il risultato viene
+            rigenerato da LTX 2.3 e non è un semplice ridimensionamento dei pixel.
+          </p>
+
         </section>
 
         <div id="regular-scene-fields">

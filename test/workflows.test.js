@@ -133,8 +133,8 @@ test("costruisce LTX 2.3 Sulphur Image-to-Video dedicato", () => {
   const { workflow, metadata } = buildWorkflow("ltxSulphur", base, upload);
   assert.equal(workflow["67"].inputs.image, "remote/frame.png");
   assert.equal(workflow["68"].class_type, "ImageResizeKJv2");
-  assert.equal(workflow["68"].inputs.width, 480);
-  assert.equal(workflow["68"].inputs.height, 832);
+  assert.equal(workflow["68"].inputs.width, 240);
+  assert.equal(workflow["68"].inputs.height, 416);
   assert.equal(workflow["14"].inputs.bypass, false);
   assert.equal(workflow["22"].inputs.bypass, false);
   assert.equal(metadata.sourceImage, "remote/frame.png");

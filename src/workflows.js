@@ -226,41 +226,91 @@ function replaceLinkInObject(value, fromLink, toLink) {
 }
 
 function applyLtxSulphurWorkflow(workflow, options, upload, inputMode, width, height, seed) {
+  const frames = ltxFrameCount(options.duration);
+
+  /*
+   * Sulphur esegue il primo passaggio a metà risoluzione.
+   * Tutti gli elementi che entrano nel primo latent devono quindi usare
+   * esattamente le stesse dimensioni.
+   */
+  const firstPassWidth = Math.max(32, Math.round(width / 2));
+  const firstPassHeight = Math.max(32, Math.round(height / 2));
+
   workflow["29"].inputs.value = options.prompt;
   workflow["30"].inputs.text = options.prompt;
   workflow["41"].inputs.text = options.negativePrompt;
-  workflow["27"].inputs.value = ltxFrameCount(options.duration);
+
+  workflow["27"].inputs.value = frames;
   workflow["26"].inputs.value = 24;
+  workflow["24"].inputs.value = 24;
+
+  /*
+   * Risoluzione finale.
+   */
   workflow["40"].inputs.value = width;
   workflow["25"].inputs.value = height;
-  workflow["18"].inputs.value = Math.max(32, Math.round(width / 2));
-  workflow["20"].inputs.value = Math.max(32, Math.round(height / 2));
-  workflow["24"].inputs.value = 24;
+
+  /*
+   * Risoluzione del primo passaggio latent.
+   */
+  workflow["18"].inputs.value = firstPassWidth;
+  workflow["20"].inputs.value = firstPassHeight;
+
   workflow["1"].inputs.noise_seed = seed;
   workflow["2"].inputs.noise_seed = seed;
-  workflow["44"].inputs.ckpt_name = "ltx-2.3-22b-dev-fp8.safetensors";
-  workflow["45"].inputs.filename_prefix = "video/LTX23_SULPHUR";
-  workflow["49"].inputs.lora_name = LTX23_SULPHUR_BUILTIN_LORAS[0].name;
-  workflow["49"].inputs.strength_model = LTX23_SULPHUR_BUILTIN_LORAS[0].strength;
+
+  workflow["44"].inputs.ckpt_name =
+    "ltx-2.3-22b-dev-fp8.safetensors";
+
+  workflow["45"].inputs.filename_prefix =
+    "video/LTX23_SULPHUR";
+
+  workflow["49"].inputs.lora_name =
+    LTX23_SULPHUR_BUILTIN_LORAS[0].name;
+
+  workflow["49"].inputs.strength_model =
+    LTX23_SULPHUR_BUILTIN_LORAS[0].strength;
+
   workflow["59"].inputs.model = ["49", 0];
-  workflow["59"].inputs.lora_name = LTX23_SULPHUR_BUILTIN_LORAS[1].name;
-  workflow["59"].inputs.strength_model = LTX23_SULPHUR_BUILTIN_LORAS[1].strength;
+
+  workflow["59"].inputs.lora_name =
+    LTX23_SULPHUR_BUILTIN_LORAS[1].name;
+
+  workflow["59"].inputs.strength_model =
+    LTX23_SULPHUR_BUILTIN_LORAS[1].strength;
+
   workflow["8"].inputs.model = ["59", 0];
   workflow["42"].inputs.model = ["59", 0];
+
   applyLtxSulphurQuality(workflow, options.quality);
+
   if (inputMode === "image") {
+    if (!upload) {
+      throw new Error(
+        "Il workflow Sulphur Image-to-Video richiede un'immagine.",
+      );
+    }
+
+    /*
+     * L'immagine guida entra nel latent del primo passaggio.
+     * Non deve quindi essere ridimensionata alla risoluzione finale.
+     */
     workflow["67"].inputs.image = inputPath(upload);
-    workflow["68"].inputs.width = width;
-    workflow["68"].inputs.height = height;
+    workflow["68"].inputs.width = firstPassWidth;
+    workflow["68"].inputs.height = firstPassHeight;
   } else if (workflow["990411"]) {
-    workflow["990411"].inputs.width = width;
-    workflow["990411"].inputs.height = height;
+    /*
+     * Anche l'immagine neutra utilizzata dal template T2V deve essere
+     * coerente con il latent del primo passaggio.
+     */
+    workflow["990411"].inputs.width = firstPassWidth;
+    workflow["990411"].inputs.height = firstPassHeight;
   }
 }
 
 function applyLtxSulphurQuality(workflow, quality) {
   if (workflow["47"]) {
-    workflow["47"].inputs.steps = quality === "preview" ? 12 : 50;
+    workflow["47"].inputs.steps = quality === "preview" ? 12 : 24;
     workflow["47"].inputs.max_shift = 2.72;
     workflow["47"].inputs.base_shift = 0.8;
     workflow["47"].inputs.stretch = true;

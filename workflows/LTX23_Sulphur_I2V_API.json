@@ -166,7 +166,7 @@
         0
       ],
       "strength": 1,
-      "bypass": true
+      "bypass": false
     },
     "class_type": "LTXVImgToVideoInplace",
     "_meta": {

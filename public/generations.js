@@ -217,8 +217,17 @@ function formatSettings(item) {
   if (item.mediaType === "image") {
     entries.push(["Immagini", item.batchSize || item.images?.length || 1]);
   } else {
-    if (videoModeLabel(item.inputMode)) entries.push(["Modalità", videoModeLabel(item.inputMode)]);
-    entries.push(["Durata", `${item.duration}s`], ["FPS", item.fps]);
+    if (videoModeLabel(item.inputMode)) {
+      entries.push(["Modalità", videoModeLabel(item.inputMode)]);
+    }
+
+    if (Number.isFinite(Number(item.duration))) {
+      entries.push(["Durata", `${item.duration}s`]);
+    }
+
+    if (Number.isFinite(Number(item.fps))) {
+      entries.push(["FPS", item.fps]);
+    }
   }
   if (item.quality) entries.push(["Qualità", item.quality === "preview" ? "Anteprima" : "Massima"]);
   if (item.sceneCount > 1) entries.push(["Scene", item.sceneCount]);
@@ -269,10 +278,18 @@ function formatSettings(item) {
     if (item.imageSettings.autoPurge) entries.push(["Purge VRAM", "Automatico"]);
   }
   if (item.upscaleSettings) {
-    entries.push(
-      ["Motore", item.upscaleSettings.engineName],
-      ["Preset", item.upscaleSettings.presetName],
-    );
+    const ltxUpscale = item.generationType === "ltxUpscale";
+
+    const engineName = item.upscaleSettings.engineName ||
+      (ltxUpscale ? "LTX 2.3 IC-LoRA" : "");
+
+    const presetName = item.upscaleSettings.presetName ||
+      (ltxUpscale
+        ? `${item.upscaleSettings.steps || "—"} step · CRF ${item.upscaleSettings.crf ?? "—"}`
+        : "");
+
+    if (engineName) entries.push(["Motore", engineName]);
+    if (presetName) entries.push(["Preset", presetName]);
     if (item.upscaleSettings.model) entries.push(["Modello", item.upscaleSettings.model]);
     if (item.upscaleSettings.scale) entries.push(["Ingrandimento", `${item.upscaleSettings.scale}×`]);
     if (item.upscaleSettings.targetShortEdge) {
