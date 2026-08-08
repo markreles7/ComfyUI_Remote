@@ -39,6 +39,25 @@ function showToast(message) {
   showToast.timer = setTimeout(() => toast.classList.remove("visible"), 2800);
 }
 
+function selectedCharacter() {
+  const id = $("#studioCharacterId")?.value;
+  if (!id) return null;
+  return (state.config?.characters?.availableCharacters || []).find((character) => character.id === id) || null;
+}
+
+function syncCharacterFields() {
+  const character = selectedCharacter();
+  const settings = character?.settings || {};
+  $("#studioCharacterIdentityStrength").value = settings.identityStrength || "medium";
+  $("#studioCharacterLockFace").value = String(settings.lockFace ?? true);
+  $("#studioCharacterLockHair").value = String(settings.lockHair ?? true);
+  $("#studioCharacterLockBody").value = String(settings.lockBody ?? true);
+  $("#studioCharacterLockOutfit").value = String(settings.lockOutfit ?? false);
+  $("#studio-character-hint").textContent = character
+    ? "Il Character Pack verra' passato all'adapter dello Studio; i workflow senza reference usano un prompt fallback."
+    : "Usa un Virtual Actor persistente come identita/reference automatica.";
+}
+
 function setConnection(online) {
   const connection = $("#connection");
   connection.className = `connection ${online ? "online" : "offline"}`;
@@ -134,28 +153,33 @@ function updateMode() {
   const mode = studioMode();
   if (!mode) return;
   const staticQwenKreaKlein = mode.id === "qwenKreaKlein";
+  const kreaTriple = mode.id === "kreaTriple";
+  const kreaTripleOperation = $("#kreaTripleOperation")?.value || "text";
   $("#studio-description").textContent = mode.description;
   renderQuickGuide(WORKFLOW_GUIDE_BY_ID[mode.id]);
-  toggle("#source-section", mode.input !== "firstLast");
+  toggle("#source-section", mode.input !== "firstLast" && !(kreaTriple && kreaTripleOperation === "text"));
   toggle("#qwen-krea-klein-section", staticQwenKreaKlein);
+  toggle("#krea-triple-section", kreaTriple);
+  toggle("#krea-triple-denoise-field", kreaTriple && kreaTripleOperation !== "text");
   toggle("#guided-edit-section", mode.id === "guidedEdit");
   toggle("#guided-zone-heading", mode.id === "guidedEdit");
   toggle("#first-last-section", mode.input === "firstLast");
-  toggle("#mask-section", mode.supportsMask && !staticQwenKreaKlein);
-  toggle("#reference-section", mode.supportsReferences && !staticQwenKreaKlein);
+  toggle("#mask-section", mode.supportsMask && !staticQwenKreaKlein && (!kreaTriple || kreaTripleOperation === "selective"));
+  toggle("#reference-section", mode.supportsReferences && !staticQwenKreaKlein && !kreaTriple);
   toggle("#storyboard-section", mode.id === "storyboard");
   toggle("#bible-section", mode.id === "bible");
   toggle("#camera-section", mode.id === "camera");
   toggle("#relight-section", mode.id === "relight");
   toggle("#perfect-section", mode.id === "perfect");
   toggle("#common-settings", mode.input !== "firstLast" && !staticQwenKreaKlein);
-  toggle("#editing-controls", mode.input !== "firstLast" && !staticQwenKreaKlein);
+  toggle("#editing-controls", mode.input !== "firstLast" && !staticQwenKreaKlein && !kreaTriple);
   toggle("#studio-models", mode.input !== "firstLast"
     && mode.id !== "storyboard"
     && mode.id !== "perfect"
+    && !kreaTriple
     && !staticQwenKreaKlein);
-  toggle("#final-output-section", mode.input !== "firstLast" && !staticQwenKreaKlein);
-  toggle("#studio-lora-section", !staticQwenKreaKlein);
+  toggle("#final-output-section", mode.input !== "firstLast" && !staticQwenKreaKlein && !kreaTriple);
+  toggle("#studio-lora-section", !staticQwenKreaKlein && !kreaTriple);
   toggle("#guided-model-family-field", mode.id === "guidedEdit");
   for (const selector of [
     "#qwen-edit-model-field",
@@ -170,6 +194,11 @@ function updateMode() {
   $("#studio-prompt").required = mode.id !== "firstLast";
   if (staticQwenKreaKlein) {
     $("#studio-prompt").placeholder = "Istruzione Qwen Image Editing da applicare alla foto sorgente...";
+    $("#edit-wildcard-panel").classList.add("hidden");
+  } else if (kreaTriple) {
+    $("#studio-prompt").placeholder = kreaTripleOperation === "text"
+      ? "Descrivi il soggetto, scena, luce, camera e look fotografico per Krea Triple..."
+      : "Descrivi la modifica o il risultato da ottenere mantenendo coerenza fotografica...";
     $("#edit-wildcard-panel").classList.add("hidden");
   }
 
@@ -187,7 +216,7 @@ function updateMode() {
   if (mode.id === "bible") updateBibleDefaults();
   if (mode.id === "guidedEdit") updateGuidedAction();
   updateGuidedModel();
-  if (!staticQwenKreaKlein) updateEditWildcardDefaults();
+  if (!staticQwenKreaKlein && !kreaTriple) updateEditWildcardDefaults();
   updateMaskMode();
   renderLoras();
 }
@@ -799,13 +828,14 @@ async function start() {
   if (state.config.studio.modes.some((mode) => mode.id === requestedWorkflow)) {
     $("#studioMode").value = requestedWorkflow;
   }
-  const influencers = state.config.virtualInfluencer?.availableProfiles || [];
-  $("#studioVirtualInfluencerId").innerHTML = [
+  const characters = state.config.characters?.availableCharacters || [];
+  $("#studioCharacterId").innerHTML = [
     `<option value="">Nessuna</option>`,
-    ...influencers.map((profile) =>
-      `<option value="${escapeHtml(profile.id)}">${escapeHtml(profile.displayName)} · ${profile.canonicalReferences} canoniche</option>`
+    ...characters.map((character) =>
+      `<option value="${escapeHtml(character.id)}">${escapeHtml(character.name)} · ${Number(character.referenceCount || 0)} reference</option>`
     ),
   ].join("");
+  syncCharacterFields();
   $("#firstLastVideoModel").innerHTML = (state.config.videoModels || [])
     .filter((model) => model.available !== false)
     .map((model) =>
@@ -908,6 +938,8 @@ async function applyGuidedCreation() {
 }
 
 $("#studioMode").addEventListener("change", updateMode);
+$("#studioCharacterId").addEventListener("change", syncCharacterFields);
+$("#kreaTripleOperation").addEventListener("change", updateMode);
 $("#open-workflow-guide").addEventListener("click", openQuickGuide);
 $("#close-workflow-guide").addEventListener("click", () => $("#workflow-guide-dialog").close());
 $("#workflow-guide-dialog").addEventListener("click", (event) => {

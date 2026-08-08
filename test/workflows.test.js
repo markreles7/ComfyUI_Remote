@@ -181,7 +181,7 @@ test("configura storyboard Director con immagini e prompt in sequenza", () => {
   assert.equal(metadata.inputMode, "image");
 });
 
-test("LTX 2.3 Sulphur Massima conserva risoluzione e usa il refine", () => {
+test("LTX 2.3 Sulphur Massima conserva risoluzione e usa il profilo a 24 step", () => {
   const { workflow, metadata } = buildWorkflow("ltxSulphur", {
     ...base,
     quality: "max",
@@ -192,7 +192,7 @@ test("LTX 2.3 Sulphur Massima conserva risoluzione e usa il refine", () => {
   assert.equal(workflow["25"].inputs.value, 704);
   assert.equal(workflow["1"].inputs.noise_seed, 1234);
   assert.equal(workflow["2"].inputs.noise_seed, 1234);
-  assert.equal(workflow["47"].inputs.steps, 50);
+  assert.equal(workflow["47"].inputs.steps, 24);
   assert.deepEqual(workflow["43"].inputs.samples, ["37", 0]);
   assert.deepEqual(workflow["23"].inputs.samples, ["37", 1]);
   assert.equal(metadata.quality, "max");

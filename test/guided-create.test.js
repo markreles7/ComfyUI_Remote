@@ -15,7 +15,7 @@ test("la Crea guidata è raggiungibile da tutte le schermate principali", async 
     "public/index.html",
     "public/studio.html",
     "public/video-studio.html",
-    "public/virtual-influencer.html",
+    "public/characters.html",
     "public/generations.html",
     "public/workflow-guide.html",
   ];
@@ -74,82 +74,45 @@ test("Director trasferisce continuità globale e ogni scena separatamente", asyn
   assert.match(generator, /\[data-scene-duration\]/);
 });
 
-test("Virtual Influencer espone generazione foto, review ed export", async () => {
-  const page = await source("public/virtual-influencer.html");
-  const script = await source("public/virtual-influencer.js");
+test("Character Library sostituisce la vecchia sezione con CRUD e reference pack", async () => {
+  const page = await source("public/characters.html");
+  const script = await source("public/characters.js");
   const server = await source("src/server.js");
-  assert.match(page, /Generate Photo/);
-  assert.match(page, /Review Queue & Export/);
-  assert.match(script, /\/photos/);
-  assert.match(script, /generated-assets/);
-  assert.match(script, /Correggi|Rigenera|Confronta versioni/);
-  assert.match(script, /compare-versions/);
-  assert.match(server, /\/api\/virtual-influencer\/profiles\/:id\/photos/);
-  assert.match(server, /\/generated-assets\/:assetId\/export/);
-  assert.match(server, /generated-assets\/:assetId\/compare-versions/);
+  assert.match(page, /Character Library/);
+  assert.match(page, /Virtual Actor/);
+  assert.match(page, /Build Character Pack/);
+  assert.match(page, /Generate Character Sheet/);
+  assert.match(page, /Identity Check/);
+  assert.match(page, /characterSheetWorkflow/);
+  assert.match(page, /Qwen\/Krea\/Klein/);
+  assert.match(script, /generateSheet/);
+  assert.match(script, /identityCheck/);
+  assert.match(script, /\/api\/characters/);
+  assert.match(script, /references/);
+  assert.match(server, /\/api\/characters\/:id\/build-pack/);
+  assert.match(server, /\/api\/characters\/:id\/generate-sheet/);
+  assert.match(server, /runCharacterIdentityCheck/);
+  assert.match(server, /\/api\/characters\/import-legacy/);
+  assert.doesNotMatch(server, /\/api\/virtual-influencer/);
 });
 
-test("Virtual Influencer espone generazione video LTX", async () => {
-  const page = await source("public/virtual-influencer.html");
-  const script = await source("public/virtual-influencer.js");
-  const server = await source("src/server.js");
-  assert.match(page, /Generate Video/);
-  assert.match(page, /Influencer Video LTX 2\.3/);
-  assert.match(script, /\/videos/);
-  assert.match(script, /<video controls muted playsinline/);
-  assert.match(server, /\/api\/virtual-influencer\/profiles\/:id\/videos/);
-  assert.match(server, /buildVideoPlan/);
-});
-
-test("Virtual Influencer espone librerie outfit/location e batch generation", async () => {
-  const page = await source("public/virtual-influencer.html");
-  const script = await source("public/virtual-influencer.js");
-  const server = await source("src/server.js");
-  assert.match(page, /Outfits & Locations/);
-  assert.match(page, /Batch Generation/);
-  assert.match(script, /\/outfits/);
-  assert.match(script, /\/locations/);
-  assert.match(script, /\/batches/);
-  assert.match(server, /profiles\/:id\/outfits/);
-  assert.match(server, /profiles\/:id\/locations/);
-  assert.match(server, /profiles\/:id\/batches/);
-});
-
-test("Virtual Influencer espone contenuti, disclosure, voice e analytics", async () => {
-  const page = await source("public/virtual-influencer.html");
-  const script = await source("public/virtual-influencer.js");
-  const server = await source("src/server.js");
-  assert.match(page, /Caption Engine/);
-  assert.match(page, /Disclosure & Voice/);
-  assert.match(page, /Content Projects/);
-  assert.match(page, /Analytics/);
-  assert.match(page, /Importa CSV/);
-  assert.match(script, /\/captions/);
-  assert.match(script, /\/voice/);
-  assert.match(script, /\/content-projects/);
-  assert.match(script, /\/analytics/);
-  assert.match(script, /import-csv/);
-  assert.match(server, /profiles\/:id\/captions/);
-  assert.match(server, /profiles\/:id\/voice/);
-  assert.match(server, /content-projects\/:projectId\/analytics/);
-  assert.match(server, /analytics\/import-csv/);
-});
-
-test("Virtual Influencer Milestone 6 espone settings, debug e golden UI sintetico", async () => {
-  const page = await source("public/virtual-influencer.html");
-  const script = await source("public/virtual-influencer.js");
-  const server = await source("src/server.js");
-  const store = await source("src/virtual-influencer/store.js");
-  const fixture = JSON.parse(await source("test/fixtures/virtual-influencer-golden.json"));
-  for (const section of fixture.requiredSections) {
-    assert.match(page, new RegExp(section.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), section);
+test("Generate, Image Studio e Video Studio inviano il selector Character Library", async () => {
+  const generate = await source("public/index.html");
+  const generateScript = await source("public/app.js");
+  const studio = await source("public/studio.html");
+  const studioScript = await source("public/studio.js");
+  const video = await source("public/video-studio.html");
+  const videoScript = await source("public/video-studio.js");
+  for (const page of [generate, studio, video]) {
+    assert.match(page, /name="characterId"/);
+    assert.match(page, /name="identityStrength"/);
+    assert.match(page, /name="lockFace"/);
+    assert.match(page, /name="lockHair"/);
+    assert.match(page, /name="lockBody"/);
+    assert.match(page, /name="lockOutfit"/);
   }
-  for (const action of fixture.requiredActions) {
-    assert.match(page, new RegExp(action.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), action);
+  for (const script of [generateScript, studioScript, videoScript]) {
+    assert.match(script, /state\.config\.characters\?\.availableCharacters/);
+    assert.doesNotMatch(script, /virtualInfluencer/);
   }
-  assert.match(script, /debug-report/);
-  assert.match(script, /cache\/invalidate/);
-  assert.match(server, /profiles\/:id\/debug-report/);
-  assert.match(server, /profiles\/:id\/cache\/invalidate/);
-  assert.match(store, /milestone: 6/);
 });

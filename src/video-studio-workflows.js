@@ -87,6 +87,11 @@ export const VIDEO_STUDIO_MODES = {
     name: "Temporal Upscaler 2×",
     description: "Raddoppia i fotogrammi conservando durata, risoluzione e audio.",
   },
+  sequentialStory: {
+    id: "sequentialStory",
+    name: "Storia continua",
+    description: "Pianifica N scene, genera job ComfyUI indipendenti, usa continuity frame e concatena il video finale.",
+  },
 };
 
 function cloneTemplate(name) {
@@ -853,6 +858,9 @@ function buildTemporalUpscale(raw, uploads, config) {
 
 export function buildVideoStudioInitialJob(mode, raw, uploads, loras, config) {
   if (!VIDEO_STUDIO_MODES[mode]) throw new Error("Workflow Video Studio non riconosciuto.");
+  if (mode === "sequentialStory") {
+    throw new Error("Storia continua usa gli endpoint Sequential Story dedicati, non il builder Video Studio standard.");
+  }
   if (mode === "interactiveScene") return buildInteractiveScene(raw, uploads, loras, config);
   if (mode === "sceneTransform") return buildSceneTransform(raw, uploads, loras, config);
   if (mode === "hdr") return buildHdrStudio(raw, uploads, loras, config);

@@ -9,6 +9,7 @@ export async function enhanceMainPrompt({
   text,
   negativeInput,
   includeNegative = false,
+  buttonScope = null,
 }) {
   if (window.__promptAssistantBusy) {
     status.textContent = "Prompt Assistant già in esecuzione: attendi il risultato corrente.";
@@ -16,7 +17,7 @@ export async function enhanceMainPrompt({
     return null;
   }
   const originalLabel = button.textContent;
-  const assistantButtons = Array.from(document.querySelectorAll(".prompt-assistant-button"));
+  const assistantButtons = Array.from((buttonScope || document).querySelectorAll(".prompt-assistant-button"));
   const previousButtonStates = assistantButtons.map((item) => [item, item.disabled]);
   const data = new FormData();
   data.set("text", String(text ?? input.value).trim());

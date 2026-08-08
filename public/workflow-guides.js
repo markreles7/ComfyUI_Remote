@@ -264,6 +264,28 @@ export const WORKFLOW_GUIDES = [
     example: "Transform the provided anime image into a physically realistic live-action photograph while preserving identity, pose, clothing, composition, lighting direction and scene context.",
     tips: ["Usa questa sezione quando vuoi esattamente la pipeline Qwen_Krea_Klein.", "Le LoRA e i refine sono quelli gia' dentro il workflow API.", "Per maschere o alternative guidate usa Editor Guidato."],
   },
+  {
+    id: "kreaTriple",
+    name: "Krea Triple Studio",
+    category: "Workflow statico",
+    level: "Completo",
+    summary: "Usa tre template API separati con pipeline Krea, Z-Image, Flux2 Klein e SeedVR2 finale.",
+    bestFor: ["Text to Image rifinito in un solo job", "Image to Image con forza modifica regolabile", "Editing selettivo con maschera e compositing protetto"],
+    inputs: ["Prompt", "Foto sorgente per Image to Image e Selective", "Maschera manuale per Selective", "Seed facoltativo"],
+    steps: [
+      ["Scegli la modalità", "Text crea da zero; Image parte dalla foto; Selective ricompone il risultato solo nella maschera."],
+      ["Regola forza modifica", "Per Image e Selective usa valori bassi per conservare, alti per trasformare di più."],
+      ["Avvia", "La coda esegue Krea, poi Z-Image, poi Flux2 Klein e infine SeedVR2."],
+    ],
+    settings: [
+      ["Text", "KreaTriple_T2I_API.json", "Non richiede immagine sorgente."],
+      ["Image", "KreaTriple_I2I_API.json", "Sostituisce il latent Krea iniziale con la foto sorgente codificata."],
+      ["Selective", "KreaTriple_Masked_API.json", "Usa la maschera esistente per proteggere la parte non modificata."],
+      ["SeedVR2", "cache_model booleano", "Il loader DiT viene normalizzato con attention_mode sdpa."],
+    ],
+    example: "Realistic editorial poolside portrait at golden hour, coherent natural skin texture, believable reflections, soft lens rendering and amateur photo realism.",
+    tips: ["Non modifica Qwen_Krea_Klein.", "Selective protegge il fuori maschera tramite compositing finale.", "Usa la stessa maschera manuale già presente in Image Studio."],
+  },
 ];
 
 export const SCENE_INTEGRATION_GUIDE = {

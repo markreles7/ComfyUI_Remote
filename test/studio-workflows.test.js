@@ -19,6 +19,7 @@ test("espone soltanto i workflow Studio distinti", () => {
       "bible",
       "perfect",
       "qwenKreaKlein",
+      "kreaTriple",
     ],
   );
 });
@@ -44,6 +45,78 @@ test("Qwen Krea Klein usa il workflow API statico con input runtime", () => {
   assert.equal(job.workflow["522"].inputs.seed, 12345);
   assert.equal(job.workflow["527"].inputs.filename_prefix, "Studio/qwen_krea_klein/08_finale");
   assert.equal(job.metadata.imageSettings.staticWorkflow, "Qwen_Krea_Klein_API.json");
+});
+
+test("Krea Triple Text to Image usa il template T2I e normalizza SeedVR2", () => {
+  const [job] = buildStudioJobs("kreaTriple", {
+    kreaTripleOperation: "text",
+    prompt: "Realistic editorial poolside portrait.",
+    negativePrompt: "avoid blur",
+    seed: 123,
+    imageWidth: 960,
+    imageHeight: 1280,
+  }, { references: [] });
+
+  assert.equal(job.metadata.workflowId, "studio:kreaTriple");
+  assert.equal(job.metadata.imageSettings.operation, "text");
+  assert.equal(job.metadata.imageSettings.staticWorkflow, "KreaTriple_T2I_API.json");
+  assert.equal(job.workflow["5"].inputs.text, "Realistic editorial poolside portrait.");
+  assert.equal(job.workflow["15"].inputs.text, "Realistic editorial poolside portrait.");
+  assert.equal(job.workflow["59"].inputs.text, "Realistic editorial poolside portrait.");
+  assert.equal(job.workflow["8"].inputs.seed, 123);
+  assert.equal(job.workflow["17"].inputs.seed, 124);
+  assert.equal(job.workflow["29"].inputs.noise_seed, 125);
+  assert.equal(job.workflow["99"].inputs.cache_model, true);
+  assert.equal(job.workflow["99"].inputs.attention_mode, "sdpa");
+  assert.equal(job.workflow["23"].inputs.use_custom_resolution, true);
+});
+
+test("Krea Triple Image to Image richiede source e usa denoise regolabile", () => {
+  assert.throws(() => buildStudioJobs("kreaTriple", {
+    kreaTripleOperation: "img2img",
+    prompt: "Transform the source photo.",
+  }, { references: [] }), /fotografia sorgente/);
+
+  const [job] = buildStudioJobs("kreaTriple", {
+    kreaTripleOperation: "img2img",
+    prompt: "Transform the source photo.",
+    kreaTripleDenoise: 0.45,
+    imageWidth: 1024,
+    imageHeight: 1024,
+  }, { source, references: [] });
+
+  assert.equal(job.metadata.imageSettings.staticWorkflow, "KreaTriple_I2I_API.json");
+  assert.equal(job.workflow["970100"].class_type, "LoadImage");
+  assert.equal(job.workflow["970100"].inputs.image, "remote/pool.jpg");
+  assert.equal(job.workflow["970102"].class_type, "VAEEncode");
+  assert.deepEqual(job.workflow["8"].inputs.latent_image, ["970102", 0]);
+  assert.equal(job.workflow["8"].inputs.denoise, 0.45);
+});
+
+test("Krea Triple Selective richiede maschera e protegge il fuori maschera", () => {
+  assert.throws(() => buildStudioJobs("kreaTriple", {
+    kreaTripleOperation: "selective",
+    prompt: "Modify only the selected area.",
+  }, { source, references: [] }), /maschera manuale/);
+
+  const [job] = buildStudioJobs("kreaTriple", {
+    kreaTripleOperation: "selective",
+    prompt: "Modify only the selected area.",
+    kreaTripleDenoise: 0.3,
+    maskGrow: 12,
+    maskFeather: 8,
+    imageWidth: 1024,
+    imageHeight: 1024,
+  }, { source, mask, references: [] });
+
+  assert.equal(job.metadata.imageSettings.staticWorkflow, "KreaTriple_Masked_API.json");
+  assert.equal(job.workflow["970110"].inputs.image, "remote/mask.png");
+  assert.equal(job.workflow["970126"].class_type, "ImageCompositeMasked");
+  assert.deepEqual(job.workflow["970126"].inputs.destination, ["970121", 0]);
+  assert.deepEqual(job.workflow["970126"].inputs.source, ["45", 0]);
+  assert.deepEqual(job.workflow["49"].inputs.images, ["970126", 0]);
+  assert.equal(job.metadata.maskImage, "remote/mask.png");
+  assert.equal(job.metadata.imageSettings.denoise, 0.3);
 });
 
 test("Editor Guidato unifica inserimento, posizione, reference e maschera protetta", () => {

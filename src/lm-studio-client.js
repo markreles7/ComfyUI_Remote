@@ -157,6 +157,16 @@ function parseJsonCompletion(payload) {
   }
 }
 
+function stripJsonEnvelope(text) {
+  return cleanOutput(String(text || "")
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim()
+    .replace(/^\{\s*"prompt"\s*:\s*/i, "")
+    .replace(/,\s*"negativePrompt"\s*:\s*[\s\S]*$/i, "")
+    .replace(/\}\s*$/i, ""));
+}
+
 function extractLooseJsonStringField(text, field) {
   const source = String(text || "");
   const marker = `"${field}"`;
@@ -191,6 +201,26 @@ function extractLooseJsonStringField(text, field) {
     .replace(/\\"/g, "\"")
     .replace(/\\\\/g, "\\")
     .trim();
+}
+
+function parsePromptCompletion(payload) {
+  const textPrompt = completionText(payload);
+  try {
+    const parsed = parseJsonCompletion(payload);
+    return {
+      prompt: parsed?.prompt,
+      negativePrompt: parsed?.negativePrompt,
+      parsedJson: true,
+    };
+  } catch {
+    const prompt = extractLooseJsonStringField(textPrompt, "prompt");
+    const negativePrompt = extractLooseJsonStringField(textPrompt, "negativePrompt");
+    return {
+      prompt: prompt || stripJsonEnvelope(textPrompt),
+      negativePrompt,
+      parsedJson: false,
+    };
+  }
 }
 
 function negativePromptFallback({ mode = "text", image = null } = {}) {
@@ -432,22 +462,7 @@ export class LmStudioClient {
           store: false,
         }),
       }, this.inferenceTimeoutMs);
-      const parsed = includeNegative
-        ? (() => {
-            try {
-              return parseJsonCompletion(payload);
-            } catch (error) {
-              if (videoTarget || isSulphurTarget(target)) {
-                const textPrompt = completionText(payload);
-                return {
-                  prompt: extractLooseJsonStringField(textPrompt, "prompt") || textPrompt,
-                  negativePrompt: extractLooseJsonStringField(textPrompt, "negativePrompt"),
-                };
-              }
-              throw error;
-            }
-          })()
-        : null;
+      const parsed = includeNegative ? parsePromptCompletion(payload) : null;
       const prompt = includeNegative ? cleanOutput(parsed?.prompt) : completionText(payload);
       if (!prompt) throw new Error("LM Studio non ha restituito un prompt utilizzabile.");
       return {
@@ -585,6 +600,97 @@ Do not include a negative prompt, markdown, explanations, bullets outside JSON, 
         model: loaded.model.display_name || loaded.model.key,
         modelKey: loaded.model.key,
         usedVision: content.length > 1,
+        get unloadError() {
+          return unloadError?.message || null;
+        },
+      };
+    } finally {
+      if (loaded?.instanceId) {
+        try {
+          await this.unload(loaded.instanceId);
+        } catch (error) {
+          unloadError = error;
+        }
+      } else {
+        try {
+          await this.unloadConfiguredModelInstances();
+        } catch (error) {
+          unloadError = error;
+        }
+      }
+      if (this.active?.id === lock.id) this.active = null;
+    }
+  }
+
+  async planSequentialStory({
+    description,
+    sceneCount = 3,
+    sceneDuration = 10,
+    globalStyle = "",
+    characterContext = "",
+  } = {}) {
+    const idea = String(description || "").trim();
+    if (!idea) throw new Error("Scrivi la descrizione globale della Storia continua.");
+    const count = Math.max(1, Math.min(12, Number(sceneCount) || 3));
+    const duration = Math.max(1, Math.min(30, Number(sceneDuration) || 10));
+    const now = Date.now();
+    if (this.active) {
+      const elapsed = now - this.active.startedAt;
+      if (elapsed < this.lockTimeoutMs) {
+        const seconds = Math.max(1, Math.round(elapsed / 1000));
+        throw new Error(`Il Prompt Assistant locale sta già lavorando (${seconds}s). Attendi il risultato corrente.`);
+      }
+    }
+    const lock = {
+      id: `${now}-${Math.random().toString(36).slice(2)}`,
+      startedAt: now,
+      target: "sequential_story_planner",
+    };
+    this.active = lock;
+    let loaded;
+    let unloadError = null;
+    try {
+      loaded = await this.loadModel(false);
+      const payload = await this.request("/api/v1/chat", {
+        method: "POST",
+        body: JSON.stringify({
+          model: loaded.instanceId,
+          system_prompt: `${this.instructions}
+
+Model-specific direction:
+You are planning a Sequential Story for LTX 2.3 video.
+This is not LTX Director and not Extend. The web app will generate one independent ComfyUI job per scene, purge VRAM between scenes, use a continuity frame from the previous clip, then concatenate final clips.
+Return only strict JSON with this exact schema:
+{"title":"...","globalContinuity":{"character":"","face":"","hair":"","body":"","outfit":"","location":"","lighting":"","cameraStyle":"","visualStyle":"","temporalRules":""},"scenes":[{"id":"scene-1","index":1,"title":"...","duration":10,"prompt":"...","negativePrompt":"...","continuityNotes":"...","startState":"...","endState":"..."}]}
+The scenes array length must exactly match the requested scene count.
+Each scene must be a short independent LTX prompt for a single clip, not a timeline inside one workflow.
+Scene prompts must carry only the necessary continuity: subject, action, camera, environment, lighting, start state and end state.
+Do not copy the entire previous scene into the next one. Use concise continuity notes.
+Use durations provided by the caller unless the story clearly needs a tiny local adjustment.
+negativePrompt must be video-safe and concise: avoid identity drift, flicker, sudden cuts, warped anatomy, changing outfit/location/lighting, disappearing objects, subtitles, text and watermark.
+No markdown, code fences, comments, explanations or extra keys.`,
+          input: [
+            `User story description: ${idea}`,
+            `Requested scene count: ${count}`,
+            `Default scene duration: ${duration}s`,
+            globalStyle ? `Global style: ${globalStyle}` : "",
+            characterContext ? `Character context: ${characterContext}` : "",
+          ].filter(Boolean).join("\n"),
+          reasoning: "off",
+          temperature: Math.min(this.temperature, 0.35),
+          max_output_tokens: Math.max(this.maxTokens, 1800),
+          stream: false,
+          store: false,
+        }),
+      }, this.inferenceTimeoutMs);
+      const parsed = parseJsonCompletion(payload);
+      if (!Array.isArray(parsed?.scenes) || parsed.scenes.length !== count) {
+        throw new Error("LM Studio ha restituito una scaletta incompleta per la Storia continua.");
+      }
+      return {
+        ...parsed,
+        model: loaded.model.display_name || loaded.model.key,
+        modelKey: loaded.model.key,
         get unloadError() {
           return unloadError?.message || null;
         },

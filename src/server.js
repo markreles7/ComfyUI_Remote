@@ -1,9 +1,11 @@
 import crypto from "node:crypto";
+import { execFile as execFileCallback } from "node:child_process";
 import fs from "node:fs";
 import http from "node:http";
 import https from "node:https";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import dotenv from "dotenv";
 import express from "express";
 import multer from "multer";
@@ -40,6 +42,11 @@ import {
   LTX_UPSCALE_REQUIRED_NODES,
 } from "./ltx-upscale-workflows.js";
 import {
+  buildSeedvr2VideoUpscaleWorkflow,
+  seedvr2VideoUpscaleConfig,
+  SEEDVR2_VIDEO_UPSCALE_REQUIRED_NODES,
+} from "./seedvr2-video-upscale-workflows.js";
+import {
   buildVideoStudioInitialJob,
   buildVideoStudioLipdubJob,
   videoStudioConfig,
@@ -61,16 +68,24 @@ import { buildComfySceneAnalysisWorkflow } from "./scene-integration/comfy-analy
 import { buildSceneCorrectionWorkflow } from "./scene-integration/correction-workflow.js";
 import { evaluateAndPlanCorrection, prepareSceneIntegratedWorkflow } from "./scene-integration/pipeline.js";
 import { SceneIntegrationService } from "./scene-integration/service.js";
-import { VirtualInfluencerStore } from "./virtual-influencer/store.js";
+import { CharacterStore } from "./characters.js";
 import {
-  buildPhotoPlan,
-  buildVideoPlan,
-  identityEngineConfig,
-  photoStudioRequest,
-  videoWorkflowRequest,
-} from "./virtual-influencer/identity-engine.js";
+  buildCharacterAnchorFrameRequest,
+  resolveCharacterAdapter,
+  uploadCharacterReferences,
+  withCharacterPrompt,
+} from "./character-adapters.js";
+import {
+  SequentialStoryService,
+  SequentialStoryStore,
+  cosineSimilarity,
+  fingerprintFromPgm,
+  validateSequentialStoryPlan,
+} from "./sequential-story.js";
 
 dotenv.config();
+
+const execFile = promisify(execFileCallback);
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const host = process.env.HOST || "127.0.0.1";
@@ -84,17 +99,18 @@ const promptAssistantAutoGenerate =
   String(process.env.LM_STUDIO_AUTO_GENERATE || "true").toLowerCase() !== "false";
 const sceneIntegrationEnabled =
   String(process.env.SCENE_INTEGRATION_ENABLED || "true").toLowerCase() !== "false";
-const virtualInfluencerEnabled =
-  String(process.env.VIRTUAL_INFLUENCER_ENABLED || "true").toLowerCase() !== "false";
 const clientId = crypto.randomUUID();
 const app = express();
 const events = new Set();
 const store = new HistoryStore(path.join(root, ".data", "history.json"));
 const studioStore = new HistoryStore(path.join(root, ".data", "studio-projects.json"));
 const videoStudioStore = new HistoryStore(path.join(root, ".data", "video-studio-projects.json"));
-const virtualInfluencerStore = new VirtualInfluencerStore({
+const sequentialStoryStore = new SequentialStoryStore({
+  file: path.join(root, ".data", "sequential-stories.json"),
+  assetDirectory: path.join(root, ".data", "sequential-story-assets"),
+});
+const characterStore = new CharacterStore({
   dataDirectory: path.join(root, ".data"),
-  enabled: virtualInfluencerEnabled,
 });
 const sceneIntegration = new SceneIntegrationService({
   root,
@@ -946,6 +962,169 @@ async function queueStudioJob(job, projectId) {
   return item;
 }
 
+function recordSequentialStoryFinal(project) {
+  const item = store.add({
+    id: crypto.randomUUID(),
+    promptId: null,
+    projectId: project.id,
+    status: "completed",
+    progress: 100,
+    videos: project.finalVideo ? [project.finalVideo] : [],
+    images: [],
+    createdAt: new Date().toISOString(),
+    startedAt: null,
+    finishedAt: new Date().toISOString(),
+    generationType: "sequentialStoryFinal",
+    workflowId: "videoStudio:sequentialStory",
+    workflowName: "Sequential Story · finale",
+    prompt: project.title,
+    sequentialStoryId: project.id,
+    sceneCount: project.scenes?.length || 0,
+    totalDuration: project.totalDuration,
+    concatMode: project.concatMode,
+  });
+  broadcast({ type: "generation_created", generationId: item.id, projectId: project.id, data: item });
+  return item;
+}
+
+function maybeRegisterCharacterSheet(generation, primaryImage) {
+  if (generation.generationType !== "characterSheet" || generation.characterSheetImported) return null;
+  if (!generation.characterId || !primaryImage?.path) return null;
+  const result = characterStore.addReferenceFromPath(generation.characterId, primaryImage.path, {
+    type: "sheet",
+    status: "approved",
+    tags: [
+      "generated character sheet",
+      generation.characterSheetWorkflow,
+      generation.workflowName,
+    ].filter(Boolean).join(","),
+  });
+  return {
+    character: result.character,
+    reference: result.reference,
+  };
+}
+
+async function waitForGenerationRecord(generationId, timeoutMs = 30 * 60_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const item = store.get(generationId);
+    if (item && !["queued", "running"].includes(item.status)) return item;
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+  throw new Error("Timeout durante una generazione Sequential Story ausiliaria.");
+}
+
+function uploadLocalImageForComfy(filePath) {
+  const buffer = fs.readFileSync(filePath);
+  return comfy.uploadImage({
+    buffer,
+    mimetype: "image/png",
+    originalname: path.basename(filePath),
+    size: buffer.length,
+  });
+}
+
+async function uploadSequentialCharacterReferences(characterId, limit = 3) {
+  if (!characterId) return [];
+  const selection = await uploadCharacterReferences({
+    characterStore,
+    comfy,
+    characterId,
+    limit,
+  }).catch(() => null);
+  return selection?.uploads || [];
+}
+
+async function generateSequentialAnchorFrame({
+  project,
+  scene,
+  sceneIndex,
+  previousFrame,
+  prompt,
+  seed,
+}) {
+  if (!outputDirectory) throw new Error("OUTPUT_DIRECTORY non configurata per anchor frame.");
+  const characterUploads = await uploadSequentialCharacterReferences(project.settings?.characterId, 3);
+  const previousUpload = previousFrame?.path
+    ? await uploadLocalImageForComfy(previousFrame.path)
+    : null;
+  const sourceUpload = previousUpload || characterUploads[0] || null;
+  if (!sourceUpload) {
+    return { status: "anchor unavailable: no continuity frame or character reference" };
+  }
+  const referenceUploads = previousUpload ? characterUploads : characterUploads.slice(1);
+  const anchorPrompt = [
+    "Create a clean still anchor frame for the next LTX image-to-video scene.",
+    "Preserve identity, face geometry, hairstyle, body proportions, wardrobe continuity, camera angle and lighting unless the scene explicitly changes them.",
+    "Use the supplied image as the visual continuity source, not as a loose inspiration.",
+    prompt,
+  ].join("\n");
+  const job = buildImageWorkflow(project.settings.anchorImageModelId || "qwenEdit", {
+    imageMode: "image",
+    imageModelFile: project.settings.anchorImageModelFile || "",
+    imageResolution: "custom",
+    imageWidth: project.settings.orientation === "portrait" ? 832 : 1152,
+    imageHeight: project.settings.orientation === "portrait" ? 1152 : 832,
+    imageSteps: project.settings.quality === "preview" ? 8 : 16,
+    imageGuidance: 1,
+    denoise: previousUpload ? 0.32 : 0.48,
+    batchSize: 1,
+    prompt: anchorPrompt,
+    negativePrompt: scene.negativePrompt,
+    seed,
+    referenceUploads,
+    outputBase: `SequentialStory/${project.id}/anchor`,
+    saveOriginal: false,
+    upscaleMode: "none",
+  }, sourceUpload, []);
+  job.metadata = {
+    ...job.metadata,
+    workflowId: "videoStudio:sequentialStory:anchor",
+    workflowName: `Sequential Story · anchor scena ${scene.index}`,
+    generationType: "sequentialStoryAnchor",
+    sequentialStoryId: project.id,
+    sceneId: scene.id,
+    sceneIndex: scene.index,
+    sceneCount: project.scenes.length,
+    prompt: anchorPrompt,
+    negativePrompt: scene.negativePrompt,
+    seed,
+  };
+  const queued = await queueStudioJob(job, project.id);
+  const generation = await waitForGenerationRecord(queued.id);
+  if (generation.status !== "completed" || !generation.images?.length) {
+    throw new Error(generation.error || "Anchor frame non prodotto.");
+  }
+  const image = generation.images.at(-1);
+  const resolved = resolveMediaFile(outputDirectory, image);
+  if (!resolved) throw new Error("Anchor frame non trovato su disco.");
+  const upload = await uploadLocalImageForComfy(resolved.path);
+  return {
+    status: "anchor generated",
+    generationId: generation.id,
+    upload,
+    file: {
+      ...image,
+      path: resolved.path,
+      type: "sequential-story-anchor",
+    },
+  };
+}
+
+const sequentialStoryService = new SequentialStoryService({
+  store: sequentialStoryStore,
+  promptAssistant,
+  buildWorkflow,
+  queueJob: queueStudioJob,
+  generationStore: store,
+  comfy,
+  outputDirectory,
+  broadcast,
+  recordFinalVideo: recordSequentialStoryFinal,
+  anchorFrameGenerator: generateSequentialAnchorFrame,
+});
+
 function studioFilesByRole(files) {
   return {
     source: files.find((file) => file.fieldname === "sourceImage") || null,
@@ -984,76 +1163,27 @@ async function uploadStudioFiles(files) {
   return uploaded;
 }
 
-async function uploadVirtualInfluencerReferences(profileId, references) {
-  const uploaded = [];
-  for (const reference of references) {
-    const resolved = virtualInfluencerStore.assetPath(profileId, reference.id);
-    if (!resolved?.path) continue;
-    const buffer = fs.readFileSync(resolved.path);
-    uploaded.push(await comfy.uploadImage({
-      buffer,
-      mimetype: reference.mimeType || "image/png",
-      originalname: reference.filename || reference.originalName || `${reference.id}.png`,
-      size: buffer.length,
-    }));
-  }
-  return uploaded;
-}
-
-function virtualInfluencerPrompt(profile) {
-  if (!profile) return "";
-  const identity = profile.identityProfile || {};
-  const appearance = profile.appearanceProfile || {};
-  return [
-    `${profile.displayName}, AI-generated fictional adult virtual creator, declared age ${identity.declaredAge}`,
-    appearance.faceShape,
-    appearance.eyeColorAndShape,
-    appearance.hair,
-    appearance.skinTone,
-    appearance.bodyShape,
-    appearance.bodyProportions,
-    appearance.distinctiveMarks,
-    appearance.makeup,
-    appearance.aestheticStyle,
-    appearance.immutableElements?.length ? `must preserve: ${appearance.immutableElements.join(", ")}` : "",
-    "preserve identity from the supplied approved synthetic reference image",
-  ].filter(Boolean).join(", ");
-}
-
-function selectedVirtualInfluencer(id) {
-  const profileId = String(id || "").trim();
-  if (!profileId) return null;
-  const profile = virtualInfluencerStore.getProfile(profileId);
-  const references = (profile.referenceAssets || [])
-    .filter((asset) => asset.status === "approved")
-    .sort((a, b) => {
-      if (a.canonical !== b.canonical) return a.canonical ? -1 : 1;
-      return Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0);
-    });
-  if (!references.length) throw new Error(`${profile.displayName} non ha reference approvate.`);
-  return {
-    profile,
-    references,
-    prompt: virtualInfluencerPrompt(profile),
-  };
-}
-
-async function uploadVirtualInfluencerSelection(profileId, limit = 1) {
-  const selection = selectedVirtualInfluencer(profileId);
-  if (!selection) return null;
-  const uploads = await uploadVirtualInfluencerReferences(
-    selection.profile.id,
-    selection.references.slice(0, Math.max(1, limit)),
-  );
-  return { ...selection, uploads };
-}
-
-function withVirtualInfluencerPrompt(raw, selection) {
-  if (!selection) return raw;
-  return {
-    ...raw,
-    prompt: [selection.prompt, String(raw.prompt || "").trim()].filter(Boolean).join(". "),
-  };
+async function uploadCharacterSelection(raw, context = {}, limit = 1) {
+  const characterId = String(raw.characterId || "").trim();
+  if (!characterId) return null;
+  const selection = await uploadCharacterReferences({
+    characterStore,
+    comfy,
+    characterId,
+    limit,
+  });
+  const adapter = resolveCharacterAdapter({
+    ...context,
+    character: selection.character,
+    options: {
+      identityStrength: raw.identityStrength,
+      lockFace: raw.lockFace,
+      lockHair: raw.lockHair,
+      lockBody: raw.lockBody,
+      lockOutfit: raw.lockOutfit,
+    },
+  });
+  return { ...selection, adapter };
 }
 
 async function uploadVideoStudioFiles(files) {
@@ -1201,14 +1331,6 @@ function validateUploadSize(file, maximumMb, label) {
   }
 }
 
-function requireVirtualInfluencerEnabled(_request, response, next) {
-  if (!virtualInfluencerEnabled) {
-    response.status(404).json({ error: "Virtual Influencer Studio è disabilitato." });
-    return;
-  }
-  next();
-}
-
 async function releaseComfyMemoryIfIdle() {
   try {
     const queue = await comfy.queueStatus();
@@ -1258,6 +1380,7 @@ app.get("/api/config", async (_request, response) => {
   }
 
   let ltxUpscale;
+  let seedvr2VideoUpscale;
 
   try {
     const nodeDefinitions = await Promise.all(
@@ -1285,6 +1408,41 @@ app.get("/api/config", async (_request, response) => {
     ltxUpscale = ltxUpscaleConfig();
   }
 
+  try {
+    const [
+      ditInfo,
+      vaeInfo,
+      ...nodeDefinitions
+    ] = await Promise.all([
+      comfy.objectInfo("SeedVR2LoadDiTModel"),
+      comfy.objectInfo("SeedVR2LoadVAEModel"),
+      ...SEEDVR2_VIDEO_UPSCALE_REQUIRED_NODES.map((name) =>
+        objectDefinition(name),
+      ),
+      objectDefinition("SeedVR2TorchCompileSettings"),
+    ]);
+
+    const requiredWithCompile = [
+      ...SEEDVR2_VIDEO_UPSCALE_REQUIRED_NODES,
+      "SeedVR2TorchCompileSettings",
+    ];
+    const availableNodes = requiredWithCompile.filter(
+      (_name, index) => Boolean(nodeDefinitions[index]),
+    );
+
+    seedvr2VideoUpscale = seedvr2VideoUpscaleConfig({
+      availableNodes,
+      installedSeedvr2Models: comboOptions(
+        ditInfo?.SeedVR2LoadDiTModel?.input?.required?.model,
+      ),
+      installedVaes: comboOptions(
+        vaeInfo?.SeedVR2LoadVAEModel?.input?.required?.model,
+      ),
+    });
+  } catch {
+    seedvr2VideoUpscale = seedvr2VideoUpscaleConfig();
+  }
+
   response.json({
     workflows: Object.values(WORKFLOWS).map(({ file: _file, ...item }) => item),
     videoModels: videoModelConfig(installedImageModels),
@@ -1303,6 +1461,7 @@ app.get("/api/config", async (_request, response) => {
     imageEnhancements: enhancements,
     upscaling,
     ltxUpscale,
+    seedvr2VideoUpscale,
     studio: studioConfig({
       modelPatches: installedModelPatches,
       preprocessors: studioPreprocessors,
@@ -1312,480 +1471,404 @@ app.get("/api/config", async (_request, response) => {
     sulphur: sulphurRuntimeConfig(),
     editWildcards: editWildcardConfig(root),
     sceneIntegration: await sceneIntegration.capabilities(),
-    virtualInfluencer: {
-      ...virtualInfluencerStore.config(),
-      identityEngine: identityEngineConfig(),
-      availableProfiles: virtualInfluencerStore.listProfiles().map((profile) => ({
-        id: profile.id,
-        displayName: profile.displayName,
-        slug: profile.slug,
-        status: profile.status,
-        approvedReferences: profile.identityDatasetReadiness?.approvedCount || 0,
-        canonicalReferences: profile.identityDatasetReadiness?.canonicalCount || 0,
-        readiness: profile.identityDatasetReadiness?.status || "unknown",
+    characters: {
+      available: true,
+      conceptualName: "Virtual Actor",
+      sheetWorkflows: Object.values(CHARACTER_SHEET_WORKFLOWS),
+      availableCharacters: characterStore.listCharacters().map((character) => ({
+        id: character.id,
+        name: character.name,
+        heroUrl: character.heroUrl,
+        packStatus: character.packStatus,
+        referenceCount: character.references?.length || 0,
+        settings: character.settings,
       })),
+      legacyImport: characterStore.legacySummary({ dataDirectory: path.join(root, ".data") }),
     },
   });
 });
 
-app.get("/api/virtual-influencer/config", (_request, response) => {
-  response.json({
-    ...virtualInfluencerStore.config(),
-    identityEngine: identityEngineConfig(),
+app.get("/api/characters", (_request, response) => {
+  response.json({ characters: characterStore.listCharacters() });
+});
+
+app.post("/api/characters/import-legacy", (_request, response) => {
+  response.status(501).json({
+    status: "not configured",
+    mode: "copy only",
+    legacy: characterStore.legacySummary({ dataDirectory: path.join(root, ".data") }),
+    message: "Migrazione legacy preparata come endpoint manuale: non viene eseguita automaticamente e non distrugge i dati legacy originali.",
   });
 });
 
-app.get("/api/virtual-influencer/profiles", requireVirtualInfluencerEnabled, (_request, response) => {
-  response.json({ profiles: virtualInfluencerStore.listProfiles() });
-});
-
-app.post("/api/virtual-influencer/profiles", requireVirtualInfluencerEnabled, (request, response, next) => {
+app.post("/api/characters", (request, response, next) => {
   try {
-    response.status(201).json({ profile: virtualInfluencerStore.createProfile(request.body) });
+    response.status(201).json({ character: characterStore.createCharacter(request.body || {}) });
   } catch (error) {
     next(error);
   }
 });
 
-app.get("/api/virtual-influencer/profiles/:id", requireVirtualInfluencerEnabled, (request, response, next) => {
+app.get("/api/characters/:id", (request, response, next) => {
   try {
-    response.json({ profile: virtualInfluencerStore.getProfile(request.params.id) });
+    response.json({ character: characterStore.getCharacter(request.params.id) });
   } catch (error) {
     next(error);
   }
 });
 
-app.put("/api/virtual-influencer/profiles/:id/bible", requireVirtualInfluencerEnabled, (request, response, next) => {
+app.get("/api/characters/:id/check-assets", (request, response, next) => {
   try {
-    response.json({ profile: virtualInfluencerStore.updateBible(request.params.id, request.body) });
+    response.json(characterStore.assetDiagnostics(request.params.id));
   } catch (error) {
     next(error);
   }
 });
 
-app.post("/api/virtual-influencer/profiles/:id/versions", requireVirtualInfluencerEnabled, (request, response, next) => {
+app.put("/api/characters/:id", (request, response, next) => {
   try {
-    response.status(201).json(virtualInfluencerStore.createVersion(request.params.id, request.body));
+    response.json({ character: characterStore.updateCharacter(request.params.id, request.body || {}) });
   } catch (error) {
     next(error);
   }
 });
 
-app.post("/api/virtual-influencer/profiles/:id/outfits", requireVirtualInfluencerEnabled, (request, response, next) => {
+app.delete("/api/characters/:id", (request, response, next) => {
   try {
-    response.status(201).json(virtualInfluencerStore.createOutfit(request.params.id, request.body));
+    response.json(characterStore.deleteCharacter(request.params.id));
   } catch (error) {
     next(error);
   }
 });
-
-app.patch("/api/virtual-influencer/profiles/:id/outfits/:outfitId", requireVirtualInfluencerEnabled, (request, response, next) => {
-  try {
-    response.json(virtualInfluencerStore.updateOutfit(request.params.id, request.params.outfitId, request.body));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/virtual-influencer/profiles/:id/locations", requireVirtualInfluencerEnabled, (request, response, next) => {
-  try {
-    response.status(201).json(virtualInfluencerStore.createLocation(request.params.id, request.body));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.patch("/api/virtual-influencer/profiles/:id/locations/:locationId", requireVirtualInfluencerEnabled, (request, response, next) => {
-  try {
-    response.json(virtualInfluencerStore.updateLocation(request.params.id, request.params.locationId, request.body));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/virtual-influencer/profiles/:id/batches", requireVirtualInfluencerEnabled, (request, response, next) => {
-  try {
-    response.status(201).json(virtualInfluencerStore.createBatchQueue(request.params.id, request.body));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.patch("/api/virtual-influencer/profiles/:id/batches/:queueId", requireVirtualInfluencerEnabled, (request, response, next) => {
-  try {
-    response.json(virtualInfluencerStore.updateBatchQueue(
-      request.params.id,
-      request.params.queueId,
-      String(request.body.action || ""),
-    ));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/virtual-influencer/profiles/:id/debug-report", requireVirtualInfluencerEnabled, (request, response, next) => {
-  try {
-    response.json({ report: virtualInfluencerStore.debugReport(request.params.id) });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/virtual-influencer/profiles/:id/cache/invalidate", requireVirtualInfluencerEnabled, (request, response, next) => {
-  try {
-    response.json(virtualInfluencerStore.invalidateCache(request.params.id));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.put("/api/virtual-influencer/profiles/:id/voice", requireVirtualInfluencerEnabled, (request, response, next) => {
-  try {
-    response.json(virtualInfluencerStore.updateVoiceProfile(request.params.id, request.body));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.put("/api/virtual-influencer/profiles/:id/disclosure", requireVirtualInfluencerEnabled, (request, response, next) => {
-  try {
-    response.json(virtualInfluencerStore.updateDisclosureSettings(request.params.id, request.body));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.put("/api/virtual-influencer/profiles/:id/platform-policies/:platform", requireVirtualInfluencerEnabled, (request, response, next) => {
-  try {
-    response.json(virtualInfluencerStore.updatePlatformPolicy(request.params.id, request.params.platform, request.body));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/virtual-influencer/profiles/:id/captions", requireVirtualInfluencerEnabled, (request, response, next) => {
-  try {
-    response.status(201).json(virtualInfluencerStore.createCaptionDraft(request.params.id, request.body));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/virtual-influencer/profiles/:id/content-projects", requireVirtualInfluencerEnabled, (request, response, next) => {
-  try {
-    response.status(201).json(virtualInfluencerStore.createContentProject(request.params.id, request.body));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.patch("/api/virtual-influencer/profiles/:id/content-projects/:projectId", requireVirtualInfluencerEnabled, (request, response, next) => {
-  try {
-    response.json(virtualInfluencerStore.updateContentProject(request.params.id, request.params.projectId, request.body));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/virtual-influencer/profiles/:id/content-projects/:projectId/analytics", requireVirtualInfluencerEnabled, (request, response, next) => {
-  try {
-    response.status(201).json(virtualInfluencerStore.recordAnalytics(request.params.id, request.params.projectId, request.body));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/virtual-influencer/profiles/:id/content-projects/:projectId/analytics/import-csv", requireVirtualInfluencerEnabled, (request, response, next) => {
-  try {
-    response.status(201).json(virtualInfluencerStore.importAnalyticsCsv(
-      request.params.id,
-      request.params.projectId,
-      request.body.csv || request.body.csvText || "",
-    ));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/virtual-influencer/profiles/:id/photos", requireVirtualInfluencerEnabled, async (request, response, next) => {
-  try {
-    cancelIdlePurge();
-    await comfy.health();
-    const profile = virtualInfluencerStore.getProfile(request.params.id);
-    const enrichedInput = virtualInfluencerStore.enrichGenerationInput(profile.id, request.body);
-    const cachedPlan = virtualInfluencerStore.getCachedPlan(profile.id, "photo", enrichedInput);
-    const plan = cachedPlan.plan || buildPhotoPlan(profile, enrichedInput);
-    if (!cachedPlan.cached) virtualInfluencerStore.putCachedPlan(profile.id, "photo", enrichedInput, plan);
-    const uploadedReferences = await uploadVirtualInfluencerReferences(profile.id, plan.references);
-    const studioRaw = photoStudioRequest(plan, uploadedReferences);
-    const uploaded = {
-      source: studioRaw.sourceUpload || null,
-      references: studioRaw.referenceUploads || [],
-    };
-    const jobs = buildStudioJobs("perfect", studioRaw, uploaded, []);
-    await validateStudioModels(jobs);
-    const project = studioStore.add({
-      id: crypto.randomUUID(),
-      studioMode: "perfect",
-      name: studioRaw.projectName,
-      prompt: plan.prompt,
-      executionMode: "guided",
-      autoState: "drafts",
-      settings: {
-        ...studioRaw,
-        virtualInfluencer: {
-          profileId: profile.id,
-          versionId: plan.versionId,
-          adapter: plan.adapter.name,
-          qualityPreset: plan.qualityPreset.id,
-        },
-      },
-      uploads: uploaded,
-      loras: [],
-      status: "queued",
-      generationIds: [],
-      selections: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-    const createdAsset = virtualInfluencerStore.createPhotoAsset(profile.id, plan, project.id, []);
-    const created = [];
-    for (const job of jobs) {
-      job.metadata = {
-        ...job.metadata,
-        virtualInfluencer: {
-          profileId: profile.id,
-          assetId: createdAsset.asset.id,
-          versionId: plan.versionId,
-          contentType: "photo",
-          adapter: plan.adapter.name,
-          requestedAdapter: plan.requestedAdapter,
-          identityScorePreview: createdAsset.asset.validationScores.identity.overallScore,
-          disclosure: createdAsset.asset.disclosure,
-          referenceIds: plan.references.map((item) => item.id),
-          planCache: { key: cachedPlan.key, hit: cachedPlan.cached },
-        },
-      };
-      created.push(await queueStudioJob(job, project.id));
-    }
-    const updatedProject = studioStore.update(project.id, {
-      generationIds: created.map((item) => item.id),
-      updatedAt: new Date().toISOString(),
-    });
-    const updatedAsset = virtualInfluencerStore.updateGeneratedAssetGenerations(
-      profile.id,
-      createdAsset.asset.id,
-      created.map((item) => item.id),
-    );
-    broadcast({ type: "virtual_influencer_photo_created", profileId: profile.id, data: updatedAsset.asset });
-    response.status(202).json({
-      profile: updatedAsset.profile,
-      asset: updatedAsset.asset,
-      project: studioProjectView(updatedProject),
-      plan: {
-        adapter: plan.adapter,
-        requestedAdapter: plan.requestedAdapter,
-        references: plan.references.map((item) => item.id),
-        warnings: plan.warnings,
-        cache: { key: cachedPlan.key, hit: cachedPlan.cached },
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/virtual-influencer/profiles/:id/videos", requireVirtualInfluencerEnabled, async (request, response, next) => {
-  try {
-    cancelIdlePurge();
-    await comfy.health();
-    const profile = virtualInfluencerStore.getProfile(request.params.id);
-    const enrichedInput = virtualInfluencerStore.enrichGenerationInput(profile.id, request.body);
-    const cachedPlan = virtualInfluencerStore.getCachedPlan(profile.id, "video", enrichedInput);
-    const plan = cachedPlan.plan || buildVideoPlan(profile, enrichedInput);
-    if (!cachedPlan.cached) virtualInfluencerStore.putCachedPlan(profile.id, "video", enrichedInput, plan);
-    const keyframe = plan.references.find((item) => item.id === plan.keyframeReferenceId) || plan.references[0];
-    const [uploadedKeyframe] = await uploadVirtualInfluencerReferences(profile.id, [keyframe]);
-    if (!uploadedKeyframe?.name) throw new Error("Keyframe iniziale non disponibile per LTX.");
-    const raw = videoWorkflowRequest(plan);
-    const job = buildWorkflow("standard", raw, uploadedKeyframe, [], []);
-    job.metadata = {
-      ...job.metadata,
-      workflowId: "virtualInfluencer:video",
-      workflowName: "Virtual Influencer Studio · Influencer Video",
-      virtualInfluencer: {
-        profileId: profile.id,
-        assetId: null,
-        versionId: plan.versionId,
-        contentType: "video",
-        adapter: plan.adapter.name,
-        identityScorePreview: null,
-        disclosure: null,
-        referenceIds: plan.references.map((item) => item.id),
-        keyframeReferenceId: keyframe.id,
-        planCache: { key: cachedPlan.key, hit: cachedPlan.cached },
-      },
-    };
-    const project = videoStudioStore.add({
-      id: crypto.randomUUID(),
-      videoStudioMode: "influencerVideo",
-      name: raw.projectName,
-      prompt: plan.prompt,
-      settings: {
-        ...raw,
-        virtualInfluencer: {
-          profileId: profile.id,
-          versionId: plan.versionId,
-          adapter: plan.adapter.name,
-          qualityPreset: plan.qualityPreset.id,
-        },
-      },
-      uploads: { source: uploadedKeyframe, references: [] },
-      loras: [],
-      status: "queued",
-      generationIds: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-    const createdAsset = virtualInfluencerStore.createVideoAsset(profile.id, plan, project.id, []);
-    job.metadata.virtualInfluencer.assetId = createdAsset.asset.id;
-    job.metadata.virtualInfluencer.identityScorePreview = createdAsset.asset.validationScores.identity.overallScore;
-    job.metadata.virtualInfluencer.disclosure = createdAsset.asset.disclosure;
-    const generation = await queueStudioJob(job, project.id);
-    const updatedProject = videoStudioStore.update(project.id, {
-      generationIds: [generation.id],
-      updatedAt: new Date().toISOString(),
-    });
-    const updatedAsset = virtualInfluencerStore.updateGeneratedAssetGenerations(
-      profile.id,
-      createdAsset.asset.id,
-      [generation.id],
-    );
-    broadcast({ type: "virtual_influencer_video_created", profileId: profile.id, data: updatedAsset.asset });
-    response.status(202).json({
-      profile: updatedAsset.profile,
-      asset: updatedAsset.asset,
-      project: videoStudioProjectView(updatedProject),
-      plan: {
-        adapter: plan.adapter,
-        keyframeReferenceId: keyframe.id,
-        references: plan.references.map((item) => item.id),
-        warnings: plan.warnings,
-        cache: { key: cachedPlan.key, hit: cachedPlan.cached },
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.patch(
-  "/api/virtual-influencer/profiles/:id/generated-assets/:assetId/review",
-  requireVirtualInfluencerEnabled,
-  (request, response, next) => {
-    try {
-      response.json(virtualInfluencerStore.reviewGeneratedAsset(
-        request.params.id,
-        request.params.assetId,
-        request.body,
-      ));
-    } catch (error) {
-      next(error);
-    }
-  },
-);
 
 app.post(
-  "/api/virtual-influencer/profiles/:id/generated-assets/:assetId/export",
-  requireVirtualInfluencerEnabled,
+  "/api/characters/:id/references",
+  upload.array("references", 12),
   (request, response, next) => {
     try {
-      response.status(201).json(virtualInfluencerStore.exportGeneratedAsset(
-        request.params.id,
-        request.params.assetId,
-        request.body,
-      ));
-    } catch (error) {
-      next(error);
-    }
-  },
-);
-
-app.post(
-  "/api/virtual-influencer/profiles/:id/generated-assets/:assetId/compare-versions",
-  requireVirtualInfluencerEnabled,
-  (request, response, next) => {
-    try {
-      response.status(201).json(virtualInfluencerStore.compareGeneratedAssetVersions(
-        request.params.id,
-        request.params.assetId,
-      ));
-    } catch (error) {
-      next(error);
-    }
-  },
-);
-
-app.post(
-  "/api/virtual-influencer/profiles/:id/references",
-  requireVirtualInfluencerEnabled,
-  upload.single("referenceImage"),
-  (request, response, next) => {
-    try {
-      if (!request.file) throw new Error("Carica una reference identitaria.");
-      validateUploadSize(request.file, maxUploadMb, "La reference");
-      response.status(201).json(virtualInfluencerStore.addReference(request.params.id, request.file, request.body));
-    } catch (error) {
-      next(error);
-    }
-  },
-);
-
-app.patch(
-  "/api/virtual-influencer/profiles/:id/references/:assetId",
-  requireVirtualInfluencerEnabled,
-  (request, response, next) => {
-    try {
-      response.json(virtualInfluencerStore.updateReference(
-        request.params.id,
-        request.params.assetId,
-        request.body,
-      ));
-    } catch (error) {
-      next(error);
-    }
-  },
-);
-
-app.delete(
-  "/api/virtual-influencer/profiles/:id/references/:assetId",
-  requireVirtualInfluencerEnabled,
-  (request, response, next) => {
-    try {
-      response.json(virtualInfluencerStore.removeReference(request.params.id, request.params.assetId));
-    } catch (error) {
-      next(error);
-    }
-  },
-);
-
-app.get(
-  "/api/virtual-influencer/assets/:profileId/:assetId",
-  requireVirtualInfluencerEnabled,
-  (request, response, next) => {
-    try {
-      const match = virtualInfluencerStore.assetPath(request.params.profileId, request.params.assetId);
-      if (!match) {
-        response.status(404).json({ error: "Reference non trovata." });
-        return;
+      const files = request.files || [];
+      if (!files.length) throw new Error("Carica almeno una reference personaggio.");
+      const created = [];
+      let character = null;
+      for (const file of files) {
+        if (!file.mimetype.startsWith("image/")) throw new Error("Le reference personaggio devono essere immagini PNG, JPG o WebP.");
+        validateUploadSize(file, maxUploadMb, "La reference personaggio");
+        const result = characterStore.addReference(request.params.id, file, request.body || {});
+        character = result.character;
+        created.push(result.reference);
       }
-      streamMediaFile(request, response, match, match.asset.filename, request.query.download === "1");
+      response.status(201).json({ character, references: created });
     } catch (error) {
       next(error);
     }
   },
 );
 
+app.put("/api/characters/:id/references/:referenceId", (request, response, next) => {
+  try {
+    response.json({ character: characterStore.updateReference(request.params.id, request.params.referenceId, request.body || {}) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/characters/:id/references/:referenceId", (request, response, next) => {
+  try {
+    response.json({ character: characterStore.removeReference(request.params.id, request.params.referenceId) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+const CHARACTER_SHEET_WORKFLOWS = {
+  qwenEdit: {
+    id: "qwenEdit",
+    label: "Qwen Image Edit",
+    description: "Genera una sheet reference direttamente con Qwen Image Edit.",
+  },
+  qwenKreaKlein: {
+    id: "qwenKreaKlein",
+    label: "Qwen/Krea/Klein",
+    description: "Usa il workflow combinato Qwen_Krea_Klein_API.",
+  },
+  kreaTriple: {
+    id: "kreaTriple",
+    label: "KreaTriple",
+    description: "Usa Krea Triple in modalità Image to Image.",
+  },
+};
+
+function characterSheetWorkflowId(value) {
+  const id = String(value || "qwenEdit");
+  return CHARACTER_SHEET_WORKFLOWS[id] ? id : "qwenEdit";
+}
+
+function characterSheetPrompt(character, extraPrompt = "") {
+  const wardrobe = Array.isArray(character.wardrobe) && character.wardrobe.length
+    ? `Recurring wardrobe: ${character.wardrobe.join(", ")}.`
+    : "";
+  return [
+    "Create a clean multi-angle character reference sheet from the supplied reference image.",
+    "Preserve the same adult character identity, face geometry, hairstyle, skin texture, body proportions and recurring style.",
+    "Show front portrait, three-quarter portrait, profile view, upper body, full body front and full body three-quarter in one coherent sheet.",
+    "Use neutral studio lighting, plain background, consistent scale, no extra people, no text labels, no watermark.",
+    character.description,
+    character.identityHints?.face ? `Face identity: ${character.identityHints.face}.` : "",
+    character.identityHints?.hair ? `Hair identity: ${character.identityHints.hair}.` : "",
+    character.identityHints?.body ? `Body identity: ${character.identityHints.body}.` : "",
+    wardrobe,
+    extraPrompt,
+  ].filter(Boolean).join("\n");
+}
+
+function characterNegativePrompt(raw = {}) {
+  return String(raw.negativePrompt || [
+    "different person",
+    "identity drift",
+    "changed face",
+    "changed hairstyle",
+    "wrong body proportions",
+    "extra people",
+    "duplicate character",
+    "text",
+    "watermark",
+    "logo",
+    "blurry",
+    "low quality",
+  ].join(", "));
+}
+
+async function uploadCharacterAsset(reference) {
+  const buffer = fs.readFileSync(reference.path);
+  return comfy.uploadImage({
+    buffer,
+    mimetype: reference.mimeType || "image/png",
+    originalname: reference.asset?.originalName || path.basename(reference.path),
+    size: buffer.length,
+  });
+}
+
+async function characterReferenceUploads(characterId, limit = 4) {
+  const character = characterStore.getCharacter(characterId);
+  const available = [];
+  for (const reference of character.references || []) {
+    if (reference.status === "rejected" || !reference.assetAvailable) continue;
+    const match = characterStore.assetPath(characterId, reference.id);
+    if (!match) continue;
+    available.push({ ...match, id: reference.id, type: reference.type });
+  }
+  const preferred = [
+    ...available.filter((item) => item.type === "hero"),
+    ...available.filter((item) => item.type === "face"),
+    ...available.filter((item) => item.type === "bust" || item.type === "full_body"),
+    ...available.filter((item) => !["hero", "face", "bust", "full_body"].includes(item.type)),
+  ];
+  const unique = [...new Map(preferred.map((item) => [item.id, item])).values()].slice(0, limit);
+  const uploads = [];
+  for (const item of unique) uploads.push(await uploadCharacterAsset(item));
+  return { character, uploads, source: uploads[0] || null, references: uploads.slice(1) };
+}
+
+async function queueCharacterSheetJob(characterId, raw = {}) {
+  const workflowId = characterSheetWorkflowId(raw.workflow);
+  const { character, source, references } = await characterReferenceUploads(characterId, 4);
+  if (!source?.name) {
+    throw new Error("Carica almeno una reference valida prima di generare la Character Sheet.");
+  }
+  const prompt = characterSheetPrompt(character, raw.prompt);
+  const negativePrompt = characterNegativePrompt(raw);
+  const seed = Number.isSafeInteger(Number(raw.seed)) && Number(raw.seed) >= 0
+    ? Number(raw.seed)
+    : crypto.randomInt(0, 2 ** 31);
+  const base = {
+    prompt,
+    negativePrompt,
+    seed,
+    imageWidth: raw.imageWidth || 1344,
+    imageHeight: raw.imageHeight || 896,
+  };
+  let job;
+  if (workflowId === "qwenEdit") {
+    job = buildImageWorkflow("qwenEdit", {
+      ...base,
+      imageMode: "image",
+      imageModelFile: raw.imageModelFile || "",
+      imageResolution: "custom",
+      imageSteps: raw.imageSteps || 16,
+      imageGuidance: raw.imageGuidance || 1,
+      denoise: raw.denoise || 0.55,
+      batchSize: 1,
+      referenceUploads: references,
+      outputBase: `Characters/${character.id}/sheet`,
+      saveOriginal: false,
+      upscaleMode: "none",
+    }, source, []);
+  } else {
+    const studioMode = workflowId === "kreaTriple" ? "kreaTriple" : "qwenKreaKlein";
+    job = buildStudioJobs(studioMode, {
+      ...base,
+      studioMode,
+      kreaTripleOperation: "image",
+      kreaTripleDenoise: raw.denoise || 0.38,
+    }, {
+      source,
+      references,
+      mask: null,
+      guide: null,
+    }, [])[0];
+  }
+  job.metadata = {
+    ...job.metadata,
+    workflowId: `character:sheet:${workflowId}`,
+    workflowName: `Character Sheet · ${CHARACTER_SHEET_WORKFLOWS[workflowId].label}`,
+    generationType: "characterSheet",
+    characterId: character.id,
+    characterName: character.name,
+    characterSheetWorkflow: workflowId,
+    prompt,
+    negativePrompt,
+    seed,
+  };
+  return queueStudioJob(job, character.id);
+}
+
+async function imageFingerprint(filePath, workingDirectory) {
+  const pgmPath = path.join(workingDirectory, `${crypto.randomUUID()}.pgm`);
+  await execFile("ffmpeg", [
+    "-y",
+    "-i", filePath,
+    "-frames:v", "1",
+    "-vf", "scale=96:96,format=gray",
+    pgmPath,
+  ], { windowsHide: true, timeout: 30_000 });
+  return fingerprintFromPgm(pgmPath, 16);
+}
+
+async function runCharacterIdentityCheck(characterId) {
+  const character = characterStore.getCharacter(characterId);
+  const matches = (character.references || [])
+    .filter((reference) => reference.status !== "rejected" && reference.assetAvailable)
+    .map((reference) => ({ reference, match: characterStore.assetPath(characterId, reference.id) }))
+    .filter((item) => item.match?.path);
+  if (matches.length < 2) {
+    const report = {
+      enabled: true,
+      engine: "perceptual-ffmpeg-pgm",
+      status: "insufficient-reference",
+      threshold: 0.62,
+      referenceCount: matches.length,
+      warning: "Servono almeno 2 reference valide per confrontare l'identità.",
+    };
+    return { character: characterStore.updateIdentityEvaluation(characterId, report), report };
+  }
+  const tempDirectory = fs.mkdtempSync(path.join(root, ".data", "character-identity-"));
+  try {
+    const fingerprints = [];
+    for (const item of matches) {
+      fingerprints.push({
+        id: item.reference.id,
+        type: item.reference.type,
+        originalName: item.reference.originalName,
+        fingerprint: await imageFingerprint(item.match.path, tempDirectory),
+      });
+    }
+    const anchor = fingerprints.find((item) => item.type === "hero") || fingerprints[0];
+    const comparisons = fingerprints
+      .filter((item) => item.id !== anchor.id)
+      .map((item) => ({
+        referenceId: item.id,
+        type: item.type,
+        originalName: item.originalName,
+        similarity: Number(cosineSimilarity(anchor.fingerprint, item.fingerprint).toFixed(4)),
+      }));
+    const averageSimilarity = comparisons.reduce((sum, item) => sum + item.similarity, 0) / comparisons.length;
+    const minSimilarity = Math.min(...comparisons.map((item) => item.similarity));
+    const threshold = 0.62;
+    const report = {
+      enabled: true,
+      engine: "perceptual-ffmpeg-pgm",
+      status: minSimilarity >= threshold ? "passed" : "review-needed",
+      threshold,
+      anchorReferenceId: anchor.id,
+      referenceCount: matches.length,
+      averageSimilarity: Number(averageSimilarity.toFixed(4)),
+      minSimilarity: Number(minSimilarity.toFixed(4)),
+      comparisons,
+      warning: minSimilarity >= threshold
+        ? null
+        : "Una o più reference sembrano visivamente lontane dalla hero: controlla tag, qualità o persona.",
+    };
+    return { character: characterStore.updateIdentityEvaluation(characterId, report), report };
+  } catch (error) {
+    const report = {
+      enabled: true,
+      engine: "perceptual-ffmpeg-pgm",
+      status: "failed",
+      error: error.message,
+      warning: "Identity Check locale fallito: verifica FFmpeg o i file reference.",
+    };
+    return { character: characterStore.updateIdentityEvaluation(characterId, report), report };
+  } finally {
+    fs.rmSync(tempDirectory, { recursive: true, force: true });
+  }
+}
+
+app.post("/api/characters/:id/build-pack", (request, response, next) => {
+  try {
+    response.json(characterStore.buildPack(request.params.id));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/characters/:id/generate-sheet", async (request, response, next) => {
+  try {
+    const generation = await queueCharacterSheetJob(request.params.id, request.body || {});
+    response.status(202).json({
+      status: "queued",
+      generation,
+      workflow: characterSheetWorkflowId(request.body?.workflow),
+      message: "Character Sheet inviata a ComfyUI. Al completamento verrà registrata come reference sheet.",
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/characters/:id/analyze", (request, response) => {
+  response.status(501).json({ status: "not configured", message: "Analisi Qwen-VL/Florence/JoyCaption non configurata." });
+});
+
+app.post("/api/characters/:id/check-identity", async (request, response, next) => {
+  try {
+    response.json(await runCharacterIdentityCheck(request.params.id));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/characters/:id/anchor-frame", (request, response) => {
+  response.status(501).json(buildCharacterAnchorFrameRequest({
+    characterId: request.params.id,
+    scenePrompt: request.body?.scenePrompt || request.body?.prompt || "",
+    previousFrame: request.body?.previousFrame || null,
+    outfit: request.body?.outfit || "",
+    identityStrength: request.body?.identityStrength || "medium",
+  }));
+});
+
+app.get("/api/characters/:id/assets/:referenceId", (request, response, next) => {
+  try {
+    const match = characterStore.assetPath(request.params.id, request.params.referenceId);
+    if (!match) {
+      response.status(404).json({ error: "Reference personaggio non trovata." });
+      return;
+    }
+    streamMediaFile(request, response, match, match.asset.filename, request.query.download === "1");
+  } catch (error) {
+    next(error);
+  }
+});
 app.get("/api/scene-integration/config", async (_request, response) => {
   response.json(await sceneIntegration.capabilities());
 });
@@ -1961,6 +2044,167 @@ app.get("/api/video-studio/projects/:id", (request, response) => {
   response.json(videoStudioProjectView(project));
 });
 
+function sequentialStoryCharacterContext(raw = {}) {
+  const characterId = String(raw.characterId || "").trim();
+  if (!characterId) return { character: null, promptPrefix: "", warnings: [] };
+  const character = characterStore.getCharacter(characterId);
+  const adapter = resolveCharacterAdapter({
+    generationType: "videoStudio",
+    videoStudioMode: "sequentialStory",
+    character,
+    options: {
+      identityStrength: raw.identityStrength,
+      lockFace: raw.lockFace,
+      lockHair: raw.lockHair,
+      lockBody: raw.lockBody,
+      lockOutfit: raw.lockOutfit,
+    },
+  });
+  return { character, promptPrefix: adapter.promptPrefix, warnings: adapter.warnings };
+}
+
+app.get("/api/video-studio/sequential-story", (_request, response) => {
+  response.json({ projects: sequentialStoryStore.list() });
+});
+
+app.post("/api/video-studio/sequential-story/plan", async (request, response, next) => {
+  try {
+    if (!promptAssistant.publicConfig().enabled) {
+      return response.status(503).json({ error: "Il Prompt Assistant non è configurato. Imposta LM_STUDIO_MODEL." });
+    }
+    const character = sequentialStoryCharacterContext(request.body || {});
+    const before = await releaseComfyMemoryIfIdle();
+    const plan = await sequentialStoryService.plan({
+      ...request.body,
+      characterContext: character.promptPrefix,
+    });
+    const after = await releaseComfyMemoryIfIdle();
+    response.json({
+      plan: validateSequentialStoryPlan(plan, {
+        sceneCount: Number(request.body.sceneCount || 3),
+        sceneDuration: Number(request.body.sceneDuration || 10),
+      }),
+      character,
+      cleanup: {
+        lmStudioModelUnloaded: true,
+        comfyMemoryReleased: after.released,
+        comfyMemoryReason: after.reason,
+        comfyMemoryPrepared: before.released,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/video-studio/sequential-story", (request, response, next) => {
+  try {
+    const character = sequentialStoryCharacterContext(request.body?.settings || request.body || {});
+    const project = sequentialStoryService.create({
+      ...request.body,
+      settings: request.body?.settings || request.body,
+    });
+    const withCharacter = sequentialStoryStore.update(project.id, {
+      character: character.character
+        ? {
+            id: character.character.id,
+            name: character.character.name,
+            packStatus: character.character.packStatus,
+            warnings: character.warnings,
+          }
+        : null,
+      characterPrompt: character.promptPrefix,
+    });
+    response.status(201).json({ project: withCharacter });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/video-studio/sequential-story/:id", (request, response, next) => {
+  try {
+    response.json({ project: sequentialStoryStore.require(request.params.id) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.put("/api/video-studio/sequential-story/:id", (request, response, next) => {
+  try {
+    response.json({ project: sequentialStoryService.update(request.params.id, request.body || {}) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/video-studio/sequential-story/:id/start", async (request, response, next) => {
+  try {
+    if (!outputDirectory) throw new Error("OUTPUT_DIRECTORY non configurata: impossibile verificare clip e concatenazione.");
+    response.status(202).json({ project: await sequentialStoryService.start(request.params.id) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/video-studio/sequential-story/:id/pause", (request, response, next) => {
+  try {
+    response.json({ project: sequentialStoryService.pause(request.params.id) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/video-studio/sequential-story/:id/resume", async (request, response, next) => {
+  try {
+    if (!outputDirectory) throw new Error("OUTPUT_DIRECTORY non configurata: impossibile verificare clip e concatenazione.");
+    response.status(202).json({ project: await sequentialStoryService.start(request.params.id) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/video-studio/sequential-story/:id/cancel", (request, response, next) => {
+  try {
+    response.json({ project: sequentialStoryService.cancel(request.params.id) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/video-studio/sequential-story/:id", (request, response, next) => {
+  try {
+    response.json(sequentialStoryService.delete(request.params.id));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/video-studio/sequential-story/:id/scenes/:sceneId/retry", (request, response, next) => {
+  try {
+    response.json({ project: sequentialStoryService.retryScene(request.params.id, request.params.sceneId) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/video-studio/sequential-story/:id/scenes/:sceneId/regenerate-plan", async (request, response, next) => {
+  try {
+    const project = sequentialStoryStore.require(request.params.id);
+    const scene = project.scenes.find((item) => item.id === request.params.sceneId);
+    if (!scene) throw new Error("Scena Sequential Story non trovata.");
+    const plan = await sequentialStoryService.plan({
+      description: `${project.title}. Rewrite only scene ${scene.index}: ${request.body?.description || scene.prompt}`,
+      sceneCount: 1,
+      sceneDuration: scene.duration,
+      globalStyle: Object.values(project.globalContinuity || {}).filter(Boolean).join(". "),
+      characterContext: project.characterPrompt || "",
+    });
+    response.json({ scene: validateSequentialStoryPlan(plan, { sceneCount: 1, sceneDuration: scene.duration }).scenes[0] });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post("/api/video-studio/projects", upload.any(), async (request, response, next) => {
   try {
     cancelIdlePurge();
@@ -1969,11 +2213,18 @@ app.post("/api/video-studio/projects", upload.any(), async (request, response, n
     const selectedLoras = parseLoras(request.body.loras);
     if (selectedLoras.length) validateLoras(selectedLoras, config.ltxLoras);
     const uploaded = await uploadVideoStudioFiles(request.files || []);
-    const influencer = await uploadVirtualInfluencerSelection(request.body.virtualInfluencerId, 1);
-    if (influencer?.uploads[0]) {
-      if (!uploaded.identityImage) uploaded.identityImage = influencer.uploads[0];
-      if (!uploaded.referenceSheet) uploaded.referenceSheet = influencer.uploads[0];
-      request.body = withVirtualInfluencerPrompt(request.body, influencer);
+    const characterSelection = await uploadCharacterSelection(
+      request.body,
+      {
+        generationType: "videoStudio",
+        videoStudioMode: request.body.videoStudioMode,
+      },
+      2,
+    );
+    if (characterSelection) request.body = withCharacterPrompt(request.body, characterSelection.adapter);
+    if (characterSelection?.uploads[0]) {
+      if (!uploaded.identityImage) uploaded.identityImage = characterSelection.uploads[0];
+      if (!uploaded.referenceSheet) uploaded.referenceSheet = characterSelection.uploads[1] || characterSelection.uploads[0];
     }
     let job = buildVideoStudioInitialJob(
       request.body.videoStudioMode,
@@ -1982,6 +2233,18 @@ app.post("/api/video-studio/projects", upload.any(), async (request, response, n
       selectedLoras,
       config,
     );
+    if (characterSelection) {
+      job.metadata = {
+        ...job.metadata,
+        character: {
+          id: characterSelection.character.id,
+          name: characterSelection.character.name,
+          capability: characterSelection.adapter.capability,
+          referenceIds: characterSelection.adapter.references.map((item) => item.id),
+          warnings: characterSelection.adapter.warnings,
+        },
+      };
+    }
     job = await integrateSceneJob(job, request.body, {
       trackedMask: request.body.videoStudioMode === "actorReplacement",
     });
@@ -2063,17 +2326,39 @@ app.post("/api/studio/projects", upload.any(), async (request, response, next) =
       );
     }
     const uploaded = await uploadStudioFiles(request.files || []);
-    const influencer = await uploadVirtualInfluencerSelection(request.body.virtualInfluencerId, 4);
-    if (influencer?.uploads.length) {
-      if (!uploaded.source?.name && ["perfect", "bible", "qwenKreaKlein"].includes(request.body.studioMode)) {
-        uploaded.source = influencer.uploads[0];
-        uploaded.references = [...influencer.uploads.slice(1), ...(uploaded.references || [])].slice(0, 3);
+    const characterSelection = await uploadCharacterSelection(
+      request.body,
+      {
+        generationType: "studio",
+        studioMode: request.body.studioMode,
+      },
+      4,
+    );
+    if (characterSelection) request.body = withCharacterPrompt(request.body, characterSelection.adapter);
+    if (characterSelection?.uploads.length) {
+      if (!uploaded.source?.name && ["perfect", "bible", "qwenKreaKlein", "kreaTriple"].includes(request.body.studioMode)) {
+        uploaded.source = characterSelection.uploads[0];
+        uploaded.references = [...characterSelection.uploads.slice(1), ...(uploaded.references || [])].slice(0, 3);
       } else {
-        uploaded.references = [...influencer.uploads, ...(uploaded.references || [])].slice(0, 3);
+        uploaded.references = [...characterSelection.uploads, ...(uploaded.references || [])].slice(0, 3);
       }
-      request.body = withVirtualInfluencerPrompt(request.body, influencer);
     }
     let jobs = buildStudioJobs(request.body.studioMode, request.body, uploaded, selectedLoras);
+    if (characterSelection) {
+      jobs = jobs.map((job) => ({
+        ...job,
+        metadata: {
+          ...job.metadata,
+          character: {
+            id: characterSelection.character.id,
+            name: characterSelection.character.name,
+            capability: characterSelection.adapter.capability,
+            referenceIds: characterSelection.adapter.references.map((item) => item.id),
+            warnings: characterSelection.adapter.warnings,
+          },
+        },
+      }));
+    }
     jobs = await Promise.all(jobs.map((job) => integrateSceneJob(job, request.body, {
       maskUpload: uploaded.mask || null,
       structureGuideAvailable: Boolean(uploaded.guide),
@@ -2245,8 +2530,10 @@ app.post("/api/generations", upload.any(), async (request, response, next) => {
         ? "upscale"
         : request.body.generationType === "ltxUpscale"
           ? "ltxUpscale"
-          : "video";
-    const selectedLoras = ["upscale", "ltxUpscale"].includes(generationType)
+          : request.body.generationType === "seedvr2VideoUpscale"
+            ? "seedvr2VideoUpscale"
+            : "video";
+    const selectedLoras = ["upscale", "ltxUpscale", "seedvr2VideoUpscale"].includes(generationType)
       ? []
       : parseLoras(request.body.loras);
     if (selectedLoras.length) {
@@ -2257,13 +2544,17 @@ app.post("/api/generations", upload.any(), async (request, response, next) => {
     let uploaded = null;
     let directorScenes = [];
     let availableUpscaleModels = [];
-    const influencer = ["upscale", "ltxUpscale"].includes(generationType)
+    const characterSelection = ["upscale", "ltxUpscale", "seedvr2VideoUpscale"].includes(generationType)
       ? null
-      : await uploadVirtualInfluencerSelection(
-          request.body.virtualInfluencerId,
+      : await uploadCharacterSelection(
+          request.body,
+          {
+            generationType,
+            workflowId: request.body.workflowId,
+          },
           4,
         );
-    if (influencer) request.body = withVirtualInfluencerPrompt(request.body, influencer);
+    if (characterSelection) request.body = withCharacterPrompt(request.body, characterSelection.adapter);
 
     if (generationType === "image") {
       const definition = imageModelSelection(request.body.imageModelId, request.body.imageModelFile);
@@ -2312,16 +2603,16 @@ app.post("/api/generations", upload.any(), async (request, response, next) => {
         if (imageFile?.mimetype.startsWith("image/")) {
           validateUploadSize(imageFile, maxUploadMb, "L'immagine");
           uploaded = await comfy.uploadImage(imageFile);
-        } else if (influencer?.uploads[0]) {
-          uploaded = influencer.uploads[0];
+        } else if (characterSelection?.uploads[0]) {
+          uploaded = characterSelection.uploads[0];
         } else {
           throw new Error("Carica un'immagine PNG, JPG o WebP.");
         }
       }
-      if (influencer?.uploads.length) {
+      if (characterSelection?.uploads.length) {
         request.body.referenceUploads = request.body.imageMode === "text"
-          ? influencer.uploads.slice(0, 4)
-          : influencer.uploads.filter((item) => item.name !== uploaded?.name).slice(0, 3);
+          ? characterSelection.uploads.slice(0, 4)
+          : characterSelection.uploads.filter((item) => item.name !== uploaded?.name).slice(0, 3);
       }
     } else if (generationType === "upscale") {
       const capabilities = await standaloneUpscaleCapabilities();
@@ -2429,6 +2720,81 @@ app.post("/api/generations", upload.any(), async (request, response, next) => {
 
       uploaded = await comfy.uploadInput(videoFile);
 
+    } else if (generationType === "seedvr2VideoUpscale") {
+      const runtimeConfig = await (async () => {
+        try {
+          const [
+            ditInfo,
+            vaeInfo,
+            ...nodeDefinitions
+          ] = await Promise.all([
+            comfy.objectInfo("SeedVR2LoadDiTModel"),
+            comfy.objectInfo("SeedVR2LoadVAEModel"),
+            ...SEEDVR2_VIDEO_UPSCALE_REQUIRED_NODES.map((name) =>
+              objectDefinition(name),
+            ),
+            objectDefinition("SeedVR2TorchCompileSettings"),
+          ]);
+
+          const requiredWithCompile = [
+            ...SEEDVR2_VIDEO_UPSCALE_REQUIRED_NODES,
+            "SeedVR2TorchCompileSettings",
+          ];
+          const availableNodes = requiredWithCompile.filter(
+            (_name, index) => Boolean(nodeDefinitions[index]),
+          );
+
+          return seedvr2VideoUpscaleConfig({
+            availableNodes,
+            installedSeedvr2Models: comboOptions(
+              ditInfo?.SeedVR2LoadDiTModel?.input?.required?.model,
+            ),
+            installedVaes: comboOptions(
+              vaeInfo?.SeedVR2LoadVAEModel?.input?.required?.model,
+            ),
+          });
+        } catch {
+          return seedvr2VideoUpscaleConfig();
+        }
+      })();
+
+      if (!runtimeConfig.available) {
+        const details = [
+          runtimeConfig.missingNodes?.length
+            ? `Nodi mancanti: ${runtimeConfig.missingNodes.join(", ")}`
+            : "",
+          runtimeConfig.missingFiles?.length
+            ? `File mancanti: ${runtimeConfig.missingFiles.join(", ")}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" · ");
+
+        throw new Error(
+          details || "La pipeline SeedVR2 Video Upscale non è disponibile.",
+        );
+      }
+
+      const selectedProfile = runtimeConfig.profiles?.find(
+        (profile) => profile.id === request.body.seedvr2VideoPreset,
+      );
+      if (selectedProfile && !selectedProfile.available) {
+        throw new Error(
+          `Il profilo SeedVR2 selezionato non è installato: ${selectedProfile.model}`,
+        );
+      }
+
+      const videoFile = files.find((file) => file.fieldname === "video");
+
+      if (!videoFile || !videoFile.mimetype.startsWith("video/")) {
+        throw new Error(
+          "Carica un video MP4, WebM, MOV, MKV o AVI per SeedVR2 Video Upscale.",
+        );
+      }
+
+      validateUploadSize(videoFile, maxVideoUploadMb, "Il video");
+      uploaded = await comfy.uploadInput(videoFile);
+
     } else if (request.body.workflowId === "director") {
       let storyboard;
       try {
@@ -2464,8 +2830,8 @@ app.post("/api/generations", upload.any(), async (request, response, next) => {
         if (imageFile?.mimetype.startsWith("image/")) {
           validateUploadSize(imageFile, maxUploadMb, "L'immagine");
           uploaded = await comfy.uploadImage(imageFile);
-        } else if (influencer?.uploads[0]) {
-          uploaded = influencer.uploads[0];
+        } else if (characterSelection?.uploads[0]) {
+          uploaded = characterSelection.uploads[0];
         } else {
           throw new Error("Carica un'immagine PNG, JPG o WebP.");
         }
@@ -2490,14 +2856,31 @@ app.post("/api/generations", upload.any(), async (request, response, next) => {
               request.body,
               uploaded,
             )
-          : buildWorkflow(
-              request.body.workflowId,
-              request.body,
-              uploaded,
-              directorScenes,
+          : generationType === "seedvr2VideoUpscale"
+            ? buildSeedvr2VideoUpscaleWorkflow(
+                request.body,
+                uploaded,
+              )
+            : buildWorkflow(
+                request.body.workflowId,
+                request.body,
+                uploaded,
+                directorScenes,
               selectedLoras,
             );
-    if (!["upscale", "ltxUpscale"].includes(generationType)) {
+    if (characterSelection) {
+      job.metadata = {
+        ...job.metadata,
+        character: {
+          id: characterSelection.character.id,
+          name: characterSelection.character.name,
+          capability: characterSelection.adapter.capability,
+          referenceIds: characterSelection.adapter.references.map((item) => item.id),
+          warnings: characterSelection.adapter.warnings,
+        },
+      };
+    }
+    if (!["upscale", "ltxUpscale", "seedvr2VideoUpscale"].includes(generationType)) {
       job = await integrateSceneJob(job, request.body);
     }
     const { workflow, metadata } = job;
@@ -3001,12 +3384,17 @@ setInterval(async () => {
               : null,
           });
           broadcast({ type: "generation_updated", generationId: item.id, data: updated });
-          const influencerAsset = virtualInfluencerStore.updateGeneratedAssetFromGeneration(updated);
-          if (influencerAsset) {
+          const characterSheet = maybeRegisterCharacterSheet(updated, primaryImage);
+          if (characterSheet) {
+            const imported = store.update(updated.id, {
+              characterSheetImported: true,
+              characterSheetReferenceId: characterSheet.reference.id,
+            });
+            broadcast({ type: "generation_updated", generationId: item.id, data: imported });
             broadcast({
-              type: "virtual_influencer_asset_updated",
-              profileId: influencerAsset.profile.id,
-              data: influencerAsset.asset,
+              type: "character_updated",
+              characterId: characterSheet.character.id,
+              data: characterSheet.character,
             });
           }
           if (updated.sceneIntegration?.enabled) {
@@ -3066,3 +3454,4 @@ function shutdown() {
 }
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
+

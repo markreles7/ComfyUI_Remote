@@ -105,10 +105,36 @@ export const STUDIO_MODES = {
     input: "source",
     staticWorkflow: true,
   },
+  kreaTriple: {
+    id: "kreaTriple",
+    name: "Krea Triple Studio",
+    description: "Pipeline statica Krea, Z-Image, Flux2 Klein e SeedVR2 con modalità Text, Image e Selective Edit.",
+    input: "optional",
+    supportsMask: true,
+    staticWorkflow: true,
+  },
 };
 
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
 const QWEN_KREA_KLEIN_API_FILE = path.resolve(moduleDirectory, "..", "workflows", "Qwen_Krea_Klein_API.json");
+const KREA_TRIPLE_API_FILES = {
+  text: path.resolve(moduleDirectory, "..", "workflows", "KreaTriple_T2I_API.json"),
+  img2img: path.resolve(moduleDirectory, "..", "workflows", "KreaTriple_I2I_API.json"),
+  selective: path.resolve(moduleDirectory, "..", "workflows", "KreaTriple_Masked_API.json"),
+};
+const KREA_TRIPLE_NODES = {
+  kreaPrompt: "5",
+  kreaLatent: "8",
+  zPrompt: "15",
+  zSampler: "17",
+  kleinPrompt: "59",
+  kleinNoise: "29",
+  seedvr2: "69",
+  seedvr2Dit: "99",
+  resolution: "23",
+  finalImage: "45",
+  finalSave: "49",
+};
 const FLUX2_BASE = "FLUX2\\flux2Klein_9bBase.safetensors";
 const FLUX2_TURBO = "FLUX2\\pornmasterFlux2Klein_v4TurboFp8.safetensors";
 const ZIMAGE_TURBO = "Z-IMG\\z_image_turbo_bf16.safetensors";
@@ -234,6 +260,183 @@ function buildQwenKreaKleinJob(raw, source) {
         kreaRefineNode: "499",
         kleinRefineNode: "480",
         seedvr2Node: "492",
+      },
+      loras: [],
+    },
+  };
+}
+
+function kreaTripleOperation(raw) {
+  const operation = String(raw.kreaTripleOperation || "text");
+  if (operation === "image") return "img2img";
+  return ["text", "img2img", "selective"].includes(operation) ? operation : "text";
+}
+
+function configureKreaTripleCommon(workflow, raw, { operation, prompt, negativePrompt, seed, width, height }) {
+  const nodes = KREA_TRIPLE_NODES;
+  workflow[nodes.kreaPrompt].inputs.text = prompt;
+  workflow[nodes.zPrompt].inputs.text = prompt;
+  workflow[nodes.kleinPrompt].inputs.text = prompt;
+  workflow[nodes.kreaLatent].inputs.seed = seed;
+  workflow[nodes.zSampler].inputs.seed = seed + 1;
+  workflow[nodes.kleinNoise].inputs.noise_seed = seed + 2;
+  workflow[nodes.seedvr2].inputs.seed = seed;
+  workflow[nodes.resolution].inputs.use_custom_resolution = true;
+  workflow[nodes.resolution].inputs.custom_width = width;
+  workflow[nodes.resolution].inputs.custom_height = height;
+  workflow[nodes.finalSave].inputs.filename_prefix = `Studio/krea_triple/${operation}/08_finale`;
+  if (workflow[nodes.seedvr2Dit]?.inputs) {
+    workflow[nodes.seedvr2Dit].inputs.cache_model = true;
+    workflow[nodes.seedvr2Dit].inputs.attention_mode = "sdpa";
+  }
+  if (negativePrompt) {
+    for (const id of ["6", "16", "37"]) {
+      if (workflow[id]?.class_type === "ConditioningZeroOut") workflow[id].inputs._negative_prompt_note = negativePrompt;
+    }
+  }
+}
+
+function addKreaTripleSourceLatent(workflow, source, raw, width, height) {
+  workflow["970100"] = {
+    inputs: { image: inputPath(source) },
+    class_type: "LoadImage",
+    _meta: { title: "Krea Triple · source image" },
+  };
+  workflow["970101"] = {
+    inputs: {
+      image: ["970100", 0],
+      upscale_method: "lanczos",
+      width,
+      height,
+      crop: "center",
+    },
+    class_type: "ImageScale",
+    _meta: { title: "Krea Triple · source to Krea size" },
+  };
+  workflow["970102"] = {
+    inputs: {
+      pixels: ["970101", 0],
+      vae: ["4", 0],
+    },
+    class_type: "VAEEncode",
+    _meta: { title: "Krea Triple · source latent" },
+  };
+  workflow[KREA_TRIPLE_NODES.kreaLatent].inputs.latent_image = ["970102", 0];
+  workflow[KREA_TRIPLE_NODES.kreaLatent].inputs.denoise =
+    numberValue(raw.kreaTripleDenoise ?? raw.denoise, 0.35, 0.1, 0.8);
+}
+
+function addKreaTripleMaskComposite(workflow, source, mask, raw) {
+  workflow["970110"] = {
+    inputs: { image: inputPath(mask) },
+    class_type: "LoadImage",
+    _meta: { title: "Krea Triple · maschera manuale" },
+  };
+  workflow["970120"] = {
+    inputs: { image: [KREA_TRIPLE_NODES.finalImage, 0] },
+    class_type: "GetImageSize",
+    _meta: { title: "Krea Triple · final size" },
+  };
+  workflow["970121"] = {
+    inputs: {
+      image: ["970100", 0],
+      upscale_method: "lanczos",
+      width: ["970120", 0],
+      height: ["970120", 1],
+      crop: "disabled",
+    },
+    class_type: "ImageScale",
+    _meta: { title: "Krea Triple · original to final size" },
+  };
+  workflow["970122"] = {
+    inputs: {
+      image: ["970110", 0],
+      upscale_method: "nearest-exact",
+      width: ["970120", 0],
+      height: ["970120", 1],
+      crop: "disabled",
+    },
+    class_type: "ImageScale",
+    _meta: { title: "Krea Triple · mask to final size" },
+  };
+  workflow["970123"] = {
+    inputs: { image: ["970122", 0], channel: "red" },
+    class_type: "ImageToMask",
+    _meta: { title: "Krea Triple · image to mask" },
+  };
+  workflow["970124"] = {
+    inputs: {
+      mask: ["970123", 0],
+      expand: numberValue(raw.maskGrow, 32, 0, 256, true),
+      tapered_corners: true,
+    },
+    class_type: "GrowMask",
+    _meta: { title: "Krea Triple · grow mask" },
+  };
+  workflow["970125"] = {
+    inputs: {
+      mask: ["970124", 0],
+      left: numberValue(raw.maskFeather, 24, 0, 256, true),
+      top: numberValue(raw.maskFeather, 24, 0, 256, true),
+      right: numberValue(raw.maskFeather, 24, 0, 256, true),
+      bottom: numberValue(raw.maskFeather, 24, 0, 256, true),
+    },
+    class_type: "FeatherMask",
+    _meta: { title: "Krea Triple · feather mask" },
+  };
+  workflow["970126"] = {
+    inputs: {
+      destination: ["970121", 0],
+      source: [KREA_TRIPLE_NODES.finalImage, 0],
+      x: 0,
+      y: 0,
+      resize_source: false,
+      mask: ["970125", 0],
+    },
+    class_type: "ImageCompositeMasked",
+    _meta: { title: "Krea Triple · selective final composite" },
+  };
+  workflow[KREA_TRIPLE_NODES.finalSave].inputs.images = ["970126", 0];
+}
+
+function buildKreaTripleJob(raw, { source, mask }) {
+  const prompt = String(raw.prompt || "").trim();
+  if (!prompt) throw new Error("Inserisci il prompt per Krea Triple Studio.");
+  const operation = kreaTripleOperation(raw);
+  if (operation !== "text" && !source?.name) throw new Error("Krea Triple Image to Image richiede una fotografia sorgente.");
+  if (operation === "selective" && !mask?.name) throw new Error("Krea Triple Selective richiede una maschera manuale.");
+  const workflow = cloneStaticWorkflow(KREA_TRIPLE_API_FILES[operation]);
+  const [width, height] = dimensions(raw);
+  const seed = seedAt(raw);
+  const negativePrompt = String(raw.negativePrompt || "").trim();
+  configureKreaTripleCommon(workflow, raw, { operation, prompt, negativePrompt, seed, width, height });
+  if (operation !== "text") addKreaTripleSourceLatent(workflow, source, raw, width, height);
+  if (operation === "selective") addKreaTripleMaskComposite(workflow, source, mask, raw);
+  return {
+    workflow,
+    metadata: {
+      mediaType: "image",
+      generationType: "image",
+      workflowId: "studio:kreaTriple",
+      workflowName: `Krea Triple Studio · ${operation === "text" ? "Text to Image" : operation === "img2img" ? "Image to Image" : "Selective Image Edit"}`,
+      studioMode: "kreaTriple",
+      studioStage: "final",
+      studioLabel: operation === "text" ? "Text to Image" : operation === "img2img" ? "Image to Image" : "Selective Image Edit",
+      prompt,
+      negativePrompt,
+      width,
+      height,
+      seed,
+      sourceImage: source?.name ? inputPath(source) : null,
+      maskImage: mask?.name ? inputPath(mask) : null,
+      imageModelName: "Krea + Z-Image + Flux2 Klein + SeedVR2",
+      imageModelFamily: "kreaTriple",
+      imageSettings: {
+        operation,
+        denoise: operation === "text" ? 1 : numberValue(raw.kreaTripleDenoise ?? raw.denoise, 0.35, 0.1, 0.8),
+        staticWorkflow: path.basename(KREA_TRIPLE_API_FILES[operation]),
+        nodes: KREA_TRIPLE_NODES,
+        seedvr2CacheModelBoolean: workflow[KREA_TRIPLE_NODES.seedvr2Dit]?.inputs?.cache_model === true,
       },
       loras: [],
     },
@@ -1047,6 +1250,9 @@ export function buildStudioJobs(studioMode, raw, uploads, loras = undefined) {
   }
   if (studioMode === "qwenKreaKlein") {
     return [buildQwenKreaKleinJob(raw, source)];
+  }
+  if (studioMode === "kreaTriple") {
+    return [buildKreaTripleJob(raw, { source, mask })];
   }
   const preset = PRESETS[raw.editPreset] || PRESETS.balanced;
   const alternatives = numberValue(raw.alternatives, 2, 2, 4, true);

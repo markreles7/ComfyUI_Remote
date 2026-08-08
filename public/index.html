@@ -25,7 +25,7 @@
         <a class="active" href="/">Genera</a>
         <a href="/studio.html">Image Studio</a>
         <a href="/video-studio.html">Video Studio</a>
-        <a href="/virtual-influencer.html">Virtual Influencer</a>
+        <a href="/characters.html">Character Library</a>
         <a href="/workflow-guide.html">Guida</a>
         <a href="/generations.html">Generazioni</a>
       </nav>
@@ -76,6 +76,12 @@
             <span>⇈</span>
             <b>Upscale LTX</b>
             <small>IC-LoRA video</small>
+          </button>
+
+          <button type="button" data-generation-type="seedvr2VideoUpscale">
+            <span>◇</span>
+            <b>SeedVR2 Video</b>
+            <small>Upscale video</small>
           </button>
         </div>
 
@@ -144,12 +150,17 @@
           <p id="image-model-warning" class="model-warning hidden"></p>
         </section>
 
-        <div id="virtual-influencer-field" class="field hidden">
-          <label for="virtualInfluencerId">Influencer reference</label>
-          <select id="virtualInfluencerId" name="virtualInfluencerId" disabled>
+        <div id="character-field" class="field hidden">
+          <label for="characterId">Personaggio</label>
+          <select id="characterId" name="characterId" disabled>
             <option value="">Nessuna</option>
           </select>
-          <p id="virtual-influencer-hint" class="hint">Usa una virtual influencer approvata come identità/reference automatica.</p>
+          <p id="character-hint" class="hint">Usa un Virtual Actor persistente come identità/reference automatica.</p>
+          <input id="characterIdentityStrength" name="identityStrength" type="hidden" value="medium">
+          <input id="characterLockFace" name="lockFace" type="hidden" value="true">
+          <input id="characterLockHair" name="lockHair" type="hidden" value="true">
+          <input id="characterLockBody" name="lockBody" type="hidden" value="true">
+          <input id="characterLockOutfit" name="lockOutfit" type="hidden" value="false">
         </div>
 
         <section id="upscale-options" class="image-options hidden">
@@ -219,6 +230,164 @@
           </div>
           <p id="upscale-warning" class="model-warning hidden"></p>
           <p class="storyboard-note">I motori cloud a pagamento non vengono utilizzati. Il risultato viene salvato nella pagina Generazioni.</p>
+        </section>
+
+        <section id="seedvr2-video-upscale-options" class="image-options hidden">
+
+          <div class="field">
+            <label>Video da migliorare</label>
+
+            <label id="seedvr2-video-upscale-dropzone" class="dropzone video-dropzone">
+              <input
+                id="seedvr2VideoUpscaleVideo"
+                name="seedvr2VideoUpscaleVideo"
+                type="file"
+                accept="video/mp4,video/webm,video/quicktime,video/x-matroska,video/x-msvideo,.mp4,.webm,.mov,.mkv,.avi"
+                disabled
+              >
+
+              <video
+                id="seedvr2-video-upscale-preview"
+                muted
+                playsinline
+              ></video>
+
+              <span class="upload-icon">◇</span>
+
+              <strong>Trascina o scegli un video</strong>
+
+              <small>
+                MP4, WebM, MOV, MKV o AVI · upscaling SeedVR2 puro
+              </small>
+            </label>
+
+            <p id="seedvr2-video-upscale-file-info" class="hint"></p>
+          </div>
+
+          <div class="field-grid">
+
+            <div class="field">
+              <label for="seedvr2VideoPreset">Preset</label>
+
+              <select
+                id="seedvr2VideoPreset"
+                name="seedvr2VideoPreset"
+                disabled
+              >
+                <option value="preview">Anteprima · veloce</option>
+                <option value="quality" selected>Qualità · bilanciata</option>
+                <option value="max">Massima · finale</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="seedvr2VideoResolution">Lato corto target</label>
+
+              <select
+                id="seedvr2VideoResolution"
+                name="seedvr2VideoResolution"
+                disabled
+              >
+                <option value="720">720 px</option>
+                <option value="1080" selected>1080 px</option>
+                <option value="1440">1440 px</option>
+                <option value="2160">2160 px · pesante</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="seedvr2VideoFrameLoadCap">Numero massimo fotogrammi</label>
+
+              <input
+                id="seedvr2VideoFrameLoadCap"
+                name="seedvr2VideoFrameLoadCap"
+                type="number"
+                min="1"
+                max="2000"
+                step="1"
+                value="121"
+                disabled
+              >
+
+              <p class="hint">121 fotogrammi corrispondono a circa 5 secondi a 24 FPS.</p>
+            </div>
+
+            <div class="field">
+              <label for="seedvr2VideoSeed">Seed</label>
+
+              <div class="seed-control">
+                <input
+                  id="seedvr2VideoSeed"
+                  name="seedvr2VideoSeed"
+                  inputmode="numeric"
+                  placeholder="Random"
+                  disabled
+                >
+
+                <button
+                  id="random-seedvr2-video-seed"
+                  type="button"
+                  title="Genera seed casuale"
+                  disabled
+                >↻</button>
+              </div>
+            </div>
+
+          </div>
+
+          <fieldset class="quality upscale-quality">
+            <legend>Impostazioni audio</legend>
+
+            <label>
+              <input
+                id="seedvr2VideoKeepAudio"
+                name="seedvr2VideoKeepAudio"
+                type="checkbox"
+                checked
+                disabled
+              >
+
+              <span>
+                <b>Mantieni audio originale</b>
+                <small>Riutilizza la traccia audio del video sorgente.</small>
+              </span>
+            </label>
+          </fieldset>
+
+          <section class="sulphur-panel">
+            <div>
+              <p class="eyebrow">SEEDVR2 VIDEO UPSCALE</p>
+              <h3>Upscaling generativo puro</h3>
+              <p>
+                Lavora sui frame del video senza prompt e senza pass LTX:
+                ideale per aumentare dettaglio, ridurre morbidezza e mantenere il movimento originale.
+              </p>
+            </div>
+
+            <div class="sulphur-panel-grid">
+              <div>
+                <span>Anteprima</span>
+                <b>3B · overlap ridotto</b>
+              </div>
+
+              <div>
+                <span>Qualità</span>
+                <b>3B · continuità bilanciata</b>
+              </div>
+
+              <div>
+                <span>Massima</span>
+                <b>7B se installato · più lenta</b>
+              </div>
+            </div>
+          </section>
+
+          <p id="seedvr2-video-upscale-warning" class="model-warning hidden"></p>
+
+          <p class="storyboard-note">
+            Se il video è lungo, limita i fotogrammi per evitare OOM. Per clip finali usa lo stesso seed e passa da Anteprima a Massima.
+          </p>
+
         </section>
 
 
@@ -807,3 +976,4 @@
   <div id="toast" class="toast" role="status"></div>
 </body>
 </html>
+

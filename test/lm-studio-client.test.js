@@ -219,6 +219,68 @@ test("può usare un modello LM Studio dedicato per Sulphur", async () => {
   assert.deepEqual(loadedModels, ["sulphur-enhancer"]);
 });
 
+test("planSequentialStory chiede JSON strutturato e scarica il modello", async () => {
+  const calls = [];
+  const client = new LmStudioClient({
+    model: "planner-model",
+    fetchImpl: async (url, options = {}) => {
+      const path = new URL(url).pathname;
+      const body = options.body ? JSON.parse(options.body) : null;
+      calls.push({ path, body });
+      if (path === "/api/v1/models") {
+        return response({ models: [{ key: "planner-model", display_name: "Planner", loaded_instances: [] }] });
+      }
+      if (path === "/api/v1/models/load") return response({ model_instance_id: "planner-model", status: "loaded" });
+      if (path === "/api/v1/chat") {
+        assert.equal(body.reasoning, "off");
+        assert.match(body.system_prompt, /Sequential Story/);
+        assert.match(body.system_prompt, /one independent ComfyUI job per scene/);
+        assert.match(body.input, /Requested scene count: 2/);
+        return response({
+          output: [{
+            type: "message",
+            content: JSON.stringify({
+              title: "Two scene story",
+              globalContinuity: {
+                character: "same woman",
+                face: "",
+                hair: "",
+                body: "",
+                outfit: "",
+                location: "",
+                lighting: "",
+                cameraStyle: "",
+                visualStyle: "",
+                temporalRules: "",
+              },
+              scenes: [
+                { id: "scene-1", index: 1, title: "One", duration: 8, prompt: "First clip", negativePrompt: "flicker", continuityNotes: "", startState: "", endState: "standing" },
+                { id: "scene-2", index: 2, title: "Two", duration: 8, prompt: "Second clip", negativePrompt: "flicker", continuityNotes: "", startState: "standing", endState: "sitting" },
+              ],
+            }),
+          }],
+        });
+      }
+      if (path === "/api/v1/models/unload") return response({});
+      throw new Error(`Unexpected path ${path}`);
+    },
+  });
+
+  const result = await client.planSequentialStory({
+    description: "two clips",
+    sceneCount: 2,
+    sceneDuration: 8,
+    characterContext: "Character pack prompt",
+  });
+  assert.equal(result.scenes.length, 2);
+  assert.deepEqual(calls.map((item) => item.path), [
+    "/api/v1/models",
+    "/api/v1/models/load",
+    "/api/v1/chat",
+    "/api/v1/models/unload",
+  ]);
+});
+
 test("Sulphur Prompt accetta risposta non JSON e compila il negativo in fallback", async () => {
   const client = new LmStudioClient({
     model: "sulphur-enhancer",
@@ -366,6 +428,81 @@ test("LTX Scene accetta testo non JSON e compila negativo fallback", async () =>
 
   assert.equal(result.prompt, "Scene 1: A clean LTX scene prompt.\nScene 2: Camera follows");
   assert.match(result.negativePrompt, /temporal coherence/);
+});
+
+test("Qwen/Klein accettano JSON non valido e mantengono un prompt utilizzabile", async () => {
+  const client = new LmStudioClient({
+    model: "vision-model",
+    fetchImpl: async (url, options = {}) => {
+      const path = new URL(url).pathname;
+      const body = options.body ? JSON.parse(options.body) : null;
+      if (path === "/api/v1/models") {
+        return response({ models: [{
+          key: "vision-model",
+          display_name: "Vision Model",
+          capabilities: { vision: true },
+          loaded_instances: [{ id: "loaded-vision" }],
+        }] });
+      }
+      if (path === "/api/v1/chat") {
+        assert.match(body.system_prompt, /strict JSON/i);
+        return response({ output: [{
+          type: "message",
+          content: "{\"prompt\":\"Change only the selected object, extend its geometry naturally, preserve the original photo, camera angle and lighting",
+        }] });
+      }
+      if (path === "/api/v1/models/unload") return response({});
+      throw new Error(`Unexpected path ${path}`);
+    },
+  });
+
+  const result = await client.enhance({
+    text: "Allunga solo l'oggetto selezionato",
+    target: "qwen_image_edit_architect",
+    mode: "image",
+    image: { mimetype: "image/png", buffer: Buffer.from("image") },
+    includeNegative: true,
+  });
+
+  assert.match(result.prompt, /Change only the selected object/);
+  assert.match(result.prompt, /preserve the original photo/);
+  assert.match(result.negativePrompt, /do not modify outside/);
+  assert.match(result.negativePrompt, /avoid identity drift/);
+});
+
+test("Klein image editing usa il testo libero come fallback quando LM Studio ignora lo schema JSON", async () => {
+  const client = new LmStudioClient({
+    model: "text-model",
+    fetchImpl: async (url) => {
+      const path = new URL(url).pathname;
+      if (path === "/api/v1/models") {
+        return response({ models: [{
+          key: "text-model",
+          display_name: "Text Model",
+          loaded_instances: [{ id: "loaded-text" }],
+        }] });
+      }
+      if (path === "/api/v1/chat") {
+        return response({ output: [{
+          type: "message",
+          content: "Modify only the requested region, keep the source composition locked, match perspective, shadows, grain and focus.",
+        }] });
+      }
+      if (path === "/api/v1/models/unload") return response({});
+      throw new Error(`Unexpected path ${path}`);
+    },
+  });
+
+  const result = await client.enhance({
+    text: "Sostituisci lo sfondo mantenendo il soggetto",
+    target: "flux2_klein_architect",
+    mode: "image",
+    includeNegative: true,
+  });
+
+  assert.match(result.prompt, /Modify only the requested region/);
+  assert.match(result.negativePrompt, /preserve identity/);
+  assert.match(result.negativePrompt, /avoid identity drift/);
 });
 
 test("estrae JSON Director anche da risposta fenced", () => {

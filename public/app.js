@@ -32,6 +32,10 @@ function isLtxUpscaleGeneration() {
   return $("#generationType").value === "ltxUpscale";
 }
 
+function isSeedvr2VideoUpscaleGeneration() {
+  return $("#generationType").value === "seedvr2VideoUpscale";
+}
+
 function promptAssistantContext() {
   if (isImageGeneration()) {
     const model = state.config?.imageModels.find((item) => item.id === $("#imageModelId").value);
@@ -56,7 +60,7 @@ function promptAssistantContext() {
 }
 
 function isSulphurPromptMode() {
-  if (isImageGeneration() || isUpscaleGeneration()) return false;
+  if (isImageGeneration() || isUpscaleGeneration() || isSeedvr2VideoUpscaleGeneration()) return false;
   const selectedWorkflow = state.config?.workflows.find((item) => item.id === workflow.value);
   return selectedWorkflow?.id === "ltxSulphur";
 }
@@ -104,7 +108,7 @@ function escapeAttribute(text) {
 }
 
 function compatibleLoras() {
-  if (isUpscaleGeneration()) return [];
+  if (isUpscaleGeneration() || isSeedvr2VideoUpscaleGeneration()) return [];
   const all = state.config?.loras || [];
   let prefix = "LTX2.3\\";
   if (isImageGeneration()) {
@@ -170,16 +174,24 @@ function refreshLoraOptions() {
   syncLoras();
 }
 
-function virtualInfluencerSelected() {
-  return Boolean($("#virtualInfluencerId")?.value);
+function selectedCharacter() {
+  const id = $("#characterId")?.value;
+  if (!id) return null;
+  return (state.config?.characters?.availableCharacters || []).find((character) => character.id === id) || null;
 }
 
-function updateVirtualInfluencerRequirements() {
-  const selected = virtualInfluencerSelected();
-  $("#virtual-influencer-hint").textContent = selected
-    ? "La reference canonica verrà caricata automaticamente e il prompt includerà l’identità selezionata."
-    : "Usa una virtual influencer approvata come identità/reference automatica.";
-  if (!selected) return;
+function syncCharacterFields() {
+  const character = selectedCharacter();
+  const settings = character?.settings || {};
+  $("#characterIdentityStrength").value = settings.identityStrength || "medium";
+  $("#characterLockFace").value = String(settings.lockFace ?? true);
+  $("#characterLockHair").value = String(settings.lockHair ?? true);
+  $("#characterLockBody").value = String(settings.lockBody ?? true);
+  $("#characterLockOutfit").value = String(settings.lockOutfit ?? false);
+  $("#character-hint").textContent = character
+    ? "Il Character Pack verra' risolto dall'adapter del workflow; se non supportato verra' usato come prompt fallback."
+    : "Usa un Virtual Actor persistente come identita/reference automatica.";
+  if (!character) return;
   if (isImageGeneration() && $("#imageMode").value !== "text") {
     $("#sourceImage").required = false;
   }
@@ -283,7 +295,7 @@ function workflowChanged() {
   updateStoryboard();
   refreshLoraOptions();
   updatePromptAssistantAvailability();
-  updateVirtualInfluencerRequirements();
+  syncCharacterFields();
 }
 
 function upscaleOptionsChanged() {
@@ -387,7 +399,7 @@ function imageOptionsChanged(updateDefaults = false) {
   updateEnhancementOptions();
   refreshLoraOptions();
   updatePromptAssistantAvailability();
-  updateVirtualInfluencerRequirements();
+  syncCharacterFields();
 }
 
 function updateEnhancementOptions(enforceSafeBatch = false) {
@@ -443,6 +455,7 @@ function generationTypeChanged(type) {
   const image = type === "image";
   const upscale = type === "upscale";
   const ltxUpscale = type === "ltxUpscale";
+  const seedvr2VideoUpscale = type === "seedvr2VideoUpscale";
   const video = type === "video";
 
   $("#generationType").value = type;
@@ -465,10 +478,11 @@ function generationTypeChanged(type) {
   $("#image-options").classList.toggle("hidden", !image);
   $("#upscale-options").classList.toggle("hidden", !upscale);
   $("#ltx-upscale-options").classList.toggle("hidden", !ltxUpscale);
+  $("#seedvr2-video-upscale-options").classList.toggle("hidden", !seedvr2VideoUpscale);
 
-  $("#virtual-influencer-field").classList.toggle(
+  $("#character-field").classList.toggle(
     "hidden",
-    upscale || ltxUpscale,
+    upscale || ltxUpscale || seedvr2VideoUpscale,
   );
 
   $("#video-settings-grid").classList.toggle("hidden", !video);
@@ -477,15 +491,15 @@ function generationTypeChanged(type) {
 
   $("#negative-prompt-field").classList.toggle(
     "hidden",
-    upscale || ltxUpscale,
+    upscale || ltxUpscale || seedvr2VideoUpscale,
   );
 
   $("#lora-settings").classList.toggle(
     "hidden",
-    upscale || ltxUpscale,
+    upscale || ltxUpscale || seedvr2VideoUpscale,
   );
 
-  $("#negativePrompt").disabled = upscale || ltxUpscale;
+  $("#negativePrompt").disabled = upscale || ltxUpscale || seedvr2VideoUpscale;
 
   workflow.disabled = !video;
   $("#videoInputMode").disabled = !video;
@@ -495,7 +509,7 @@ function generationTypeChanged(type) {
   $("#imageModelFile").disabled = !image;
   $("#imageMode").disabled = !image;
 
-  $("#virtualInfluencerId").disabled = upscale || ltxUpscale;
+  $("#characterId").disabled = upscale || ltxUpscale || seedvr2VideoUpscale;
 
   $("#seed").disabled = !video;
   $("#imageSeed").disabled = !image;
@@ -527,6 +541,15 @@ function generationTypeChanged(type) {
     input.disabled = !ltxUpscale;
   }
 
+  for (const input of document.querySelectorAll(
+    "#seedvr2-video-upscale-options input, " +
+    "#seedvr2-video-upscale-options select, " +
+    "#seedvr2-video-upscale-options textarea, " +
+    "#seedvr2-video-upscale-options button",
+  )) {
+    input.disabled = !seedvr2VideoUpscale;
+  }
+
   if (image) {
     $("#regular-scene-fields").classList.remove("hidden");
 
@@ -549,6 +572,7 @@ function generationTypeChanged(type) {
 
     $("#upscaleImage").required = false;
     $("#ltxUpscaleVideo").required = false;
+    $("#seedvr2VideoUpscaleVideo").required = false;
 
     for (const input of document.querySelectorAll(
       "#director-storyboard input, " +
@@ -573,6 +597,7 @@ function generationTypeChanged(type) {
 
     $("#upscaleImage").required = false;
     $("#ltxUpscaleVideo").required = false;
+    $("#seedvr2VideoUpscaleVideo").required = false;
 
     workflowChanged();
   } else if (upscale) {
@@ -598,6 +623,7 @@ function generationTypeChanged(type) {
     $("#upscaleImage").required = true;
 
     $("#ltxUpscaleVideo").required = false;
+    $("#seedvr2VideoUpscaleVideo").required = false;
 
     for (const input of document.querySelectorAll(
       "#director-storyboard input, " +
@@ -633,6 +659,8 @@ function generationTypeChanged(type) {
 
     $("#ltxUpscaleVideo").disabled = false;
     $("#ltxUpscaleVideo").required = true;
+    $("#seedvr2VideoUpscaleVideo").disabled = true;
+    $("#seedvr2VideoUpscaleVideo").required = false;
 
     const config = state.config?.ltxUpscale;
 
@@ -663,16 +691,76 @@ function generationTypeChanged(type) {
     )) {
       input.disabled = true;
     }
+  } else if (seedvr2VideoUpscale) {
+    $("#regular-scene-fields").classList.add("hidden");
+
+    $("#source-image-field").classList.add("hidden");
+    $("#image-input-field").classList.add("hidden");
+    $("#video-input-field").classList.add("hidden");
+
+    $("#director-storyboard").classList.add("hidden");
+    $("#edit-settings").classList.add("hidden");
+    $("#quality-field").classList.add("hidden");
+
+    $("#image").disabled = true;
+    $("#video").disabled = true;
+    $("#sourceImage").disabled = true;
+
+    $("#prompt").disabled = true;
+    $("#prompt").required = false;
+    $("#negativePrompt").disabled = true;
+
+    $("#upscaleImage").disabled = true;
+    $("#upscaleImage").required = false;
+
+    $("#ltxUpscaleVideo").disabled = true;
+    $("#ltxUpscaleVideo").required = false;
+
+    $("#seedvr2VideoUpscaleVideo").disabled = false;
+    $("#seedvr2VideoUpscaleVideo").required = true;
+
+    const config = state.config?.seedvr2VideoUpscale;
+
+    $("#seedvr2-video-upscale-warning").textContent =
+      config?.available === false
+        ? [
+            config.missingNodes?.length
+              ? `Nodi mancanti: ${config.missingNodes.join(", ")}`
+              : "",
+            config.missingFiles?.length
+              ? `File mancanti: ${config.missingFiles.join(", ")}`
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" · ")
+        : "";
+
+    $("#seedvr2-video-upscale-warning").classList.toggle(
+      "hidden",
+      config?.available !== false,
+    );
+
+    for (const input of document.querySelectorAll(
+      "#director-storyboard input, " +
+      "#director-storyboard textarea, " +
+      "#edit-settings input, " +
+      "#edit-settings select",
+    )) {
+      input.disabled = true;
+    }
   }
 
   $("#upscaleImage").required = upscale;
   $("#ltxUpscaleVideo").required = ltxUpscale;
+  $("#seedvr2VideoUpscaleVideo").required = seedvr2VideoUpscale;
 
   $("#generate-button span").textContent = upscale
     ? "Avvia upscaling"
     : ltxUpscale
       ? "Avvia Upscale LTX"
-      : "Avvia generazione";
+      : seedvr2VideoUpscale
+        ? "Avvia SeedVR2 Video"
+        : "Avvia generazione";
 
   updateEnhancementOptions();
   refreshLoraOptions();
@@ -1092,6 +1180,82 @@ form.addEventListener("submit", async (event) => {
       );
     }
 
+    if (isSeedvr2VideoUpscaleGeneration()) {
+      const config = state.config?.seedvr2VideoUpscale;
+
+      if (config?.available === false) {
+        const details = [
+          config.missingNodes?.length
+            ? `Nodi mancanti: ${config.missingNodes.join(", ")}`
+            : "",
+          config.missingFiles?.length
+            ? `File mancanti: ${config.missingFiles.join(", ")}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" · ");
+
+        throw new Error(
+          details || "La pipeline SeedVR2 Video Upscale non è disponibile.",
+        );
+      }
+
+      const selectedProfile = config?.profiles?.find(
+        (profile) => profile.id === $("#seedvr2VideoPreset").value,
+      );
+
+      if (selectedProfile && !selectedProfile.available) {
+        throw new Error(
+          `Il profilo SeedVR2 selezionato non è installato: ${selectedProfile.model}`,
+        );
+      }
+
+      const sourceVideo = $("#seedvr2VideoUpscaleVideo").files[0];
+
+      if (!sourceVideo) {
+        throw new Error(
+          "Carica il video da elaborare con SeedVR2 Video Upscale.",
+        );
+      }
+
+      if (
+        state.config?.maxVideoUploadMb &&
+        sourceVideo.size >
+          state.config.maxVideoUploadMb * 1024 * 1024
+      ) {
+        throw new Error(
+          `Il video supera il limite di ${state.config.maxVideoUploadMb} MB.`,
+        );
+      }
+
+      data.delete("seedvr2VideoUpscaleVideo");
+      data.set("video", sourceVideo, sourceVideo.name);
+
+      const sourceDuration = Number(
+        $("#seedvr2-video-upscale-preview").dataset.duration,
+      );
+
+      if (Number.isFinite(sourceDuration) && sourceDuration > 0) {
+        data.set(
+          "seedvr2VideoSourceDuration",
+          String(sourceDuration),
+        );
+      }
+
+      const seedvr2Seed = $("#seedvr2VideoSeed").value.trim();
+
+      if (seedvr2Seed) {
+        data.set("seed", seedvr2Seed);
+      } else {
+        data.delete("seed");
+      }
+
+      data.set(
+        "seedvr2VideoKeepAudio",
+        String($("#seedvr2VideoKeepAudio").checked),
+      );
+    }
+
     if (!isImageGeneration() && workflow.value === "director") {
       const scenes = storyboardData();
       const total = scenes.reduce((sum, scene) => sum + scene.duration, 0);
@@ -1116,7 +1280,9 @@ form.addEventListener("submit", async (event) => {
         ? "Avvia upscaling"
         : isLtxUpscaleGeneration()
           ? "Avvia Upscale LTX"
-          : "Avvia generazione";
+          : isSeedvr2VideoUpscaleGeneration()
+            ? "Avvia SeedVR2 Video"
+            : "Avvia generazione";
   }
 });
 
@@ -1315,6 +1481,77 @@ $("#ltxUpscaleVideo").addEventListener("change", (event) => {
   preview.onerror = () => {
     info.textContent =
       `${file.name} · ${sizeMb} MB · anteprima non disponibile`;
+  };
+});
+
+function applySeedvr2VideoPreset() {
+  const preset = $("#seedvr2VideoPreset").value;
+
+  const values = {
+    preview: {
+      resolution: "720",
+      frameLoadCap: "121",
+    },
+    quality: {
+      resolution: "1080",
+      frameLoadCap: "121",
+    },
+    max: {
+      resolution: "1440",
+      frameLoadCap: "121",
+    },
+  }[preset];
+
+  if (!values) return;
+
+  $("#seedvr2VideoResolution").value = values.resolution;
+  $("#seedvr2VideoFrameLoadCap").value = values.frameLoadCap;
+}
+
+$("#seedvr2VideoPreset").addEventListener(
+  "change",
+  applySeedvr2VideoPreset,
+);
+
+$("#random-seedvr2-video-seed").addEventListener(
+  "click",
+  () => {
+    $("#seedvr2VideoSeed").value = String(
+      Math.floor(Math.random() * Number.MAX_SAFE_INTEGER),
+    );
+  },
+);
+
+$("#seedvr2VideoUpscaleVideo").addEventListener("change", (event) => {
+  const file = event.target.files[0];
+  const preview = $("#seedvr2-video-upscale-preview");
+  const dropzone = $("#seedvr2-video-upscale-dropzone");
+  const info = $("#seedvr2-video-upscale-file-info");
+
+  if (!file) {
+    dropzone.classList.remove("has-video");
+    preview.pause();
+    preview.removeAttribute("src");
+    preview.load();
+    info.textContent = "";
+    delete preview.dataset.duration;
+    return;
+  }
+
+  preview.src = URL.createObjectURL(file);
+  dropzone.classList.add("has-video");
+
+  const sizeMb = (file.size / 1024 / 1024).toFixed(1);
+  info.textContent = `${file.name} · ${sizeMb} MB`;
+
+  preview.onloadedmetadata = () => {
+    const duration = Number.isFinite(preview.duration)
+      ? preview.duration
+      : 0;
+    if (duration > 0) {
+      preview.dataset.duration = String(duration);
+      info.textContent = `${file.name} · ${sizeMb} MB · ${duration.toFixed(1)}s`;
+    }
   };
 });
 
@@ -1579,7 +1816,8 @@ $("#videoModelId").addEventListener("change", () => {
 $("#imageMode").addEventListener("change", () => imageOptionsChanged());
 $("#imageModelId").addEventListener("change", () => imageOptionsChanged(true));
 $("#imageModelFile").addEventListener("change", () => imageOptionsChanged(true));
-$("#virtualInfluencerId").addEventListener("change", () => {
+$("#characterId").addEventListener("change", () => {
+  syncCharacterFields();
   if (isImageGeneration()) imageOptionsChanged();
   else workflowChanged();
 });
@@ -1627,16 +1865,27 @@ async function start() {
     const preferredUpscaleModel = upscaleConfig.models.find((name) => name === "RealESRGAN_x2.pth")
       || upscaleConfig.models[0];
     if (preferredUpscaleModel) $("#upscaleModel").value = preferredUpscaleModel;
+    const seedvr2VideoConfig = state.config.seedvr2VideoUpscale || { profiles: [] };
+    if (seedvr2VideoConfig.profiles.length) {
+      $("#seedvr2VideoPreset").innerHTML = seedvr2VideoConfig.profiles.map((profile) =>
+        `<option value="${escapeAttribute(profile.id)}"${profile.available ? "" : " disabled"}>${escapeHtml(profile.name)}${profile.available ? "" : " · non installato"}</option>`
+      ).join("");
+      const preferredSeedvr2VideoPreset =
+        seedvr2VideoConfig.profiles.find((profile) => profile.id === "quality" && profile.available)
+        || seedvr2VideoConfig.profiles.find((profile) => profile.available);
+      if (preferredSeedvr2VideoPreset) $("#seedvr2VideoPreset").value = preferredSeedvr2VideoPreset.id;
+    }
     $("#video-upload-hint").textContent =
       `MP4, WebM, MOV, MKV o AVI · max ${state.config.maxVideoUploadMb} MB`;
-    const influencers = state.config.virtualInfluencer?.availableProfiles || [];
-    $("#virtualInfluencerId").innerHTML = [
+    const characters = state.config.characters?.availableCharacters || [];
+    $("#characterId").innerHTML = [
       `<option value="">Nessuna</option>`,
-      ...influencers.map((profile) =>
-        `<option value="${escapeAttribute(profile.id)}">${escapeHtml(profile.displayName)} · ${profile.canonicalReferences} canoniche</option>`
+      ...characters.map((character) =>
+        `<option value="${escapeAttribute(character.id)}">${escapeHtml(character.name)} · ${Number(character.referenceCount || 0)} reference</option>`
       ),
     ].join("");
     applyLtxUpscalePreset();
+    applySeedvr2VideoPreset();
     generationTypeChanged("video");
     await applyGuidedCreation();
     await Promise.all([checkHealth(), loadHistory()]);

@@ -263,33 +263,24 @@ Actor Replacement propone tre motori:
 
 Il vecchio Face Swap diretto, KeyFrame e Control Studio non sono più esposti come strumenti separati. Il video maschera bianco/nero resta disponibile soltanto come opzione manuale avanzata per i workflow che lo supportano.
 
-## Virtual Influencer Studio
+## Character Library / Virtual Actor
 
-`/virtual-influencer.html` aggiunge un modulo locale per creare personaggi virtuali adulti, originali e dichiaratamente generati con AI. Il modulo usa feature flag nella configurazione del server e salva tutto nel persistence adapter JSON già usato dalla webapp, senza servizi cloud obbligatori.
+`/characters.html` sostituisce la vecchia sezione dedicata ai profili creator con una libreria locale di personaggi persistenti. Ogni Virtual Actor viene salvato in `.data/characters/<id>/` con `meta.json`, hero image, character sheet, reference viso, reference corpo, reference generiche e derivative workflow.
 
 Funzioni principali:
 
-- profili `VirtualInfluencerProfile` versionati, età minima 21 anni, disclosure sintetica obbligatoria e blocco dell'imitazione intenzionale di persone reali;
-- editor Character Bible con identità, aspetto, personalità, lessico, argomenti da evitare e Identity Locks;
-- Identity Dataset con upload reference sintetiche, classificazione euristica, approvazione, canoniche, ordinamento, rimozione duplicati, confronto e readiness score;
-- Identity Engine modulare con adapter Flux/Klein, Qwen Image Edit 2511, LTX 2.3 e Generic ComfyUI, ciascuno con controlli supportati/non disponibili dichiarati;
-- Influencer Photo e Influencer Video: generano piani ComfyUI usando reference approvate, metadata di provenienza, identity score, anatomy score, review ed export social non distruttivo;
-- librerie Outfit e Location riutilizzabili, integrate nei prompt foto/video e nella batch queue controllata;
-- Caption Engine, Disclosure Manager, Voice Profile autorizzato, Platform Policy admin-editable, Content Projects con calendario interno e analytics manuali;
-- Settings & Debug con cache dei piani identitari, report locale, invalidazione cache per profilo e riepilogo performance.
+- CRUD personaggi con descrizione persistente, wardrobe, identity hints e lock Face/Hair/Body/Outfit;
+- upload multiplo di reference `hero`, `face`, `bust`, `full_body`, `profile`, `sheet` e `generic`;
+- Character Pack con stati `Ready`, `Incomplete` e `Needs references`;
+- selector `Personaggio` in Genera, Image Studio e Video Studio;
+- adapter backend per applicare il Character Pack ai workflow che supportano reference e prompt fallback dichiarato per quelli non ancora compatibili;
+- endpoint manuale `/api/characters/import-legacy` preparato per migrazioni copy-only dai vecchi dati locali, senza esecuzione automatica.
 
 Limiti espliciti:
 
-- non implementa clonazione vocale non autorizzata;
-- non pubblica automaticamente su piattaforme esterne;
-- non inventa regole aggiornate dei social: quando una policy non è verificata mostra `Verifica manualmente i termini della piattaforma prima della pubblicazione.`;
-- i controlli di face embedding, optical flow e tracking avanzato vengono marcati come non disponibili se non ci sono nodi/modelli dedicati approvati.
-
-### Performance e debug Virtual Influencer
-
-La cache dedicata si trova in `.data/virtual-influencer-cache/` e conserva snapshot dei piani foto/video, non gli output ComfyUI. Ogni modifica a Character Bible, versioni, reference, outfit o location invalida la cache del profilo. Le generazioni continuano a usare la coda condivisa, gli eventi SSE di progresso, cancellazione job e purge VRAM già presenti nella webapp.
-
-Il debug report del profilo include readiness, cache, asset in review/generating, batch queue, limiti tecnici e impostazioni performance. Non espone log sensibili né file privati. Per clip più lunghe di 10 secondi il modulo dichiara chunking e continuità come pianificati: la prima versione resta intenzionalmente limitata a clip brevi da 3 a 10 secondi.
+- face detection, segmentation, ArcFace/InsightFace, Qwen-VL e generazione automatica del character sheet sono marcati `not configured` finche' non vengono collegati nodi o modelli dedicati;
+- nei workflow video il sistema prepara l'architettura per anchor frame, ma non automatizza ancora la generazione del keyframe identitario;
+- i dati legacy `.data/virtual-influencers.json` e `.data/virtual-influencer-assets/` non vengono cancellati dalla webapp.
 
 ## Dati locali
 

@@ -22,7 +22,7 @@
         <a href="/">Genera</a>
         <a href="/studio.html">Image Studio</a>
         <a class="active" href="/video-studio.html">Video Studio</a>
-        <a href="/virtual-influencer.html">Virtual Influencer</a>
+        <a href="/characters.html">Character Library</a>
         <a href="/workflow-guide.html">Guida</a>
         <a href="/generations.html">Generazioni</a>
       </nav>
@@ -76,6 +76,10 @@
             <input type="radio" name="videoStudioMode" value="temporalUpscale">
             <span><b>Temporal ×2</b><small>FPS doppi o slow motion fluido</small></span>
           </label>
+          <label>
+            <input type="radio" name="videoStudioMode" value="sequentialStory">
+            <span><b>Storia continua</b><small>Scene brevi, continuity frame, purge e concat finale</small></span>
+          </label>
         </fieldset>
 
         <div id="video-studio-readiness" class="video-readiness" role="status"></div>
@@ -86,11 +90,16 @@
         </div>
 
         <div class="field">
-          <label for="videoVirtualInfluencerId">Influencer reference</label>
-          <select id="videoVirtualInfluencerId" name="virtualInfluencerId">
+          <label for="videoCharacterId">Personaggio</label>
+          <select id="videoCharacterId" name="characterId">
             <option value="">Nessuna</option>
           </select>
-          <p class="hint">Usa la reference canonica come nuova identità, reference sheet o keyframe quando il workflow lo richiede.</p>
+          <p id="video-character-hint" class="hint">Usa il Character Pack come identita, reference sheet o base futura per anchor frame.</p>
+          <input id="videoCharacterIdentityStrength" name="identityStrength" type="hidden" value="medium">
+          <input id="videoCharacterLockFace" name="lockFace" type="hidden" value="true">
+          <input id="videoCharacterLockHair" name="lockHair" type="hidden" value="true">
+          <input id="videoCharacterLockBody" name="lockBody" type="hidden" value="true">
+          <input id="videoCharacterLockOutfit" name="lockOutfit" type="hidden" value="false">
         </div>
 
         <section id="actor-replacement-fields">
@@ -187,7 +196,11 @@
           <div class="field">
             <div class="label-row">
               <label for="actorPrompt">Descrizione della nuova identità e del risultato</label>
-              <button id="actor-prompt-assistant" class="prompt-assistant-button" type="button">✦ IA + Genera</button>
+              <div class="prompt-assistant-tools" data-ltx-prompt-tools="actorReplacement">
+                <button class="prompt-assistant-button" type="button" data-ltx-prompt="ltx_architect">✦ LTX Prompt</button>
+                <button class="prompt-assistant-button" type="button" data-ltx-prompt="ltx_scenes">✦ LTX Scene</button>
+                <button class="prompt-assistant-button" type="button" data-ltx-prompt="sulphur_prompt">✦ LTX Sulphur</button>
+              </div>
             </div>
             <textarea id="actorPrompt" name="prompt" rows="4" placeholder="La persona della reference sostituisce l’uomo a sinistra. Mantieni camera, luce, gesti e interazioni…"></textarea>
             <p id="actor-prompt-assistant-status" class="prompt-assistant-status">Il video non viene inviato al modello vision; usa la reference identità se presente</p>
@@ -240,8 +253,16 @@
             </div>
           </div>
           <div class="field">
-            <label for="sceneTransformPrompt">Trasformazione desiderata</label>
+            <div class="label-row">
+              <label for="sceneTransformPrompt">Trasformazione desiderata</label>
+              <div class="prompt-assistant-tools" data-ltx-prompt-tools="sceneTransform">
+                <button class="prompt-assistant-button" type="button" data-ltx-prompt="ltx_architect">✦ LTX Prompt</button>
+                <button class="prompt-assistant-button" type="button" data-ltx-prompt="ltx_scenes">✦ LTX Scene</button>
+                <button class="prompt-assistant-button" type="button" data-ltx-prompt="sulphur_prompt">✦ LTX Sulphur</button>
+              </div>
+            </div>
             <textarea id="sceneTransformPrompt" rows="4" placeholder="Mantieni me e l'acqua della piscina; sostituisci il muro dietro con una vista realistica delle Bahamas, mare turchese, palme e luce tropicale coerente…"></textarea>
+            <p id="scene-transform-prompt-assistant-status" class="prompt-assistant-status">Ottimizza solo il prompt Scene Transform, senza avviare il workflow.</p>
           </div>
         </section>
 
@@ -263,7 +284,11 @@
           <div class="field">
             <div class="label-row">
               <label for="interactivePrompt">Regia della scena e azioni</label>
-              <button id="interactive-prompt-assistant" class="prompt-assistant-button" type="button">✦ IA + Genera</button>
+              <div class="prompt-assistant-tools" data-ltx-prompt-tools="interactiveScene">
+                <button class="prompt-assistant-button" type="button" data-ltx-prompt="ltx_architect">✦ LTX Prompt</button>
+                <button class="prompt-assistant-button" type="button" data-ltx-prompt="ltx_scenes">✦ LTX Scene</button>
+                <button class="prompt-assistant-button" type="button" data-ltx-prompt="sulphur_prompt">✦ LTX Sulphur</button>
+              </div>
             </div>
             <textarea id="interactivePrompt" rows="4" placeholder="I tre personaggi restano nella stessa posizione. John si rivolge all’attore a sinistra, che ascolta e poi risponde…"></textarea>
             <p id="interactive-prompt-assistant-status" class="prompt-assistant-status">Analizza il keyframe master quando presente</p>
@@ -297,13 +322,35 @@
 
         <section id="retake-fields" class="hidden">
           <div class="field"><label>Clip da rigenerare</label><label class="dropzone video-studio-drop"><input name="sourceVideo" type="file" accept="video/*"><span class="upload-icon">↻</span><strong>Carica la clip</strong><small>L’audio originale viene mantenuto</small></label></div>
-          <div class="field"><label for="retakePrompt">Cosa deve cambiare</label><textarea id="retakePrompt" rows="4" placeholder="Mantieni attori, camera e ambiente; cambia soltanto…"></textarea></div>
+          <div class="field">
+            <div class="label-row">
+              <label for="retakePrompt">Cosa deve cambiare</label>
+              <div class="prompt-assistant-tools" data-ltx-prompt-tools="retake">
+                <button class="prompt-assistant-button" type="button" data-ltx-prompt="ltx_architect">✦ LTX Prompt</button>
+                <button class="prompt-assistant-button" type="button" data-ltx-prompt="ltx_scenes">✦ LTX Scene</button>
+                <button class="prompt-assistant-button" type="button" data-ltx-prompt="sulphur_prompt">✦ LTX Sulphur</button>
+              </div>
+            </div>
+            <textarea id="retakePrompt" rows="4" placeholder="Mantieni attori, camera e ambiente; cambia soltanto…"></textarea>
+            <p id="retake-prompt-assistant-status" class="prompt-assistant-status">Ottimizza solo il prompt Retake, senza avviare il workflow.</p>
+          </div>
           <div class="field"><label for="retakeDuration">Durata</label><input id="retakeDuration" type="number" min="1" max="30" value="10"></div>
         </section>
 
         <section id="extend-fields" class="hidden">
           <div class="field"><label>Clip da prolungare</label><label class="dropzone video-studio-drop"><input name="sourceVideo" type="file" accept="video/*"><span class="upload-icon">＋</span><strong>Carica la clip originale</strong><small>La continuazione parte automaticamente dall’ultimo frame</small></label></div>
-          <div class="field"><label for="extendPrompt">Cosa accade dopo</label><textarea id="extendPrompt" rows="4" placeholder="La camera continua il movimento; i soggetti…"></textarea></div>
+          <div class="field">
+            <div class="label-row">
+              <label for="extendPrompt">Cosa accade dopo</label>
+              <div class="prompt-assistant-tools" data-ltx-prompt-tools="extend">
+                <button class="prompt-assistant-button" type="button" data-ltx-prompt="ltx_architect">✦ LTX Prompt</button>
+                <button class="prompt-assistant-button" type="button" data-ltx-prompt="ltx_scenes">✦ LTX Scene</button>
+                <button class="prompt-assistant-button" type="button" data-ltx-prompt="sulphur_prompt">✦ LTX Sulphur</button>
+              </div>
+            </div>
+            <textarea id="extendPrompt" rows="4" placeholder="La camera continua il movimento; i soggetti…"></textarea>
+            <p id="extend-prompt-assistant-status" class="prompt-assistant-status">Ottimizza solo il prompt Extend, senza avviare il workflow.</p>
+          </div>
           <div class="field"><label for="extendDuration">Secondi da aggiungere</label><input id="extendDuration" name="extendDuration" type="number" min="1" max="15" value="5"></div>
         </section>
 
@@ -316,6 +363,53 @@
         <section id="temporal-fields" class="hidden">
           <div class="field"><label>Video da interpolare</label><label class="dropzone video-studio-drop"><input name="sourceVideo" type="file" accept="video/*"><span class="upload-icon">2×</span><strong>Carica il video</strong><small>Il modello lavora nello spazio latente LTX 2.3</small></label></div>
           <label class="inline-check"><input name="slowMotion" type="checkbox"> Slow motion 2× (mantieni gli FPS invece della durata)</label>
+        </section>
+
+        <section id="sequential-story-fields" class="hidden">
+          <div class="field">
+            <label for="sequentialDescription">Descrizione storia</label>
+            <textarea id="sequentialDescription" rows="5" placeholder="Costruisci 3 scene da 10 secondi: la ragazza esce dalla piscina, prende un drink, si mette l'accappatoio e si stende a letto..."></textarea>
+          </div>
+          <div class="field">
+            <label for="sequentialGlobalStyle">Stile globale</label>
+            <input id="sequentialGlobalStyle" placeholder="realistic cinematic LTX, same woman, coherent lighting, stable camera">
+          </div>
+          <div class="field-grid">
+            <div class="field"><label for="sequentialSceneCount">Numero scene</label><input id="sequentialSceneCount" type="number" min="1" max="12" value="3"></div>
+            <div class="field"><label for="sequentialSceneDuration">Durata scena</label><select id="sequentialSceneDuration"><option value="5">5 secondi</option><option value="8">8 secondi</option><option value="10" selected>10 secondi</option></select></div>
+            <div class="field"><label for="sequentialWorkflowId">Workflow LTX</label><select id="sequentialWorkflowId"><option value="standard">LTX 2.3 1Work</option><option value="devfp8">LTX 2.3 Dev FP8</option><option value="ltxSulphur">LTX 2.3 Sulphur</option></select></div>
+            <div class="field"><label for="sequentialQuality">Qualità</label><select id="sequentialQuality"><option value="preview">Anteprima</option><option value="max" selected>Massima</option></select></div>
+          </div>
+          <div class="field-grid">
+            <label class="inline-check"><input id="sequentialPauseAfterEach" type="checkbox"> Pausa dopo ogni scena</label>
+            <label class="inline-check"><input id="sequentialContinuity" type="checkbox" checked> Usa continuity frame</label>
+            <label class="inline-check"><input id="sequentialPurge" type="checkbox" checked> Purge VRAM fra scene</label>
+            <label class="inline-check"><input id="sequentialConcat" type="checkbox" checked> Concatena finale</label>
+          </div>
+          <div class="field-grid">
+            <div class="field"><label for="sequentialAudioMode">Audio</label><select id="sequentialAudioMode"><option value="per-scene">Mantieni audio per scena</option><option value="mute">Muto</option><option value="future-global">Audio globale futuro</option></select></div>
+            <div class="field"><label for="sequentialTransition">Transizione</label><select id="sequentialTransition"><option value="cut">Cut diretto</option><option value="crossfade">Dissolvenza</option></select></div>
+            <div class="field"><label for="sequentialFrameOffset">Frame continuity offset</label><select id="sequentialFrameOffset"><option value="0.25">0.25 s</option><option value="0.5" selected>0.5 s</option><option value="automatic">Automatico</option></select></div>
+            <div class="field"><label for="sequentialSeedMode">Seed strategy</label><select id="sequentialSeedMode"><option value="random">Random per scena</option><option value="sequence">Sequenza deterministica</option><option value="manual">Manuale</option></select></div>
+          </div>
+          <div class="field-grid">
+            <div class="field"><label for="sequentialBestFrame">Best-frame selector</label><select id="sequentialBestFrame"><option value="offset">Offset semplice</option><option value="smart">Smart AI locale</option></select></div>
+            <div class="field"><label for="sequentialAnchorMode">Anchor frame</label><select id="sequentialAnchorMode"><option value="disabled">Disattivato</option><option value="qwen-image-edit">Qwen Image Edit</option></select></div>
+            <div class="field"><label for="sequentialIdentityVerification">Identity verification</label><select id="sequentialIdentityVerification"><option value="disabled">Disattivata</option><option value="perceptual">Percettiva video</option></select></div>
+            <div class="field"><label for="sequentialIdentityThreshold">Soglia identità</label><input id="sequentialIdentityThreshold" type="number" min="0" max="1" step=".01" value=".58"></div>
+          </div>
+          <div class="field-grid">
+            <div class="field"><label for="sequentialBaseSeed">Base seed</label><input id="sequentialBaseSeed" inputmode="numeric" placeholder="Random"></div>
+            <div class="field"><label for="sequentialManualSeed">Manual seed</label><input id="sequentialManualSeed" inputmode="numeric" placeholder="Solo seed manuale"></div>
+            <div class="field"><label for="sequentialFps">FPS</label><input id="sequentialFps" type="number" min="1" max="120" value="24"></div>
+            <div class="field"><label for="sequentialBestFrameSamples">Frame smart</label><input id="sequentialBestFrameSamples" type="number" min="4" max="36" value="18"></div>
+          </div>
+          <div class="sequential-actions">
+            <button id="sequential-plan-button" class="chip-button" type="button">Genera scaletta</button>
+            <button id="sequential-start-button" class="submit-button compact" type="button" disabled>Avvia sequenza</button>
+          </div>
+          <p id="sequential-story-status" class="prompt-assistant-status"></p>
+          <div id="sequential-scenes" class="sequential-scenes"></div>
         </section>
 
         <section id="ltx-generative-settings" class="studio-subpanel hidden">
@@ -369,6 +463,11 @@
           </div>
           <div id="video-studio-projects"></div>
           <p id="video-studio-empty" class="hint">Nessun progetto Video Studio.</p>
+          <div class="subpanel-heading sequential-project-heading">
+            <div><p class="subpanel-title">Storie continue</p><p class="hint">Progetti multi-job con scene, resume, retry e finale concatenato.</p></div>
+          </div>
+          <div id="sequential-story-projects"></div>
+          <p id="sequential-story-empty" class="hint">Nessuna Storia continua.</p>
         </div>
 
         <div class="panel video-studio-help">
@@ -382,3 +481,4 @@
   <div id="toast" class="toast" role="status"></div>
 </body>
 </html>
+

@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0c10">
+  <title>Character Library · LTX Remote Studio</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/characters.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"></span><span>LTX <b>REMOTE</b></span></a>
+    <div class="topbar-actions">
+      <nav class="primary-nav" aria-label="Navigazione principale">
+        <a href="/guided-create.html">Crea guidata</a>
+        <a href="/">Genera</a>
+        <a href="/studio.html">Image Studio</a>
+        <a href="/video-studio.html">Video Studio</a>
+        <a class="active" href="/characters.html">Character Library</a>
+        <a href="/workflow-guide.html">Guida</a>
+        <a href="/generations.html">Generazioni</a>
+      </nav>
+      <div id="connection" class="connection checking"><span></span>Connessione...</div>
+    </div>
+  </header>
+
+  <main class="characters-page">
+    <section class="gallery-hero characters-hero">
+      <div>
+        <p class="eyebrow">CHARACTER LIBRARY / VIRTUAL ACTOR</p>
+        <h1>Personaggi <em>riutilizzabili.</em></h1>
+        <p>Crea Character Pack persistenti da hero image, sheet e reference, poi usali in Generate, Image Studio e Video Studio.</p>
+      </div>
+    </section>
+
+    <div class="characters-layout">
+      <aside class="panel character-list-panel">
+        <div class="section-heading">
+          <span>01</span>
+          <div><h2>Library</h2><p>Personaggi salvati in .data/characters</p></div>
+        </div>
+        <form id="create-character-form" class="character-create-row">
+          <input id="newCharacterName" name="name" required placeholder="Nome personaggio">
+          <button class="submit-button" type="submit">Crea</button>
+        </form>
+        <div id="character-list" class="character-list"></div>
+      </aside>
+
+      <section id="empty-character-panel" class="panel character-empty">
+        <div class="loader-orbit small-orbit" aria-hidden="true"><span></span></div>
+        <h2>Nessun personaggio selezionato</h2>
+        <p>Crea o seleziona un Virtual Actor per modificare identita, reference e Character Pack.</p>
+      </section>
+
+      <form id="character-form" class="panel generator character-editor hidden">
+        <div class="section-heading">
+          <span>02</span>
+          <div>
+            <h2 id="editor-title">Virtual Actor</h2>
+            <p id="pack-status">Character Pack: Needs references</p>
+          </div>
+        </div>
+
+        <div class="character-editor-grid">
+          <div class="character-hero-preview">
+            <img id="character-hero-image" alt="">
+            <span id="character-hero-placeholder">Hero preview</span>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label for="characterName">Nome</label>
+              <input id="characterName" name="name" required>
+            </div>
+            <div class="field">
+              <label for="identityStrength">Identity Strength</label>
+              <select id="identityStrength" name="identityStrength">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="characterDescription">Descrizione persistente</label>
+          <textarea id="characterDescription" name="description" rows="4" placeholder="Identita visiva, stile, presenza scenica, dettagli costanti..."></textarea>
+        </div>
+
+        <div class="field-grid">
+          <div class="field">
+            <label for="hintFace">Identity hint · Face</label>
+            <input id="hintFace" name="face" placeholder="lineamenti, forma viso, espressione ricorrente">
+          </div>
+          <div class="field">
+            <label for="hintHair">Identity hint · Hair</label>
+            <input id="hintHair" name="hair" placeholder="taglio, colore, texture, lunghezza">
+          </div>
+          <div class="field">
+            <label for="hintBody">Identity hint · Body</label>
+            <input id="hintBody" name="body" placeholder="corporatura, proporzioni, silhouette">
+          </div>
+          <div class="field">
+            <label for="wardrobe">Wardrobe</label>
+            <input id="wardrobe" name="wardrobe" placeholder="outfit ricorrenti separati da virgola">
+          </div>
+        </div>
+
+        <fieldset class="lock-grid">
+          <legend>Lock</legend>
+          <label><input id="lockFace" type="checkbox"> Face</label>
+          <label><input id="lockHair" type="checkbox"> Hair</label>
+          <label><input id="lockBody" type="checkbox"> Body</label>
+          <label><input id="lockOutfit" type="checkbox"> Outfit</label>
+        </fieldset>
+
+        <section class="studio-subpanel character-tool-panel">
+          <div class="guided-step-heading">
+            <span>AI</span>
+            <div>
+              <p class="subpanel-title">Tool Character</p>
+              <p class="hint">Scegli il workflow usato per generare la sheet. Identity Check usa un controllo percettivo locale sulle reference caricate.</p>
+            </div>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label for="characterSheetWorkflow">Workflow Character Sheet</label>
+              <select id="characterSheetWorkflow">
+                <option value="qwenEdit">Qwen Image Edit</option>
+                <option value="qwenKreaKlein">Qwen/Krea/Klein</option>
+                <option value="kreaTriple">KreaTriple</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="characterSheetSeed">Seed sheet</label>
+              <input id="characterSheetSeed" inputmode="numeric" placeholder="random">
+            </div>
+          </div>
+          <div class="field">
+            <label for="characterSheetPrompt">Istruzioni extra sheet</label>
+            <textarea id="characterSheetPrompt" rows="2" placeholder="Dettagli da mantenere o aggiungere alla character sheet..."></textarea>
+          </div>
+          <div id="character-pack-checklist" class="character-pack-checklist"></div>
+          <div id="identity-report" class="character-pack-checklist"></div>
+        </section>
+
+        <div class="action-row">
+          <button class="submit-button" type="submit">Salva personaggio</button>
+          <button id="build-pack-button" type="button">Build Character Pack</button>
+          <button id="generate-sheet-button" type="button">Generate Character Sheet</button>
+          <button id="identity-check-button" type="button">Identity Check</button>
+          <button id="delete-character-button" class="danger-button" type="button">Elimina</button>
+        </div>
+
+        <section class="studio-subpanel">
+          <div class="guided-step-heading">
+            <span>REF</span>
+            <div>
+              <p class="subpanel-title">Reference</p>
+              <p class="hint">Hero, face, bust, full body, profile, sheet o generic. Le reference mancanti vengono segnalate senza rompere la pagina.</p>
+            </div>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label for="referenceType">Tipo reference</label>
+              <select id="referenceType">
+                <option value="hero">Hero</option>
+                <option value="face">Face</option>
+                <option value="bust">Bust</option>
+                <option value="full_body">Full body</option>
+                <option value="profile">Profile</option>
+                <option value="sheet">Sheet</option>
+                <option value="generic">Generic</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="referenceTags">Tag</label>
+              <input id="referenceTags" placeholder="frontale, luce morbida, 3/4...">
+            </div>
+          </div>
+          <label class="dropzone character-reference-drop">
+            <input id="referenceFiles" type="file" accept="image/png,image/jpeg,image/webp" multiple>
+            <span class="upload-icon">↗</span>
+            <strong>Carica reference</strong>
+            <small>PNG, JPG o WebP · max 30 MB ciascuna</small>
+          </label>
+          <div id="reference-grid" class="character-reference-grid"></div>
+        </section>
+
+        <div id="character-status" class="form-error"></div>
+      </form>
+    </div>
+  </main>
+  <div id="toast" class="toast"></div>
+</body>
+</html>

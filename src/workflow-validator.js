@@ -6,6 +6,16 @@ const DEFAULT_FORBIDDEN_NODES = new Map([
   ],
 ]);
 
+const SEEDVR2_SAFE_IMAGE_HANDOFF_NODES = new Set([
+  "RemoteImageTensorNormalize",
+  "ImageResize+",
+  "TTP_Image_Assy",
+]);
+
+function isSeedVrSafeImageHandoffNode(node) {
+  return SEEDVR2_SAFE_IMAGE_HANDOFF_NODES.has(node?.class_type);
+}
+
 export class WorkflowValidationError extends Error {
   constructor(label, issues) {
     super(`Workflow "${label}" non valido:\n${issues.map((issue) => `- ${issue}`).join("\n")}`);
@@ -117,7 +127,7 @@ function validateSeedVrLayout(workflow, issues) {
       visited.add(stateKey);
       for (const consumerId of consumers.get(state.id) || []) {
         const consumer = workflow[consumerId];
-        const normalized = state.normalized || consumer.class_type === "RemoteImageTensorNormalize";
+        const normalized = state.normalized || isSeedVrSafeImageHandoffNode(consumer);
         if (consumer.class_type === "SaveImage" && !normalized) {
           issues.push(`nodo ${seedId} (SeedVR2): l'output raggiunge SaveImage ${consumerId} senza normalizzazione`);
         }

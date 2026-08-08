@@ -22,7 +22,7 @@
         <a href="/">Genera</a>
         <a class="active" href="/studio.html">Image Studio</a>
         <a href="/video-studio.html">Video Studio</a>
-        <a href="/virtual-influencer.html">Virtual Influencer</a>
+        <a href="/characters.html">Character Library</a>
         <a href="/workflow-guide.html">Guida</a>
         <a href="/generations.html">Generazioni</a>
       </nav>
@@ -62,11 +62,16 @@
         </div>
 
         <div class="field">
-          <label for="studioVirtualInfluencerId">Influencer reference</label>
-          <select id="studioVirtualInfluencerId" name="virtualInfluencerId">
+          <label for="studioCharacterId">Personaggio</label>
+          <select id="studioCharacterId" name="characterId">
             <option value="">Nessuna</option>
           </select>
-          <p class="hint">Aggiunge la reference canonica dell’influencer al progetto e rinforza il prompt identitario.</p>
+          <p id="studio-character-hint" class="hint">Usa un Virtual Actor persistente come identita/reference automatica.</p>
+          <input id="studioCharacterIdentityStrength" name="identityStrength" type="hidden" value="medium">
+          <input id="studioCharacterLockFace" name="lockFace" type="hidden" value="true">
+          <input id="studioCharacterLockHair" name="lockHair" type="hidden" value="true">
+          <input id="studioCharacterLockBody" name="lockBody" type="hidden" value="true">
+          <input id="studioCharacterLockOutfit" name="lockOutfit" type="hidden" value="false">
         </div>
 
         <section id="source-section">
@@ -90,6 +95,31 @@
             <div>
               <p class="subpanel-title">Workflow Qwen_Krea_Klein</p>
               <p class="hint">Usa il JSON API originale: Qwen Image Editing, Krea refine, Klein refine e SeedVR2 finale nello stesso job.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="krea-triple-section" class="studio-subpanel hidden">
+          <div class="guided-step-heading">
+            <span>KT</span>
+            <div>
+              <p class="subpanel-title">Krea Triple Studio</p>
+              <p class="hint">Pipeline Krea → Z-Image → Flux2 Klein → SeedVR2 con tre template API separati.</p>
+            </div>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label for="kreaTripleOperation">Modalità</label>
+              <select id="kreaTripleOperation" name="kreaTripleOperation">
+                <option value="text" selected>Text to Image</option>
+                <option value="img2img">Image to Image</option>
+                <option value="selective">Selective Image Edit</option>
+              </select>
+            </div>
+            <div id="krea-triple-denoise-field" class="field hidden">
+              <label for="kreaTripleDenoise">Forza modifica</label>
+              <input id="kreaTripleDenoise" name="kreaTripleDenoise" type="number" min=".1" max=".8" step=".05" value=".35">
+              <p class="hint">Basso conserva molto l'immagine; alto modifica più forte.</p>
             </div>
           </div>
         </section>
@@ -489,3 +519,4 @@
   <div id="toast" class="toast" role="status"></div>
 </body>
 </html>
+
