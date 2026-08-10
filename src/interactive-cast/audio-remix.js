@@ -6,8 +6,9 @@ function safeId(value) {
   return String(value || "event").replace(/[^\w-]+/g, "_");
 }
 
-function isNewActorSpeaker(speaker = "") {
-  return /new actor|nuovo|character:|temporaryReference/i.test(String(speaker));
+function isNewActorEvent(event = {}) {
+  return event.isNewActor === true
+    || /new actor|nuovo|character:|temporaryReference|new-/i.test(String(event.speaker || event.actorId || ""));
 }
 
 export function selectVoiceReferenceWindow(event, speakers = []) {
@@ -59,7 +60,7 @@ export async function prepareDialogueAudioTasks({
     const eventId = safeId(event.id);
     const start = Math.max(0, Number(event.start) || 0);
     const end = Math.max(start + 0.05, Number(event.end) || start + 1.5);
-    const speakerIsNew = isNewActorSpeaker(event.speaker);
+    const speakerIsNew = isNewActorEvent(event);
     const assignedVoiceWindow = selectVoiceReferenceWindow(event, speakers);
     let referenceAudio = null;
 
@@ -96,6 +97,8 @@ export async function prepareDialogueAudioTasks({
       eventId,
       sourceEventId: event.id,
       speaker: event.speaker,
+      actorId: event.actorId || null,
+      isNewActor: speakerIsNew,
       start,
       end,
       duration: Math.max(0.05, end - start),

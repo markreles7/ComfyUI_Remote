@@ -100,7 +100,12 @@ test("Interactive Cast mostra task package per segmenti AI mancanti", () => {
   assert.match(script, /Speaker diarization/);
   assert.match(script, /data-interactive-cast-speakers/);
   assert.match(script, /collectInteractiveCastSpeakers/);
+  assert.match(script, /data-interactive-cast-speaker-add/);
+  assert.match(script, /data-interactive-cast-speaker-remove/);
+  assert.match(script, /addInteractiveCastSpeaker/);
+  assert.match(script, /removeInteractiveCastSpeaker/);
   assert.match(script, /\/api\/interactive-cast\/projects\/\$\{projectId\}\/speakers/);
+  assert.match(script, /\/asset\?path=/);
   assert.match(script, /interactive-cast-task-anchor/);
   assert.match(script, /Anchor workflow/);
   assert.match(script, /Prompt segmento/);

@@ -2475,6 +2475,17 @@ app.get("/api/interactive-cast/projects/:id/assets/*path", (request, response, n
   }
 });
 
+app.get("/api/interactive-cast/projects/:id/asset", (request, response, next) => {
+  try {
+    const relative = String(request.query.path || "");
+    const target = interactiveCastStore.assetPath(request.params.id, relative);
+    if (!target) return response.status(404).json({ error: "Artefatto Interactive Cast non trovato." });
+    response.sendFile(target);
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post("/api/interactive-cast/projects", upload.fields([
   { name: "sourceVideo", maxCount: 1 },
   { name: "temporaryActorReference", maxCount: 1 },

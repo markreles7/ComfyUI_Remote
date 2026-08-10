@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  buildInteractiveCastPlan,
   eventEditMode,
   normalizeDialogueEvents,
   planEditWindows,
@@ -76,6 +77,31 @@ test("interactive cast planner keeps pure original actor dialogue as lip-sync on
   assert.equal(windows[1].mode, "lipSyncOnly");
   assert.equal(windows[0].mode, "original");
   assert.equal(windows[2].mode, "original");
+});
+
+test("interactive cast maps an added actor name to a generative window", () => {
+  const plan = buildInteractiveCastPlan({
+    project: {
+      id: "cast-marco",
+      analysis: { duration: 10 },
+      actors: {
+        original: [{ actorId: "original-1", label: "Original Actor 1" }],
+        added: [{ actorId: "new-actor-marco", name: "Marco" }],
+      },
+      dialogueEvents: [{
+        id: "event-marco",
+        speaker: "Marco",
+        start: 3,
+        end: 5,
+        dialogue: "Il demone di questa casa si chiama Valak.",
+        action: "enters the scene",
+      }],
+    },
+  });
+
+  assert.equal(plan.dialogueEvents[0].actorId, "new-actor-marco");
+  assert.equal(plan.dialogueEvents[0].isNewActor, true);
+  assert.equal(plan.editWindows.some((window) => window.mode === "generative"), true);
 });
 
 test("interactive cast parses ffmpeg scene detect times into source windows", () => {
@@ -306,6 +332,7 @@ test("interactive cast prepares dialogue audio tasks without claiming voice clon
   assert.equal(tasks.tasks.length, 2);
   assert.equal(tasks.tasks[0].requiredEngine, "Reference-conditioned voice clone / uploaded voice line");
   assert.equal(tasks.tasks[1].requiredEngine, "New actor dialogue TTS / uploaded voice line");
+  assert.equal(tasks.tasks[1].isNewActor, true);
   assert.equal(tasks.tasks[0].mix.strategy, "duck-original-bed");
   assert.equal(tasks.tasks[0].mix.duckVolume, 0.45);
   assert.equal(tasks.readiness.ready, false);

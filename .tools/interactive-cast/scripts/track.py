@@ -130,6 +130,19 @@ def main():
         }))
         return 0
 
+    required_apis = ("HOGDescriptor", "HOGDescriptor_getDefaultPeopleDetector")
+    missing_apis = [name for name in required_apis if not hasattr(cv2, name)]
+    if missing_apis:
+        print(json.dumps({
+            "configured": False,
+            "engine": "opencv-hog-iou",
+            "actors": [],
+            "warnings": [
+                "OpenCV installation is incomplete; missing APIs: " + ", ".join(missing_apis)
+            ],
+        }))
+        return 0
+
     cap = cv2.VideoCapture(args.video)
     if not cap.isOpened():
         print(json.dumps({

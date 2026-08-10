@@ -375,7 +375,18 @@ export class InteractiveCastOrchestrator {
   }
 
   async prepareSegments(id) {
-    const project = this.get(id);
+    let project = this.get(id);
+    const refreshedPlan = buildInteractiveCastPlan({ project });
+    if (JSON.stringify(refreshedPlan.dialogueEvents) !== JSON.stringify(project.dialogueEvents)
+      || JSON.stringify(refreshedPlan.editWindows) !== JSON.stringify(project.editWindows)) {
+      project = this.store.update(id, {
+        dialogueEvents: refreshedPlan.dialogueEvents,
+        editWindows: refreshedPlan.editWindows,
+        scenePlan: refreshedPlan,
+        renderPackage: null,
+        updatedAt: new Date().toISOString(),
+      });
+    }
     if (!project.editWindows?.length) {
       throw new Error("Crea prima il piano Interactive Cast con gli interventi timeline.");
     }

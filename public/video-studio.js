@@ -849,7 +849,7 @@ function syncInteractiveCastEvents() {
 
 function renderInteractiveCastProjects() {
   const assetUrl = (project, relativePath) =>
-    `/api/interactive-cast/projects/${encodeURIComponent(project.id)}/assets/${String(relativePath || "").split("/").map(encodeURIComponent).join("/")}`;
+    `/api/interactive-cast/projects/${encodeURIComponent(project.id)}/asset?path=${encodeURIComponent(String(relativePath || ""))}`;
   const taskForSegment = (project, segmentId) =>
     (project.renderPackage?.segmentTasks?.tasks || []).find((task) => task.segmentId === segmentId) || null;
   $("#interactive-cast-empty").classList.toggle("hidden", state.interactiveCastProjects.length > 0);
@@ -930,7 +930,10 @@ function renderInteractiveCastProjects() {
       ` : ""}
       ${(project.audioAnalysis?.speakers || []).length ? `
         <div class="interactive-cast-speakers">
-          <small><b>Speaker diarization</b> ${escapeHtml(project.audioAnalysis.diarization || "FALLBACK")} · correggibile</small>
+          <div class="interactive-cast-speaker-heading">
+            <small><b>Speaker diarization</b> ${escapeHtml(project.audioAnalysis.diarization || "FALLBACK")} · correggibile</small>
+            <button class="chip-button compact" type="button" data-interactive-cast-speaker-add="${escapeHtml(project.id)}">+ Segmento speaker</button>
+          </div>
           ${(project.audioAnalysis.speakers || []).map((speaker, index) => `
             <div class="interactive-cast-speaker-row" data-cast-speaker="${escapeHtml(project.id)}:${index}">
               <input data-cast-speaker-id value="${escapeHtml(speaker.speaker || `SPEAKER_${String(index).padStart(2, "0")}`)}" aria-label="Speaker ${index + 1}">
@@ -942,6 +945,7 @@ function renderInteractiveCastProjects() {
                   `<option value="${escapeHtml(actor.actorId)}" ${actor.actorId === speaker.assignedActorId ? "selected" : ""}>${escapeHtml(actor.label || actor.actorId)}</option>`
                 ).join("")}
               </select>
+              <button class="icon-button danger" type="button" title="Rimuovi segmento speaker" aria-label="Rimuovi segmento speaker ${index + 1}" data-interactive-cast-speaker-remove="${escapeHtml(project.id)}:${index}">×</button>
             </div>
           `).join("")}
           <button class="chip-button compact" type="button" data-interactive-cast-speakers="${escapeHtml(project.id)}">Salva speaker</button>
@@ -1301,22 +1305,64 @@ function collectInteractiveCastSpeakers(projectId) {
     }));
 }
 
+async function persistInteractiveCastSpeakers(projectId, speakers, message = "Speaker aggiornati.") {
+  const payload = await jsonApi(`/api/interactive-cast/projects/${projectId}/speakers`, { speakers });
+  state.interactiveCastProjects = state.interactiveCastProjects.map((item) =>
+    item.id === payload.project.id ? payload.project : item
+  );
+  renderInteractiveCastProjects();
+  showToast(message);
+}
+
 async function saveInteractiveCastSpeakers(button) {
   const projectId = button.dataset.interactiveCastSpeakers;
   button.disabled = true;
   button.textContent = "Salvo...";
   try {
-    const payload = await jsonApi(`/api/interactive-cast/projects/${projectId}/speakers`, {
-      speakers: collectInteractiveCastSpeakers(projectId),
-    });
-    state.interactiveCastProjects = state.interactiveCastProjects.map((item) =>
-      item.id === payload.project.id ? payload.project : item
-    );
-    renderInteractiveCastProjects();
-    showToast("Speaker aggiornati.");
+    await persistInteractiveCastSpeakers(projectId, collectInteractiveCastSpeakers(projectId));
   } catch (error) {
     button.disabled = false;
     button.textContent = "Salva speaker";
+    showToast(error.message);
+  }
+}
+
+async function addInteractiveCastSpeaker(button) {
+  const projectId = button.dataset.interactiveCastSpeakerAdd;
+  const project = state.interactiveCastProjects.find((item) => item.id === projectId);
+  const speakers = collectInteractiveCastSpeakers(projectId);
+  const duration = Math.max(0.1, Number(project?.analysis?.duration || 0));
+  if (!speakers.length) {
+    speakers.push({ speaker: "SPEAKER_00", start: 0, end: duration, assignedActorId: "" });
+  } else {
+    const longestIndex = speakers.reduce((best, item, index, source) =>
+      item.end - item.start > source[best].end - source[best].start ? index : best, 0);
+    const longest = speakers[longestIndex];
+    const originalEnd = longest.end;
+    const midpoint = Number(((longest.start + longest.end) / 2).toFixed(2));
+    longest.end = midpoint;
+    speakers.splice(longestIndex + 1, 0, {
+      speaker: `SPEAKER_${String(speakers.length).padStart(2, "0")}`,
+      start: midpoint,
+      end: Math.max(midpoint + 0.1, originalEnd),
+      assignedActorId: "",
+    });
+  }
+  try {
+    await persistInteractiveCastSpeakers(projectId, speakers, "Segmento speaker aggiunto: regola tempi e attore.");
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+async function removeInteractiveCastSpeaker(button) {
+  const [projectId, rawIndex] = String(button.dataset.interactiveCastSpeakerRemove || "").split(":");
+  const speakers = collectInteractiveCastSpeakers(projectId);
+  if (speakers.length <= 1) return showToast("Mantieni almeno un segmento speaker.");
+  speakers.splice(Number(rawIndex), 1);
+  try {
+    await persistInteractiveCastSpeakers(projectId, speakers, "Segmento speaker rimosso.");
+  } catch (error) {
     showToast(error.message);
   }
 }
@@ -1923,6 +1969,16 @@ $("#interactive-cast-projects").addEventListener("click", (event) => {
   const actors = event.target.closest("[data-interactive-cast-actors]");
   if (actors) {
     saveInteractiveCastActors(actors);
+    return;
+  }
+  const addSpeaker = event.target.closest("[data-interactive-cast-speaker-add]");
+  if (addSpeaker) {
+    addInteractiveCastSpeaker(addSpeaker);
+    return;
+  }
+  const removeSpeaker = event.target.closest("[data-interactive-cast-speaker-remove]");
+  if (removeSpeaker) {
+    removeInteractiveCastSpeaker(removeSpeaker);
     return;
   }
   const speakers = event.target.closest("[data-interactive-cast-speakers]");

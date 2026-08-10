@@ -29,7 +29,8 @@ function normalizedWindowMode(value) {
 }
 
 function isNewActorEvent(event = {}) {
-  return /new actor|nuovo|character:|temporaryReference|new-/i.test(String(event.speaker || event.actorId || ""));
+  return event.isNewActor === true
+    || /new actor|nuovo|character:|temporaryReference|new-/i.test(String(event.speaker || event.actorId || ""));
 }
 
 export function eventEditMode(event = {}) {
@@ -84,6 +85,8 @@ export function normalizeDialogueEvents(rawEvents = [], duration = 0) {
     return {
       id: event.id || `event-${index + 1}`,
       speaker: text(event.speaker, 120) || "New Actor",
+      actorId: text(event.actorId, 120),
+      isNewActor: event.isNewActor === true,
       start,
       end,
       dialogue: text(event.dialogue, 800),
@@ -94,6 +97,25 @@ export function normalizeDialogueEvents(rawEvents = [], duration = 0) {
       reaction: ["none", "look", "speak", "move"].includes(event.reaction) ? event.reaction : "none",
     };
   }).filter((event) => event.dialogue || event.action);
+}
+
+function matchAddedActors(dialogueEvents = [], addedActors = []) {
+  const actors = addedActors.map((actor) => ({
+    actorId: text(actor.actorId, 120),
+    aliases: [actor.actorId, actor.name, actor.label]
+      .map((value) => String(value || "").trim().toLocaleLowerCase())
+      .filter(Boolean),
+  }));
+  return dialogueEvents.map((event) => {
+    const speaker = String(event.speaker || event.actorId || "").trim().toLocaleLowerCase();
+    const actor = actors.find((item) => item.aliases.includes(speaker));
+    if (!actor && !isNewActorEvent(event)) return event;
+    return {
+      ...event,
+      actorId: actor?.actorId || event.actorId || "new-actor-1",
+      isNewActor: true,
+    };
+  });
 }
 
 export function planEditWindows({ duration = 0, dialogueEvents = [] } = {}) {
@@ -127,7 +149,8 @@ export function planEditWindows({ duration = 0, dialogueEvents = [] } = {}) {
 }
 
 export function buildInteractiveCastPlan({ project, raw = {} }) {
-  const dialogueEvents = normalizeDialogueEvents(raw.dialogueEvents || project.dialogueEvents, project.analysis?.duration || 0);
+  const normalizedEvents = normalizeDialogueEvents(raw.dialogueEvents || project.dialogueEvents, project.analysis?.duration || 0);
+  const dialogueEvents = matchAddedActors(normalizedEvents, project.actors?.added || []);
   const editWindows = planEditWindows({ duration: project.analysis?.duration || 0, dialogueEvents });
   return {
     projectId: project.id,

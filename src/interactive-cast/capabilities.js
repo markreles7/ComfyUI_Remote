@@ -117,17 +117,38 @@ async function comfyPythonInfo(root) {
   };
 }
 
-async function opencvCapability({ root, toolDirectory } = {}) {
+export async function opencvCapability({ root, toolDirectory } = {}) {
   const script = interactiveCastScript({ root, toolDirectory, scriptName: "track.py" });
   const python = interactiveCastPython({ root, toolDirectory });
   if (!fs.existsSync(script)) {
     return { ready: false, status: "NOT CONFIGURED", script, reason: "track.py mancante" };
   }
-  const result = await execText(python, ["-c", "import cv2; print(cv2.__version__)"], 20_000);
+  const probe = [
+    "import json, cv2",
+    "required = ['HOGDescriptor', 'HOGDescriptor_getDefaultPeopleDetector']",
+    "missing = [name for name in required if not hasattr(cv2, name)]",
+    "print(json.dumps({'version': cv2.__version__, 'missing': missing}))",
+  ].join("; ");
+  const result = await execText(python, ["-c", probe], 20_000);
   if (!result.ok) {
     return { ready: false, status: "FALLBACK", script, python, reason: result.error };
   }
-  return { ready: true, status: "READY", script, python, version: result.text };
+  try {
+    const details = JSON.parse(result.text);
+    if (details.missing?.length) {
+      return {
+        ready: false,
+        status: "FALLBACK",
+        script,
+        python,
+        version: details.version,
+        reason: `OpenCV incompleto: API mancanti ${details.missing.join(", ")}`,
+      };
+    }
+    return { ready: true, status: "READY", script, python, version: details.version };
+  } catch (error) {
+    return { ready: false, status: "FALLBACK", script, python, reason: `Probe OpenCV non valido: ${error.message}` };
+  }
 }
 
 async function isolatedRuntimeProbe({ root, toolDirectory, environment, imports }) {
