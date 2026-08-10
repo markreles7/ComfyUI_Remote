@@ -77,6 +77,13 @@ test("Interactive Cast mostra task package per segmenti AI mancanti", () => {
   assert.match(script, /anchorWorkflowId/);
   assert.match(script, /anchorRequirement/);
   assert.match(script, /cast-mode/);
+  assert.match(script, /Personaggio/);
+  assert.match(script, /Da \(sec\)/);
+  assert.match(script, /A \(sec\)/);
+  assert.match(script, /Battuta esatta/);
+  assert.match(script, /Azione visiva/);
+  assert.match(script, /Reazione/);
+  assert.match(script, /Modalità/);
   assert.match(script, /lipSyncOnly/);
   assert.match(script, /composite/);
   assert.match(script, /data-interactive-cast-actors/);
@@ -137,6 +144,9 @@ test("Interactive Cast mostra task package per segmenti AI mancanti", () => {
   assert.match(script, /NOT CONFIGURED/);
   assert.match(styles, /cast-capability\.fallback/);
   assert.match(styles, /interactive-cast-event/);
+  assert.match(styles, /grid-template-columns: 28px repeat\(12, minmax\(0, 1fr\)\) 34px/);
+  assert.match(styles, /cast-event-dialogue \{ grid-column: 2 \/ 8; grid-row: 2; \}/);
+  assert.match(styles, /interactive-cast-event \.cast-event-remove/);
   assert.match(styles, /interactive-cast-actor-reference/);
 });
 

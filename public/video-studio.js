@@ -772,25 +772,51 @@ function renderSequentialStories() {
 function renderInteractiveCastEvents() {
   $("#interactive-cast-events").innerHTML = state.interactiveCastEvents.map((event, index) => `
     <div class="dialogue-row interactive-cast-event" data-interactive-cast-event="${index}">
-      <span>${String(index + 1).padStart(2, "0")}</span>
-      <input class="cast-speaker" aria-label="Speaker ${index + 1}" value="${escapeHtml(event.speaker)}" placeholder="Speaker">
-      <input class="cast-start" aria-label="Start ${index + 1}" type="number" min="0" step=".1" value="${Number(event.start ?? 0)}">
-      <input class="cast-end" aria-label="End ${index + 1}" type="number" min="0" step=".1" value="${Number(event.end ?? 2)}">
-      <input class="cast-dialogue" aria-label="Dialogo ${index + 1}" value="${escapeHtml(event.dialogue)}" placeholder="Dialogue line">
-      <input class="cast-action" aria-label="Azione ${index + 1}" value="${escapeHtml(event.action)}" placeholder="Action">
-      <select class="cast-reaction" aria-label="Reazione ${index + 1}">
-        ${["none", "look", "speak", "move"].map((value) => `<option value="${value}" ${value === event.reaction ? "selected" : ""}>${value}</option>`).join("")}
-      </select>
-      <select class="cast-mode" aria-label="Modo edit ${index + 1}">
-        ${[
-          ["", "Auto"],
-          ["audioOnly", "Audio"],
-          ["lipSyncOnly", "Lip-sync"],
-          ["composite", "Composite"],
-          ["generative", "Generative"],
-        ].map(([value, label]) => `<option value="${value}" ${value === (event.mode || "") ? "selected" : ""}>${label}</option>`).join("")}
-      </select>
-      <button type="button" aria-label="Rimuovi evento ${index + 1}" data-remove-cast-event="${index}">×</button>
+      <span class="cast-event-index">${String(index + 1).padStart(2, "0")}</span>
+      <label class="cast-event-field cast-event-speaker">
+        <span>Personaggio</span>
+        <input class="cast-speaker" aria-label="Personaggio ${index + 1}" value="${escapeHtml(event.speaker)}" placeholder="New Actor / original-1">
+      </label>
+      <label class="cast-event-field cast-event-start">
+        <span>Da (sec)</span>
+        <input class="cast-start" aria-label="Inizio ${index + 1}" type="number" min="0" step=".1" value="${Number(event.start ?? 0)}">
+      </label>
+      <label class="cast-event-field cast-event-end">
+        <span>A (sec)</span>
+        <input class="cast-end" aria-label="Fine ${index + 1}" type="number" min="0" step=".1" value="${Number(event.end ?? 2)}">
+      </label>
+      <label class="cast-event-field cast-event-dialogue">
+        <span>Battuta esatta</span>
+        <input class="cast-dialogue" aria-label="Battuta ${index + 1}" value="${escapeHtml(event.dialogue)}" placeholder="Testo esatto da pronunciare">
+      </label>
+      <label class="cast-event-field cast-event-action">
+        <span>Azione visiva</span>
+        <input class="cast-action" aria-label="Azione ${index + 1}" value="${escapeHtml(event.action)}" placeholder="Enters from the right, turns, exits...">
+      </label>
+      <label class="cast-event-field cast-event-reaction">
+        <span>Reazione</span>
+        <select class="cast-reaction" aria-label="Reazione ${index + 1}">
+          ${[
+            ["none", "Nessuna"],
+            ["look", "Guarda"],
+            ["speak", "Parla"],
+            ["move", "Movimento"],
+          ].map(([value, label]) => `<option value="${value}" ${value === event.reaction ? "selected" : ""}>${label}</option>`).join("")}
+        </select>
+      </label>
+      <label class="cast-event-field cast-event-mode">
+        <span>Modalità</span>
+        <select class="cast-mode" aria-label="Modalità edit ${index + 1}">
+          ${[
+            ["", "Auto"],
+            ["audioOnly", "Solo audio"],
+            ["lipSyncOnly", "Lip-sync"],
+            ["composite", "Compositing"],
+            ["generative", "Generativa"],
+          ].map(([value, label]) => `<option value="${value}" ${value === (event.mode || "") ? "selected" : ""}>${label}</option>`).join("")}
+        </select>
+      </label>
+      <button class="cast-event-remove" type="button" title="Rimuovi intervento" aria-label="Rimuovi evento ${index + 1}" data-remove-cast-event="${index}">×</button>
     </div>
   `).join("");
 }
