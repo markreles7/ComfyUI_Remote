@@ -1,11 +1,16 @@
 const state = {
   history: [],
+  total: 0,
+  hasMore: false,
+  pageSize: 50,
+  stats: { total: 0, completed: 0, active: 0, archived: 0 },
+  workflows: [],
   eventSource: null,
   historyRefreshTimer: null,
   historyRefreshInFlight: false,
   historyRefreshQueued: false,
-  visibleLimit: 24,
   selectedIds: new Set(),
+  cleanupEstimate: null,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -67,6 +72,38 @@ function compactText(value, maxLength = 150) {
   const text = String(value || "").replace(/\s+/g, " ").trim();
   if (text.length <= maxLength) return text;
   return `${text.slice(0, maxLength).trimEnd()}…`;
+}
+
+function formatBytes(bytes) {
+  const value = Number(bytes || 0);
+  if (value >= 1024 ** 3) return `${(value / 1024 ** 3).toFixed(2)} GB`;
+  if (value >= 1024 ** 2) return `${(value / 1024 ** 2).toFixed(1)} MB`;
+  if (value >= 1024) return `${Math.round(value / 1024)} KB`;
+  return `${value} B`;
+}
+
+function currentFilters() {
+  return {
+    search: $("#history-search").value.trim(),
+    workflowId: $("#history-workflow").value,
+    status: $("#history-status").value,
+    archive: $("#history-archive").value,
+    mediaType: $("#history-media-type").value,
+    dateFrom: $("#history-date-from").value,
+    dateTo: $("#history-date-to").value,
+  };
+}
+
+function generationQuery(offset = 0) {
+  const params = new URLSearchParams({
+    paged: "1",
+    limit: String(state.pageSize),
+    offset: String(offset),
+  });
+  for (const [key, value] of Object.entries(currentFilters())) {
+    if (value) params.set(key, value);
+  }
+  return params;
 }
 
 function promptMarkup(item) {
@@ -305,8 +342,12 @@ function formatSettings(item) {
 function mediaMarkup(item) {
   if (item.videos?.length) {
     return item.videos.map((video, index) => `
-      <div class="generation-video">
-        <video controls preload="metadata" playsinline src="/api/media/${item.id}/${index}"></video>
+      <div class="generation-video" data-lazy-video="/api/media/${item.id}/${index}">
+        <button class="video-lazy-button" type="button" data-load-video>
+          <span>▶</span>
+          <b>Apri video</b>
+          <small>${escapeHtml(video.filename || `Video ${index + 1}`)}</small>
+        </button>
         <a class="download" href="/api/media/${item.id}/${index}?download=1" download>
           Download${item.videos.length > 1 ? ` ${index + 1}` : ""} ↓
         </a>
@@ -335,18 +376,7 @@ function mediaMarkup(item) {
 }
 
 function filteredHistory() {
-  const query = $("#history-search").value.trim().toLocaleLowerCase("it");
-  const workflowId = $("#history-workflow").value;
-  const status = $("#history-status").value;
-  const archive = $("#history-archive").value;
-  return state.history.filter((item) => {
-    const searchable = `${item.prompt || ""} ${item.workflowName || ""}`.toLocaleLowerCase("it");
-    return (!query || searchable.includes(query))
-      && (!workflowId || item.workflowId === workflowId)
-      && (!status || item.status === status)
-      && (archive === "all"
-        || (archive === "archived" ? Boolean(item.archived) : !item.archived));
-  });
+  return state.history;
 }
 
 function renderArchiveActions() {
@@ -362,16 +392,14 @@ function renderArchiveActions() {
 }
 
 function render() {
-  const visible = filteredHistory();
-  const rendered = visible.slice(0, state.visibleLimit);
-  $("#stat-total").textContent = state.history.length;
-  $("#stat-completed").textContent = state.history.filter((item) => item.status === "completed").length;
-  $("#stat-active").textContent = state.history.filter((item) => ["queued", "running"].includes(item.status)).length;
-  $("#stat-archived").textContent = state.history.filter((item) => item.archived).length;
-  $("#history-empty").classList.toggle("hidden", state.history.length > 0);
-  $("#history-no-results").classList.toggle("hidden", state.history.length === 0 || visible.length > 0);
-  $("#history-load-more").classList.toggle("hidden", rendered.length >= visible.length);
-  $("#history").innerHTML = rendered.map((item) => `
+  $("#stat-total").textContent = state.stats.total;
+  $("#stat-completed").textContent = state.stats.completed;
+  $("#stat-active").textContent = state.stats.active;
+  $("#stat-archived").textContent = state.stats.archived;
+  $("#history-empty").classList.toggle("hidden", state.stats.total > 0);
+  $("#history-no-results").classList.toggle("hidden", state.stats.total === 0 || state.total > 0);
+  $("#history-load-more").classList.toggle("hidden", !state.hasMore);
+  $("#history").innerHTML = state.history.map((item) => `
     <article class="generation-card" data-generation-id="${escapeHtml(item.id)}">
       <div class="generation-card-media">${mediaMarkup(item)}</div>
       <div class="generation-card-content">
@@ -429,18 +457,25 @@ function render() {
   renderArchiveActions();
 }
 
-async function loadHistory() {
-  state.history = await api("/api/generations");
+function renderWorkflowOptions() {
+  const selected = $("#history-workflow").value;
+  $("#history-workflow").innerHTML = `<option value="">Tutti i workflow</option>${state.workflows.map((workflow) =>
+    `<option value="${escapeHtml(workflow.id)}">${escapeHtml(workflow.name)}</option>`
+  ).join("")}`;
+  $("#history-workflow").value = state.workflows.some((workflow) => workflow.id === selected) ? selected : "";
+}
+
+async function loadHistory({ append = false } = {}) {
+  const offset = append ? state.history.length : 0;
+  const payload = await api(`/api/generations?${generationQuery(offset)}`);
+  state.history = append ? [...state.history, ...(payload.items || [])] : (payload.items || []);
+  state.total = Number(payload.total || 0);
+  state.hasMore = Boolean(payload.hasMore);
+  state.stats = payload.stats || state.stats;
+  state.workflows = payload.workflows || state.workflows;
   const availableIds = new Set(state.history.map((item) => item.id));
   state.selectedIds = new Set([...state.selectedIds].filter((id) => availableIds.has(id)));
-  const workflows = [...new Map(state.history.map((item) =>
-    [item.workflowId, item.workflowName]
-  )).entries()];
-  const selected = $("#history-workflow").value;
-  $("#history-workflow").innerHTML = `<option value="">Tutti i workflow</option>${workflows.map(([id, name]) =>
-    `<option value="${escapeHtml(id)}">${escapeHtml(name)}</option>`
-  ).join("")}`;
-  $("#history-workflow").value = selected;
+  renderWorkflowOptions();
   render();
 }
 
@@ -513,15 +548,21 @@ function connectEvents() {
   };
 }
 
-for (const selector of ["#history-search", "#history-workflow", "#history-status", "#history-archive"]) {
+for (const selector of [
+  "#history-search",
+  "#history-workflow",
+  "#history-status",
+  "#history-archive",
+  "#history-media-type",
+  "#history-date-from",
+  "#history-date-to",
+]) {
   $(selector).addEventListener(selector === "#history-search" ? "input" : "change", () => {
-    state.visibleLimit = 24;
-    render();
+    loadHistory().catch((error) => showToast(error.message));
   });
 }
 $("#history-load-more").addEventListener("click", () => {
-  state.visibleLimit += 24;
-  render();
+  loadHistory({ append: true }).catch((error) => showToast(error.message));
 });
 $("#refresh-history").addEventListener("click", () =>
   loadHistory().then(() => showToast("Archivio aggiornato")).catch((error) => showToast(error.message))
@@ -544,8 +585,54 @@ async function setArchived(ids, archived) {
     : `${result.generations.length === 1 ? "Generazione ripristinata" : "Generazioni ripristinate"}`);
 }
 
+function cleanupCriteria() {
+  const olderThan = $("#cleanup-older-than").value;
+  if (olderThan === "current") return currentFilters();
+  const dateTo = new Date();
+  dateTo.setDate(dateTo.getDate() - Number(olderThan));
+  return {
+    archive: "all",
+    dateTo: dateTo.toISOString().slice(0, 10),
+  };
+}
+
+function cleanupSummary(estimate) {
+  return `${estimate.generations || 0} generazioni · ${estimate.images || 0} immagini · ${estimate.videos || 0} video · ${estimate.files || 0} file · ${formatBytes(estimate.bytes || 0)} stimati`;
+}
+
+async function estimateCleanup() {
+  const estimate = await api("/api/generations/cleanup/estimate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(cleanupCriteria()),
+  });
+  state.cleanupEstimate = estimate;
+  $("#cleanup-result").textContent = cleanupSummary(estimate);
+  $("#cleanup-run").disabled = !estimate.generations;
+}
+
+async function runCleanup() {
+  if (!state.cleanupEstimate?.generations) return;
+  const mode = $("#cleanup-mode").value;
+  const destructive = mode !== "archive";
+  const message = destructive
+    ? `${cleanupSummary(state.cleanupEstimate)}. Procedere? I file cancellati non saranno recuperabili dalla webapp.`
+    : `${cleanupSummary(state.cleanupEstimate)}. Procedere con l'archiviazione?`;
+  if (!confirm(message)) return;
+  const result = await api("/api/generations/cleanup/run", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...cleanupCriteria(), mode }),
+  });
+  state.selectedIds.clear();
+  state.cleanupEstimate = null;
+  $("#cleanup-run").disabled = true;
+  $("#cleanup-result").textContent = `Pulizia completata: ${result.generations || 0} generazioni, ${result.filesDeleted || 0} file eliminati.`;
+  await loadHistory();
+}
+
 $("#select-visible-history").addEventListener("click", () => {
-  for (const item of filteredHistory().slice(0, state.visibleLimit)) {
+  for (const item of filteredHistory()) {
     if (!["queued", "running"].includes(item.status)) state.selectedIds.add(item.id);
   }
   render();
@@ -568,6 +655,25 @@ $("#restore-selected-history").addEventListener("click", () => {
     .map((item) => item.id);
   setArchived(ids, false).catch((error) => showToast(error.message));
 });
+$("#cleanup-open").addEventListener("click", () => {
+  $("#cleanup-panel").classList.remove("hidden");
+});
+$("#cleanup-close").addEventListener("click", () => {
+  $("#cleanup-panel").classList.add("hidden");
+});
+$("#cleanup-estimate").addEventListener("click", () =>
+  estimateCleanup().catch((error) => showToast(error.message))
+);
+$("#cleanup-run").addEventListener("click", () =>
+  runCleanup().catch((error) => showToast(error.message))
+);
+for (const selector of ["#cleanup-older-than", "#cleanup-mode"]) {
+  $(selector).addEventListener("change", () => {
+    state.cleanupEstimate = null;
+    $("#cleanup-run").disabled = true;
+    $("#cleanup-result").textContent = "Stima da aggiornare.";
+  });
+}
 
 $("#history").addEventListener("change", (event) => {
   const checkbox = event.target.closest("[data-select-generation]");
@@ -578,6 +684,19 @@ $("#history").addEventListener("change", (event) => {
 });
 
 $("#history").addEventListener("click", async (event) => {
+  const lazyVideo = event.target.closest("[data-load-video]");
+  if (lazyVideo) {
+    const wrapper = lazyVideo.closest("[data-lazy-video]");
+    const src = wrapper?.dataset.lazyVideo;
+    if (!src || wrapper.querySelector("video")) return;
+    lazyVideo.replaceWith(Object.assign(document.createElement("video"), {
+      controls: true,
+      playsInline: true,
+      preload: "metadata",
+      src,
+    }));
+    return;
+  }
   const archiveButton = event.target.closest("[data-archive-job]");
   if (archiveButton) {
     archiveButton.disabled = true;

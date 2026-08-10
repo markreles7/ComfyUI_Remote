@@ -57,6 +57,10 @@
             <span><b>Interactive Scene</b><small>Nuovo personaggio, copione e risposte</small></span>
           </label>
           <label>
+            <input type="radio" name="videoStudioMode" value="interactiveCast">
+            <span><b>Interactive Cast</b><small>Video originale, timeline dialoghi e modifiche locali</small></span>
+          </label>
+          <label>
             <input type="radio" name="videoStudioMode" value="sceneTransform">
             <span><b>Scene Transform V2V</b><small>Sfondo, look o motion transfer con Union Control</small></span>
           </label>
@@ -320,6 +324,75 @@
           </section>
         </section>
 
+        <section id="interactive-cast-fields" class="hidden">
+          <div class="interactive-cast-banner">
+            <p class="eyebrow">PIPELINE IBRIDA</p>
+            <h3>Scene Dialogue Rewrite</h3>
+            <p>Analizza il video sorgente, crea una timeline di interventi e decide quali intervalli restano originali, quali richiedono lip-sync e quali diventano segmenti generativi.</p>
+          </div>
+          <section class="studio-subpanel interactive-cast-capability-panel">
+            <div class="subpanel-heading">
+              <div><p class="subpanel-title">Capability matrix</p><p class="hint">Stati reali locali: READY, FALLBACK oppure NOT CONFIGURED.</p></div>
+              <button id="interactive-cast-refresh-capabilities" class="chip-button" type="button">Aggiorna capability</button>
+            </div>
+            <div id="interactive-cast-capabilities" class="interactive-cast-capabilities"></div>
+          </section>
+          <div class="field">
+            <label>Video originale</label>
+            <label class="dropzone video-studio-drop">
+              <input id="interactiveCastSourceVideo" name="interactiveCastSourceVideo" type="file" accept="video/mp4,video/webm,video/quicktime,video/x-matroska,video/x-msvideo">
+              <span class="upload-icon">▶</span>
+              <strong>Carica la scena originale</strong>
+              <small>Meglio uno shot continuo; la pipeline modifica solo le finestre necessarie.</small>
+            </label>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label for="interactiveCastNewActor">Nuovo attore</label>
+              <select id="interactiveCastNewActor">
+                <option value="">Reference temporanea / non ancora assegnata</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="interactiveCastNewActorName">Nome nuovo attore</label>
+              <input id="interactiveCastNewActorName" placeholder="Es. Sarah">
+            </div>
+          </div>
+          <div class="field">
+            <label for="interactiveCastAnchorWorkflow">Workflow anchor frame</label>
+            <select id="interactiveCastAnchorWorkflow">
+              <option value="qwen-image-edit">Qwen Image Edit</option>
+              <option value="qwen-krea-klein">Qwen/Krea/Klein</option>
+              <option value="krea-triple">Krea Triple</option>
+            </select>
+            <p class="hint">L'anchor e' il frame still preparato prima del segmento LTX: serve a inserire il nuovo attore mantenendo scena, luce e prospettiva.</p>
+          </div>
+          <div class="field">
+            <label>Reference temporanea nuovo attore</label>
+            <label class="dropzone video-studio-drop">
+              <input id="interactiveCastTemporaryReference" name="temporaryActorReference" type="file" accept="image/png,image/jpeg,image/webp">
+              <span class="upload-icon">↗</span>
+              <strong>Carica reference opzionale</strong>
+              <small>Usala quando non vuoi creare un Character Pack persistente.</small>
+            </label>
+          </div>
+          <div class="field">
+            <label for="interactiveCastBrief">Istruzione globale</label>
+            <textarea id="interactiveCastBrief" rows="4" placeholder="Al secondo 3 entra Sarah e dice... L'attore B si gira e risponde... Mantieni camera, voci originali e ambiente sonoro."></textarea>
+          </div>
+          <section class="studio-subpanel dialogue-panel">
+            <div class="subpanel-heading">
+              <div><p class="subpanel-title">Timeline interventi</p><p class="hint">Ogni evento diventa una finestra audioOnly, lipSyncOnly o generative.</p></div>
+              <button id="interactive-cast-add-event" class="chip-button" type="button">＋ Intervento</button>
+            </div>
+            <div id="interactive-cast-events"></div>
+          </section>
+          <div class="sequential-actions">
+            <button id="interactive-cast-create-button" class="chip-button" type="button">Analizza video e crea piano</button>
+          </div>
+          <p id="interactive-cast-status" class="prompt-assistant-status"></p>
+        </section>
+
         <section id="retake-fields" class="hidden">
           <div class="field"><label>Clip da rigenerare</label><label class="dropzone video-studio-drop"><input name="sourceVideo" type="file" accept="video/*"><span class="upload-icon">↻</span><strong>Carica la clip</strong><small>L’audio originale viene mantenuto</small></label></div>
           <div class="field">
@@ -375,10 +448,20 @@
             <input id="sequentialGlobalStyle" placeholder="realistic cinematic LTX, same woman, coherent lighting, stable camera">
           </div>
           <div class="field-grid">
+            <div class="field"><label for="sequentialInputMode">Modalità iniziale</label><select id="sequentialInputMode"><option value="text">Testo → Video</option><option value="image">Immagine → Video</option></select></div>
             <div class="field"><label for="sequentialSceneCount">Numero scene</label><input id="sequentialSceneCount" type="number" min="1" max="12" value="3"></div>
             <div class="field"><label for="sequentialSceneDuration">Durata scena</label><select id="sequentialSceneDuration"><option value="5">5 secondi</option><option value="8">8 secondi</option><option value="10" selected>10 secondi</option></select></div>
             <div class="field"><label for="sequentialWorkflowId">Workflow LTX</label><select id="sequentialWorkflowId"><option value="standard">LTX 2.3 1Work</option><option value="devfp8">LTX 2.3 Dev FP8</option><option value="ltxSulphur">LTX 2.3 Sulphur</option></select></div>
             <div class="field"><label for="sequentialQuality">Qualità</label><select id="sequentialQuality"><option value="preview">Anteprima</option><option value="max" selected>Massima</option></select></div>
+          </div>
+          <div id="sequential-initial-image-field" class="field hidden">
+            <label>Fotogramma iniziale</label>
+            <label class="dropzone video-studio-drop">
+              <input id="sequentialInitialImage" name="sequentialInitialImage" type="file" accept="image/png,image/jpeg,image/webp">
+              <span class="upload-icon">↗</span>
+              <strong>Carica immagine iniziale</strong>
+              <small>La scena 1 parte da questa immagine; dalla scena 2 usa continuity frame.</small>
+            </label>
           </div>
           <div class="field-grid">
             <label class="inline-check"><input id="sequentialPauseAfterEach" type="checkbox"> Pausa dopo ogni scena</label>
@@ -468,6 +551,11 @@
           </div>
           <div id="sequential-story-projects"></div>
           <p id="sequential-story-empty" class="hint">Nessuna Storia continua.</p>
+          <div class="subpanel-heading sequential-project-heading">
+            <div><p class="subpanel-title">Interactive Cast</p><p class="hint">Analisi video, eventi dialogo e finestre di edit.</p></div>
+          </div>
+          <div id="interactive-cast-projects"></div>
+          <p id="interactive-cast-empty" class="hint">Nessun progetto Interactive Cast.</p>
         </div>
 
         <div class="panel video-studio-help">

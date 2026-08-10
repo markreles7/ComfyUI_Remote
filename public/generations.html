@@ -68,12 +68,28 @@
         </select>
       </div>
       <div class="field">
+        <label for="history-media-type">Media</label>
+        <select id="history-media-type">
+          <option value="">Tutti</option>
+          <option value="image">Immagini</option>
+          <option value="video">Video</option>
+        </select>
+      </div>
+      <div class="field">
         <label for="history-archive">Visualizzazione</label>
         <select id="history-archive">
           <option value="visible">Non archiviate</option>
           <option value="archived">Solo archiviate</option>
           <option value="all">Tutte</option>
         </select>
+      </div>
+      <div class="field">
+        <label for="history-date-from">Da</label>
+        <input id="history-date-from" type="date">
+      </div>
+      <div class="field">
+        <label for="history-date-to">A</label>
+        <input id="history-date-to" type="date">
       </div>
       <button id="refresh-history" class="ghost-button" type="button">Aggiorna ↻</button>
     </section>
@@ -85,7 +101,41 @@
         <button id="clear-history-selection" class="ghost-button" type="button" disabled>Deseleziona</button>
         <button id="archive-selected-history" class="archive-button" type="button" disabled>Archivia selezionate</button>
         <button id="restore-selected-history" class="ghost-button" type="button" disabled>Ripristina selezionate</button>
+        <button id="cleanup-open" class="ghost-button" type="button">Pulizia guidata</button>
       </div>
+    </section>
+
+    <section id="cleanup-panel" class="archive-toolbar cleanup-panel panel hidden" aria-label="Pulizia guidata">
+      <div>
+        <p class="eyebrow">PULIZIA GUIDATA</p>
+        <h2>Riduci archivio e spazio usato</h2>
+        <p class="hint">Usa i filtri correnti oppure scegli una soglia temporale. Prima ottieni una stima, poi confermi l’azione.</p>
+      </div>
+      <div class="field-grid">
+        <div class="field">
+          <label for="cleanup-older-than">Intervallo</label>
+          <select id="cleanup-older-than">
+            <option value="current">Usa filtri correnti</option>
+            <option value="7">Più vecchie di 7 giorni</option>
+            <option value="30">Più vecchie di 30 giorni</option>
+            <option value="90">Più vecchie di 90 giorni</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="cleanup-mode">Azione</label>
+          <select id="cleanup-mode">
+            <option value="archive">Archivia soltanto</option>
+            <option value="deleteFilesKeepRecords">Elimina file, conserva schede</option>
+            <option value="deleteFilesAndRecords">Elimina file e record</option>
+          </select>
+        </div>
+      </div>
+      <div class="cleanup-actions">
+        <button id="cleanup-estimate" class="ghost-button" type="button">Stima spazio</button>
+        <button id="cleanup-run" class="archive-button" type="button" disabled>Esegui pulizia</button>
+        <button id="cleanup-close" class="ghost-button" type="button">Chiudi</button>
+      </div>
+      <div id="cleanup-result" class="cleanup-result hint">Nessuna stima ancora calcolata.</div>
     </section>
 
     <section aria-live="polite">

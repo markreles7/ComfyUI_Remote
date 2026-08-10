@@ -12,6 +12,14 @@ env/
 
 # Runtime/local data
 .data/
+.tools/interactive-cast/.venv/
+.tools/interactive-cast/.venv-voice/
+.tools/interactive-cast/.venv-lipsync/
+.tools/interactive-cast/python/
+.tools/interactive-cast/cache/
+.tools/interactive-cast/models/
+.tools/interactive-cast/engines/
+.tools/interactive-cast/*capabilities.json
 *.backup-*
 *.backup*
 *.bak

@@ -1,5 +1,6 @@
 import { enhanceDirectorPrompts, enhanceMainPrompt } from "./prompt-assistant.js";
 import { consumeGuidedHandoff, guidedTokenFromLocation, setInputFile } from "./guided-handoff.js";
+import { setupUploadPreviews } from "./upload-previews.js";
 
 const state = {
   config: null,
@@ -887,6 +888,7 @@ function addStoryboardScene(values = {}) {
     prompt: values.prompt || "",
     duration: Number(values.duration) || 4,
   }));
+  setupUploadPreviews($("#storyboard-scenes"));
   updateStoryboard();
 }
 
@@ -1887,7 +1889,9 @@ async function start() {
     applyLtxUpscalePreset();
     applySeedvr2VideoPreset();
     generationTypeChanged("video");
+    setupUploadPreviews();
     await applyGuidedCreation();
+    setupUploadPreviews();
     await Promise.all([checkHealth(), loadHistory()]);
     connectEvents();
     setInterval(checkHealth, 15000);

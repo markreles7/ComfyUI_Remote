@@ -91,6 +91,7 @@ function normalizeSettings(raw = {}) {
     ? raw.identityVerification
     : "disabled";
   return {
+    inputMode: raw.inputMode === "image" ? "image" : "text",
     workflowId: ["standard", "devfp8", "ltxSulphur"].includes(raw.workflowId) ? raw.workflowId : "standard",
     quality: raw.quality === "preview" ? "preview" : "max",
     resolution: raw.resolution || "480p",
@@ -174,18 +175,37 @@ export function finalScenePrompt({ project, scene, previousScene = null, charact
   const continuity = project.globalContinuity || {};
   const globalLines = Object.entries(continuity)
     .filter(([, value]) => String(value || "").trim())
-    .map(([key, value]) => `${key}: ${value}`);
-  return [
-    "GLOBAL CONTINUITY:",
+    .map(([key, value]) => `${key}: ${sanitizeAdultSubject(value)}`);
+  const identity = [
     characterPrompt,
     ...globalLines,
-    previousScene?.endState ? `PREVIOUS SCENE END STATE: ${previousScene.endState}` : "",
-    previousScene?.continuityNotes ? `PREVIOUS CONTINUITY NOTES: ${previousScene.continuityNotes}` : "",
-    scene.continuityNotes ? `CURRENT CONTINUITY NOTES: ${scene.continuityNotes}` : "",
-    "CURRENT SCENE:",
-    scene.prompt,
-    scene.endState ? `End this scene with: ${scene.endState}` : "",
-  ].filter(Boolean).join("\n");
+  ].filter(Boolean).join("; ");
+  const priorContinuity = [
+    previousScene?.endState ? `Previous ending: ${sanitizeAdultSubject(previousScene.endState)}` : "",
+    previousScene?.continuityNotes ? sanitizeAdultSubject(previousScene.continuityNotes) : "",
+  ].filter(Boolean).join(". ");
+  const currentContinuity = [
+    scene.startState ? `Opening pose: ${sanitizeAdultSubject(scene.startState)}` : "",
+    scene.continuityNotes ? sanitizeAdultSubject(scene.continuityNotes) : "",
+  ].filter(Boolean).join(". ");
+  const ending = scene.endState ? sanitizeAdultSubject(scene.endState) : "";
+  return [
+    "Create one continuous short LTX 2.3 video shot. Follow this scene only; do not add extra events.",
+    identity ? `Keep consistent: ${identity}.` : "",
+    priorContinuity ? `Carry over from the previous clip: ${priorContinuity}.` : "",
+    currentContinuity ? `Start from this continuity: ${currentContinuity}.` : "",
+    `Action timeline: at the beginning, ${sanitizeAdultSubject(scene.prompt)} Midway, continue the same physical motion smoothly with natural body mechanics, no teleporting, no sudden pose jump, no camera reset. At the end, ${ending || "settle into the final pose described by the action"}.`,
+    "Camera and motion: preserve the same lens, framing, lighting, background, outfit state, skin texture and handheld motion across the whole clip.",
+    "Avoid: unrelated actions, changed identity, changed room, abrupt cuts, extra people, frozen body, excessive blur, flicker, warped anatomy, broken hands.",
+  ].filter(Boolean).join(" ");
+}
+
+function sanitizeAdultSubject(value) {
+  return String(value || "")
+    .replace(/\byoung girl\b/gi, "adult woman")
+    .replace(/\bgirl\b/gi, "adult woman")
+    .replace(/\bteen(?:ager)?\b/gi, "adult woman")
+    .replace(/\bunderage\b/gi, "adult");
 }
 
 function seedForScene(settings, scene, index) {
@@ -448,6 +468,8 @@ export class SequentialStoryService {
       progress: 0,
       globalContinuity: plan.globalContinuity,
       settings,
+      initialFrameUpload: raw.initialFrameUpload || null,
+      initialFrameSource: raw.initialFrameSource || null,
       scenes: plan.scenes,
       generationIds: [],
       finalVideo: null,
@@ -623,16 +645,22 @@ export class SequentialStoryService {
       previousScene,
       characterPrompt: project.characterPrompt || "",
     });
-    const anchor = await this.generateAnchorFrame({
-      project,
-      scene,
-      sceneIndex,
-      previousScene,
-      prompt,
-      seed,
-    });
+    const initialFrameUpload = sceneIndex === 0 && project.settings.inputMode === "image" && project.initialFrameUpload?.name
+      ? project.initialFrameUpload
+      : null;
+    const anchor = initialFrameUpload
+      ? { status: "initial image used", upload: null, file: project.initialFrameSource || null }
+      : await this.generateAnchorFrame({
+          project,
+          scene,
+          sceneIndex,
+          previousScene,
+          prompt,
+          seed,
+        });
     const hasContinuity = Boolean(project.settings.useContinuityFrame && previousScene?.continuityFrame);
-    const continuityUpload = anchor?.upload
+    const continuityUpload = initialFrameUpload
+      || anchor?.upload
       || (hasContinuity ? await this.#uploadContinuityFrame(previousScene.continuityFrame) : null);
     const job = this.buildWorkflow(project.settings.workflowId, {
       prompt,
@@ -654,6 +682,8 @@ export class SequentialStoryService {
       sceneId: scene.id,
         sceneIndex: scene.index,
         sceneCount: project.scenes.length,
+        inputMode: continuityUpload ? "image" : "text",
+        initialFrame: Boolean(initialFrameUpload),
         anchorStatus: anchor.status,
         prompt,
       negativePrompt: scene.negativePrompt || DEFAULT_NEGATIVE,

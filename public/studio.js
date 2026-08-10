@@ -1,6 +1,7 @@
 import { WORKFLOW_GUIDE_BY_ID } from "./workflow-guides.js";
 import { enhanceMainPrompt } from "./prompt-assistant.js";
 import { consumeGuidedHandoff, guidedTokenFromLocation, setInputFile } from "./guided-handoff.js";
+import { setupUploadPreviews } from "./upload-previews.js";
 
 const state = {
   config: null,
@@ -870,7 +871,9 @@ async function start() {
     }
   }
   updateMode();
+  setupUploadPreviews();
   await applyGuidedCreation();
+  setupUploadPreviews();
   updateStructureGuide();
   $("#studio-prompt-assistant").classList.toggle("hidden", !state.config.promptAssistant?.enabled);
   $("#studio-qwen-edit-prompt").classList.toggle("hidden", !state.config.promptAssistant?.enabled);

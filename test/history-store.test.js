@@ -67,3 +67,26 @@ test("applica patch diverse a più record in una sola operazione", () => {
     fs.rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test("elimina record singoli o multipli e persiste il risultato", () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "ltx-history-"));
+  const file = path.join(directory, "history.json");
+  try {
+    const store = new HistoryStore(file);
+    store.add({ id: "one", createdAt: "2026-01-01", status: "completed" });
+    store.add({ id: "two", createdAt: "2026-01-02", status: "error" });
+    store.add({ id: "three", createdAt: "2026-01-03", status: "completed" });
+
+    assert.equal(store.delete("missing"), null);
+    assert.equal(store.delete("two").id, "two");
+    const removed = store.deleteMany(["one", "missing"]);
+    assert.deepEqual(removed.map((item) => item.id), ["one"]);
+
+    const reloaded = new HistoryStore(file);
+    assert.equal(reloaded.get("one"), undefined);
+    assert.equal(reloaded.get("two"), undefined);
+    assert.equal(reloaded.get("three").id, "three");
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});

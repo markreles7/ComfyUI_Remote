@@ -62,6 +62,11 @@ export const VIDEO_STUDIO_MODES = {
     name: "Interactive Scene Studio",
     description: "Aggiunge un nuovo personaggio e genera una scena con azioni, battute, risposte e audio sincronizzato.",
   },
+  interactiveCast: {
+    id: "interactiveCast",
+    name: "Interactive Cast",
+    description: "Analizza un video originale, pianifica nuovi attori/dialoghi e modifica solo le finestre temporali necessarie.",
+  },
   sceneTransform: {
     id: "sceneTransform",
     name: "Scene Transform V2V",
@@ -860,6 +865,9 @@ export function buildVideoStudioInitialJob(mode, raw, uploads, loras, config) {
   if (!VIDEO_STUDIO_MODES[mode]) throw new Error("Workflow Video Studio non riconosciuto.");
   if (mode === "sequentialStory") {
     throw new Error("Storia continua usa gli endpoint Sequential Story dedicati, non il builder Video Studio standard.");
+  }
+  if (mode === "interactiveCast") {
+    throw new Error("Interactive Cast usa gli endpoint pipeline dedicati, non il builder ComfyUI diretto.");
   }
   if (mode === "interactiveScene") return buildInteractiveScene(raw, uploads, loras, config);
   if (mode === "sceneTransform") return buildSceneTransform(raw, uploads, loras, config);

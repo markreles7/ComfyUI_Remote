@@ -13,6 +13,12 @@ import { ComfyClient, extractImages, extractVideos } from "./comfy-client.js";
 import { editWildcardConfig, pickEditWildcardPrompt } from "./edit-wildcards.js";
 import { cancelGeneration } from "./generation-cancellation.js";
 import { setGenerationsArchived } from "./generation-archive.js";
+import {
+  cleanupCandidates,
+  cleanupMode,
+  estimateGenerationCleanup,
+  queryGenerations,
+} from "./generation-library.js";
 import { HistoryStore } from "./history-store.js";
 import { LmStudioClient } from "./lm-studio-client.js";
 import {
@@ -82,6 +88,12 @@ import {
   fingerprintFromPgm,
   validateSequentialStoryPlan,
 } from "./sequential-story.js";
+import {
+  InteractiveCastOrchestrator,
+  InteractiveCastProjectStore,
+  validateInteractiveCastAssistantPlan,
+} from "./interactive-cast/index.js";
+import { GpuResourceManager } from "./gpu-resource-manager.js";
 
 dotenv.config();
 
@@ -105,6 +117,10 @@ const events = new Set();
 const store = new HistoryStore(path.join(root, ".data", "history.json"));
 const studioStore = new HistoryStore(path.join(root, ".data", "studio-projects.json"));
 const videoStudioStore = new HistoryStore(path.join(root, ".data", "video-studio-projects.json"));
+const interactiveCastStore = new InteractiveCastProjectStore({
+  file: path.join(root, ".data", "interactive-cast-projects.json"),
+  assetDirectory: path.join(root, ".data", "interactive-cast-assets"),
+});
 const sequentialStoryStore = new SequentialStoryStore({
   file: path.join(root, ".data", "sequential-stories.json"),
   assetDirectory: path.join(root, ".data", "sequential-story-assets"),
@@ -117,6 +133,14 @@ const sceneIntegration = new SceneIntegrationService({
   dataDirectory: path.join(root, ".data"),
   enabled: sceneIntegrationEnabled,
   python: process.env.SCENE_ANALYSIS_PYTHON,
+});
+const interactiveCast = new InteractiveCastOrchestrator({
+  root,
+  store: interactiveCastStore,
+  characterStore,
+});
+const gpuResourceManager = new GpuResourceManager({
+  releaseComfyMemory: releaseComfyMemoryIfIdle,
 });
 let idlePurgeTimer = null;
 
@@ -876,6 +900,60 @@ function videoStudioProjectView(project) {
   return studioProjectView(project);
 }
 
+function isActiveStatus(status) {
+  return ["queued", "running"].includes(status);
+}
+
+function videoStudioProjectGenerations(project) {
+  return (project?.generationIds || [])
+    .map((id) => store.get(id))
+    .filter(Boolean);
+}
+
+function videoStudioProjectIsActive(project) {
+  return videoStudioProjectGenerations(project).some((item) => isActiveStatus(item.status));
+}
+
+function removeGeneratedMediaFiles(generations) {
+  if (!outputDirectory) return { deleted: [], skipped: [], warning: "OUTPUT_DIRECTORY non configurata." };
+  const deleted = [];
+  const skipped = [];
+  const seen = new Set();
+  for (const generation of generations) {
+    for (const file of [...(generation.images || []), ...(generation.videos || [])]) {
+      const match = resolveMediaFile(outputDirectory, file);
+      if (!match?.path || seen.has(match.path)) continue;
+      seen.add(match.path);
+      try {
+        fs.rmSync(match.path, { force: true });
+        deleted.push(match.path);
+      } catch (error) {
+        skipped.push({ path: match.path, error: error.message });
+      }
+    }
+  }
+  return { deleted, skipped, warning: null };
+}
+
+function generationMediaResolver(media) {
+  return outputDirectory ? resolveMediaFile(outputDirectory, media) : null;
+}
+
+function cleanupGenerationMedia(generations) {
+  const media = removeGeneratedMediaFiles(generations);
+  const patches = new Map();
+  for (const generation of generations) {
+    patches.set(generation.id, {
+      images: [],
+      videos: [],
+      mediaDeleted: true,
+      mediaDeletedAt: new Date().toISOString(),
+    });
+  }
+  store.patchMany(patches);
+  return media;
+}
+
 async function videoStudioRuntimeConfig() {
   try {
     const info = await comfy.objectInfo();
@@ -1017,9 +1095,15 @@ async function waitForGenerationRecord(generationId, timeoutMs = 30 * 60_000) {
 
 function uploadLocalImageForComfy(filePath) {
   const buffer = fs.readFileSync(filePath);
+  const extension = path.extname(filePath).toLowerCase();
+  const mimetype = extension === ".jpg" || extension === ".jpeg"
+    ? "image/jpeg"
+    : extension === ".webp"
+      ? "image/webp"
+      : "image/png";
   return comfy.uploadImage({
     buffer,
-    mimetype: "image/png",
+    mimetype,
     originalname: path.basename(filePath),
     size: buffer.length,
   });
@@ -1343,6 +1427,255 @@ async function releaseComfyMemoryIfIdle() {
   }
 }
 
+function interactiveCastSegmentTask(project, segmentId) {
+  const task = (project.renderPackage?.segmentTasks?.tasks || [])
+    .find((item) => item.segmentId === segmentId);
+  if (!task) throw new Error("Task generativo Interactive Cast non trovato.");
+  return task;
+}
+
+async function uploadInteractiveCastActorReferences(project, limit = 2) {
+  const uploads = [];
+  for (const actor of project.actors?.added || []) {
+    if (uploads.length >= limit) break;
+    if (actor.type === "characterPack") {
+      const characterId = String(actor.actorId || "").replace(/^character:/, "");
+      const selection = await uploadCharacterReferences({
+        characterStore,
+        comfy,
+        characterId,
+        limit: limit - uploads.length,
+      }).catch(() => null);
+      uploads.push(...(selection?.uploads || []));
+      continue;
+    }
+    const referencePath = actor.reference?.relativePath
+      ? interactiveCastStore.assetPath(project.id, actor.reference.relativePath)
+      : actor.reference?.path;
+    if (!referencePath || !fs.existsSync(referencePath)) continue;
+    const buffer = fs.readFileSync(referencePath);
+    uploads.push(await comfy.uploadImage({
+      buffer,
+      mimetype: actor.reference?.mimeType || "image/png",
+      originalname: actor.reference?.originalName || path.basename(referencePath),
+      size: buffer.length,
+    }));
+  }
+  return uploads.slice(0, limit);
+}
+
+function interactiveCastVideoResolution(project, requested = "") {
+  if (["360p", "480p", "720p"].includes(requested)) return requested;
+  const longest = Math.max(Number(project.analysis?.width || 0), Number(project.analysis?.height || 0));
+  if (longest >= 1100) return "720p";
+  if (longest >= 720) return "480p";
+  return "360p";
+}
+
+async function queueInteractiveCastLtxSegment({ project, task, anchorUpload, settings, sourceGenerationId }) {
+  const duration = Math.max(1, Math.min(30, Math.ceil(Number(task.duration || 1))));
+  const job = buildWorkflow("devfp8", {
+    prompt: task.prompt,
+    negativePrompt: task.negativePrompt,
+    resolution: interactiveCastVideoResolution(project, settings.resolution),
+    orientation: Number(project.analysis?.width || 0) >= Number(project.analysis?.height || 0)
+      ? "landscape"
+      : "portrait",
+    duration,
+    quality: settings.quality === "max" ? "max" : "preview",
+    seed: settings.seed,
+    videoInputMode: "image",
+    videoModelId: "normal",
+  }, anchorUpload, [], []);
+  job.metadata = {
+    ...job.metadata,
+    projectId: project.id,
+    workflowId: "interactiveCast:ltx-segment",
+    workflowName: `Interactive Cast · LTX segmento ${task.segmentId}`,
+    interactiveCast: {
+      projectId: project.id,
+      segmentId: task.segmentId,
+      phase: "video",
+      anchorWorkflowId: settings.anchorWorkflowId,
+      sourceGenerationId,
+      settings,
+    },
+  };
+  const generation = await queueStudioJob(job, project.id);
+  interactiveCast.updateSegmentGeneration(project.id, task.segmentId, {
+    status: "queued",
+    phase: "video",
+    generationId: generation.id,
+    anchorGenerationId: sourceGenerationId,
+    settings,
+  });
+  return generation;
+}
+
+async function queueInteractiveCastAnchorRefine({ project, task, sourceUpload, settings, sourceGenerationId }) {
+  const studioMode = settings.anchorWorkflowId === "krea-triple" ? "kreaTriple" : "qwenKreaKlein";
+  const jobs = buildStudioJobs(studioMode, {
+    prompt: [
+      "Refine this Interactive Cast anchor without changing composition or identity.",
+      task.prompt,
+      "Preserve all original actors, the inserted actor, framing, perspective, lighting and background exactly.",
+    ].join(" "),
+    negativePrompt: task.negativePrompt,
+    seed: settings.seed,
+    imageWidth: Number(project.analysis?.width || 1152),
+    imageHeight: Number(project.analysis?.height || 896),
+    kreaTripleOperation: "img2img",
+    kreaTripleDenoise: settings.quality === "max" ? 0.3 : 0.2,
+  }, { source: sourceUpload, references: [] }, []);
+  const job = jobs[0];
+  job.metadata = {
+    ...job.metadata,
+    projectId: project.id,
+    workflowId: `interactiveCast:anchor:${settings.anchorWorkflowId}`,
+    workflowName: `Interactive Cast · anchor ${settings.anchorWorkflowId}`,
+    interactiveCast: {
+      projectId: project.id,
+      segmentId: task.segmentId,
+      phase: "anchor-refine",
+      anchorWorkflowId: settings.anchorWorkflowId,
+      sourceGenerationId,
+      settings,
+    },
+  };
+  const generation = await queueStudioJob(job, project.id);
+  interactiveCast.updateSegmentGeneration(project.id, task.segmentId, {
+    status: "queued",
+    phase: "anchor-refine",
+    generationId: generation.id,
+    baseAnchorGenerationId: sourceGenerationId,
+    settings,
+  });
+  return generation;
+}
+
+async function startInteractiveCastSegmentGeneration(projectId, segmentId, raw = {}) {
+  const project = interactiveCast.get(projectId);
+  const task = interactiveCastSegmentTask(project, segmentId);
+  if (task.mode !== "generative") {
+    throw new Error("La generazione LTX automatica è disponibile soltanto per finestre generative.");
+  }
+  if (["queued", "running"].includes(task.generation?.status)) {
+    const error = new Error("Questo segmento è già in generazione.");
+    error.statusCode = 409;
+    throw error;
+  }
+  if (!task.anchorFrame?.path || !fs.existsSync(task.anchorFrame.path)) {
+    throw new Error("Anchor frame sorgente mancante: prepara nuovamente i segmenti.");
+  }
+  const settings = {
+    anchorWorkflowId: task.anchorWorkflow?.id || project.settings?.anchorWorkflowId || "qwen-image-edit",
+    quality: raw.quality === "max" ? "max" : "preview",
+    resolution: interactiveCastVideoResolution(project, String(raw.resolution || "")),
+    seed: Number.isSafeInteger(Number(raw.seed)) && Number(raw.seed) >= 0
+      ? Number(raw.seed)
+      : crypto.randomInt(0, 2 ** 31),
+  };
+  const sourceUpload = await uploadLocalImageForComfy(task.anchorFrame.path);
+  const referenceUploads = await uploadInteractiveCastActorReferences(project, 2);
+  const job = buildImageWorkflow("qwenEdit", {
+    imageMode: "image",
+    imageResolution: "custom",
+    imageWidth: Math.min(4096, Math.max(256, Number(project.analysis?.width || 1152))),
+    imageHeight: Math.min(4096, Math.max(256, Number(project.analysis?.height || 896))),
+    imageSteps: settings.quality === "max" ? 16 : 8,
+    imageGuidance: 1,
+    batchSize: 1,
+    prompt: [task.anchorRequirement, task.prompt].filter(Boolean).join("\n"),
+    negativePrompt: task.negativePrompt,
+    seed: settings.seed,
+    referenceUploads,
+    outputBase: `InteractiveCast/${project.id}/${segmentId}/anchor-base`,
+    saveOriginal: false,
+    upscaleMode: "none",
+  }, sourceUpload, []);
+  job.metadata = {
+    ...job.metadata,
+    projectId,
+    workflowId: "interactiveCast:anchor:qwen-image-edit",
+    workflowName: `Interactive Cast · anchor Qwen ${segmentId}`,
+    interactiveCast: {
+      projectId,
+      segmentId,
+      phase: "anchor-base",
+      anchorWorkflowId: settings.anchorWorkflowId,
+      referenceCount: referenceUploads.length,
+      settings,
+    },
+  };
+  const generation = await queueStudioJob(job, projectId);
+  const updated = interactiveCast.updateSegmentGeneration(projectId, segmentId, {
+    status: "queued",
+    phase: "anchor-base",
+    generationId: generation.id,
+    settings,
+  });
+  return { project: updated, generation };
+}
+
+async function advanceInteractiveCastGeneration(generation) {
+  const metadata = generation.interactiveCast;
+  if (!metadata?.projectId || !metadata.segmentId) return;
+  try {
+    const project = interactiveCast.get(metadata.projectId);
+    const task = interactiveCastSegmentTask(project, metadata.segmentId);
+    if (generation.status !== "completed") {
+      if (["error", "cancelled"].includes(generation.status)) {
+        interactiveCast.updateSegmentGeneration(project.id, task.segmentId, {
+          status: "failed",
+          phase: metadata.phase,
+          generationId: generation.id,
+          error: generation.error || `Generazione ${generation.status}.`,
+        });
+      }
+      return;
+    }
+    if (metadata.phase === "video") {
+      if (!outputDirectory) throw new Error("OUTPUT_DIRECTORY non configurata per recuperare il segmento LTX.");
+      const resolved = resolveMediaFile(outputDirectory, generation.videos?.at(-1));
+      if (!resolved?.path) throw new Error("Video LTX Interactive Cast non trovato su disco.");
+      await interactiveCast.attachGeneratedSegment(project.id, task.segmentId, {
+        path: resolved.path,
+        originalName: generation.videos.at(-1)?.filename || `${task.segmentId}.mp4`,
+        mimeType: "video/mp4",
+        generationId: generation.id,
+      });
+      return;
+    }
+    const image = generation.images?.at(-1);
+    if (!image) throw new Error("Anchor Interactive Cast non prodotto.");
+    const upload = await comfy.reuseOutputImage(image, `interactive-cast-${task.segmentId}-${metadata.phase}.png`);
+    if (metadata.phase === "anchor-base" && metadata.anchorWorkflowId !== "qwen-image-edit") {
+      await queueInteractiveCastAnchorRefine({
+        project,
+        task,
+        sourceUpload: upload,
+        settings: metadata.settings,
+        sourceGenerationId: generation.id,
+      });
+      return;
+    }
+    await queueInteractiveCastLtxSegment({
+      project,
+      task,
+      anchorUpload: upload,
+      settings: metadata.settings,
+      sourceGenerationId: generation.id,
+    });
+  } catch (error) {
+    interactiveCast.updateSegmentGeneration(metadata.projectId, metadata.segmentId, {
+      status: "failed",
+      phase: metadata.phase,
+      generationId: generation.id,
+      error: error.message,
+    });
+  }
+}
+
 app.get("/api/config", async (_request, response) => {
   let installedImageModels = [];
   let installedImageCheckpoints = [];
@@ -1467,6 +1800,7 @@ app.get("/api/config", async (_request, response) => {
       preprocessors: studioPreprocessors,
     }),
     videoStudio,
+    interactiveCast: await interactiveCast.capabilities(),
     promptAssistant: { ...promptAssistant.publicConfig(), autoGenerate: promptAssistantAutoGenerate },
     sulphur: sulphurRuntimeConfig(),
     editWildcards: editWildcardConfig(root),
@@ -1997,7 +2331,10 @@ app.post("/api/edit-wildcards/random", (request, response, next) => {
   }
 });
 
-app.get("/api/generations", (_request, response) => response.json(store.list()));
+app.get("/api/generations", (request, response) => {
+  if (request.query.paged !== "1") return response.json(store.list());
+  response.json(queryGenerations(store.list(), request.query));
+});
 
 app.post("/api/generations/archive", (request, response) => {
   try {
@@ -2024,6 +2361,55 @@ app.post("/api/generations/archive", (request, response) => {
   }
 });
 
+app.post("/api/generations/cleanup/estimate", (request, response) => {
+  try {
+    response.json(estimateGenerationCleanup({
+      items: store.list(),
+      criteria: request.body || {},
+      resolveMedia: generationMediaResolver,
+    }));
+  } catch (error) {
+    response.status(error.statusCode || 500).json({ error: error.message });
+  }
+});
+
+app.post("/api/generations/cleanup/run", (request, response) => {
+  try {
+    const mode = cleanupMode(request.body?.mode);
+    const candidates = cleanupCandidates(store.list(), request.body || {});
+    const before = estimateGenerationCleanup({
+      items: candidates,
+      criteria: { archive: "all" },
+      resolveMedia: generationMediaResolver,
+    });
+    let media = { deleted: [], skipped: [], warning: null };
+    if (!candidates.length) {
+      // Nothing to do.
+    } else if (mode === "archive") {
+      setGenerationsArchived({
+        store,
+        ids: candidates.map((item) => item.id),
+        archived: true,
+      });
+    } else {
+      media = cleanupGenerationMedia(candidates);
+      if (mode === "deleteFilesAndRecords") {
+        store.deleteMany(candidates.map((item) => item.id));
+      }
+    }
+    response.json({
+      mode,
+      generations: candidates.length,
+      filesDeleted: media.deleted.length,
+      filesSkipped: media.skipped,
+      bytesEstimated: before.bytes,
+      warning: media.warning,
+    });
+  } catch (error) {
+    response.status(error.statusCode || 500).json({ error: error.message });
+  }
+});
+
 app.get("/api/studio/projects", (_request, response) => {
   response.json(studioStore.list().map(studioProjectView));
 });
@@ -2034,14 +2420,309 @@ app.get("/api/studio/projects/:id", (request, response) => {
   response.json(studioProjectView(project));
 });
 
-app.get("/api/video-studio/projects", (_request, response) => {
-  response.json(videoStudioStore.list().map(videoStudioProjectView));
+app.get("/api/video-studio/projects", (request, response) => {
+  const archived = String(request.query.archived || "false");
+  response.json(videoStudioStore.list()
+    .filter((project) => archived === "all" || (archived === "true" ? project.archived : !project.archived))
+    .map(videoStudioProjectView));
 });
 
 app.get("/api/video-studio/projects/:id", (request, response) => {
   const project = videoStudioStore.get(request.params.id);
   if (!project) return response.status(404).json({ error: "Progetto Video Studio non trovato." });
   response.json(videoStudioProjectView(project));
+});
+
+app.get("/api/interactive-cast/capabilities", async (_request, response, next) => {
+  try {
+    response.json(await interactiveCast.capabilities());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/interactive-cast/projects", (_request, response) => {
+  response.json({ projects: interactiveCast.list() });
+});
+
+app.get("/api/interactive-cast/projects/:id", (request, response, next) => {
+  try {
+    response.json({ project: interactiveCast.get(request.params.id) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/interactive-cast/projects/:id", (request, response, next) => {
+  try {
+    const project = interactiveCast.delete(request.params.id);
+    response.json({ deleted: true, projectId: project.id });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/interactive-cast/projects/:id/assets/*path", (request, response, next) => {
+  try {
+    const relative = Array.isArray(request.params.path)
+      ? request.params.path.join("/")
+      : String(request.params.path || "");
+    const target = interactiveCastStore.assetPath(request.params.id, relative);
+    if (!target) return response.status(404).json({ error: "Artefatto Interactive Cast non trovato." });
+    response.sendFile(target);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/interactive-cast/projects", upload.fields([
+  { name: "sourceVideo", maxCount: 1 },
+  { name: "temporaryActorReference", maxCount: 1 },
+]), async (request, response, next) => {
+  try {
+    const sourceVideo = request.files?.sourceVideo?.[0] || null;
+    const temporaryActorReference = request.files?.temporaryActorReference?.[0] || null;
+    if (sourceVideo) validateUploadSize(sourceVideo, maxVideoUploadMb, "Il video sorgente");
+    if (temporaryActorReference) validateUploadSize(temporaryActorReference, maxUploadMb, "La reference temporanea");
+    const project = await interactiveCast.create({
+      file: sourceVideo,
+      temporaryActorReference,
+      raw: request.body || {},
+    });
+    response.status(201).json({ project });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/interactive-cast/projects/:id/plan", async (request, response, next) => {
+  try {
+    const project = interactiveCast.plan(request.params.id, request.body || {});
+    response.json({ project });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/interactive-cast/projects/:id/actors", (request, response, next) => {
+  try {
+    const project = interactiveCast.updateOriginalActors(request.params.id, request.body?.originalActors || []);
+    response.json({ project });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/interactive-cast/projects/:id/speakers", (request, response, next) => {
+  try {
+    const project = interactiveCast.updateSpeakerAssignments(request.params.id, request.body?.speakers || []);
+    response.json({ project });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/interactive-cast/projects/:id/assistant-plan", async (request, response, next) => {
+  try {
+    if (!promptAssistant.publicConfig().enabled) {
+      return response.status(503).json({ error: "Il Prompt Assistant non è configurato. Imposta LM_STUDIO_MODEL." });
+    }
+    const project = interactiveCast.get(request.params.id);
+    const execution = await gpuResourceManager.run("interactive-cast-lm-studio-plan", async () => {
+      const plan = await promptAssistant.planInteractiveCast({
+        brief: request.body?.brief,
+        duration: project.analysis?.duration || 0,
+        analysis: project.analysis,
+        actors: project.actors,
+      });
+      const after = await releaseComfyMemoryIfIdle();
+      return { plan, after };
+    });
+    const { plan, after } = execution.value;
+    if (plan.unloadError) {
+      throw new Error(`Piano Interactive Cast creato, ma LM Studio non ha scaricato il modello: ${plan.unloadError}`);
+    }
+    response.json({
+      plan: validateInteractiveCastAssistantPlan(plan, { duration: project.analysis?.duration || 0 }),
+      model: plan.model,
+      modelKey: plan.modelKey,
+      cleanup: {
+        lmStudioModelUnloaded: true,
+        comfyMemoryReleased: after.released,
+        comfyMemoryReason: after.reason,
+        comfyMemoryPrepared: execution.resource.comfy?.released || false,
+      },
+      gpu: execution.resource,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/interactive-cast/projects/:id/prepare-segments", async (request, response, next) => {
+  try {
+    const project = await interactiveCast.prepareSegments(request.params.id);
+    response.json({
+      project,
+      readiness: interactiveCast.spliceReadiness(project.id),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/interactive-cast/projects/:id/segments/:segmentId/replacement", upload.single("replacementVideo"), async (request, response, next) => {
+  try {
+    if (!request.file) throw new Error("Carica un segmento video sostitutivo.");
+    validateUploadSize(request.file, maxVideoUploadMb, "Il segmento sostitutivo");
+    const project = interactiveCast.attachReplacementSegment(request.params.id, request.params.segmentId, request.file);
+    response.json({
+      project,
+      readiness: interactiveCast.spliceReadiness(project.id),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/interactive-cast/projects/:id/segments/:segmentId/generate", async (request, response, next) => {
+  try {
+    const result = await startInteractiveCastSegmentGeneration(
+      request.params.id,
+      request.params.segmentId,
+      request.body || {},
+    );
+    response.status(202).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/interactive-cast/projects/:id/dialogue/:eventId/audio", upload.single("dialogueAudio"), async (request, response, next) => {
+  try {
+    if (!request.file) throw new Error("Carica una battuta audio sintetizzata.");
+    validateUploadSize(request.file, maxVideoUploadMb, "La battuta audio");
+    const project = interactiveCast.attachDialogueAudio(request.params.id, request.params.eventId, request.file);
+    response.json({ project });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/interactive-cast/projects/:id/dialogue/:eventId/synthesize", async (request, response, next) => {
+  try {
+    const execution = await gpuResourceManager.run("interactive-cast-voice-synthesis", () =>
+      interactiveCast.synthesizeDialogueAudio(request.params.id, request.params.eventId, request.body || {}));
+    response.json({ project: execution.value, gpu: execution.resource });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/interactive-cast/projects/:id/segments/:segmentId/lipsync", async (request, response, next) => {
+  try {
+    const execution = await gpuResourceManager.run("interactive-cast-lipsync", () =>
+      interactiveCast.applyLipSyncToSegment(request.params.id, request.params.segmentId, request.body || {}));
+    response.json({ project: execution.value, gpu: execution.resource });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/interactive-cast/projects/:id/segments/:segmentId/composite", upload.fields([
+  { name: "overlayVideo", maxCount: 1 },
+  { name: "maskImage", maxCount: 1 },
+]), async (request, response, next) => {
+  try {
+    const overlayVideo = request.files?.overlayVideo?.[0] || null;
+    const maskImage = request.files?.maskImage?.[0] || null;
+    if (!overlayVideo) throw new Error("Carica un overlay video per il compositing.");
+    if (!maskImage) throw new Error("Carica una maschera immagine per il compositing.");
+    validateUploadSize(overlayVideo, maxVideoUploadMb, "L'overlay video");
+    validateUploadSize(maskImage, maxImageUploadMb, "La maschera");
+    const project = await interactiveCast.applyCompositeToSegment(request.params.id, request.params.segmentId, request.files, request.body || {});
+    response.json({
+      project,
+      readiness: interactiveCast.spliceReadiness(project.id),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/interactive-cast/projects/:id/segments/:segmentId/identity-check", async (request, response, next) => {
+  try {
+    const project = await interactiveCast.verifySegmentIdentity(request.params.id, request.params.segmentId, request.body || {});
+    response.json({
+      project,
+      report: project.renderPackage?.identityReports?.[request.params.segmentId] || null,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/interactive-cast/projects/:id/audio-remix", async (request, response, next) => {
+  try {
+    const project = await interactiveCast.remixAudio(request.params.id);
+    response.json({ project });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/interactive-cast/projects/:id/concat", async (request, response, next) => {
+  try {
+    const project = await interactiveCast.concatFinal(request.params.id);
+    response.json({ project });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/video-studio/projects/:id/archive", (request, response, next) => {
+  try {
+    const project = videoStudioStore.get(request.params.id);
+    if (!project) return response.status(404).json({ error: "Progetto Video Studio non trovato." });
+    if (videoStudioProjectIsActive(project)) {
+      return response.status(409).json({ error: "Annulla o attendi il completamento prima di nascondere il progetto." });
+    }
+    const archived = request.body?.archived !== false;
+    const updated = videoStudioStore.update(project.id, {
+      archived,
+      archivedAt: archived ? new Date().toISOString() : null,
+      updatedAt: new Date().toISOString(),
+    });
+    response.json({ project: videoStudioProjectView(updated) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/video-studio/projects/:id", (request, response, next) => {
+  try {
+    const project = videoStudioStore.get(request.params.id);
+    if (!project) return response.status(404).json({ error: "Progetto Video Studio non trovato." });
+    if (videoStudioProjectIsActive(project)) {
+      return response.status(409).json({ error: "Annulla o attendi il completamento prima di eliminare il progetto." });
+    }
+    const generations = videoStudioProjectGenerations(project);
+    const media = request.query.files === "1" || request.body?.deleteFiles === true
+      ? removeGeneratedMediaFiles(generations)
+      : { deleted: [], skipped: [], warning: null };
+    videoStudioStore.delete(project.id);
+    store.deleteMany(generations.map((item) => item.id));
+    response.json({
+      deleted: true,
+      projectId: project.id,
+      generations: generations.length,
+      filesDeleted: media.deleted.length,
+      filesSkipped: media.skipped,
+      warning: media.warning,
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 function sequentialStoryCharacterContext(raw = {}) {
@@ -2097,12 +2778,40 @@ app.post("/api/video-studio/sequential-story/plan", async (request, response, ne
   }
 });
 
-app.post("/api/video-studio/sequential-story", (request, response, next) => {
+app.post("/api/video-studio/sequential-story", upload.single("initialImage"), async (request, response, next) => {
   try {
-    const character = sequentialStoryCharacterContext(request.body?.settings || request.body || {});
+    const payload = typeof request.body?.payload === "string" && request.body.payload.trim()
+      ? JSON.parse(request.body.payload)
+      : request.body || {};
+    let initialFrameUpload = null;
+    let initialFrameSource = null;
+    if (request.file) {
+      if (!request.file.mimetype.startsWith("image/")) {
+        throw new Error("Il fotogramma iniziale deve essere PNG, JPG o WebP.");
+      }
+      validateUploadSize(request.file, maxUploadMb, "Il fotogramma iniziale");
+      initialFrameUpload = await comfy.uploadImage(request.file);
+      initialFrameSource = {
+        filename: request.file.originalname,
+        type: "sequential-story-initial-frame",
+        mimeType: request.file.mimetype,
+        size: request.file.size,
+      };
+    }
+    const settings = {
+      ...(payload.settings || payload),
+      initialFrameUpload,
+      initialFrameSource,
+    };
+    if (settings.inputMode === "image" && !initialFrameUpload?.name) {
+      throw new Error("Carica un fotogramma iniziale per creare una Storia Continua Immagine → Video.");
+    }
+    const character = sequentialStoryCharacterContext(settings);
     const project = sequentialStoryService.create({
-      ...request.body,
-      settings: request.body?.settings || request.body,
+      ...payload,
+      settings,
+      initialFrameUpload,
+      initialFrameSource,
     });
     const withCharacter = sequentialStoryStore.update(project.id, {
       character: character.character
@@ -3315,6 +4024,8 @@ setInterval(async () => {
         const completed = entry.status?.completed === true;
         const statusText = entry.status?.status_str;
         if (videos.length || images.length) {
+          const finishedAt = new Date().toISOString();
+          const startedAtMs = Date.parse(item.startedAt || "");
           const isImageGeneration = item.mediaType === "image"
             || ["image", "upscale"].includes(item.generationType);
           const inspectedImages = isImageGeneration
@@ -3343,6 +4054,7 @@ setInterval(async () => {
                 : null,
             });
             broadcast({ type: "generation_updated", generationId: item.id, data: updated });
+            await advanceInteractiveCastGeneration(updated);
             scheduleIdlePurge();
             continue;
           }
@@ -3354,8 +4066,6 @@ setInterval(async () => {
           const ratioDrift = expectedRatio && actualRatio
             ? Math.abs(actualRatio / expectedRatio - 1)
             : 0;
-          const finishedAt = new Date().toISOString();
-          const startedAtMs = Date.parse(item.startedAt || "");
           const updated = store.update(item.id, {
             status: "completed",
             progress: 100,
@@ -3384,6 +4094,7 @@ setInterval(async () => {
               : null,
           });
           broadcast({ type: "generation_updated", generationId: item.id, data: updated });
+          await advanceInteractiveCastGeneration(updated);
           const characterSheet = maybeRegisterCharacterSheet(updated, primaryImage);
           if (characterSheet) {
             const imported = store.update(updated.id, {
@@ -3419,6 +4130,7 @@ setInterval(async () => {
               : null,
           });
           broadcast({ type: "generation_updated", generationId: item.id, data: updated });
+          await advanceInteractiveCastGeneration(updated);
           scheduleIdlePurge();
         } else if (statusText === "error") {
           const finishedAt = new Date().toISOString();
@@ -3432,6 +4144,7 @@ setInterval(async () => {
               : null,
           });
           broadcast({ type: "generation_updated", generationId: item.id, data: updated });
+          await advanceInteractiveCastGeneration(updated);
           scheduleIdlePurge();
         }
       } catch {

@@ -204,7 +204,7 @@ test("crea progetto persistente e resta leggibile dopo restart store", () => {
   assert.equal(restarted.require(project.id).title, "Pool to bedroom");
 });
 
-test("prompt finale usa global continuity e stato precedente senza duplicare prompt intero", () => {
+test("prompt finale compatta continuity e stato precedente senza duplicare prompt intero", () => {
   const project = { globalContinuity: plan(2).globalContinuity };
   const prompt = finalScenePrompt({
     project,
@@ -212,10 +212,27 @@ test("prompt finale usa global continuity e stato precedente senza duplicare pro
     previousScene: plan(2).scenes[0],
     characterPrompt: "Character pack identity prompt",
   });
-  assert.match(prompt, /GLOBAL CONTINUITY/);
-  assert.match(prompt, /PREVIOUS SCENE END STATE: End 1/);
-  assert.match(prompt, /CURRENT SCENE/);
+  assert.match(prompt, /Create one continuous short LTX 2\.3 video shot/);
+  assert.match(prompt, /Keep consistent: Character pack identity prompt/);
+  assert.match(prompt, /Carry over from the previous clip: Previous ending: End 1/);
+  assert.match(prompt, /Action timeline:/);
   assert.doesNotMatch(prompt, /Scene prompt 1/);
+});
+
+test("prompt finale normalizza soggetti sensuali ambigui come adulti", () => {
+  const prompt = finalScenePrompt({
+    project: {
+      globalContinuity: {
+        character: "young girl with long hair",
+      },
+    },
+    scene: {
+      prompt: "girl turns toward camera",
+      endState: "girl holds the pose",
+    },
+  });
+  assert.doesNotMatch(prompt, /\bgirl\b/i);
+  assert.match(prompt, /adult woman/);
 });
 
 test("retry singola scena marca downstream completate come stale", () => {
@@ -240,6 +257,21 @@ test("render scena singola verifica output, estrae continuity frame e fa purge",
   assert.ok(fs.existsSync(scene.continuityFrame.path));
   assert.ok(calls.some((call) => call.type === "free"));
   assert.equal(store.require(project.id).generationIds.length, 1);
+});
+
+test("la prima scena puo partire da immagine iniziale e usare I2V", async () => {
+  const { service, calls } = makeService();
+  const project = service.create({
+    plan: plan(1),
+    settings: { sceneCount: 1, inputMode: "image" },
+    initialFrameUpload: { name: "initial.png", subfolder: "input", type: "input" },
+    initialFrameSource: { filename: "initial.png", type: "sequential-story-initial-frame" },
+  });
+  const updated = await service.runSequentialScene(project.id, "scene-1");
+  const build = calls.find((call) => call.type === "build");
+  assert.equal(build.raw.videoInputMode, "image");
+  assert.equal(build.upload.name, "initial.png");
+  assert.equal(updated.scenes[0].anchorStatus, "initial image used");
 });
 
 test("best-frame selector smart sceglie il candidato piu nitido", async () => {

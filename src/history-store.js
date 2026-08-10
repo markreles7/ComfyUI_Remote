@@ -71,4 +71,25 @@ export class HistoryStore {
     if (updated.length) this.#write();
     return updated;
   }
+
+  delete(id) {
+    const index = this.items.findIndex((item) => item.id === id);
+    if (index < 0) return null;
+    const [removed] = this.items.splice(index, 1);
+    this.#write();
+    return removed;
+  }
+
+  deleteMany(ids) {
+    const selected = new Set(ids);
+    if (!selected.size) return [];
+    const removed = [];
+    this.items = this.items.filter((item) => {
+      if (!selected.has(item.id)) return true;
+      removed.push(item);
+      return false;
+    });
+    if (removed.length) this.#write();
+    return removed;
+  }
 }

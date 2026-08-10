@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-08-10T10:35:00.000Z",
+  "models": [
+    {
+      "id": "chatterbox-multilingual-v3",
+      "name": "Chatterbox Multilingual V3",
+      "version": "0.1.7 / multilingual-v3",
+      "engineCommit": "5de7a54aa4e5e2baadb0182dde554908b48b85c2",
+      "source": "https://huggingface.co/ResembleAI/chatterbox",
+      "codeSource": "https://github.com/resemble-ai/chatterbox",
+      "license": "MIT",
+      "localPath": "cache/huggingface/hub/models--ResembleAI--chatterbox",
+      "sizeBytes": 3208774561,
+      "purpose": "multilingual zero-shot reference-conditioned voice cloning",
+      "status": "ready",
+      "device": "cuda"
+    },
+    {
+      "id": "musetalk-1.5",
+      "name": "MuseTalk 1.5 UNet",
+      "version": "1.5",
+      "engineCommit": "0a89dec45a0192b824e3cf4daf96c239440c5ed8",
+      "source": "https://huggingface.co/TMElyralab/MuseTalk",
+      "codeSource": "https://github.com/TMElyralab/MuseTalk",
+      "license": "MIT code and model",
+      "localPath": "engines/musetalk/models/musetalkV15/unet.pth",
+      "sizeBytes": 3400074924,
+      "purpose": "regional jaw and mouth lip-sync",
+      "status": "ready",
+      "device": "cuda"
+    },
+    {
+      "id": "musetalk-runtime-components",
+      "name": "MuseTalk 1.5 runtime components",
+      "version": "pinned by MuseTalk 1.5",
+      "source": "https://github.com/TMElyralab/MuseTalk#download-weights",
+      "license": "MIT / Apache-2.0 / BSD-3-Clause as listed by MuseTalk",
+      "localPath": "engines/musetalk/models",
+      "sizeBytes": 1082640938,
+      "files": [
+        "sd-vae/diffusion_pytorch_model.bin",
+        "whisper/pytorch_model.bin",
+        "dwpose/dw-ll_ucoco_384.pth",
+        "face-parse-bisent/79999_iter.pth",
+        "face-parse-bisent/resnet18-5c106cde.pth",
+        "../../cache/torch/hub/checkpoints/s3fd-619a316812.pth"
+      ],
+      "purpose": "VAE, audio encoding, pose, face parsing and face detection",
+      "status": "ready",
+      "device": "cuda"
+    }
+  ]
+}

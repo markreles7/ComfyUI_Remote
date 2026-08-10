@@ -4,7 +4,9 @@ import test from "node:test";
 
 const html = fs.readFileSync(new URL("../public/video-studio.html", import.meta.url), "utf8");
 const script = fs.readFileSync(new URL("../public/video-studio.js", import.meta.url), "utf8");
+const styles = fs.readFileSync(new URL("../public/styles.css", import.meta.url), "utf8");
 const assistant = fs.readFileSync(new URL("../public/prompt-assistant.js", import.meta.url), "utf8");
+const server = fs.readFileSync(new URL("../src/server.js", import.meta.url), "utf8");
 
 const expectedModes = [
   "actorReplacement",
@@ -39,14 +41,103 @@ test("Video Studio espone Storia continua con planner, editor e API dedicate", (
   assert.match(html, /Descrizione storia/);
   assert.match(html, /Genera scaletta/);
   assert.match(html, /Avvia sequenza/);
+  assert.match(html, /Modalità iniziale/);
+  assert.match(html, /Immagine → Video/);
+  assert.match(html, /sequentialInitialImage/);
   assert.match(html, /Best-frame selector/);
   assert.match(html, /Anchor frame/);
   assert.match(html, /Identity verification/);
   assert.match(html, /Pause|Pausa|pausa/i);
   assert.match(script, /\/api\/video-studio\/sequential-story\/plan/);
   assert.match(script, /\/api\/video-studio\/sequential-story/);
+  assert.match(script, /FormData/);
+  assert.match(script, /initialImage/);
   assert.match(script, /data-scene-regenerate/);
   assert.match(script, /data-sequential-scene-retry/);
+});
+
+test("il pannello progetti Video Studio ha azioni di pulizia e render stabile", () => {
+  assert.match(script, /projectsRenderKey/);
+  assert.match(script, /data-video-project-archive/);
+  assert.match(script, /data-video-project-delete/);
+  assert.match(script, /\/api\/video-studio\/projects\/\$\{projectId\}\/archive/);
+  assert.match(script, /\/api\/video-studio\/projects\/\$\{projectId\}\?files=1/);
+  assert.match(script, /Elimina file/);
+});
+
+test("Interactive Cast mostra task package per segmenti AI mancanti", () => {
+  assert.match(html, /interactiveCastTemporaryReference/);
+  assert.match(html, /Reference temporanea nuovo attore/);
+  assert.match(html, /interactiveCastAnchorWorkflow/);
+  assert.match(html, /Qwen Image Edit/);
+  assert.match(html, /Qwen\/Krea\/Klein/);
+  assert.match(html, /Krea Triple/);
+  assert.match(script, /taskForSegment/);
+  assert.match(script, /temporaryActorReference/);
+  assert.match(script, /anchorWorkflowId/);
+  assert.match(script, /anchorRequirement/);
+  assert.match(script, /cast-mode/);
+  assert.match(script, /lipSyncOnly/);
+  assert.match(script, /composite/);
+  assert.match(script, /data-interactive-cast-actors/);
+  assert.match(script, /collectInteractiveCastActors/);
+  assert.match(script, /\/api\/interactive-cast\/projects\/\$\{projectId\}\/actors/);
+  assert.match(script, /interactive-cast-stages/);
+  assert.match(script, /stage-\$\{escapeHtml\(info\.status/);
+  assert.match(script, /Speaker diarization/);
+  assert.match(script, /data-interactive-cast-speakers/);
+  assert.match(script, /collectInteractiveCastSpeakers/);
+  assert.match(script, /\/api\/interactive-cast\/projects\/\$\{projectId\}\/speakers/);
+  assert.match(script, /interactive-cast-task-anchor/);
+  assert.match(script, /Anchor workflow/);
+  assert.match(script, /Prompt segmento/);
+  assert.match(script, /Negative prompt/);
+  assert.match(script, /Reference nuovo attore/);
+  assert.match(script, /actorReferences/);
+  assert.match(script, /referenceRequirement/);
+  assert.match(script, /outputRequirement/);
+  assert.match(script, /data-cast-replacement-file/);
+  assert.match(script, /data-interactive-cast-generate/);
+  assert.match(script, /generateInteractiveCastSegment/);
+  assert.match(script, /Anteprima rapida/);
+  assert.match(script, /Risoluzione LTX/);
+  assert.match(script, /refreshInteractiveCastProjects, 3500/);
+  assert.match(server, /segments\/:segmentId\/generate/);
+  assert.match(server, /startInteractiveCastSegmentGeneration/);
+  assert.match(server, /queueInteractiveCastAnchorRefine/);
+  assert.match(server, /queueInteractiveCastLtxSegment/);
+  assert.match(server, /advanceInteractiveCastGeneration/);
+  assert.match(script, /interactive-cast-audio-tasks/);
+  assert.match(script, /Audio stems fallback/);
+  assert.match(script, /audioAnalysis\.stems/);
+  assert.match(script, /data-cast-dialogue-audio-file/);
+  assert.match(script, /data-interactive-cast-dialogue-synthesize/);
+  assert.match(script, /synthesizeInteractiveCastDialogue/);
+  assert.match(script, /\/api\/interactive-cast\/projects\/\$\{projectId\}\/dialogue\/\$\{eventId\}\/synthesize/);
+  assert.match(script, /Lip-sync tasks/);
+  assert.match(script, /lipSyncTasks/);
+  assert.match(script, /sourceClipRelativePath/);
+  assert.match(script, /dialogueAudioRelativePath/);
+  assert.match(script, /data-interactive-cast-lipsync/);
+  assert.match(script, /applyInteractiveCastLipSync/);
+  assert.match(script, /\/api\/interactive-cast\/projects\/\$\{projectId\}\/segments\/\$\{segmentId\}\/lipsync/);
+  assert.match(script, /data-interactive-cast-identity/);
+  assert.match(script, /runInteractiveCastIdentityCheck/);
+  assert.match(script, /\/api\/interactive-cast\/projects\/\$\{projectId\}\/segments\/\$\{segmentId\}\/identity-check/);
+  assert.match(script, /data-interactive-cast-audio-remix/);
+  assert.match(script, /\/api\/interactive-cast\/projects\/\$\{projectId\}\/dialogue\/\$\{eventId\}\/audio/);
+  assert.match(script, /\/api\/interactive-cast\/projects\/\$\{projectId\}\/audio-remix/);
+  assert.match(html, /interactive-cast-capabilities/);
+  assert.match(html, /Capability matrix/);
+  assert.match(script, /renderInteractiveCastCapabilities/);
+  assert.match(script, /refreshInteractiveCastCapabilities/);
+  assert.match(script, /\/api\/interactive-cast\/capabilities/);
+  assert.match(script, /Voice cloning/);
+  assert.match(script, /Lip-sync/);
+  assert.match(script, /NOT CONFIGURED/);
+  assert.match(styles, /cast-capability\.fallback/);
+  assert.match(styles, /interactive-cast-event/);
+  assert.match(styles, /interactive-cast-actor-reference/);
 });
 
 test("enhanceMainPrompt puo limitare loading e disabled al gruppo corrente", () => {

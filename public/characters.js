@@ -1,3 +1,5 @@
+import { setupUploadPreviews } from "./upload-previews.js";
+
 const state = {
   characters: [],
   selectedId: null,
@@ -312,6 +314,7 @@ $("#reference-grid").addEventListener("click", (event) => {
 });
 
 checkHealth();
+setupUploadPreviews();
 refreshCharacters().catch((error) => {
   $("#character-status").textContent = error.message;
 });

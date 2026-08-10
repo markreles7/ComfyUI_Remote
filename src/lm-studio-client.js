@@ -88,10 +88,17 @@ Prefer an editing contract over a generation prompt: change only what the user a
   videostudio: "Write an LTX 2.3 production prompt for actor replacement or scene composition. Preserve temporal continuity, camera, acting and identity, and describe interactions and dialogue timing precisely.",
 };
 
+const ENGLISH_OUTPUT_RULE = `MANDATORY OUTPUT LANGUAGE:
+Write every enhanced prompt, JSON prompt field, JSON negativePrompt field, globalPrompt, scene prompt and planning field in English, optimized for the target model/workflow.
+Translate the user's request into English even when the user writes in another language.
+Do not output Italian, mixed-language prompt prose, headings or explanations.
+Only user-provided literal dialogue, on-screen text, labels, names or quoted phrases may remain in their original language when the workflow needs exact preservation; all surrounding prompt instructions must still be English.`;
+
 const DEFAULT_INSTRUCTIONS = `You are the local prompt director for ComfyUI Remote.
 Convert the user's short idea into one production-ready English generation prompt for the requested model.
 Use the supplied image as visual evidence when present. Do not invent a conflicting camera angle, subject identity, layout or background.
 For editing, distinguish the requested change from the elements that must remain unchanged.
+${ENGLISH_OUTPUT_RULE}
 Return only the final prompt. Do not add headings, markdown, quotes, explanations, analysis, negative prompts or alternatives.`;
 
 const NEGATIVE_PROMPT_SCHEMA_RULE = `Return only strict JSON with this exact schema:
@@ -445,6 +452,7 @@ export class LmStudioClient {
       const videoTarget = isVideoTarget(target);
       const systemPrompt = [
         this.instructions,
+        ENGLISH_OUTPUT_RULE,
         "Model-specific direction:",
         targetRule,
         includeNegative ? (videoTarget ? VIDEO_NEGATIVE_PROMPT_SCHEMA_RULE : NEGATIVE_PROMPT_SCHEMA_RULE) : "",
@@ -550,6 +558,8 @@ export class LmStudioClient {
         body: JSON.stringify({
           model: loaded.instanceId,
           system_prompt: `${this.instructions}
+
+${ENGLISH_OUTPUT_RULE}
 
 Model-specific direction:
 You are writing prompts for LTX 2.3 Director, not a single normal LTX prompt.
@@ -657,6 +667,8 @@ Do not include a negative prompt, markdown, explanations, bullets outside JSON, 
           model: loaded.instanceId,
           system_prompt: `${this.instructions}
 
+${ENGLISH_OUTPUT_RULE}
+
 Model-specific direction:
 You are planning a Sequential Story for LTX 2.3 video.
 This is not LTX Director and not Extend. The web app will generate one independent ComfyUI job per scene, purge VRAM between scenes, use a continuity frame from the previous clip, then concatenate final clips.
@@ -687,6 +699,99 @@ No markdown, code fences, comments, explanations or extra keys.`,
       if (!Array.isArray(parsed?.scenes) || parsed.scenes.length !== count) {
         throw new Error("LM Studio ha restituito una scaletta incompleta per la Storia continua.");
       }
+      return {
+        ...parsed,
+        model: loaded.model.display_name || loaded.model.key,
+        modelKey: loaded.model.key,
+        get unloadError() {
+          return unloadError?.message || null;
+        },
+      };
+    } finally {
+      if (loaded?.instanceId) {
+        try {
+          await this.unload(loaded.instanceId);
+        } catch (error) {
+          unloadError = error;
+        }
+      } else {
+        try {
+          await this.unloadConfiguredModelInstances();
+        } catch (error) {
+          unloadError = error;
+        }
+      }
+      if (this.active?.id === lock.id) this.active = null;
+    }
+  }
+
+  async planInteractiveCast({
+    brief,
+    duration = 0,
+    analysis = {},
+    actors = {},
+  } = {}) {
+    const idea = String(brief || "").trim();
+    if (!idea) throw new Error("Scrivi prima cosa deve succedere nella scena Interactive Cast.");
+    const now = Date.now();
+    if (this.active) {
+      const elapsed = now - this.active.startedAt;
+      if (elapsed < this.lockTimeoutMs) {
+        const seconds = Math.max(1, Math.round(elapsed / 1000));
+        throw new Error(`Il Prompt Assistant locale sta già lavorando (${seconds}s). Attendi il risultato corrente.`);
+      }
+    }
+    const lock = {
+      id: `${now}-${Math.random().toString(36).slice(2)}`,
+      startedAt: now,
+      target: "interactive_cast_planner",
+    };
+    this.active = lock;
+    let loaded;
+    let unloadError = null;
+    try {
+      loaded = await this.loadModel(false);
+      const payload = await this.request("/api/v1/chat", {
+        method: "POST",
+        body: JSON.stringify({
+          model: loaded.instanceId,
+          system_prompt: `${this.instructions}
+
+${ENGLISH_OUTPUT_RULE}
+
+Model-specific direction:
+You are planning an Interactive Cast / Scene Dialogue Rewrite job for a hybrid Node + ComfyUI video pipeline.
+The goal is to preserve the original video whenever possible and modify only necessary time windows.
+Return only strict JSON with this exact schema:
+{"actors":{"original":[{"actorId":"original-1","label":"...","notes":"..."}],"added":[{"actorId":"new-actor-1","name":"...","entranceTime":3.0,"description":"..."}]},"dialogueEvents":[{"speaker":"New Actor","start":3.0,"end":5.0,"dialogue":"...","action":"...","preserveVoice":true,"preserveFace":true,"reaction":"none","mode":"generative"}],"notes":["..."]}
+All fields must be written in English except literal spoken dialogue, which must preserve the user's exact wording and language when provided.
+Use seconds as numbers. Do not invent impossible edits outside the video duration.
+For original actors, prefer preserveVoice true and preserveFace true.
+Use reaction values only from: none, look, speak, move.
+Use mode values only from: audioOnly, lipSyncOnly, composite, generative.
+Choose the least destructive mode: audioOnly for offscreen/audio-only changes, lipSyncOnly for original actor dialogue replacement, composite for regional visual reactions or foreground overlays, generative only for new actor insertion or full-scene/body changes.
+Do not include markdown, code fences, comments, explanations, negative prompts or extra keys.`,
+          input: [
+            `Video duration: ${Number(duration || analysis.duration || 0).toFixed(2)} seconds`,
+            `Video analysis: ${JSON.stringify({
+              width: analysis.width,
+              height: analysis.height,
+              fps: analysis.fps,
+              codec: analysis.codec,
+              audioStreams: analysis.audioStreams?.length || 0,
+            })}`,
+            `Known original actors: ${JSON.stringify(actors.original || [])}`,
+            `Known added actors: ${JSON.stringify(actors.added || [])}`,
+            `User brief: ${idea}`,
+          ].join("\n"),
+          reasoning: "off",
+          temperature: Math.min(this.temperature, 0.3),
+          max_output_tokens: Math.max(this.maxTokens, 1200),
+          stream: false,
+          store: false,
+        }),
+      }, this.inferenceTimeoutMs);
+      const parsed = parseJsonCompletion(payload);
       return {
         ...parsed,
         model: loaded.model.display_name || loaded.model.key,

@@ -1,5 +1,6 @@
 import { enhanceMainPrompt } from "./prompt-assistant.js";
 import { consumeGuidedHandoff, guidedTokenFromLocation, setInputFile } from "./guided-handoff.js";
+import { setupUploadPreviews } from "./upload-previews.js";
 
 const state = {
   config: null,
@@ -10,10 +11,16 @@ const state = {
   ],
   loras: [],
   sequentialStories: [],
+  interactiveCastProjects: [],
+  interactiveCastEvents: [
+    { speaker: "New Actor", start: 3, end: 5, dialogue: "", action: "enters the scene", reaction: "none", mode: "" },
+    { speaker: "Original Actor 1", start: 5, end: 7, dialogue: "", action: "turns and answers", reaction: "speak", mode: "" },
+  ],
   sequentialPlan: null,
   actorFrame: null,
   actorMask: null,
   actorDrawing: false,
+  projectsRenderKey: "",
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -150,6 +157,13 @@ function updateReadiness() {
     detail = ready
       ? `Ingredients installato${videoConfig.capabilities.lipdub.available ? " · LipDub disponibile" : " · LipDub mancante"}`
       : "Manca la IC-LoRA Ingredients oppure uno dei nodi LTX richiesti.";
+  } else if (selectedMode === "interactiveCast") {
+    const cast = state.config.interactiveCast;
+    ready = Boolean(cast?.matrix?.videoAnalysis && cast?.matrix?.temporalSplice);
+    title = ready ? "Interactive Cast pronto" : "Interactive Cast richiede FFmpeg/FFprobe";
+    detail = ready
+      ? `Pipeline ibrida pronta: tracking, timeline, anchor e segmenti LTX automatici${cast?.matrix?.voiceClone ? " · voce locale" : ""}${cast?.matrix?.lipSync ? " · lip-sync locale" : ""}. Le capability opzionali sono indicate nella matrice.`
+      : "Installa FFmpeg/FFprobe nel PATH prima di creare progetti Interactive Cast.";
   } else if (selectedMode === "sceneTransform") {
     ready = videoConfig.capabilities.unionControl.available;
     title = ready ? "Scene Transform Union Control pronto" : "Union Control non disponibile";
@@ -209,11 +223,79 @@ function updateReadiness() {
   $("#video-studio-submit").disabled = !ready;
 }
 
+function castStatusClass(status) {
+  const text = String(status || "NOT CONFIGURED").toUpperCase();
+  if (text.includes("READY") || text.includes("WORKING")) return "ready";
+  if (text.includes("FALLBACK")) return "fallback";
+  return "not-configured";
+}
+
+function renderInteractiveCastCapabilities() {
+  const host = $("#interactive-cast-capabilities");
+  if (!host) return;
+  const cast = state.config?.interactiveCast || {};
+  const statuses = cast.statuses || {};
+  const matrix = cast.matrix || {};
+  const rows = [
+    ["Video analysis", statuses.videoAnalysis, matrix.videoAnalysis],
+    ["Actor tracking", statuses.personTracking, matrix.actorTracking],
+    ["Scene segmentation", statuses.sceneSegmentation, true],
+    ["Audio extraction", statuses.audioExtraction, matrix.audioSeparation],
+    ["Source separation", statuses.sourceSeparation, matrix.audioSeparation],
+    ["Speaker diarization", statuses.speakerDiarization, matrix.diarization],
+    ["Voice cloning", statuses.voiceCloning, matrix.voiceClone],
+    ["Lip-sync", statuses.lipSync, matrix.lipSync],
+    ["Character insertion", statuses.ltxSegmentGeneration, matrix.characterInsertion],
+    ["Identity check", statuses.identityCheck, matrix.identityCheck],
+    ["Masked compositing", statuses.maskedCompositing || statuses.compositing, matrix.maskedCompositing],
+    ["Audio remix", statuses.audioRemix, matrix.audioSeparation],
+    ["Temporal splice", statuses.temporalSplice || (matrix.temporalSplice ? "READY" : "NOT CONFIGURED"), matrix.temporalSplice],
+    ["Final encode", statuses.finalEncode || (matrix.finalEncode ? "READY" : "NOT CONFIGURED"), matrix.finalEncode],
+  ];
+  const gpu = cast.hardware?.gpu;
+  const disk = cast.hardware?.disk;
+  const comfyTorch = cast.runtimes?.comfyPython?.torch;
+  host.innerHTML = `
+    <div class="interactive-cast-capability-grid">
+      ${rows.map(([label, status, available]) => {
+        const displayStatus = status || (available ? "READY" : "NOT CONFIGURED");
+        return `<span class="cast-capability ${castStatusClass(displayStatus)}"><b>${escapeHtml(label)}</b><em>${escapeHtml(displayStatus)}</em></span>`;
+      }).join("")}
+    </div>
+    <div class="interactive-cast-runtime-strip">
+      <small><b>GPU</b> ${escapeHtml(gpu?.available ? `${gpu.name || "NVIDIA"} · ${gpu.vramMb || "?"} MB VRAM` : "NOT CONFIGURED")}</small>
+      <small><b>Disco tool</b> ${escapeHtml(disk?.available ? `${disk.freeGb} GB liberi` : "n/d")}</small>
+      <small><b>Comfy Torch</b> ${escapeHtml(comfyTorch?.cudaAvailable ? `${comfyTorch.torch} · CUDA ${comfyTorch.cudaVersion}` : "NOT CONFIGURED")}</small>
+    </div>
+  `;
+}
+
+async function refreshInteractiveCastCapabilities(button = null) {
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Aggiorno...";
+  }
+  try {
+    state.config.interactiveCast = await api("/api/interactive-cast/capabilities");
+    renderInteractiveCastCapabilities();
+    updateReadiness();
+    if (button) showToast("Capability Interactive Cast aggiornate.");
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = "Aggiorna capability";
+    }
+  }
+}
+
 function updateMode() {
   const selected = mode();
   const sections = {
     actorReplacement: "#actor-replacement-fields",
     interactiveScene: "#interactive-scene-fields",
+    interactiveCast: "#interactive-cast-fields",
     sceneTransform: "#scene-transform-fields",
     retake: "#retake-fields",
     extend: "#extend-fields",
@@ -235,6 +317,8 @@ function updateMode() {
     control.disabled = !generative;
   });
   $("#video-studio-submit").classList.toggle("hidden", selected === "sequentialStory");
+  $("#video-studio-submit").classList.toggle("hidden", ["sequentialStory", "interactiveCast"].includes(selected));
+  renderInteractiveCastCapabilities();
   updateReadiness();
 }
 
@@ -368,6 +452,22 @@ function generationMedia(generation) {
   return `<div class="video-stage-placeholder">${generation.status === "error" ? "Errore" : `${generation.progress || 0}%`}</div>`;
 }
 
+function projectsRenderKey(projects) {
+  return JSON.stringify((projects || []).map((project) => ({
+    id: project.id,
+    status: project.status,
+    archived: Boolean(project.archived),
+    updatedAt: project.updatedAt || "",
+    generations: (project.generations || []).map((generation) => ({
+      id: generation.id,
+      status: generation.status,
+      progress: generation.progress || 0,
+      error: generation.error || "",
+      videos: (generation.videos || []).map((file) => `${file.type || ""}/${file.subfolder || ""}/${file.filename || ""}`),
+    })),
+  })));
+}
+
 function statusLabel(status) {
   return {
     queued: "In coda",
@@ -379,6 +479,9 @@ function statusLabel(status) {
 }
 
 function renderProjects() {
+  const renderKey = projectsRenderKey(state.projects);
+  if (renderKey === state.projectsRenderKey) return;
+  state.projectsRenderKey = renderKey;
   $("#video-studio-empty").classList.toggle("hidden", state.projects.length > 0);
   $("#video-studio-projects").innerHTML = state.projects.map((project) => {
     const completedVideo = [...(project.generations || [])].reverse().find((item) =>
@@ -410,6 +513,10 @@ function renderProjects() {
             Applica / correggi dialogo e LipDub
           </button>
         ` : ""}
+        <div class="video-project-actions">
+          ${!active ? `<button class="chip-button" type="button" data-video-project-archive="${escapeHtml(project.id)}">Nascondi</button>` : ""}
+          ${!active ? `<button class="chip-button danger-action" type="button" data-video-project-delete="${escapeHtml(project.id)}">Elimina file</button>` : ""}
+        </div>
       </article>
     `;
   }).join("");
@@ -417,6 +524,7 @@ function renderProjects() {
 
 function sequentialSettings() {
   return {
+    inputMode: $("#sequentialInputMode").value,
     workflowId: $("#sequentialWorkflowId").value,
     quality: $("#sequentialQuality").value,
     resolution: $("#studioResolution").value,
@@ -447,6 +555,11 @@ function sequentialSettings() {
     lockBody: $("#videoCharacterLockBody").value,
     lockOutfit: $("#videoCharacterLockOutfit").value,
   };
+}
+
+function syncSequentialInputMode() {
+  const imageMode = $("#sequentialInputMode")?.value === "image";
+  $("#sequential-initial-image-field")?.classList.toggle("hidden", !imageMode);
 }
 
 function sceneStatusLabel(status) {
@@ -564,15 +677,34 @@ async function startSequentialStory() {
     status.textContent = "Genera o inserisci una scaletta prima di avviare.";
     return;
   }
+  const settings = sequentialSettings();
+  const initialImage = $("#sequentialInitialImage")?.files?.[0] || null;
+  if (settings.inputMode === "image" && !initialImage) {
+    status.textContent = "Carica un fotogramma iniziale per usare Immagine → Video.";
+    showToast("Carica il fotogramma iniziale.");
+    return;
+  }
   const button = $("#sequential-start-button");
   button.disabled = true;
   status.textContent = "Creo il progetto persistente e avvio la sequenza...";
   try {
-    const create = await jsonApi("/api/video-studio/sequential-story", {
+    let create;
+    const body = {
       title: $("#videoProjectName").value || state.sequentialPlan.title || "Storia continua",
       plan: state.sequentialPlan,
-      settings: sequentialSettings(),
-    });
+      settings,
+    };
+    if (initialImage) {
+      const form = new FormData();
+      form.set("payload", JSON.stringify(body));
+      form.set("initialImage", initialImage);
+      create = await api("/api/video-studio/sequential-story", {
+        method: "POST",
+        body: form,
+      });
+    } else {
+      create = await jsonApi("/api/video-studio/sequential-story", body);
+    }
     const started = await api(`/api/video-studio/sequential-story/${create.project.id}/start`, { method: "POST" });
     state.sequentialStories = [started.project, ...state.sequentialStories.filter((item) => item.id !== started.project.id)];
     renderSequentialStories();
@@ -635,6 +767,703 @@ function renderSequentialStories() {
       </article>
     `;
   }).join("");
+}
+
+function renderInteractiveCastEvents() {
+  $("#interactive-cast-events").innerHTML = state.interactiveCastEvents.map((event, index) => `
+    <div class="dialogue-row interactive-cast-event" data-interactive-cast-event="${index}">
+      <span>${String(index + 1).padStart(2, "0")}</span>
+      <input class="cast-speaker" aria-label="Speaker ${index + 1}" value="${escapeHtml(event.speaker)}" placeholder="Speaker">
+      <input class="cast-start" aria-label="Start ${index + 1}" type="number" min="0" step=".1" value="${Number(event.start ?? 0)}">
+      <input class="cast-end" aria-label="End ${index + 1}" type="number" min="0" step=".1" value="${Number(event.end ?? 2)}">
+      <input class="cast-dialogue" aria-label="Dialogo ${index + 1}" value="${escapeHtml(event.dialogue)}" placeholder="Dialogue line">
+      <input class="cast-action" aria-label="Azione ${index + 1}" value="${escapeHtml(event.action)}" placeholder="Action">
+      <select class="cast-reaction" aria-label="Reazione ${index + 1}">
+        ${["none", "look", "speak", "move"].map((value) => `<option value="${value}" ${value === event.reaction ? "selected" : ""}>${value}</option>`).join("")}
+      </select>
+      <select class="cast-mode" aria-label="Modo edit ${index + 1}">
+        ${[
+          ["", "Auto"],
+          ["audioOnly", "Audio"],
+          ["lipSyncOnly", "Lip-sync"],
+          ["composite", "Composite"],
+          ["generative", "Generative"],
+        ].map(([value, label]) => `<option value="${value}" ${value === (event.mode || "") ? "selected" : ""}>${label}</option>`).join("")}
+      </select>
+      <button type="button" aria-label="Rimuovi evento ${index + 1}" data-remove-cast-event="${index}">×</button>
+    </div>
+  `).join("");
+}
+
+function syncInteractiveCastEvents() {
+  state.interactiveCastEvents = [...document.querySelectorAll("[data-interactive-cast-event]")].map((row) => ({
+    speaker: row.querySelector(".cast-speaker").value.trim(),
+    start: Number(row.querySelector(".cast-start").value || 0),
+    end: Number(row.querySelector(".cast-end").value || 0),
+    dialogue: row.querySelector(".cast-dialogue").value.trim(),
+    action: row.querySelector(".cast-action").value.trim(),
+    reaction: row.querySelector(".cast-reaction").value,
+    mode: row.querySelector(".cast-mode").value,
+    preserveVoice: true,
+    preserveFace: true,
+  }));
+}
+
+function renderInteractiveCastProjects() {
+  const assetUrl = (project, relativePath) =>
+    `/api/interactive-cast/projects/${encodeURIComponent(project.id)}/assets/${String(relativePath || "").split("/").map(encodeURIComponent).join("/")}`;
+  const taskForSegment = (project, segmentId) =>
+    (project.renderPackage?.segmentTasks?.tasks || []).find((task) => task.segmentId === segmentId) || null;
+  $("#interactive-cast-empty").classList.toggle("hidden", state.interactiveCastProjects.length > 0);
+  $("#interactive-cast-projects").innerHTML = state.interactiveCastProjects.map((project) => `
+    <article class="video-project-card interactive-cast-card">
+      <header>
+        <div><h3>${escapeHtml(project.title)}</h3><small>Interactive Cast · ${escapeHtml(project.status)}</small></div>
+        <div class="video-project-card-actions">
+          <span class="status-pill status-${escapeHtml(project.status)}">${escapeHtml(project.status)}</span>
+          <button class="chip-button danger-action" type="button" data-interactive-cast-delete="${escapeHtml(project.id)}">Elimina</button>
+        </div>
+      </header>
+      <p>${escapeHtml(project.sourceVideo?.originalName || "video sorgente")}</p>
+      <div class="cast-metrics">
+        <span>${escapeHtml(project.analysis?.width || 0)}×${escapeHtml(project.analysis?.height || 0)}</span>
+        <span>${Number(project.analysis?.duration || 0).toFixed(1)}s</span>
+        <span>${Number(project.analysis?.fps || 0).toFixed(2)} fps</span>
+        <span>${escapeHtml(project.analysis?.codec || "codec n/d")}</span>
+      </div>
+      ${project.stages ? `
+        <div class="interactive-cast-stages">
+          ${Object.entries(project.stages).map(([stage, info]) => `
+            <span class="interactive-cast-stage stage-${escapeHtml(info.status || "unknown")}">
+              <b>${escapeHtml(stage)}</b>
+              ${escapeHtml(info.status || "unknown")}
+              ${info.error ? `<em>${escapeHtml(info.error)}</em>` : ""}
+            </span>
+          `).join("")}
+        </div>
+      ` : ""}
+      ${(project.actors?.original || []).length ? `
+        <div class="interactive-cast-actors">
+          <small><b>Attori originali</b> assegna nomi interni alla clip</small>
+          ${(project.actors.original || []).map((actor) => `
+            <div class="interactive-cast-actor-row" data-cast-actor="${escapeHtml(project.id)}:${escapeHtml(actor.actorId)}">
+              <span>${escapeHtml(actor.actorId)}</span>
+              <input data-cast-actor-label value="${escapeHtml(actor.label || actor.actorId)}" placeholder="Nome attore">
+              <input data-cast-actor-role value="${escapeHtml(actor.role || "")}" placeholder="Ruolo/note brevi">
+            </div>
+          `).join("")}
+          <button class="chip-button compact" type="button" data-interactive-cast-actors="${escapeHtml(project.id)}">Salva attori</button>
+        </div>
+      ` : ""}
+      ${(project.actors?.added || []).some((actor) => actor.reference?.relativePath) ? `
+        <div class="interactive-cast-frames">
+          ${(project.actors.added || []).filter((actor) => actor.reference?.relativePath).map((actor) => `
+            <figure>
+              <img src="${assetUrl(project, actor.reference.relativePath)}" alt="${escapeHtml(actor.name || "New Actor")} reference">
+              <figcaption>${escapeHtml(actor.name || "New Actor")} · reference temporanea</figcaption>
+            </figure>
+          `).join("")}
+        </div>
+      ` : ""}
+      ${(project.artifacts?.frames || []).some((frame) => frame.relativePath) ? `
+        <div class="interactive-cast-frames">
+          ${(project.artifacts.frames || []).filter((frame) => frame.relativePath).map((frame) => `
+            <figure>
+              <img src="${assetUrl(project, frame.relativePath)}" alt="${escapeHtml(frame.role)} frame">
+              <figcaption>${escapeHtml(frame.role)} · ${Number(frame.time || 0).toFixed(2)}s</figcaption>
+            </figure>
+          `).join("")}
+        </div>
+      ` : ""}
+      ${project.artifacts?.audio?.relativePath ? `
+        <audio class="interactive-cast-audio" controls preload="metadata" src="${assetUrl(project, project.artifacts.audio.relativePath)}"></audio>
+      ` : ""}
+      ${(project.audioAnalysis?.stems || []).some((stem) => stem.relativePath) ? `
+        <div class="interactive-cast-audio-tasks">
+          <small><b>Audio stems fallback</b> ${escapeHtml(project.audioAnalysis.sourceSeparation || "FALLBACK")}</small>
+          ${(project.audioAnalysis.stems || []).filter((stem) => stem.relativePath).map((stem) => `
+            <div class="interactive-cast-audio-task ready">
+              <small><b>${escapeHtml(stem.role)}</b> ${escapeHtml(stem.method || "ffmpeg")}</small>
+              <audio controls preload="metadata" src="${assetUrl(project, stem.relativePath)}"></audio>
+              <em>${escapeHtml(stem.note || "Stem fallback")}</em>
+            </div>
+          `).join("")}
+        </div>
+      ` : ""}
+      ${(project.audioAnalysis?.speakers || []).length ? `
+        <div class="interactive-cast-speakers">
+          <small><b>Speaker diarization</b> ${escapeHtml(project.audioAnalysis.diarization || "FALLBACK")} · correggibile</small>
+          ${(project.audioAnalysis.speakers || []).map((speaker, index) => `
+            <div class="interactive-cast-speaker-row" data-cast-speaker="${escapeHtml(project.id)}:${index}">
+              <input data-cast-speaker-id value="${escapeHtml(speaker.speaker || `SPEAKER_${String(index).padStart(2, "0")}`)}" aria-label="Speaker ${index + 1}">
+              <input data-cast-speaker-start type="number" step=".1" min="0" value="${Number(speaker.start || 0)}" aria-label="Start speaker ${index + 1}">
+              <input data-cast-speaker-end type="number" step=".1" min="0" value="${Number(speaker.end || 0)}" aria-label="End speaker ${index + 1}">
+              <select data-cast-speaker-actor aria-label="Attore speaker ${index + 1}">
+                <option value="">Non assegnato</option>
+                ${(project.actors?.original || []).map((actor) =>
+                  `<option value="${escapeHtml(actor.actorId)}" ${actor.actorId === speaker.assignedActorId ? "selected" : ""}>${escapeHtml(actor.label || actor.actorId)}</option>`
+                ).join("")}
+              </select>
+            </div>
+          `).join("")}
+          <button class="chip-button compact" type="button" data-interactive-cast-speakers="${escapeHtml(project.id)}">Salva speaker</button>
+        </div>
+      ` : ""}
+      ${(project.sceneCuts?.cuts || []).length ? `
+        <div class="cast-window-list">
+          ${(project.sceneCuts.cuts || []).map((cut) => `<small><b>Scene</b> ${Number(cut.start || 0).toFixed(2)}-${Number(cut.end || 0).toFixed(2)} · ${escapeHtml(cut.reason)}</small>`).join("")}
+        </div>
+      ` : ""}
+      ${(project.editWindows || []).length ? `
+        <div class="cast-window-list">
+          ${project.editWindows.map((window) => `<small><b>${window.start.toFixed(2)}-${window.end.toFixed(2)}</b> ${escapeHtml(window.mode)} · ${escapeHtml(window.reason)}</small>`).join("")}
+        </div>
+      ` : `<p class="hint">Analisi pronta. Aggiungi interventi per creare il piano edit windows.</p>`}
+      ${project.renderPackage ? `
+        <div class="cast-window-list">
+          <small><b>Render package</b> ${escapeHtml(project.renderPackage.status)} · ${Number(project.renderPackage.segments?.length || 0)} segmenti</small>
+          ${(project.renderPackage.segments || []).filter((segment) => segment.requiredGenerated).map((segment) => {
+            const task = taskForSegment(project, segment.id);
+            const anchor = task?.anchorFrame?.relativePath ? task.anchorFrame : null;
+            const identityReport = project.renderPackage.identityReports?.[segment.id] || null;
+            return `
+              <div class="interactive-cast-segment-slot ${segment.status === "ready" ? "ready" : ""}">
+                <small><b>${segment.status === "ready" ? "AI ready" : "Missing AI"}</b> ${Number(segment.start || 0).toFixed(2)}-${Number(segment.end || 0).toFixed(2)} · ${escapeHtml(segment.mode)} · ${escapeHtml(segment.reason)}</small>
+                ${anchor ? `
+                  <figure class="interactive-cast-task-anchor">
+                    <img src="${assetUrl(project, anchor.relativePath)}" alt="Anchor ${escapeHtml(segment.id)}">
+                    <figcaption>Anchor ${Number(anchor.time || 0).toFixed(2)}s</figcaption>
+                  </figure>
+                ` : ""}
+                ${task ? `
+                  <details class="interactive-cast-task">
+                    <summary>Task ${escapeHtml(task.requiredEngine)}</summary>
+                    ${task.anchorWorkflow ? `<p><b>Anchor workflow</b> ${escapeHtml(task.anchorWorkflow.label || task.anchorWorkflow.id)}</p>` : ""}
+                    ${task.anchorRequirement ? `<p>${escapeHtml(task.anchorRequirement)}</p>` : ""}
+                    <label>Prompt segmento<textarea readonly rows="4">${escapeHtml(task.prompt)}</textarea></label>
+                    <label>Negative prompt<textarea readonly rows="3">${escapeHtml(task.negativePrompt)}</textarea></label>
+                    ${(task.actorReferences || []).length ? `
+                      <div class="interactive-cast-actor-references">
+                        <small><b>Reference nuovo attore</b> ${Number(task.actorReferences.length)} allegata/e al task</small>
+                        ${task.actorReferences.map((actor) => `
+                          <div class="interactive-cast-actor-reference">
+                            <b>${escapeHtml(actor.name || actor.actorId || "New Actor")}</b>
+                            <span>${escapeHtml(actor.type || "reference")} · ${escapeHtml(actor.characterPack?.status || actor.reference?.originalName || "identity prompt")}</span>
+                            ${actor.description ? `<em>${escapeHtml(actor.description)}</em>` : ""}
+                            ${actor.identityHints?.face ? `<small>Face: ${escapeHtml(actor.identityHints.face)}</small>` : ""}
+                            ${actor.identityHints?.hair ? `<small>Hair: ${escapeHtml(actor.identityHints.hair)}</small>` : ""}
+                            ${actor.identityHints?.body ? `<small>Body: ${escapeHtml(actor.identityHints.body)}</small>` : ""}
+                          </div>
+                        `).join("")}
+                      </div>
+                    ` : ""}
+                    <p>${escapeHtml(task.referenceRequirement || "")}</p>
+                    <p>${escapeHtml(task.outputRequirement)}</p>
+                  </details>
+                ` : ""}
+                ${task && segment.mode === "generative" && segment.status !== "ready" ? `
+                  <div class="interactive-cast-generate-controls">
+                    <label class="compact-field">Qualità
+                      <select data-cast-generate-quality="${escapeHtml(project.id)}:${escapeHtml(segment.id)}">
+                        <option value="preview">Anteprima rapida</option>
+                        <option value="max">Massima</option>
+                      </select>
+                    </label>
+                    <label class="compact-field">Risoluzione LTX
+                      <select data-cast-generate-resolution="${escapeHtml(project.id)}:${escapeHtml(segment.id)}">
+                        <option value="source">Automatica dalla sorgente</option>
+                        <option value="360p">360p</option>
+                        <option value="480p">480p</option>
+                        <option value="720p">720p</option>
+                      </select>
+                    </label>
+                    <button class="chip-button compact" type="button"
+                      data-interactive-cast-generate="${escapeHtml(project.id)}:${escapeHtml(segment.id)}"
+                      ${["queued", "running"].includes(task.generation?.status) ? "disabled" : ""}>
+                      ${["queued", "running"].includes(task.generation?.status)
+                        ? `In esecuzione · ${escapeHtml(task.generation?.phase || "anchor")}`
+                        : task.generation?.status === "failed" ? "Riprova generazione" : "Genera automaticamente"}
+                    </button>
+                  </div>
+                  ${task.generation?.generationId ? `<small><b>Job</b> ${escapeHtml(task.generation.generationId)} · ${escapeHtml(task.generation.status || "queued")}</small>` : ""}
+                  ${task.generation?.error ? `<em class="video-stage-error">${escapeHtml(task.generation.error)}</em>` : ""}
+                ` : ""}
+                ${segment.status === "ready" && segment.replacementRelativePath
+                  ? `<video controls preload="metadata" src="${assetUrl(project, segment.replacementRelativePath)}"></video>
+                     <button class="chip-button compact" type="button" data-interactive-cast-identity="${escapeHtml(project.id)}:${escapeHtml(segment.id)}">Identity check</button>`
+                  : segment.mode === "composite"
+                    ? `<div class="interactive-cast-composite-inputs">
+                         <label class="compact-file"><input type="file" accept="video/*" data-cast-composite-overlay-file="${escapeHtml(project.id)}:${escapeHtml(segment.id)}"><span>Overlay video</span></label>
+                         <label class="compact-file"><input type="file" accept="image/png,image/jpeg,image/webp" data-cast-composite-mask-file="${escapeHtml(project.id)}:${escapeHtml(segment.id)}"><span>Maschera B/N</span></label>
+                         <label class="compact-field">Feather<input type="number" min="0" max="40" step="1" value="7" data-cast-composite-feather="${escapeHtml(project.id)}:${escapeHtml(segment.id)}"></label>
+                       </div>
+                       <button class="chip-button compact" type="button" data-interactive-cast-composite="${escapeHtml(project.id)}:${escapeHtml(segment.id)}">Composita</button>
+                       <label class="compact-file"><input type="file" accept="video/*" data-cast-replacement-file="${escapeHtml(project.id)}:${escapeHtml(segment.id)}"><span>Oppure carica segmento finale</span></label>
+                       <button class="chip-button compact" type="button" data-interactive-cast-replacement="${escapeHtml(project.id)}:${escapeHtml(segment.id)}">Aggancia finale</button>`
+                    : `<label class="compact-file"><input type="file" accept="video/*" data-cast-replacement-file="${escapeHtml(project.id)}:${escapeHtml(segment.id)}"><span>Carica segmento</span></label>
+                       <button class="chip-button compact" type="button" data-interactive-cast-replacement="${escapeHtml(project.id)}:${escapeHtml(segment.id)}">Aggancia</button>`}
+                ${identityReport ? `
+                  <div class="interactive-cast-identity-report status-${escapeHtml(identityReport.status || "unknown")}">
+                    <small><b>Identity</b> ${escapeHtml(identityReport.status || "unknown")} · avg ${escapeHtml(identityReport.averageSimilarity ?? "n/d")} · min ${escapeHtml(identityReport.minSimilarity ?? "n/d")}</small>
+                    ${identityReport.warning ? `<em>${escapeHtml(identityReport.warning)}</em>` : ""}
+                  </div>
+                ` : ""}
+              </div>
+            `;
+          }).join("")}
+          ${(project.renderPackage.lipSyncTasks?.tasks || []).length ? `
+            <div class="interactive-cast-audio-tasks interactive-cast-lipsync-tasks">
+              <small><b>Lip-sync tasks</b> ${Number(project.renderPackage.lipSyncTasks.readiness?.missing?.length || 0)} clip mancanti</small>
+              ${(project.renderPackage.lipSyncTasks.tasks || []).map((task) => `
+                <div class="interactive-cast-audio-task ${task.status === "ready" ? "ready" : ""}">
+                  <small><b>${task.status === "ready" ? "Lip-sync ready" : "Missing lip-sync"}</b> ${Number(task.start || 0).toFixed(2)}-${Number(task.end || 0).toFixed(2)} · ${escapeHtml(task.speaker)}</small>
+                  ${task.sourceClipRelativePath ? `
+                    <label>Source clip preservata<video controls preload="metadata" src="${assetUrl(project, task.sourceClipRelativePath)}"></video></label>
+                  ` : ""}
+                  ${task.dialogueAudioRelativePath ? `
+                    <label>Audio guida<audio controls preload="metadata" src="${assetUrl(project, task.dialogueAudioRelativePath)}"></audio></label>
+                  ` : ""}
+                  ${task.status === "ready"
+                    ? ""
+                    : `<button class="chip-button compact" type="button" data-interactive-cast-lipsync="${escapeHtml(project.id)}:${escapeHtml(task.segmentId)}">Applica lip-sync</button>`}
+                  ${task.synthesis?.error ? `<em class="video-stage-error">${escapeHtml(task.synthesis.error)}</em>` : ""}
+                  <em>${escapeHtml(task.instructions || task.outputRequirement || "Upload the finished lip-sync MP4 into the segment slot.")}</em>
+                </div>
+              `).join("")}
+            </div>
+          ` : ""}
+          ${(project.renderPackage.audioTasks?.tasks || []).length ? `
+            <div class="interactive-cast-audio-tasks">
+              <small><b>Dialogue audio</b> ${Number(project.renderPackage.audioTasks.readiness?.missing?.length || 0)} battute mancanti</small>
+              ${(project.renderPackage.audioTasks.tasks || []).map((task) => `
+                <div class="interactive-cast-audio-task ${task.status === "ready" ? "ready" : ""}">
+                  <small><b>${task.status === "ready" ? "Voice ready" : "Missing voice"}</b> ${Number(task.start || 0).toFixed(2)}-${Number(task.end || 0).toFixed(2)} · ${escapeHtml(task.speaker)}</small>
+                  <p>${escapeHtml(task.dialogue)}</p>
+                  ${task.referenceAudio?.relativePath ? `
+                    <label>Reference voce<audio controls preload="metadata" src="${assetUrl(project, task.referenceAudio.relativePath)}"></audio></label>
+                  ` : ""}
+                  ${task.replacementRelativePath
+                    ? `<label>Battuta pronta<audio controls preload="metadata" src="${assetUrl(project, task.replacementRelativePath)}"></audio></label>`
+                    : `<label class="compact-file"><input type="file" accept="audio/*" data-cast-dialogue-audio-file="${escapeHtml(project.id)}:${escapeHtml(task.eventId)}"><span>Carica battuta audio</span></label>
+                       <button class="chip-button compact" type="button" data-interactive-cast-dialogue-audio="${escapeHtml(project.id)}:${escapeHtml(task.eventId)}">Aggancia audio</button>
+                       <button class="chip-button compact" type="button" data-interactive-cast-dialogue-synthesize="${escapeHtml(project.id)}:${escapeHtml(task.eventId)}">Sintetizza voce</button>`}
+                  ${task.synthesis?.error ? `<em class="video-stage-error">${escapeHtml(task.synthesis.error)}</em>` : ""}
+                  <em>${escapeHtml(task.outputRequirement)}</em>
+                </div>
+              `).join("")}
+            </div>
+          ` : ""}
+        </div>
+      ` : ""}
+      ${(project.editWindows || []).length && !project.renderPackage ? `
+        <button class="chip-button" type="button" data-interactive-cast-segments="${escapeHtml(project.id)}">Prepara segmenti</button>
+      ` : ""}
+      ${project.renderPackage?.audioTasks?.readiness?.ready && !project.outputs?.dialogueRemix ? `
+        <button class="chip-button" type="button" data-interactive-cast-audio-remix="${escapeHtml(project.id)}">Crea audio remix</button>
+      ` : ""}
+      ${project.outputs?.dialogueRemix?.relativePath ? `
+        <audio class="interactive-cast-audio" controls preload="metadata" src="${assetUrl(project, project.outputs.dialogueRemix.relativePath)}"></audio>
+      ` : ""}
+      ${project.renderPackage?.readiness?.ready && !project.outputs?.finalVideo ? `
+        <button class="chip-button" type="button" data-interactive-cast-concat="${escapeHtml(project.id)}">Ricomponi MP4 finale</button>
+      ` : ""}
+      ${project.outputs?.finalVideo?.relativePath ? `
+        <video class="interactive-cast-final" controls preload="metadata" src="${assetUrl(project, project.outputs.finalVideo.relativePath)}"></video>
+      ` : ""}
+      ${(project.warnings || []).map((warning) => `<p class="hint">${escapeHtml(warning)}</p>`).join("")}
+    </article>
+  `).join("");
+  setupUploadPreviews($("#interactive-cast-projects"));
+}
+
+async function refreshInteractiveCastProjects() {
+  try {
+    const payload = await api("/api/interactive-cast/projects");
+    state.interactiveCastProjects = payload.projects || [];
+    renderInteractiveCastProjects();
+  } catch {
+    // Poll non necessario: riproverà al prossimo caricamento.
+  }
+}
+
+async function createInteractiveCastProject() {
+  syncInteractiveCastEvents();
+  const status = $("#interactive-cast-status");
+  const sourceVideo = $("#interactiveCastSourceVideo").files[0];
+  if (!sourceVideo) {
+    status.textContent = "Carica prima il video originale.";
+    showToast("Carica il video originale.");
+    return;
+  }
+  const button = $("#interactive-cast-create-button");
+  button.disabled = true;
+  status.textContent = "Analizzo video e preparo la timeline...";
+  try {
+    const form = new FormData();
+    form.set("sourceVideo", sourceVideo);
+    form.set("title", $("#videoProjectName").value || "Interactive Cast");
+    form.set("newActorName", $("#interactiveCastNewActorName").value || "New Actor");
+    const temporaryReference = $("#interactiveCastTemporaryReference").files?.[0] || null;
+    if (temporaryReference) form.set("temporaryActorReference", temporaryReference);
+    const created = await api("/api/interactive-cast/projects", { method: "POST", body: form });
+    let events = state.interactiveCastEvents;
+    const brief = $("#interactiveCastBrief").value.trim();
+    if (brief && state.config.promptAssistant?.enabled) {
+      status.textContent = "LM Studio sta trasformando il brief in eventi timeline...";
+      try {
+        const assistant = await jsonApi(`/api/interactive-cast/projects/${created.project.id}/assistant-plan`, {
+          brief,
+        });
+        events = assistant.plan.dialogueEvents || events;
+        state.interactiveCastEvents = events;
+        renderInteractiveCastEvents();
+      } catch (error) {
+        status.textContent = `LM Studio non ha creato la timeline (${error.message}); uso gli eventi manuali.`;
+      }
+    }
+    const planned = await jsonApi(`/api/interactive-cast/projects/${created.project.id}/plan`, {
+      brief,
+      addedCharacterId: $("#interactiveCastNewActor").value,
+      newActorName: $("#interactiveCastNewActorName").value,
+      anchorWorkflowId: $("#interactiveCastAnchorWorkflow").value,
+      originalActors: created.project.actors?.original || [],
+      dialogueEvents: events,
+      preserveAmbience: true,
+      preserveMusic: true,
+    });
+    state.interactiveCastProjects = [
+      planned.project,
+      ...state.interactiveCastProjects.filter((item) => item.id !== planned.project.id),
+    ];
+    renderInteractiveCastProjects();
+    status.textContent = "Piano Interactive Cast creato. I motori non configurati sono indicati nei fallback.";
+    showToast("Interactive Cast: piano creato.");
+  } catch (error) {
+    status.textContent = error.message;
+    showToast(error.message);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function prepareInteractiveCastSegments(button) {
+  const projectId = button.dataset.interactiveCastSegments;
+  button.disabled = true;
+  button.textContent = "Preparo...";
+  try {
+    const payload = await api(`/api/interactive-cast/projects/${projectId}/prepare-segments`, { method: "POST" });
+    state.interactiveCastProjects = state.interactiveCastProjects.map((item) =>
+      item.id === payload.project.id ? payload.project : item
+    );
+    renderInteractiveCastProjects();
+    showToast(payload.readiness?.ready
+      ? "Segmenti pronti per la ricomposizione."
+      : `Segmenti originali pronti; mancano ${payload.readiness?.missing?.length || 0} slot AI.`);
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = "Prepara segmenti";
+    showToast(error.message);
+  }
+}
+
+async function generateInteractiveCastSegment(button) {
+  const [projectId, segmentId] = button.dataset.interactiveCastGenerate.split(":");
+  const key = `${projectId}:${segmentId}`;
+  const quality = document.querySelector(`[data-cast-generate-quality="${CSS.escape(key)}"]`)?.value || "preview";
+  const resolution = document.querySelector(`[data-cast-generate-resolution="${CSS.escape(key)}"]`)?.value || "source";
+  button.disabled = true;
+  button.textContent = "Accodo anchor...";
+  try {
+    const payload = await jsonApi(`/api/interactive-cast/projects/${projectId}/segments/${segmentId}/generate`, {
+      quality,
+      resolution,
+    });
+    state.interactiveCastProjects = state.interactiveCastProjects.map((item) =>
+      item.id === payload.project.id ? payload.project : item
+    );
+    renderInteractiveCastProjects();
+    showToast("Anchor Interactive Cast in coda; LTX partirà automaticamente dopo la rifinitura.");
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = "Riprova generazione";
+    showToast(error.message);
+  }
+}
+
+async function deleteInteractiveCastProject(button) {
+  const projectId = button.dataset.interactiveCastDelete;
+  const project = state.interactiveCastProjects.find((item) => item.id === projectId);
+  if (!project || !window.confirm(`Eliminare il progetto "${project.title}" e i suoi asset temporanei?`)) return;
+  button.disabled = true;
+  try {
+    await api(`/api/interactive-cast/projects/${projectId}`, { method: "DELETE" });
+    state.interactiveCastProjects = state.interactiveCastProjects.filter((item) => item.id !== projectId);
+    renderInteractiveCastProjects();
+    showToast("Progetto Interactive Cast eliminato.");
+  } catch (error) {
+    button.disabled = false;
+    showToast(error.message);
+  }
+}
+
+function replacementInput(projectId, segmentId) {
+  return document.querySelector(`[data-cast-replacement-file="${CSS.escape(`${projectId}:${segmentId}`)}"]`);
+}
+
+function compositeOverlayInput(projectId, segmentId) {
+  return document.querySelector(`[data-cast-composite-overlay-file="${CSS.escape(`${projectId}:${segmentId}`)}"]`);
+}
+
+function compositeMaskInput(projectId, segmentId) {
+  return document.querySelector(`[data-cast-composite-mask-file="${CSS.escape(`${projectId}:${segmentId}`)}"]`);
+}
+
+function compositeFeatherInput(projectId, segmentId) {
+  return document.querySelector(`[data-cast-composite-feather="${CSS.escape(`${projectId}:${segmentId}`)}"]`);
+}
+
+function collectInteractiveCastActors(projectId) {
+  return [...document.querySelectorAll("[data-cast-actor]")]
+    .filter((row) => String(row.dataset.castActor || "").startsWith(`${projectId}:`))
+    .map((row) => ({
+    actorId: String(row.dataset.castActor || "").split(":").slice(1).join(":"),
+    label: row.querySelector("[data-cast-actor-label]")?.value?.trim() || "",
+    role: row.querySelector("[data-cast-actor-role]")?.value?.trim() || "",
+  }));
+}
+
+async function saveInteractiveCastActors(button) {
+  const projectId = button.dataset.interactiveCastActors;
+  button.disabled = true;
+  button.textContent = "Salvo...";
+  try {
+    const payload = await jsonApi(`/api/interactive-cast/projects/${projectId}/actors`, {
+      originalActors: collectInteractiveCastActors(projectId),
+    });
+    state.interactiveCastProjects = state.interactiveCastProjects.map((item) =>
+      item.id === payload.project.id ? payload.project : item
+    );
+    renderInteractiveCastProjects();
+    showToast("Attori originali aggiornati.");
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = "Salva attori";
+    showToast(error.message);
+  }
+}
+
+function collectInteractiveCastSpeakers(projectId) {
+  return [...document.querySelectorAll("[data-cast-speaker]")]
+    .filter((row) => String(row.dataset.castSpeaker || "").startsWith(`${projectId}:`))
+    .map((row) => ({
+      speaker: row.querySelector("[data-cast-speaker-id]")?.value?.trim() || "",
+      start: Number(row.querySelector("[data-cast-speaker-start]")?.value || 0),
+      end: Number(row.querySelector("[data-cast-speaker-end]")?.value || 0),
+      assignedActorId: row.querySelector("[data-cast-speaker-actor]")?.value || "",
+    }));
+}
+
+async function saveInteractiveCastSpeakers(button) {
+  const projectId = button.dataset.interactiveCastSpeakers;
+  button.disabled = true;
+  button.textContent = "Salvo...";
+  try {
+    const payload = await jsonApi(`/api/interactive-cast/projects/${projectId}/speakers`, {
+      speakers: collectInteractiveCastSpeakers(projectId),
+    });
+    state.interactiveCastProjects = state.interactiveCastProjects.map((item) =>
+      item.id === payload.project.id ? payload.project : item
+    );
+    renderInteractiveCastProjects();
+    showToast("Speaker aggiornati.");
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = "Salva speaker";
+    showToast(error.message);
+  }
+}
+
+function dialogueAudioInput(projectId, eventId) {
+  return document.querySelector(`[data-cast-dialogue-audio-file="${CSS.escape(`${projectId}:${eventId}`)}"]`);
+}
+
+async function attachInteractiveCastReplacement(button) {
+  const [projectId, segmentId] = String(button.dataset.interactiveCastReplacement || "").split(":");
+  const file = replacementInput(projectId, segmentId)?.files?.[0] || null;
+  if (!file) return showToast("Scegli prima il segmento video sostitutivo.");
+  button.disabled = true;
+  button.textContent = "Aggancio...";
+  try {
+    const form = new FormData();
+    form.set("replacementVideo", file);
+    const payload = await api(`/api/interactive-cast/projects/${projectId}/segments/${segmentId}/replacement`, {
+      method: "POST",
+      body: form,
+    });
+    state.interactiveCastProjects = state.interactiveCastProjects.map((item) =>
+      item.id === payload.project.id ? payload.project : item
+    );
+    renderInteractiveCastProjects();
+    showToast(payload.readiness?.ready ? "Tutti i segmenti sono pronti." : "Segmento agganciato.");
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = "Aggancia";
+    showToast(error.message);
+  }
+}
+
+async function applyInteractiveCastComposite(button) {
+  const [projectId, segmentId] = String(button.dataset.interactiveCastComposite || "").split(":");
+  const overlay = compositeOverlayInput(projectId, segmentId)?.files?.[0] || null;
+  const mask = compositeMaskInput(projectId, segmentId)?.files?.[0] || null;
+  if (!overlay) return showToast("Scegli prima l'overlay video.");
+  if (!mask) return showToast("Scegli prima la maschera B/N.");
+  button.disabled = true;
+  button.textContent = "Composito...";
+  try {
+    const form = new FormData();
+    form.set("overlayVideo", overlay);
+    form.set("maskImage", mask);
+    form.set("feather", compositeFeatherInput(projectId, segmentId)?.value || "7");
+    const payload = await api(`/api/interactive-cast/projects/${projectId}/segments/${segmentId}/composite`, {
+      method: "POST",
+      body: form,
+    });
+    state.interactiveCastProjects = state.interactiveCastProjects.map((item) =>
+      item.id === payload.project.id ? payload.project : item
+    );
+    renderInteractiveCastProjects();
+    showToast(payload.readiness?.ready ? "Compositing completato: segmenti pronti." : "Compositing completato.");
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = "Composita";
+    showToast(error.message);
+  }
+}
+
+async function attachInteractiveCastDialogueAudio(button) {
+  const [projectId, eventId] = String(button.dataset.interactiveCastDialogueAudio || "").split(":");
+  const file = dialogueAudioInput(projectId, eventId)?.files?.[0] || null;
+  if (!file) return showToast("Scegli prima la battuta audio sintetizzata.");
+  button.disabled = true;
+  button.textContent = "Aggancio audio...";
+  try {
+    const form = new FormData();
+    form.set("dialogueAudio", file);
+    const payload = await api(`/api/interactive-cast/projects/${projectId}/dialogue/${eventId}/audio`, {
+      method: "POST",
+      body: form,
+    });
+    state.interactiveCastProjects = state.interactiveCastProjects.map((item) =>
+      item.id === payload.project.id ? payload.project : item
+    );
+    renderInteractiveCastProjects();
+    showToast("Battuta audio agganciata.");
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = "Aggancia audio";
+    showToast(error.message);
+  }
+}
+
+async function synthesizeInteractiveCastDialogue(button) {
+  const [projectId, eventId] = String(button.dataset.interactiveCastDialogueSynthesize || "").split(":");
+  button.disabled = true;
+  button.textContent = "Sintesi...";
+  try {
+    const payload = await jsonApi(`/api/interactive-cast/projects/${projectId}/dialogue/${eventId}/synthesize`, {});
+    state.interactiveCastProjects = state.interactiveCastProjects.map((item) =>
+      item.id === payload.project.id ? payload.project : item
+    );
+    renderInteractiveCastProjects();
+    showToast("Battuta sintetizzata e agganciata.");
+  } catch (error) {
+    await refreshInteractiveCastProjects();
+    showToast(error.message);
+  }
+}
+
+async function applyInteractiveCastLipSync(button) {
+  const [projectId, segmentId] = String(button.dataset.interactiveCastLipsync || "").split(":");
+  button.disabled = true;
+  button.textContent = "Lip-sync...";
+  try {
+    const payload = await jsonApi(`/api/interactive-cast/projects/${projectId}/segments/${segmentId}/lipsync`, {});
+    state.interactiveCastProjects = state.interactiveCastProjects.map((item) =>
+      item.id === payload.project.id ? payload.project : item
+    );
+    renderInteractiveCastProjects();
+    showToast("Segmento lip-sync generato e agganciato.");
+  } catch (error) {
+    await refreshInteractiveCastProjects();
+    showToast(error.message);
+  }
+}
+
+async function runInteractiveCastIdentityCheck(button) {
+  const [projectId, segmentId] = String(button.dataset.interactiveCastIdentity || "").split(":");
+  button.disabled = true;
+  button.textContent = "Controllo...";
+  try {
+    const payload = await jsonApi(`/api/interactive-cast/projects/${projectId}/segments/${segmentId}/identity-check`, {});
+    state.interactiveCastProjects = state.interactiveCastProjects.map((item) =>
+      item.id === payload.project.id ? payload.project : item
+    );
+    renderInteractiveCastProjects();
+    showToast(payload.report?.status === "drift-detected"
+      ? "Identity drift possibile: controlla il segmento."
+      : "Identity check completato.");
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = "Identity check";
+    showToast(error.message);
+  }
+}
+
+async function remixInteractiveCastAudio(button) {
+  const projectId = button.dataset.interactiveCastAudioRemix;
+  button.disabled = true;
+  button.textContent = "Remix...";
+  try {
+    const payload = await api(`/api/interactive-cast/projects/${projectId}/audio-remix`, { method: "POST" });
+    state.interactiveCastProjects = state.interactiveCastProjects.map((item) =>
+      item.id === payload.project.id ? payload.project : item
+    );
+    renderInteractiveCastProjects();
+    showToast("Audio remix Interactive Cast creato.");
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = "Crea audio remix";
+    showToast(error.message);
+  }
+}
+
+async function concatInteractiveCastFinal(button) {
+  const projectId = button.dataset.interactiveCastConcat;
+  button.disabled = true;
+  button.textContent = "Ricomposizione...";
+  try {
+    const payload = await api(`/api/interactive-cast/projects/${projectId}/concat`, { method: "POST" });
+    state.interactiveCastProjects = state.interactiveCastProjects.map((item) =>
+      item.id === payload.project.id ? payload.project : item
+    );
+    renderInteractiveCastProjects();
+    showToast("MP4 finale Interactive Cast creato.");
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = "Ricomponi MP4 finale";
+    showToast(error.message);
+  }
+}
+
+function populateInteractiveCastCharacters() {
+  const characters = state.config?.characters?.availableCharacters || [];
+  $("#interactiveCastNewActor").innerHTML = [
+    `<option value="">Reference temporanea / non ancora assegnata</option>`,
+    ...characters.map((character) =>
+      `<option value="${escapeHtml(character.id)}">${escapeHtml(character.name)} · ${Number(character.referenceCount || 0)} reference</option>`
+    ),
+  ].join("");
 }
 
 async function refreshSequentialStories() {
@@ -738,6 +1567,36 @@ async function cancelProjectGeneration(button) {
   }
 }
 
+async function archiveVideoProject(button) {
+  const projectId = button.dataset.videoProjectArchive;
+  if (!confirm("Nascondere questo progetto dal pannello laterale? I file non verranno cancellati.")) return;
+  button.disabled = true;
+  try {
+    await jsonApi(`/api/video-studio/projects/${projectId}/archive`, { archived: true });
+    state.projects = state.projects.filter((item) => item.id !== projectId);
+    renderProjects();
+    showToast("Progetto nascosto");
+  } catch (error) {
+    button.disabled = false;
+    showToast(error.message);
+  }
+}
+
+async function deleteVideoProject(button) {
+  const projectId = button.dataset.videoProjectDelete;
+  if (!confirm("Eliminare questo progetto e i video generati collegati? L'azione non puo essere annullata.")) return;
+  button.disabled = true;
+  try {
+    const result = await api(`/api/video-studio/projects/${projectId}?files=1`, { method: "DELETE" });
+    state.projects = state.projects.filter((item) => item.id !== projectId);
+    renderProjects();
+    showToast(`Progetto eliminato. File rimossi: ${result.filesDeleted || 0}`);
+  } catch (error) {
+    button.disabled = false;
+    showToast(error.message);
+  }
+}
+
 async function start() {
   const sequentialPayloadPromise = api("/api/video-studio/sequential-story").catch(() => ({ projects: [] }));
   [state.config, state.projects, state.sequentialStories] = await Promise.all([
@@ -745,6 +1604,7 @@ async function start() {
     api("/api/video-studio/projects"),
     sequentialPayloadPromise.then((payload) => payload.projects || []),
   ]);
+  await refreshInteractiveCastProjects();
   const engines = state.config.videoStudio.engines;
   $("#actorEngine").innerHTML = engines.map((engine) =>
     `<option value="${engine.id}" ${engine.available ? "" : "disabled"}>${escapeHtml(engine.name)}${engine.available ? "" : " · non installato"}</option>`
@@ -763,6 +1623,7 @@ async function start() {
       `<option value="${escapeHtml(character.id)}">${escapeHtml(character.name)} · ${Number(character.referenceCount || 0)} reference</option>`
     ),
   ].join("");
+  populateInteractiveCastCharacters();
   syncCharacterFields();
   const requestedWorkflow = new URLSearchParams(location.search).get("workflow");
   if (state.config.videoStudio.modes.some((item) => item.id === requestedWorkflow)) {
@@ -779,10 +1640,14 @@ async function start() {
   }
   renderProjects();
   renderSequentialStories();
+  renderInteractiveCastEvents();
+  renderInteractiveCastProjects();
+  setupUploadPreviews();
   checkHealth();
   setInterval(checkHealth, 15000);
   setInterval(refreshProjects, 3500);
   setInterval(refreshSequentialStories, 3500);
+  setInterval(refreshInteractiveCastProjects, 3500);
 }
 
 function promptInputForMode(selectedMode) {
@@ -979,11 +1844,103 @@ $("#video-studio-projects").addEventListener("click", (event) => {
     cancelProjectGeneration(cancel);
     return;
   }
+  const archive = event.target.closest("[data-video-project-archive]");
+  if (archive) {
+    archiveVideoProject(archive);
+    return;
+  }
+  const remove = event.target.closest("[data-video-project-delete]");
+  if (remove) {
+    deleteVideoProject(remove);
+    return;
+  }
   const button = event.target.closest("[data-lipdub]");
   if (button) applyLipdub(button);
 });
 $("#sequential-plan-button").addEventListener("click", generateSequentialPlan);
 $("#sequential-start-button").addEventListener("click", startSequentialStory);
+$("#interactive-cast-create-button").addEventListener("click", createInteractiveCastProject);
+$("#interactive-cast-refresh-capabilities").addEventListener("click", (event) => {
+  refreshInteractiveCastCapabilities(event.currentTarget);
+});
+$("#interactive-cast-add-event").addEventListener("click", () => {
+  syncInteractiveCastEvents();
+  state.interactiveCastEvents.push({ speaker: "New Actor", start: 0, end: 2, dialogue: "", action: "", reaction: "none", mode: "" });
+  renderInteractiveCastEvents();
+});
+$("#interactive-cast-events").addEventListener("input", syncInteractiveCastEvents);
+$("#interactive-cast-events").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-remove-cast-event]");
+  if (!button) return;
+  syncInteractiveCastEvents();
+  state.interactiveCastEvents.splice(Number(button.dataset.removeCastEvent), 1);
+  renderInteractiveCastEvents();
+});
+$("#interactive-cast-projects").addEventListener("click", (event) => {
+  const remove = event.target.closest("[data-interactive-cast-delete]");
+  if (remove) {
+    deleteInteractiveCastProject(remove);
+    return;
+  }
+  const actors = event.target.closest("[data-interactive-cast-actors]");
+  if (actors) {
+    saveInteractiveCastActors(actors);
+    return;
+  }
+  const speakers = event.target.closest("[data-interactive-cast-speakers]");
+  if (speakers) {
+    saveInteractiveCastSpeakers(speakers);
+    return;
+  }
+  const button = event.target.closest("[data-interactive-cast-segments]");
+  if (button) {
+    prepareInteractiveCastSegments(button);
+    return;
+  }
+  const replacement = event.target.closest("[data-interactive-cast-replacement]");
+  if (replacement) {
+    attachInteractiveCastReplacement(replacement);
+    return;
+  }
+  const generate = event.target.closest("[data-interactive-cast-generate]");
+  if (generate) {
+    generateInteractiveCastSegment(generate);
+    return;
+  }
+  const composite = event.target.closest("[data-interactive-cast-composite]");
+  if (composite) {
+    applyInteractiveCastComposite(composite);
+    return;
+  }
+  const dialogueAudio = event.target.closest("[data-interactive-cast-dialogue-audio]");
+  if (dialogueAudio) {
+    attachInteractiveCastDialogueAudio(dialogueAudio);
+    return;
+  }
+  const synthesizeDialogue = event.target.closest("[data-interactive-cast-dialogue-synthesize]");
+  if (synthesizeDialogue) {
+    synthesizeInteractiveCastDialogue(synthesizeDialogue);
+    return;
+  }
+  const lipsync = event.target.closest("[data-interactive-cast-lipsync]");
+  if (lipsync) {
+    applyInteractiveCastLipSync(lipsync);
+    return;
+  }
+  const identity = event.target.closest("[data-interactive-cast-identity]");
+  if (identity) {
+    runInteractiveCastIdentityCheck(identity);
+    return;
+  }
+  const audioRemix = event.target.closest("[data-interactive-cast-audio-remix]");
+  if (audioRemix) {
+    remixInteractiveCastAudio(audioRemix);
+    return;
+  }
+  const concat = event.target.closest("[data-interactive-cast-concat]");
+  if (concat) concatInteractiveCastFinal(concat);
+});
+$("#sequentialInputMode").addEventListener("change", syncSequentialInputMode);
 $("#sequential-scenes").addEventListener("input", syncSequentialScenes);
 $("#sequential-scenes").addEventListener("click", (event) => {
   const card = event.target.closest("[data-sequential-scene]");

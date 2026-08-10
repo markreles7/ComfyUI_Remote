@@ -1,5 +1,6 @@
 import { enhanceMainPrompt } from "./prompt-assistant.js";
 import { saveGuidedHandoff } from "./guided-handoff.js";
+import { setupUploadPreviews } from "./upload-previews.js";
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -243,6 +244,7 @@ function askUploads() {
         <em data-file-name="${escapeHtml(upload.key)}">Scegli file</em>
       </label>`).join("")}</div>
     <button id="guided-files-next" class="primary-action" type="button">Continua →</button>`;
+  setupUploadPreviews($("#guided-composer"));
   $("#guided-composer").querySelectorAll("[data-upload]").forEach((input) => {
     input.addEventListener("change", () => {
       state.files[input.dataset.upload] = input.files[0] || null;

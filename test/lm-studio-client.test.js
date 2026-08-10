@@ -38,6 +38,9 @@ test("carica, usa la vision e scarica sempre il modello", async () => {
       }
       if (path === "/api/v1/chat") {
         assert.equal(body.reasoning, "off");
+        assert.match(body.system_prompt, /MANDATORY OUTPUT LANGUAGE/);
+        assert.match(body.system_prompt, /Write every enhanced prompt/);
+        assert.match(body.system_prompt, /Translate the user's request into English/);
         assert.match(body.input[1].data_url, /^data:image\/png;base64,/);
         return response({ output: [{ type: "message", content: "A precise edited pool photograph." }] });
       }
@@ -60,6 +63,31 @@ test("carica, usa la vision e scarica sempre il modello", async () => {
     "/api/v1/chat",
     "/api/v1/models/unload",
   ]);
+});
+
+test("la regola inglese resta obbligatoria anche con istruzioni custom", async () => {
+  const client = new LmStudioClient({
+    model: "text-model",
+    instructions: "Custom local instruction.",
+    fetchImpl: async (url, options = {}) => {
+      const path = new URL(url).pathname;
+      const body = options.body ? JSON.parse(options.body) : null;
+      if (path === "/api/v1/models") {
+        return response({ models: [{ key: "text-model", loaded_instances: [{ id: "loaded-text" }] }] });
+      }
+      if (path === "/api/v1/chat") {
+        assert.match(body.system_prompt, /Custom local instruction/);
+        assert.match(body.system_prompt, /MANDATORY OUTPUT LANGUAGE/);
+        assert.match(body.system_prompt, /Do not output Italian/);
+        return response({ output: [{ type: "message", content: "A fully English optimized prompt." }] });
+      }
+      if (path === "/api/v1/models/unload") return response({});
+      throw new Error(`Unexpected path ${path}`);
+    },
+  });
+
+  const result = await client.enhance({ text: "scrivi in italiano", target: "flux2" });
+  assert.equal(result.prompt, "A fully English optimized prompt.");
 });
 
 test("può restituire anche il prompt negativo per editing source-based", async () => {
@@ -234,6 +262,8 @@ test("planSequentialStory chiede JSON strutturato e scarica il modello", async (
       if (path === "/api/v1/chat") {
         assert.equal(body.reasoning, "off");
         assert.match(body.system_prompt, /Sequential Story/);
+        assert.match(body.system_prompt, /MANDATORY OUTPUT LANGUAGE/);
+        assert.match(body.system_prompt, /planning field in English/);
         assert.match(body.system_prompt, /one independent ComfyUI job per scene/);
         assert.match(body.input, /Requested scene count: 2/);
         return response({
@@ -533,6 +563,8 @@ test("crea prompt strutturati per LTX Director con più immagini", async () => {
       }
       if (path === "/api/v1/chat") {
         assert.match(body.system_prompt, /strict JSON/);
+        assert.match(body.system_prompt, /MANDATORY OUTPUT LANGUAGE/);
+        assert.match(body.system_prompt, /globalPrompt, scene prompt and planning field in English/);
         assert.equal(body.input.filter((item) => item.type === "image").length, 2);
         return response({
           output: [{
@@ -652,6 +684,64 @@ test("il fallback Director per una scena vuota continua dalla scena precedente",
   assert.match(result.scenes[1].prompt, /attached image as the visual anchor and endpoint/i);
   assert.doesNotMatch(result.scenes[1].prompt, /Describe a clear starting state/i);
   assert.doesNotMatch(result.scenes[1].prompt, /Scene 2 continues the global idea/i);
+});
+
+test("planInteractiveCast chiede mode conservativo per ogni evento", async () => {
+  const calls = [];
+  const client = new LmStudioClient({
+    model: "planner-model",
+    fetchImpl: async (url, options = {}) => {
+      const path = new URL(url).pathname;
+      const body = options.body ? JSON.parse(options.body) : null;
+      calls.push({ path, body });
+      if (path === "/api/v1/models") {
+        return response({ models: [{
+          key: "planner-model",
+          display_name: "Planner Model",
+          capabilities: {},
+          loaded_instances: [],
+        }] });
+      }
+      if (path === "/api/v1/models/load") return response({ model_instance_id: "planner-instance" });
+      if (path === "/api/v1/chat") {
+        assert.match(body.system_prompt, /"mode":"generative"/);
+        assert.match(body.system_prompt, /Use mode values only from: audioOnly, lipSyncOnly, composite, generative/);
+        assert.match(body.system_prompt, /Choose the least destructive mode/);
+        return response({ output: [{ type: "message", content: JSON.stringify({
+          actors: { original: [], added: [] },
+          dialogueEvents: [{
+            speaker: "Original Actor 1",
+            start: 1,
+            end: 2,
+            dialogue: "Not yet.",
+            action: "answers",
+            preserveVoice: true,
+            preserveFace: true,
+            reaction: "speak",
+            mode: "lipSyncOnly",
+          }],
+          notes: [],
+        }) }] });
+      }
+      if (path === "/api/v1/models/unload") return response({});
+      throw new Error(`Unexpected path ${path}`);
+    },
+  });
+
+  const result = await client.planInteractiveCast({
+    brief: "At second 1 John answers.",
+    duration: 5,
+    analysis: { width: 640, height: 360, fps: 24, codec: "h264", audioStreams: [{}] },
+    actors: { original: [{ actorId: "original-1", label: "John" }], added: [] },
+  });
+
+  assert.equal(result.dialogueEvents[0].mode, "lipSyncOnly");
+  assert.deepEqual(calls.map((item) => item.path), [
+    "/api/v1/models",
+    "/api/v1/models/load",
+    "/api/v1/chat",
+    "/api/v1/models/unload",
+  ]);
 });
 
 test("espone preset LM Studio distinti per prompt LTX semplice e a scene", () => {
