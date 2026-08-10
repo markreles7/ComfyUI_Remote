@@ -803,6 +803,17 @@ textarea { resize: vertical; min-height: 80px; line-height: 1.55; }
   margin-bottom: 12px;
 }
 .video-project-card > header { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.video-project-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.video-project-card-actions .chip-button.compact {
+  min-height: 29px;
+  padding: 6px 9px;
+}
 .video-project-card h3 { font-size: 13px; margin: 0; }
 .video-project-card header small { display: block; color: var(--accent); font: 8px "DM Mono"; text-transform: uppercase; margin-top: 4px; }
 .video-project-card > p { color: var(--muted); font-size: 10px; line-height: 1.5; margin: 10px 0 13px; }

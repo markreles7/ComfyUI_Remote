@@ -493,7 +493,14 @@ function renderProjects() {
       <article class="video-project-card">
         <header>
           <div><h3>${escapeHtml(project.name)}</h3><small>${escapeHtml(modeName)}</small></div>
-          <span class="status-pill status-${escapeHtml(project.status)}">${escapeHtml(statusLabel(project.status))}</span>
+          <div class="video-project-card-actions">
+            <span class="status-pill status-${escapeHtml(project.status)}">${escapeHtml(statusLabel(project.status))}</span>
+            <button class="chip-button danger-action compact" type="button"
+              data-video-project-delete="${escapeHtml(project.id)}"
+              ${active ? 'disabled title="Annulla prima le generazioni attive"' : 'title="Elimina progetto e file collegati"'}>
+              Elimina
+            </button>
+          </div>
         </header>
         <p>${escapeHtml(project.prompt || "Progetto guidato Video Studio")}</p>
         <div class="video-project-stages">
@@ -515,7 +522,6 @@ function renderProjects() {
         ` : ""}
         <div class="video-project-actions">
           ${!active ? `<button class="chip-button" type="button" data-video-project-archive="${escapeHtml(project.id)}">Nascondi</button>` : ""}
-          ${!active ? `<button class="chip-button danger-action" type="button" data-video-project-delete="${escapeHtml(project.id)}">Elimina file</button>` : ""}
         </div>
       </article>
     `;
@@ -738,15 +744,21 @@ function renderSequentialStories() {
       <article class="video-project-card sequential-project-card" data-sequential-project="${escapeHtml(project.id)}">
         <header>
           <div><h3>${escapeHtml(project.title)}</h3><small>Sequential Story · ${completed}/${scenes.length} scene</small></div>
-          <span class="status-pill status-${escapeHtml(project.status)}">${escapeHtml(project.status)}</span>
+          <div class="video-project-card-actions">
+            <span class="status-pill status-${escapeHtml(project.status)}">${escapeHtml(project.status)}</span>
+            ${project.status === "running" ? `<button class="chip-button compact" type="button" data-sequential-action="cancel">Annulla</button>` : ""}
+            <button class="chip-button danger-action compact" type="button" data-sequential-action="delete"
+              ${project.status === "running" ? 'disabled title="Annulla la sequenza prima di eliminarla"' : 'title="Elimina il progetto dal pannello"'}>
+              Elimina
+            </button>
+          </div>
         </header>
         <div class="sequential-progress"><span style="width:${Math.max(0, Math.min(100, progress))}%"></span></div>
         ${project.error ? `<p class="video-stage-error">${escapeHtml(project.error)}</p>` : ""}
         <div class="sequential-project-controls">
           ${project.status === "running" ? `<button class="chip-button" type="button" data-sequential-action="pause">Pausa</button>` : ""}
           ${["planned", "paused", "failed"].includes(project.status) ? `<button class="chip-button" type="button" data-sequential-action="resume">Continua</button>` : ""}
-          ${["running", "paused", "failed", "planned"].includes(project.status) ? `<button class="chip-button" type="button" data-sequential-action="cancel">Annulla</button>` : ""}
-          ${project.status !== "running" ? `<button class="chip-button" type="button" data-sequential-action="delete">Elimina</button>` : ""}
+          ${["paused", "failed", "planned"].includes(project.status) ? `<button class="chip-button" type="button" data-sequential-action="cancel">Annulla</button>` : ""}
         </div>
         <div class="video-project-stages">
           ${scenes.map((scene) => `

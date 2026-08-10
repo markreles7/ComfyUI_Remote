@@ -54,15 +54,21 @@ test("Video Studio espone Storia continua con planner, editor e API dedicate", (
   assert.match(script, /initialImage/);
   assert.match(script, /data-scene-regenerate/);
   assert.match(script, /data-sequential-scene-retry/);
+  assert.match(script, /Annulla la sequenza prima di eliminarla/);
+  assert.match(script, /data-sequential-action="delete"/);
+  assert.match(script, /data-sequential-action="cancel"/);
 });
 
 test("il pannello progetti Video Studio ha azioni di pulizia e render stabile", () => {
   assert.match(script, /projectsRenderKey/);
   assert.match(script, /data-video-project-archive/);
   assert.match(script, /data-video-project-delete/);
+  assert.match(script, /Annulla prima le generazioni attive/);
+  assert.match(script, /video-project-card-actions/);
   assert.match(script, /\/api\/video-studio\/projects\/\$\{projectId\}\/archive/);
   assert.match(script, /\/api\/video-studio\/projects\/\$\{projectId\}\?files=1/);
-  assert.match(script, /Elimina file/);
+  assert.match(script, /Elimina progetto e file collegati/);
+  assert.match(styles, /video-project-card-actions/);
 });
 
 test("Interactive Cast mostra task package per segmenti AI mancanti", () => {
