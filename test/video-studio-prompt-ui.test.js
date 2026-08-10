@@ -72,6 +72,15 @@ test("il pannello progetti Video Studio ha azioni di pulizia e render stabile", 
 });
 
 test("Interactive Cast mostra task package per segmenti AI mancanti", () => {
+  assert.match(html, /interactive-cast-workspace-nav/);
+  assert.match(html, /data-interactive-cast-view="config"/);
+  assert.match(html, /data-interactive-cast-view="production"/);
+  assert.match(html, /interactive-cast-active-project/);
+  assert.match(script, /setInteractiveCastView\("production"/);
+  assert.match(script, /interactiveCastActiveProjectId/);
+  assert.match(script, /JSON\.stringify\(nextProjects\) !== JSON\.stringify\(state\.interactiveCastProjects\)/);
+  assert.match(styles, /cast-view-production \.video-studio-form/);
+  assert.match(styles, /cast-view-production \.studio-projects-panel/);
   assert.match(html, /interactiveCastTemporaryReference/);
   assert.match(html, /Reference temporanea nuovo attore/);
   assert.match(html, /interactiveCastAnchorWorkflow/);

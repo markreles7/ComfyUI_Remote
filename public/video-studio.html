@@ -40,6 +40,16 @@
     </section>
 
     <div class="video-studio-layout">
+      <nav id="interactive-cast-workspace-nav" class="interactive-cast-workspace-nav hidden" aria-label="Workspace Interactive Cast">
+        <div class="interactive-cast-view-tabs" role="tablist" aria-label="Fase Interactive Cast">
+          <button type="button" role="tab" data-interactive-cast-view="config">Configurazione</button>
+          <button type="button" role="tab" data-interactive-cast-view="production">Produzione</button>
+        </div>
+        <label class="interactive-cast-project-picker">
+          <span>Progetto attivo</span>
+          <select id="interactive-cast-active-project" aria-label="Progetto Interactive Cast attivo"></select>
+        </label>
+      </nav>
       <form id="video-studio-form" class="panel generator video-studio-form">
         <div class="section-heading">
           <span>01</span>
@@ -541,21 +551,25 @@
 
       <aside class="video-studio-projects-column">
         <div class="panel studio-projects-panel">
-          <div class="section-heading compact">
-            <span>02</span><div><h2>Progetti video</h2><p>Generazione, controllo, editing e finishing</p></div>
+          <div class="standard-video-project-groups">
+            <div class="section-heading compact">
+              <span>02</span><div><h2>Progetti video</h2><p>Generazione, controllo, editing e finishing</p></div>
+            </div>
+            <div id="video-studio-projects"></div>
+            <p id="video-studio-empty" class="hint">Nessun progetto Video Studio.</p>
+            <div class="subpanel-heading sequential-project-heading">
+              <div><p class="subpanel-title">Storie continue</p><p class="hint">Progetti multi-job con scene, resume, retry e finale concatenato.</p></div>
+            </div>
+            <div id="sequential-story-projects"></div>
+            <p id="sequential-story-empty" class="hint">Nessuna Storia continua.</p>
           </div>
-          <div id="video-studio-projects"></div>
-          <p id="video-studio-empty" class="hint">Nessun progetto Video Studio.</p>
-          <div class="subpanel-heading sequential-project-heading">
-            <div><p class="subpanel-title">Storie continue</p><p class="hint">Progetti multi-job con scene, resume, retry e finale concatenato.</p></div>
+          <div class="interactive-cast-project-group">
+            <div class="subpanel-heading sequential-project-heading">
+              <div><p class="subpanel-title">Interactive Cast</p><p class="hint">Completa analisi, attori, audio, segmenti e output finale.</p></div>
+            </div>
+            <div id="interactive-cast-projects"></div>
+            <p id="interactive-cast-empty" class="hint">Nessun progetto Interactive Cast.</p>
           </div>
-          <div id="sequential-story-projects"></div>
-          <p id="sequential-story-empty" class="hint">Nessuna Storia continua.</p>
-          <div class="subpanel-heading sequential-project-heading">
-            <div><p class="subpanel-title">Interactive Cast</p><p class="hint">Analisi video, eventi dialogo e finestre di edit.</p></div>
-          </div>
-          <div id="interactive-cast-projects"></div>
-          <p id="interactive-cast-empty" class="hint">Nessun progetto Interactive Cast.</p>
         </div>
 
         <div class="panel video-studio-help">

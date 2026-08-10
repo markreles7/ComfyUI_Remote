@@ -12,6 +12,8 @@ const state = {
   loras: [],
   sequentialStories: [],
   interactiveCastProjects: [],
+  interactiveCastView: "config",
+  interactiveCastActiveProjectId: "",
   interactiveCastEvents: [
     { speaker: "New Actor", start: 3, end: 5, dialogue: "", action: "enters the scene", reaction: "none", mode: "" },
     { speaker: "Original Actor 1", start: 5, end: 7, dialogue: "", action: "turns and answers", reaction: "speak", mode: "" },
@@ -318,8 +320,78 @@ function updateMode() {
   });
   $("#video-studio-submit").classList.toggle("hidden", selected === "sequentialStory");
   $("#video-studio-submit").classList.toggle("hidden", ["sequentialStory", "interactiveCast"].includes(selected));
+  syncInteractiveCastWorkspace();
   renderInteractiveCastCapabilities();
   updateReadiness();
+}
+
+function interactiveCastRoute() {
+  const match = String(location.hash || "").match(/^#interactive-cast\/(config|production)(?:\/([^/]+))?$/);
+  return match
+    ? { view: match[1], projectId: match[2] ? decodeURIComponent(match[2]) : "" }
+    : null;
+}
+
+function renderInteractiveCastWorkspaceControls() {
+  const nav = $("#interactive-cast-workspace-nav");
+  if (!nav) return;
+  const castMode = mode() === "interactiveCast";
+  nav.classList.toggle("hidden", !castMode);
+  nav.querySelectorAll("[data-interactive-cast-view]").forEach((button) => {
+    const active = button.dataset.interactiveCastView === state.interactiveCastView;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", String(active));
+    button.disabled = button.dataset.interactiveCastView === "production" && !state.interactiveCastProjects.length;
+  });
+  const picker = $("#interactive-cast-active-project");
+  const pickerLabel = picker?.closest(".interactive-cast-project-picker");
+  if (!picker || !pickerLabel) return;
+  pickerLabel.classList.toggle("hidden", state.interactiveCastView !== "production" || !state.interactiveCastProjects.length);
+  picker.innerHTML = state.interactiveCastProjects.map((project) =>
+    `<option value="${escapeHtml(project.id)}" ${project.id === state.interactiveCastActiveProjectId ? "selected" : ""}>${escapeHtml(project.title)} · ${escapeHtml(project.status)}</option>`
+  ).join("");
+}
+
+function setInteractiveCastView(view, { projectId = "", updateHash = true, scroll = false } = {}) {
+  const nextView = view === "production" && state.interactiveCastProjects.length ? "production" : "config";
+  const availableIds = new Set(state.interactiveCastProjects.map((project) => project.id));
+  const preferredId = projectId || state.interactiveCastActiveProjectId;
+  state.interactiveCastView = nextView;
+  state.interactiveCastActiveProjectId = availableIds.has(preferredId)
+    ? preferredId
+    : state.interactiveCastProjects[0]?.id || "";
+  const layout = document.querySelector(".video-studio-layout");
+  layout?.classList.toggle("interactive-cast-workspace", mode() === "interactiveCast");
+  layout?.classList.toggle("cast-view-config", mode() === "interactiveCast" && nextView === "config");
+  layout?.classList.toggle("cast-view-production", mode() === "interactiveCast" && nextView === "production");
+  renderInteractiveCastWorkspaceControls();
+  if (updateHash && mode() === "interactiveCast") {
+    const suffix = nextView === "production" && state.interactiveCastActiveProjectId
+      ? `/${encodeURIComponent(state.interactiveCastActiveProjectId)}`
+      : "";
+    history.replaceState({}, "", `${location.pathname}${location.search}#interactive-cast/${nextView}${suffix}`);
+  }
+  if (scroll) {
+    $("#interactive-cast-workspace-nav")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+function syncInteractiveCastWorkspace() {
+  const layout = document.querySelector(".video-studio-layout");
+  const castMode = mode() === "interactiveCast";
+  if (!castMode) {
+    layout?.classList.remove("interactive-cast-workspace", "cast-view-config", "cast-view-production");
+    if (interactiveCastRoute()) {
+      history.replaceState({}, "", `${location.pathname}${location.search}`);
+    }
+    renderInteractiveCastWorkspaceControls();
+    return;
+  }
+  const route = interactiveCastRoute();
+  setInteractiveCastView(route?.view || state.interactiveCastView, {
+    projectId: route?.projectId || state.interactiveCastActiveProjectId,
+    updateHash: !route,
+  });
 }
 
 function updateEngine() {
@@ -852,9 +924,16 @@ function renderInteractiveCastProjects() {
     `/api/interactive-cast/projects/${encodeURIComponent(project.id)}/asset?path=${encodeURIComponent(String(relativePath || ""))}`;
   const taskForSegment = (project, segmentId) =>
     (project.renderPackage?.segmentTasks?.tasks || []).find((task) => task.segmentId === segmentId) || null;
+  if (!state.interactiveCastProjects.some((project) => project.id === state.interactiveCastActiveProjectId)) {
+    state.interactiveCastActiveProjectId = state.interactiveCastProjects[0]?.id || "";
+  }
+  const productionView = mode() === "interactiveCast" && state.interactiveCastView === "production";
+  const visibleProjects = productionView && state.interactiveCastActiveProjectId
+    ? state.interactiveCastProjects.filter((project) => project.id === state.interactiveCastActiveProjectId)
+    : state.interactiveCastProjects;
   $("#interactive-cast-empty").classList.toggle("hidden", state.interactiveCastProjects.length > 0);
-  $("#interactive-cast-projects").innerHTML = state.interactiveCastProjects.map((project) => `
-    <article class="video-project-card interactive-cast-card">
+  $("#interactive-cast-projects").innerHTML = visibleProjects.map((project) => `
+    <article class="video-project-card interactive-cast-card" data-interactive-cast-project="${escapeHtml(project.id)}">
       <header>
         <div><h3>${escapeHtml(project.title)}</h3><small>Interactive Cast · ${escapeHtml(project.status)}</small></div>
         <div class="video-project-card-actions">
@@ -1115,14 +1194,17 @@ function renderInteractiveCastProjects() {
       ${(project.warnings || []).map((warning) => `<p class="hint">${escapeHtml(warning)}</p>`).join("")}
     </article>
   `).join("");
+  renderInteractiveCastWorkspaceControls();
   setupUploadPreviews($("#interactive-cast-projects"));
 }
 
 async function refreshInteractiveCastProjects() {
   try {
     const payload = await api("/api/interactive-cast/projects");
-    state.interactiveCastProjects = payload.projects || [];
-    renderInteractiveCastProjects();
+    const nextProjects = payload.projects || [];
+    const changed = JSON.stringify(nextProjects) !== JSON.stringify(state.interactiveCastProjects);
+    state.interactiveCastProjects = nextProjects;
+    if (changed) renderInteractiveCastProjects();
   } catch {
     // Poll non necessario: riproverà al prossimo caricamento.
   }
@@ -1177,8 +1259,9 @@ async function createInteractiveCastProject() {
       planned.project,
       ...state.interactiveCastProjects.filter((item) => item.id !== planned.project.id),
     ];
-    renderInteractiveCastProjects();
     status.textContent = "Piano Interactive Cast creato. I motori non configurati sono indicati nei fallback.";
+    setInteractiveCastView("production", { projectId: planned.project.id, scroll: true });
+    renderInteractiveCastProjects();
     showToast("Interactive Cast: piano creato.");
   } catch (error) {
     status.textContent = error.message;
@@ -1240,6 +1323,12 @@ async function deleteInteractiveCastProject(button) {
   try {
     await api(`/api/interactive-cast/projects/${projectId}`, { method: "DELETE" });
     state.interactiveCastProjects = state.interactiveCastProjects.filter((item) => item.id !== projectId);
+    if (state.interactiveCastActiveProjectId === projectId) {
+      state.interactiveCastActiveProjectId = state.interactiveCastProjects[0]?.id || "";
+    }
+    if (!state.interactiveCastProjects.length && mode() === "interactiveCast") {
+      setInteractiveCastView("config");
+    }
     renderInteractiveCastProjects();
     showToast("Progetto Interactive Cast eliminato.");
   } catch (error) {
@@ -1713,6 +1802,9 @@ async function start() {
   if (state.config.videoStudio.modes.some((item) => item.id === requestedWorkflow)) {
     const requested = document.querySelector(`[name=videoStudioMode][value="${requestedWorkflow}"]`);
     if (requested) requested.checked = true;
+  } else if (interactiveCastRoute()) {
+    const interactiveCastInput = document.querySelector('[name=videoStudioMode][value="interactiveCast"]');
+    if (interactiveCastInput) interactiveCastInput.checked = true;
   }
   renderDialogue();
   renderLoras();
@@ -1865,6 +1957,23 @@ async function applyGuidedCreation() {
 }
 
 document.querySelectorAll("[name=videoStudioMode]").forEach((input) => input.addEventListener("change", updateMode));
+$("#interactive-cast-workspace-nav").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-interactive-cast-view]");
+  if (!button) return;
+  setInteractiveCastView(button.dataset.interactiveCastView, { scroll: true });
+  renderInteractiveCastProjects();
+});
+$("#interactive-cast-active-project").addEventListener("change", (event) => {
+  setInteractiveCastView("production", { projectId: event.currentTarget.value });
+  renderInteractiveCastProjects();
+});
+window.addEventListener("hashchange", () => {
+  if (mode() !== "interactiveCast") return;
+  const route = interactiveCastRoute();
+  if (!route) return;
+  setInteractiveCastView(route.view, { projectId: route.projectId, updateHash: false });
+  renderInteractiveCastProjects();
+});
 $("#videoCharacterId").addEventListener("change", syncCharacterFields);
 $("#actorEngine").addEventListener("change", updateEngine);
 $("#replacementScope").addEventListener("change", updateEngine);
