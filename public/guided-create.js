@@ -27,7 +27,6 @@ const BRANCHES = {
     { id: "textImage", title: "Foto da una descrizione", description: "Text to Image" },
     { id: "referenceImage", title: "Foto da una reference", description: "Mantieni identità o stile iniziale" },
     { id: "multiPerson", title: "Unire 2–3 persone/reference", description: "Multi-image editing ad alta fedeltà" },
-    { id: "perfectImage", title: "Costruire l’immagine migliore", description: "Pipeline Perfect Image Studio" },
   ],
   edit: [
     { id: "add", title: "Aggiungere qualcosa", description: "Persona, animale o oggetto" },
@@ -65,12 +64,11 @@ const BRANCHES = {
 const ROUTES = {
   textImage: { page: "/", generationType: "image", imageMode: "text", target: "qwen", title: "Foto da testo" },
   referenceImage: { page: "/", generationType: "image", imageMode: "image", target: "qwenedit", title: "Foto da reference", uploads: [{ key: "sourceImage", label: "Carica la foto di riferimento", accept: "image/*" }] },
-  multiPerson: { page: "/studio.html", studioMode: "perfect", target: "qwenedit", title: "Multi-reference ad alta fedeltà", uploads: [
+  multiPerson: { page: "/studio.html", studioMode: "guidedEdit", editAction: "addPerson", target: "qwenedit", title: "Inserimento multi-reference ad alta fedeltà", uploads: [
     { key: "sourceImage", label: "Carica la prima persona o la scena base", accept: "image/*" },
     { key: "reference1", label: "Carica la seconda persona/reference", accept: "image/*" },
     { key: "reference2", label: "Terza reference facoltativa", accept: "image/*", optional: true },
   ] },
-  perfectImage: { page: "/studio.html", studioMode: "perfect", target: "qwenedit", title: "Perfect Image Studio", uploads: [{ key: "sourceImage", label: "Carica la reference principale", accept: "image/*", optional: true }] },
   add: { page: "/studio.html", studioMode: "guidedEdit", editAction: "addPerson", target: "qwenedit", title: "Aggiunta guidata", uploads: [{ key: "sourceImage", label: "Carica la foto da modificare", accept: "image/*" }, { key: "reference1", label: "Reference dell’elemento da aggiungere (facoltativa)", accept: "image/*", optional: true }] },
   replace: { page: "/studio.html", studioMode: "guidedEdit", editAction: "replace", target: "qwenedit", title: "Sostituzione guidata", uploads: [{ key: "sourceImage", label: "Carica la foto da modificare", accept: "image/*" }, { key: "reference1", label: "Reference sostitutiva (facoltativa)", accept: "image/*", optional: true }] },
   remove: { page: "/studio.html", studioMode: "guidedEdit", editAction: "remove", target: "qwenedit", title: "Rimozione guidata", uploads: [{ key: "sourceImage", label: "Carica la foto da modificare", accept: "image/*" }] },

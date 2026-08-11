@@ -33,7 +33,7 @@
   <main class="studio-page">
     <section class="gallery-hero studio-hero">
       <div>
-        <p class="eyebrow">EDITING / STORYBOARD / PERFECT IMAGE</p>
+        <p class="eyebrow">EDITING / SUBJECT INSERTION / STORYBOARD</p>
         <h1>Costruisci il tuo <em>master.</em></h1>
         <p>Workflow guidati e multi-stadio: conserva le reference, confronta le bozze e anima gli shot approvati con LTX 2.3.</p>
       </div>
@@ -143,7 +143,11 @@
 
           <div class="guided-step-heading">
             <span>2</span>
-            <div><p class="subpanel-title">Descrivi il risultato</p><p class="hint">Usa parole normali; i vincoli tecnici vengono aggiunti automaticamente.</p></div>
+            <div><p class="subpanel-title">Persona o soggetto</p><p class="hint">Identità e aspetto provengono dalle reference; descrivi qui solo ciò che serve alla modifica.</p></div>
+          </div>
+          <div class="field-grid">
+            <div class="field"><label for="subjectName">Nome soggetto</label><input id="subjectName" name="subjectName" placeholder="Es. Marco, cane, lampada"></div>
+            <div class="field"><label for="subjectId">ID soggetto facoltativo</label><input id="subjectId" name="subjectId" placeholder="Identificatore riutilizzabile"></div>
           </div>
           <div class="field-grid">
             <div class="field">
@@ -176,8 +180,20 @@
 
           <div class="guided-step-heading">
             <span>3</span>
-            <div><p class="subpanel-title">Guida visiva facoltativa</p><p class="hint">Per una posa o una sagoma precisa puoi caricare una foto, uno sketch o una mappa Depth.</p></div>
+            <div><p class="subpanel-title">Posizione</p><p class="hint">Combina descrizione, riquadro e maschera. Il riquadro definisce geometria, non viene usato come maschera finale.</p></div>
           </div>
+          <div class="field">
+            <label for="placementMethod">Metodo di posizionamento</label>
+            <select id="placementMethod" name="placementMethod">
+              <option value="combined" selected>Testo + riquadro + maschera</option>
+              <option value="box">Riquadro + contesto scena</option>
+              <option value="mask">Maschera precisa</option>
+              <option value="text">Descrizione spaziale</option>
+            </select>
+          </div>
+          <details class="advanced-settings">
+            <summary>Guida strutturale <span>Posa, sketch o profondità</span></summary>
+            <div class="advanced-settings-body">
           <div class="field-grid">
             <div class="field">
               <label for="structureGuide">Tipo di guida</label>
@@ -210,6 +226,8 @@
               <div class="field"><label for="cannyHigh">Soglia alta</label><input id="cannyHigh" name="cannyHigh" type="number" min=".01" max=".99" step=".01" value=".75"></div>
             </div>
           </details>
+            </div>
+          </details>
           <input id="placement" name="placement" type="hidden" value="">
           <input id="guidedSteps" name="guidedSteps" type="hidden" value="6">
           <input id="guidedGuidance" name="guidedGuidance" type="hidden" value="1">
@@ -218,7 +236,7 @@
         <section id="mask-section" class="studio-subpanel hidden">
           <div id="guided-zone-heading" class="guided-step-heading hidden">
             <span>4</span>
-            <div><p class="subpanel-title">Indica esattamente dove</p><p class="hint">Traccia un riquadro per posizione e dimensione, poi rifinisci l’area con il pennello.</p></div>
+            <div><p class="subpanel-title">Regione di modifica</p><p class="hint">Traccia il riquadro di posizione e dipingi la maschera locale. Per le occlusioni verranno usate solo maschere realmente disponibili.</p></div>
           </div>
           <div class="field-grid">
             <div class="field">
@@ -287,13 +305,13 @@
         </section>
 
         <section id="reference-section" class="studio-subpanel hidden">
-          <p class="subpanel-title">Reference opzionali</p>
+          <p class="subpanel-title">Reference soggetto</p>
           <div class="reference-grid">
-            <label><span>Persona</span><input name="reference1" type="file" accept="image/*"></label>
-            <label><span>Posa / abito</span><input name="reference2" type="file" accept="image/*"></label>
-            <label><span>Stile / location</span><input name="reference3" type="file" accept="image/*"></label>
+            <label><span>Identità / WHO</span><input name="reference1" type="file" accept="image/*"></label>
+            <label><span>Posa / WHAT</span><input name="reference2" type="file" accept="image/*"></label>
+            <label><span>Aspetto / abito</span><input name="reference3" type="file" accept="image/*"></label>
           </div>
-          <p class="hint">In Perfect Image Studio la fotografia principale è Persona 1 e lo slot Persona è Persona 2. Posa / abito e Stile / location restano guide separate, non nuove identità.</p>
+          <p class="hint">La foto sorgente definisce WHERE; le reference definiscono WHO e WHAT. Non vengono interpretate come nuove scene.</p>
         </section>
 
         <div class="field">
@@ -371,57 +389,6 @@
           </div>
         </section>
 
-        <section id="perfect-section" class="studio-subpanel hidden">
-          <div class="field">
-            <label for="perfectFamily">Motore Perfect</label>
-            <select id="perfectFamily" name="perfectFamily">
-              <option value="gwen" selected>BigLove Gwen 2 · consigliato per identità e reference</option>
-              <option value="qwen2511">Qwen Edit 2511 BF16 · massimo controllo reference</option>
-              <option value="klein">BigLove Klein 4 · consigliato per velocità e realismo</option>
-            </select>
-            <p id="perfect-model-status" class="hint"></p>
-          </div>
-          <div class="field-grid">
-            <div id="perfect-qwen-model-field" class="field">
-              <label for="perfectQwenModel">Checkpoint Qwen</label>
-              <select id="perfectQwenModel" name="perfectQwenModel"></select>
-            </div>
-            <div id="perfect-klein-model-field" class="field hidden">
-              <label for="perfectKleinModel">Checkpoint Flux.2 / Klein</label>
-              <select id="perfectKleinModel" name="perfectKleinModel"></select>
-            </div>
-          </div>
-          <div class="field">
-            <label for="perfectRecipe">Motore workflow</label>
-            <select id="perfectRecipe" name="perfectRecipe">
-              <option value="runninghub" selected>RunningHub Multi-Reference · consigliato</option>
-              <option value="runninghubSeedvr">RunningHub + SeedVR finale · MAX</option>
-              <option value="standard">Standard webapp · compatibilità</option>
-            </select>
-            <p id="perfect-recipe-status" class="hint"></p>
-          </div>
-          <div class="field">
-            <label for="executionMode">Avanzamento fra gli stadi</label>
-            <select id="executionMode" name="executionMode">
-              <option value="guided" selected>Guidato · scelgo io proposta e master</option>
-              <option value="automatic">Automatico · completa tutta la pipeline</option>
-            </select>
-            <p class="hint">In Automatico viene scelta la prima proposta completata; in Guidato puoi confrontare e creare variazioni prima di proseguire.</p>
-          </div>
-          <fieldset class="quality">
-            <legend>Pipeline</legend>
-            <label><input type="radio" name="studioPreset" value="speed"><span><b>Veloce</b><small>Qualità unica e upscale semplice</small></span></label>
-            <label><input type="radio" name="studioPreset" value="quality" checked><span><b>Qualità</b><small>Modello qualità unico</small></span></label>
-            <label><input type="radio" name="studioPreset" value="max"><span><b>MAX</b><small>Rifinitura completa</small></span></label>
-          </fieldset>
-          <div class="field-grid compact-grid">
-            <label class="inline-check"><input name="faceDetailer" type="checkbox" checked> Detailer volto</label>
-            <label class="inline-check"><input name="handDetailer" type="checkbox" checked> Detailer mani</label>
-            <div class="field"><label for="faceDetailerDenoise">Denoise volto</label><input id="faceDetailerDenoise" name="faceDetailerDenoise" type="number" min=".05" max=".5" step=".01" value=".22"></div>
-            <div class="field"><label for="handDetailerDenoise">Denoise mani</label><input id="handDetailerDenoise" name="handDetailerDenoise" type="number" min=".05" max=".6" step=".01" value=".28"></div>
-          </div>
-        </section>
-
         <div id="common-settings" class="field-grid">
           <div class="field"><label for="editPreset">Comportamento</label><select id="editPreset" name="editPreset"><option value="conservative">Conservativo</option><option value="balanced" selected>Bilanciato</option><option value="creative">Creativo</option></select></div>
           <div class="field"><label for="alternatives">Alternative</label><select id="alternatives" name="alternatives"><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
@@ -430,6 +397,10 @@
         </div>
 
         <section id="editing-controls" class="studio-subpanel">
+          <div class="guided-step-heading" id="guided-preservation-heading">
+            <span>5</span>
+            <div><p class="subpanel-title">Preservazione</p><p class="hint">I pixel esterni alla regione locale devono restare invariati; i controlli globali restano disattivati.</p></div>
+          </div>
           <p class="subpanel-title">Controlli di fedeltà</p>
           <label class="inline-check"><input name="sourceDenoise" type="checkbox" checked> Riduzione rumore locale molto leggera sulla copia di lavoro (senza RTX; l’originale resta intatto)</label>
           <div class="field-grid compact-grid">
@@ -439,10 +410,17 @@
             <div class="field"><label for="poseAdherence">Aderenza posa %</label><input id="poseAdherence" name="poseAdherence" type="number" min="0" max="100" value="70"></div>
             <div class="field"><label for="creativeFreedom">Libertà creativa %</label><input id="creativeFreedom" name="creativeFreedom" type="number" min="0" max="100" value="30"></div>
           </div>
+          <details class="advanced-settings">
+            <summary>Debug Subject Insertion <span>Artefatti tecnici fuori dall’archivio principale</span></summary>
+            <div class="advanced-settings-body">
+              <label class="inline-check"><input name="subjectDebugArtifacts" type="checkbox"> Salva box, maschere, depth, crop locale e pass intermedi disponibili</label>
+            </div>
+          </details>
         </section>
 
-        <section id="studio-models" class="studio-subpanel">
-          <p class="subpanel-title">Modelli per gli stadi</p>
+        <details id="studio-models" class="studio-subpanel advanced-settings">
+          <summary>Opzioni tecniche <span>Modelli e checkpoint</span></summary>
+          <div class="advanced-settings-body">
           <div class="field-grid">
             <div id="guided-model-family-field" class="field hidden">
               <label for="guidedModelFamily">Famiglia Editor Guidato</label>
@@ -458,7 +436,8 @@
             <div id="zimage-model-field" class="field"><label for="zImageModel">Z-Image bozze</label><select id="zImageModel" name="zImageModel"></select></div>
             <div id="flux1-refine-model-field" class="field"><label for="flux1RefineModel">Flux.1 refine</label><select id="flux1RefineModel" name="flux1RefineModel"></select></div>
           </div>
-        </section>
+          </div>
+        </details>
 
         <section class="scene-integration-mount" data-scene-integration></section>
 
@@ -485,6 +464,10 @@
           <input id="studio-loras-json" name="loras" type="hidden" value="[]">
         </section>
 
+        <div class="guided-step-heading" id="guided-generate-heading">
+          <span>6</span>
+          <div><p class="subpanel-title">Genera</p><p class="hint">La proposta usa il piano locale, conserva la sorgente e registra strategie, maschere e fallback reali.</p></div>
+        </div>
         <button id="studio-submit" class="submit-button" type="submit"><span>Crea progetto</span><span>→</span></button>
         <p id="studio-form-status" class="form-status" role="alert"></p>
       </form>

@@ -132,8 +132,6 @@ function updateEditWildcardDefaults() {
   const mode = $("#studioMode").value;
   if (mode === "guidedEdit") {
     $("#editWildcardFamily").value = $("#guidedModelFamily").value === "klein" ? "klein" : "gwen";
-  } else if (mode === "perfect") {
-    $("#editWildcardFamily").value = $("#perfectFamily").value === "klein" ? "klein" : "gwen";
   } else if (mode === "storyboard") {
     $("#editWildcardFamily").value = $("#storyboardFamily").value === "klein" ? "klein" : "gwen";
   }
@@ -164,6 +162,8 @@ function updateMode() {
   toggle("#krea-triple-denoise-field", kreaTriple && kreaTripleOperation !== "text");
   toggle("#guided-edit-section", mode.id === "guidedEdit");
   toggle("#guided-zone-heading", mode.id === "guidedEdit");
+  toggle("#guided-preservation-heading", mode.id === "guidedEdit");
+  toggle("#guided-generate-heading", mode.id === "guidedEdit");
   toggle("#first-last-section", mode.input === "firstLast");
   toggle("#mask-section", mode.supportsMask && !staticQwenKreaKlein && (!kreaTriple || kreaTripleOperation === "selective"));
   toggle("#reference-section", mode.supportsReferences && !staticQwenKreaKlein && !kreaTriple);
@@ -171,12 +171,10 @@ function updateMode() {
   toggle("#bible-section", mode.id === "bible");
   toggle("#camera-section", mode.id === "camera");
   toggle("#relight-section", mode.id === "relight");
-  toggle("#perfect-section", mode.id === "perfect");
   toggle("#common-settings", mode.input !== "firstLast" && !staticQwenKreaKlein);
   toggle("#editing-controls", mode.input !== "firstLast" && !staticQwenKreaKlein && !kreaTriple);
   toggle("#studio-models", mode.input !== "firstLast"
     && mode.id !== "storyboard"
-    && mode.id !== "perfect"
     && !kreaTriple
     && !staticQwenKreaKlein);
   toggle("#final-output-section", mode.input !== "firstLast" && !staticQwenKreaKlein && !kreaTriple);
@@ -213,7 +211,6 @@ function updateMode() {
     renderShotFields();
     updateStoryboardModel();
   }
-  if (mode.id === "perfect") updatePerfectModel();
   if (mode.id === "bible") updateBibleDefaults();
   if (mode.id === "guidedEdit") updateGuidedAction();
   updateGuidedModel();
@@ -314,58 +311,6 @@ function updateStoryboardModel() {
     ? `Modello selezionato: ${family.name} · qualità unica.`
     : `Modello non rilevato: ${modelFile}`;
   $("#studio-submit").disabled = !installed;
-  renderLoras();
-}
-
-function updatePerfectModel() {
-  const familyId = $("#perfectFamily").value;
-  const family = state.config?.studio?.storyboardModels?.find((item) => item.id === familyId);
-  if (!family) return;
-  const qwenMode = familyId !== "klein";
-  toggle("#perfect-qwen-model-field", qwenMode);
-  toggle("#perfect-klein-model-field", !qwenMode);
-  const recipeSelect = $("#perfectRecipe");
-  const currentRecipe = recipeSelect.value;
-  const recipes = familyId === "klein"
-    ? [
-      ["runninghub", "RunningHub Klein 4B Accelerated · consigliato"],
-      ["standard", "Standard webapp · compatibilità"],
-    ]
-    : [
-      ["runninghub", "RunningHub Qwen Multi-Reference · consigliato"],
-      ["runninghubSeedvr", "RunningHub Qwen + SeedVR finale · MAX"],
-      ["standard", "Standard webapp · compatibilità"],
-    ];
-  recipeSelect.innerHTML = recipes
-    .map(([value, label]) => `<option value="${value}">${label}</option>`)
-    .join("");
-  recipeSelect.value = recipes.some(([value]) => value === currentRecipe) ? currentRecipe : "runninghub";
-  const installedFiles = new Set(
-    (state.config?.imageModels || [])
-      .flatMap((item) => item.models || [])
-      .map((model) => model.file.toLowerCase())
-  );
-  const selectedModel = qwenMode ? $("#perfectQwenModel").value : $("#perfectKleinModel").value;
-  const qualityReady = Boolean(selectedModel) && installedFiles.has(selectedModel.toLowerCase());
-  const profiles = familyId === "qwen2511"
-    ? "Qwen Image Edit 2511 / Qwen compatibile · reference-first"
-    : familyId === "gwen"
-    ? "Qwen / BigLove Gwen · qualità unica"
-    : "Flux.2 / BigLove Klein · qualità unica";
-  $("#perfect-model-status").textContent = qualityReady
-    ? `${profiles}. Modello selezionato: ${selectedModel}.`
-    : `Modello non rilevato o non selezionato: ${selectedModel || "nessuno"}`;
-  $("#perfect-recipe-status").textContent = familyId === "klein"
-    ? (recipeSelect.value === "runninghub"
-      ? "Usa la ricetta RunningHub Klein: prima immagine come latent base + reference multiple."
-      : "Usa il builder Klein standard della webapp.")
-    : (recipeSelect.value === "runninghubSeedvr"
-      ? "Usa la ricetta Qwen multi-reference e applica SeedVR2 finale nella stessa coda."
-      : recipeSelect.value === "runninghub"
-        ? "Usa la ricetta Qwen multi-reference stile RunningHub."
-        : "Usa il builder Qwen standard della webapp.");
-  $("#studio-submit").disabled = !qualityReady;
-  updateEditWildcardDefaults();
   renderLoras();
 }
 
@@ -476,7 +421,9 @@ function endMask(event) {
         width: (right - left) / canvas.width,
         height: (bottom - top) / canvas.height,
       });
-      state.maskTouched = true;
+    }
+    if (state.rectangleSnapshot) {
+      canvas.getContext("2d").putImageData(state.rectangleSnapshot, 0, 0);
     }
   }
   state.drawing = false;
@@ -505,10 +452,6 @@ function compatibleLoras() {
       : mode === "storyboard"
         ? String(name).toUpperCase().startsWith(
           $("#storyboardFamily").value === "gwen" ? "QWEN\\" : "FLUX2\\"
-        )
-      : mode === "perfect"
-        ? String(name).toUpperCase().startsWith(
-          ["gwen", "qwen2511"].includes($("#perfectFamily").value) ? "QWEN\\" : "FLUX2\\"
         )
       : (mode === "firstLast"
       ? String(name).toUpperCase().startsWith("LTX2.3\\")
@@ -575,9 +518,13 @@ async function submitProject(event) {
     syncStructuredFields();
     const formData = new FormData(event.currentTarget);
     if ($("#maskMode").value === "manual" && !$("#mask-section").classList.contains("hidden")) {
-      if (!state.maskTouched) throw new Error("Disegna la zona da modificare oppure usa la maschera automatica.");
-      const blob = await maskBlob();
-      formData.set("maskImage", blob, "studio-mask.png");
+      if (!state.maskTouched && !$("#placement").value) {
+        throw new Error("Disegna la maschera locale, traccia il riquadro di posizione oppure usa la selezione automatica.");
+      }
+      if (state.maskTouched) {
+        const blob = await maskBlob();
+        formData.set("maskImage", blob, "studio-mask.png");
+      }
     }
     button.disabled = true;
     status.textContent = "Caricamento e creazione dei workflow…";
@@ -634,8 +581,8 @@ function stageActions(project, generation) {
     if (project.settings?.studioPreset === "speed") {
       actions.push(["finalize", "Master veloce"]);
     } else {
-      const family = generation.perfectModelFamily || project.settings?.perfectFamily;
-      actions.push(["quality", family === "klein" ? "Refine qualità Klein" : "Refine qualità"]);
+      const family = generation.imageModelFamily || project.settings?.modelFamily;
+      actions.push(["quality", family === "flux2" ? "Refine qualità Klein" : "Refine qualità"]);
     }
   }
   if (generation.studioStage === "quality") {
@@ -645,6 +592,23 @@ function stageActions(project, generation) {
   return `<div class="studio-actions">${actions.map(([action, label]) =>
     `<button class="chip-button" type="button" data-continue="${action}" data-project="${project.id}" data-generation="${generation.id}" data-image="${index}">${label}</button>`
   ).join("")}</div>`;
+}
+
+function subjectInsertionReport(generation) {
+  const plan = generation.subjectInsertion;
+  if (!plan) return "";
+  const realMasks = ["edit", "subject", "occlusion"].filter((key) => plan.masks?.[key]);
+  return `
+    <details class="studio-insertion-report">
+      <summary>Report Subject Insertion</summary>
+      <dl>
+        <div><dt>Strategia</dt><dd>${escapeHtml(plan.strategy?.id || "non disponibile")}</dd></div>
+        <div><dt>Parametri</dt><dd>${escapeHtml(plan.strategy?.parameterPolicy || "preserve-native")}</dd></div>
+        <div><dt>Maschere reali</dt><dd>${escapeHtml(realMasks.join(", ") || "nessuna")}</dd></div>
+        <div><dt>Depth</dt><dd>${plan.scene?.depthApplied ? "applicata" : "non applicata"}</dd></div>
+      </dl>
+      ${plan.fallbacks?.length ? `<ul>${plan.fallbacks.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
+    </details>`;
 }
 
 function projectMarkup(project) {
@@ -672,6 +636,7 @@ function projectMarkup(project) {
               <div class="studio-result-label"><span>${escapeHtml(generation.studioLabel || generation.workflowName)}</span><span>${escapeHtml(statusLabel(generation.status))}</span></div>
               ${imageButtons(project, generation)}
               ${generation.error ? `<p class="model-warning">${escapeHtml(generation.error)}</p>` : ""}
+              ${subjectInsertionReport(generation)}
               ${["queued", "running"].includes(generation.status)
                 ? `<button class="cancel-generation-button compact" type="button" data-cancel-job="${generation.id}">Annulla generazione</button>`
                 : ""}
@@ -750,10 +715,6 @@ async function continueProject(button) {
       flux2BaseModel: settings.flux2BaseModel,
       flux2TurboModel: settings.flux2TurboModel,
       flux1RefineModel: settings.flux1RefineModel,
-      perfectFamily: settings.perfectFamily,
-      perfectRecipe: settings.perfectRecipe,
-      perfectQwenModel: settings.perfectQwenModel,
-      perfectKleinModel: settings.perfectKleinModel,
       loras: JSON.stringify(project.loras || []),
     };
     const updated = await api(`/api/studio/projects/${project.id}/continue`, {
@@ -856,8 +817,6 @@ async function start() {
   populateModels("#flux1RefineModel", "flux1", state.config.studio.defaults.flux1Realistic);
   populateModels("#qwenEditModel", "qwenEdit", state.config.studio.defaults.qwenEdit);
   populateModels("#guidedKleinModel", "flux2", state.config.studio.defaults.guidedKlein);
-  populateModels("#perfectQwenModel", "qwenEdit", state.config.studio.defaults.perfectQwen);
-  populateModels("#perfectKleinModel", "flux2", state.config.studio.defaults.perfectKlein);
   const guideAvailability = new Map(
     (state.config.studio.structureGuides || []).map((guide) => [guide.id, guide]),
   );
@@ -904,10 +863,7 @@ async function applyGuidedCreation() {
   if (fields.engine && fields.engine !== "auto") {
     const qwen = ["qwenImage", "qwenEdit"].includes(fields.engine);
     const klein = fields.engine === "flux2";
-    if ($("#studioMode").value === "perfect") {
-      $("#perfectFamily").value = klein ? "klein" : qwen ? "gwen" : $("#perfectFamily").value;
-      updatePerfectModel();
-    } else if ($("#studioMode").value === "guidedEdit") {
+    if ($("#studioMode").value === "guidedEdit") {
       $("#guidedModelFamily").value = klein ? "klein" : "qwen";
       updateGuidedModel();
     } else if ($("#studioMode").value === "storyboard") {
@@ -964,10 +920,6 @@ $("#storyboardFamily").addEventListener("change", updateStoryboardModel);
 $("#guidedModelFamily").addEventListener("change", updateGuidedModel);
 $("#qwenEditModel").addEventListener("change", renderLoras);
 $("#guidedKleinModel").addEventListener("change", renderLoras);
-$("#perfectFamily").addEventListener("change", updatePerfectModel);
-$("#perfectRecipe").addEventListener("change", updatePerfectModel);
-$("#perfectQwenModel").addEventListener("change", updatePerfectModel);
-$("#perfectKleinModel").addEventListener("change", updatePerfectModel);
 $("#bibleType").addEventListener("change", updateBibleDefaults);
 $("#studio-source").addEventListener("change", (event) => loadSource(event.target.files[0]));
 function studioPromptAssistantSource() {
@@ -988,11 +940,7 @@ $("#studio-prompt-assistant").addEventListener("click", async () => {
         ? ($("#storyboardFamily").value === "gwen"
           ? (source ? "qwenedit" : "qwen")
           : "flux2")
-        : $("#studioMode").value === "perfect"
-          ? ($("#perfectFamily").value === "gwen"
-            ? (source ? "qwenedit" : "qwen")
-            : "flux2")
-          : "studio";
+        : "studio";
   try {
     await enhanceMainPrompt({
       input: $("#studio-prompt"),

@@ -7,9 +7,9 @@ const CORRECTION_CATEGORY = Object.freeze({
   "depth-aware-compositing": ["depthCoherence"],
   "blur-match": ["sharpnessCoherence"],
   "grain-match": ["grainNoiseCoherence"],
-  "edge-refinement": ["edgeCompositingQuality"],
+  "edge-refinement": ["edgeCompositingQuality", "boundaryDifference"],
   "temporal-smoothing": ["temporalConsistency"],
-  "mask-recomposite": ["backgroundPreservation"],
+  "mask-recomposite": ["backgroundPreservation", "outsideRoiPreservation"],
 });
 
 export function buildCorrectionPlan(evaluation, {

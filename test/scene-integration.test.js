@@ -110,7 +110,7 @@ test("cache Scene Profile usa hash del file e impostazioni e si invalida", () =>
   }
 });
 
-test("adapter Qwen applica color e grain senza blur distruttivo al workflow immagine", () => {
+test("adapter Qwen preserva parametri nativi e non applica finishing globale alle immagini", () => {
   const upload = { name: "source.png", subfolder: "remote", type: "input" };
   const job = buildImageWorkflow("qwenEdit", {
     imageMode: "image",
@@ -130,18 +130,18 @@ test("adapter Qwen applica color e grain senza blur distruttivo al workflow imma
     context: { sourceInput: "remote/source.png", denoise: 0.55 },
   });
   assert.equal(integrated.plan.adapter, "qwen-image-edit-2511");
-  assert.ok(integrated.workflowReport.applied);
+  assert.equal(integrated.plan.parameterPolicy, "preserve-native");
+  assert.equal(integrated.plan.appliedParameters.denoise, undefined);
   const classes = Object.values(integrated.workflow).map((item) => item.class_type);
-  assert.ok(classes.includes("ColorMatchToReference"));
+  assert.ok(!classes.includes("ColorMatchToReference"));
   assert.ok(!classes.includes("ImageBlur"));
-  assert.ok(classes.includes("FastFilmGrain"));
-  assert.ok(integrated.metadata.sceneIntegration.adapterReport.appliedParameters.workflowNodes.length >= 2);
+  assert.ok(!classes.includes("FastFilmGrain"));
   assert.ok(integrated.workflowReport.outputRewrites.every((entry) =>
     !entry.operations.includes("blur-match")
   ));
 });
 
-test("il finishing modifica soltanto il master quando il workflow salva bozze e finale", () => {
+test("il finishing fotografico globale non modifica né bozze né master", () => {
   const source = {
     "1": { inputs: { image: "source.png" }, class_type: "LoadImage", _meta: { title: "Source" } },
     "2": { inputs: { images: ["1", 0], filename_prefix: "draft_preview" }, class_type: "SaveImage", _meta: { title: "Bozza" } },
@@ -161,11 +161,8 @@ test("il finishing modifica soltanto il master quando il workflow salva bozze e 
     context: { sourceInput: "source.png" },
   });
   assert.deepEqual(integrated.workflow["2"].inputs.images, ["1", 0]);
-  assert.notDeepEqual(integrated.workflow["3"].inputs.images, ["1", 0]);
-  assert.deepEqual(
-    integrated.workflowReport.outputRewrites.map((entry) => entry.outputNode),
-    ["3"],
-  );
+  assert.deepEqual(integrated.workflow["3"].inputs.images, ["1", 0]);
+  assert.deepEqual(integrated.workflowReport.outputRewrites, []);
 });
 
 test("adapter Klein dichiara il fallback depth senza inventare un ControlNet", () => {
@@ -259,7 +256,7 @@ test("evaluator produce categorie separate e correction pass soltanto per quelle
     backgroundPreservation: { score: 96, confidence: 0.9 },
     edgeCompositingQuality: { score: 90, confidence: 0.8 },
   });
-  assert.equal(Object.keys(evaluation.categories).length, 13);
+  assert.equal(Object.keys(evaluation.categories).length, 15);
   assert.ok(evaluation.categories.colorCoherence.score < 75);
   assert.equal(evaluation.categories.backgroundPreservation.score, 96);
   const correction = buildCorrectionPlan(evaluation, { iteration: 0, maxIterations: 2 });

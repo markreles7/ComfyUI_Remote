@@ -1196,7 +1196,7 @@ export function buildImageWorkflow(modelId, rawOptions, upload, rawLoras = undef
     }),
     imageRecipe: String(rawOptions.imageRecipe || "standard"),
     preserveStages: booleanOption(rawOptions.preserveStages),
-    outputBase: String(rawOptions.outputBase || "Studio/perfect"),
+    outputBase: String(rawOptions.outputBase || "Studio/image"),
   };
   if (options.batchSize > 1 && (
     options.highresEnabled

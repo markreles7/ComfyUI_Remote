@@ -53,13 +53,13 @@ export class BaseSceneAdapter {
       appliedParameters: {},
       reasons: [],
       controls: {
-        matchColor: Boolean(settings.matchColor && hasSource),
+        matchColor: Boolean(settings.matchColor && hasSource && profile.mediaType === "video"),
         matchBlur: Boolean(blurAllowed && settings.matchBlur && hasSource && Number(blur) > 0.08),
-        grainMode: settings.grainMode,
+        grainMode: profile.mediaType === "video" ? settings.grainMode : "off",
         preserveBackground: Boolean(settings.preserveBackground && hasMask),
         temporalConsistency: Boolean(settings.temporalConsistency && profile.mediaType === "video"),
         occlusionHandling: Boolean(settings.occlusionHandling && hasMask),
-        contactShadows: Boolean(settings.contactShadows && hasMask),
+        contactShadows: Boolean(settings.contactShadows && hasMask && context.subjectType !== "person"),
       },
       finishing: {
         colorStrength: Math.max(0.2, Math.min(0.9, 0.45 + colorConfidence * 0.35)),
@@ -78,6 +78,7 @@ export class BaseSceneAdapter {
         },
       },
       promptConditioning: [],
+      parameterPolicy: "preserve-native",
     };
   }
 
@@ -108,6 +109,9 @@ export class BaseSceneAdapter {
     if (input.settings.autoRelighting) {
       plan.unsupported.push("physical-diffusion-relighting");
       plan.fallbacks.push("Relighting fisico dedicato non disponibile: uso istruzione modello, color transfer e armonizzazione finale dichiarati.");
+    }
+    if (input.profile.mediaType === "image") {
+      plan.reasons.push("Finishing fotografico globale disattivato: armonizzazione e ricomposizione restano confinate al workflow locale mascherato.");
     }
     if (plan.controls.matchColor) {
       this.requireNode(plan, "ColorMatchToReference", "color-reference-finishing",

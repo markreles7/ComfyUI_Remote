@@ -111,11 +111,19 @@ def main():
     result_gray = cv2.cvtColor(result, cv2.COLOR_BGR2GRAY)
     _, ssim_map = structural_similarity(source_gray, result_gray, data_range=255, full=True)
     background_score = float(np.mean(ssim_map[outside]) * 100) if np.any(outside) else 50.0
+    pixel_delta = np.max(cv2.absdiff(source, result), axis=2)
+    changed_outside = np.logical_and(outside, pixel_delta > 8)
+    outside_count = int(np.count_nonzero(outside))
+    changed_outside_count = int(np.count_nonzero(changed_outside))
+    changed_outside_ratio = changed_outside_count / outside_count if outside_count else 0.0
+    outside_roi_score = (1.0 - changed_outside_ratio) * 100
     boundary = cv2.morphologyEx(mask, cv2.MORPH_GRADIENT, np.ones((9, 9), np.uint8)) > 0
     source_edges = cv2.Laplacian(source_gray, cv2.CV_32F)
     result_edges = cv2.Laplacian(result_gray, cv2.CV_32F)
     edge_delta = np.mean(np.abs(source_edges[boundary] - result_edges[boundary])) if np.any(boundary) else 64
     edge_score = 100 * (1 - np.clip(edge_delta / 128, 0, 1))
+    boundary_pixel_delta = float(np.mean(pixel_delta[boundary])) if np.any(boundary) else 0.0
+    boundary_difference_score = 100 * (1 - np.clip(boundary_pixel_delta / 96, 0, 1))
     source_lines = cv2.Canny(source_gray, 80, 180)
     result_lines = cv2.Canny(result_gray, 80, 180)
     line_overlap = np.mean((source_lines > 0) == (result_lines > 0)) * 100
@@ -123,6 +131,8 @@ def main():
     # low because semantic geometry is not available in this deterministic pass.
     metrics = {
         "backgroundPreservation": metric(background_score, 0.88 if explicit_mask else 0.38, "masked-ssim" if explicit_mask else "inferred-change-mask-ssim"),
+        "outsideRoiPreservation": metric(outside_roi_score, 0.95 if explicit_mask else 0.32, f"changed-pixels-outside-mask:{changed_outside_count}/{outside_count}"),
+        "boundaryDifference": metric(boundary_difference_score, 0.8 if explicit_mask else 0.3, f"mask-boundary-absolute-difference:{boundary_pixel_delta:.2f}"),
         "edgeCompositingQuality": metric(edge_score, 0.7 if explicit_mask else 0.35, "mask-boundary-laplacian"),
         "perspectiveCoherence": metric(line_overlap, 0.28, "global-edge-structure-proxy"),
         "scaleCoherence": metric(50, 0.0, "semantic-subject-scale-unavailable"),

@@ -200,7 +200,7 @@ for (const mode of appConfig.studio?.modes || []) {
 }
 add("Image Studio/final SeedVR2", () => buildStudioContinuation("finalize", {
   ...baseStudio,
-  studioMode: "perfect",
+  studioMode: "guidedEdit",
   highresEnabled: true,
   upscaleMode: "seedvr2",
   seedvrResolution: 1536,

@@ -74,6 +74,7 @@ import { buildComfySceneAnalysisWorkflow } from "./scene-integration/comfy-analy
 import { buildSceneCorrectionWorkflow } from "./scene-integration/correction-workflow.js";
 import { evaluateAndPlanCorrection, prepareSceneIntegratedWorkflow } from "./scene-integration/pipeline.js";
 import { SceneIntegrationService } from "./scene-integration/service.js";
+import { planSubjectInsertion, subjectInsertionResult } from "./subject-insertion/index.js";
 import { CharacterStore } from "./characters.js";
 import {
   buildCharacterAnchorFrameRequest,
@@ -3056,7 +3057,7 @@ app.post("/api/studio/projects", upload.any(), async (request, response, next) =
     );
     if (characterSelection) request.body = withCharacterPrompt(request.body, characterSelection.adapter);
     if (characterSelection?.uploads.length) {
-      if (!uploaded.source?.name && ["perfect", "bible", "qwenKreaKlein", "kreaTriple"].includes(request.body.studioMode)) {
+      if (!uploaded.source?.name && ["bible", "qwenKreaKlein", "kreaTriple"].includes(request.body.studioMode)) {
         uploaded.source = characterSelection.uploads[0];
         uploaded.references = [...characterSelection.uploads.slice(1), ...(uploaded.references || [])].slice(0, 3);
       } else {
@@ -3064,6 +3065,54 @@ app.post("/api/studio/projects", upload.any(), async (request, response, next) =
       }
     }
     let jobs = buildStudioJobs(request.body.studioMode, request.body, uploaded, selectedLoras);
+    if (request.body.studioMode === "guidedEdit") {
+      const definitions = await workflowPreflight.definitions();
+      let placement = null;
+      let sceneProfile = {};
+      try {
+        placement = request.body.placement ? JSON.parse(request.body.placement) : null;
+      } catch {
+        placement = null;
+      }
+      try {
+        const sceneRequest = JSON.parse(request.body.sceneIntegration || "{}");
+        if (sceneRequest.profileId) sceneProfile = sceneIntegration.getProfile(sceneRequest.profileId);
+      } catch {
+        sceneProfile = {};
+      }
+      jobs = jobs.map((job) => ({
+        ...job,
+        metadata: {
+          ...job.metadata,
+          subjectInsertion: planSubjectInsertion({
+            sourceFile: job.metadata?.sourceImage || uploaded.source?.name,
+            operation: request.body.editAction,
+            prompt: request.body.prompt,
+            interaction: request.body.subjectInteraction,
+            contact: request.body.contactInstruction,
+            preserve: request.body.preserveInstruction,
+            placement,
+            placementMethod: request.body.placementMethod,
+            spatialInstruction: request.body.spatialInstruction,
+            depthRelation: request.body.depthRelation,
+            maskFile: uploaded.mask?.name || "",
+            references: (uploaded.references || []).map((item, index) => ({
+              file: item.name,
+              role: ["identity", "pose", "style"][index] || "appearance",
+            })),
+            characterId: request.body.characterId,
+            subjectId: request.body.subjectId,
+            subjectName: request.body.subjectName,
+            modelFamily: job.metadata?.imageModelFamily,
+            modelId: job.metadata?.imageModelId,
+            modelFile: job.metadata?.imageModelFile,
+            sceneProfile,
+            sceneProfileId: sceneProfile.id,
+            debugArtifacts: request.body.subjectDebugArtifacts === "on",
+          }, { availableNodes: Object.keys(definitions) }),
+        },
+      }));
+    }
     if (characterSelection) {
       jobs = jobs.map((job) => ({
         ...job,
@@ -3082,6 +3131,7 @@ app.post("/api/studio/projects", upload.any(), async (request, response, next) =
     jobs = await Promise.all(jobs.map((job) => integrateSceneJob(job, request.body, {
       maskUpload: uploaded.mask || null,
       structureGuideAvailable: Boolean(uploaded.guide),
+      subjectType: job.metadata?.subjectInsertion?.subjectType || null,
     })));
     await validateStudioModels(jobs);
     const project = studioStore.add({
@@ -3089,10 +3139,7 @@ app.post("/api/studio/projects", upload.any(), async (request, response, next) =
       studioMode: request.body.studioMode,
       name: String(request.body.projectName || jobs[0]?.metadata?.workflowName || "Progetto Studio").trim(),
       prompt: String(request.body.prompt || "").trim(),
-      executionMode: request.body.studioMode === "perfect"
-        && request.body.executionMode === "automatic"
-        ? "automatic"
-        : "guided",
+      executionMode: "guided",
       autoState: "drafts",
       settings: { ...request.body, loras: undefined },
       uploads: uploaded,
@@ -3844,165 +3891,6 @@ app.use((error, _request, response, _next) => {
   response.status(status).json({ error: error.message || "Errore interno." });
 });
 
-function terminalGeneration(item) {
-  return ["completed", "error", "interrupted"].includes(item?.status);
-}
-
-function automaticContinuationOptions(project, action, generation) {
-  const preset = String(project.settings?.studioPreset || "quality");
-  const isMax = preset === "max";
-  const finalOutput = String(project.settings?.finalOutput || (isMax ? "seed7" : "seed3"));
-  const upscaleMode = {
-    none: "none",
-    seed3: "seedvr2",
-    seed7: "seedvr2",
-    rtx: "rtx",
-    realesrgan: "fast",
-  }[finalOutput] || "seedvr2";
-  return {
-    ...project.settings,
-    studioMode: project.studioMode,
-    prompt: project.prompt,
-    maskUpload: project.uploads?.mask,
-    referenceUploads: project.uploads?.references || [],
-    maskTarget: project.settings?.maskTarget,
-    imageWidth: generation.width,
-    imageHeight: generation.height,
-    studioPreset: preset,
-    refineDenoise: isMax ? 0.24 : 0.18,
-    highresEnabled: action === "finalize" && preset !== "speed",
-    highresScale: isMax ? 1.5 : 1.25,
-    highresSteps: isMax ? 12 : 8,
-    highresDenoise: isMax ? 0.25 : 0.2,
-    upscaleMode: action === "finalize" ? upscaleMode : "none",
-    rtxQuality: isMax ? "Ultra" : "High",
-    seedvrProfile: finalOutput === "seed7" ? "realistic" : "balanced",
-    seedvrResolution: finalOutput === "seed7" ? 2656 : 2048,
-    autoPurge: true,
-    saveOriginal: true,
-    faceDetailer: project.settings?.faceDetailer ?? true,
-    handDetailer: project.settings?.handDetailer ?? true,
-  };
-}
-
-async function queueAutomaticContinuation(project, sourceGeneration, action, nextState) {
-  const imageIndex = sourceGeneration.images.length - 1;
-  const selectedUpload = await comfy.reuseOutputImage(
-    sourceGeneration.images[imageIndex],
-    `studio-auto-${project.id}-${action}.png`,
-  );
-  const job = buildStudioContinuation(
-    action,
-    automaticContinuationOptions(project, action, sourceGeneration),
-    selectedUpload,
-    project.loras || [],
-  );
-  await validateStudioModels([job]);
-  const created = await queueStudioJob(job, project.id);
-  studioStore.update(project.id, {
-    generationIds: [...(project.generationIds || []), created.id],
-    selections: [
-      ...(project.selections || []),
-      {
-        generationId: sourceGeneration.id,
-        imageIndex,
-        action,
-        automatic: true,
-        createdAt: new Date().toISOString(),
-      },
-    ],
-    autoState: nextState,
-    updatedAt: new Date().toISOString(),
-  });
-}
-
-async function advanceAutomaticStudioProjects() {
-  for (const project of studioStore.list().filter((item) =>
-    item.studioMode === "perfect" && item.executionMode === "automatic"
-  )) {
-    const generations = (project.generationIds || []).map((id) => store.get(id)).filter(Boolean);
-    if (generations.some((item) => ["queued", "running"].includes(item.status))) continue;
-
-    const quality = generations.filter((item) => item.studioStage === "quality");
-    const finals = generations.filter((item) => item.studioStage === "final");
-    if (!quality.length && project.autoState === "drafts") {
-      const drafts = generations.filter((item) => item.studioStage === "drafts");
-      if (!drafts.length || !drafts.every(terminalGeneration)) continue;
-      const selected = drafts.find((item) => item.status === "completed" && item.images?.length);
-      if (!selected) {
-        studioStore.update(project.id, { autoState: "error", updatedAt: new Date().toISOString() });
-        continue;
-      }
-      const speed = project.settings?.studioPreset === "speed";
-      const max = project.settings?.studioPreset === "max";
-      studioStore.update(project.id, {
-        autoState: speed ? "final_queueing" : max ? "variation_queueing" : "quality_queueing",
-        updatedAt: new Date().toISOString(),
-      });
-      try {
-        await queueAutomaticContinuation(
-          project,
-          selected,
-          speed ? "finalize" : max ? "variation" : "quality",
-          speed ? "final" : max ? "variations" : "quality",
-        );
-      } catch (error) {
-        studioStore.update(project.id, {
-          autoState: "error",
-          autoError: error.message,
-          updatedAt: new Date().toISOString(),
-        });
-      }
-      continue;
-    }
-    if (!quality.length && project.autoState === "variations") {
-      const variations = generations.filter((item) => item.studioStage === "variations");
-      if (!variations.length || !variations.every(terminalGeneration)) continue;
-      const selected = variations.find((item) => item.status === "completed" && item.images?.length);
-      if (!selected) {
-        studioStore.update(project.id, { autoState: "error", updatedAt: new Date().toISOString() });
-        continue;
-      }
-      studioStore.update(project.id, { autoState: "quality_queueing", updatedAt: new Date().toISOString() });
-      try {
-        await queueAutomaticContinuation(project, selected, "quality", "quality");
-      } catch (error) {
-        studioStore.update(project.id, {
-          autoState: "error",
-          autoError: error.message,
-          updatedAt: new Date().toISOString(),
-        });
-      }
-      continue;
-    }
-    if (!finals.length && quality.length && project.autoState === "quality") {
-      if (!quality.every(terminalGeneration)) continue;
-      const selected = quality.find((item) => item.status === "completed" && item.images?.length);
-      if (!selected) {
-        studioStore.update(project.id, { autoState: "error", updatedAt: new Date().toISOString() });
-        continue;
-      }
-      studioStore.update(project.id, { autoState: "final_queueing", updatedAt: new Date().toISOString() });
-      try {
-        await queueAutomaticContinuation(project, selected, "finalize", "final");
-      } catch (error) {
-        studioStore.update(project.id, {
-          autoState: "error",
-          autoError: error.message,
-          updatedAt: new Date().toISOString(),
-        });
-      }
-      continue;
-    }
-    if (finals.length && finals.every(terminalGeneration) && project.autoState === "final") {
-      studioStore.update(project.id, {
-        autoState: finals.some((item) => item.status === "completed") ? "done" : "error",
-        updatedAt: new Date().toISOString(),
-      });
-    }
-  }
-}
-
 let polling = false;
 setInterval(async () => {
   if (polling) return;
@@ -4099,6 +3987,13 @@ setInterval(async () => {
                   finalHeight: primaryImage.height,
                 }
               : item.imageSettings,
+            subjectInsertionResult: item.subjectInsertion
+              ? subjectInsertionResult(item.subjectInsertion, {
+                  final: primaryImage?.file || images.at(-1) || null,
+                  corrections: item.sceneIntegration?.iterations || [],
+                  debugArtifacts: item.sceneIntegration?.evaluationArtifacts || {},
+                })
+              : null,
             finishedAt,
             durationMs: Number.isFinite(startedAtMs)
               ? Math.max(0, Date.parse(finishedAt) - startedAtMs)
@@ -4162,7 +4057,6 @@ setInterval(async () => {
         // ComfyUI può essere temporaneamente occupato o non raggiungibile.
       }
     }
-    await advanceAutomaticStudioProjects();
   } finally {
     polling = false;
   }

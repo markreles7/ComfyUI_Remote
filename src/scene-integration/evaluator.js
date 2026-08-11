@@ -126,6 +126,12 @@ export function evaluateSceneCoherence(sourceProfile, resultProfile, suppliedMet
     backgroundPreservation: suppliedMetric(
       suppliedMetrics, "backgroundPreservation", "Sfondo", "mask-recomposite",
     ),
+    outsideRoiPreservation: suppliedMetric(
+      suppliedMetrics, "outsideRoiPreservation", "Pixel esterni alla ROI", "mask-recomposite",
+    ),
+    boundaryDifference: suppliedMetric(
+      suppliedMetrics, "boundaryDifference", "Continuità al bordo", "edge-refinement",
+    ),
   };
 
   const measured = Object.values(categories).filter((item) => item.measured && item.confidence > 0);

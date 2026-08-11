@@ -233,7 +233,7 @@ Immagini e video caricati vengono conservati temporaneamente nel browser e reins
 
 ## Image Studio
 
-Image Studio comprende dieci workflow:
+Image Studio comprende workflow di editing locale, inserimento soggetto, storyboard e finishing:
 
 - Smartphone Photo Editor con maschera manuale o GroundingDINO + SAM;
 - Smart Image Editor e Inpainting intelligente;
@@ -243,11 +243,11 @@ Image Studio comprende dieci workflow:
 - Character & Location Bible;
 - Camera, posa e composizione;
 - Relighting e continuità cromatica;
-- Perfect Image Studio.
+- Editor Guidato con Subject Insertion per persone, animali e oggetti.
 
 Le foto vengono elaborate a circa 1–2 megapixel mantenendo il rapporto d'aspetto. Nell'editing locale risultato e maschera vengono poi riportati alle dimensioni della fotografia caricata e ricomposti sull'originale, così l'esterno della maschera resta invariato.
 
-Perfect Image Studio supporta modalità **Guidata** e **Automatica**, bozze Flux.2/Z-Image, variazioni, passaggio Flux.2 Base, refine Flux.1, detector separati per volto e mani, Highres Fix e output finale selezionabile fra nessun upscale, SeedVR2 3B, SeedVR2 7B FP16, RTX VSR e RealESRGAN. Le fasi vengono salvate sotto `Studio/<workflow>/` e collegate allo stesso progetto persistente.
+Subject Insertion separa sorgente, identità/reference, posizione, maschera locale e preservazione. Qwen Image Edit 2511 e Flux.2 Klein mantengono i parametri nativi del workflow; depth, segmentazione e occlusioni vengono dichiarate soltanto quando i nodi locali sono realmente disponibili.
 
 Le LoRA sono filtrate di nuovo per ogni stadio: Flux.2, Flux.1, Qwen, Z-Image e LTX ricevono soltanto file della propria famiglia. I workflow Qwen della schermata Genera non scaricano modelli automaticamente.
 

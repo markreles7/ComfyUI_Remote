@@ -68,7 +68,7 @@ export function resolveCharacterAdapter({
   const bodyReferences = references.filter((item) => item.type === "full_body" || item.type === "bust");
   const promptPrefix = characterPromptPrefix(character, options);
   const target = [generationType, workflowId, studioMode, videoStudioMode].filter(Boolean).join(":");
-  const supportsReferences = /image|studio|qwen|perfect|bible|qwenKreaKlein|kreaTriple/i.test(target);
+  const supportsReferences = /image|studio|qwen|guidedEdit|bible|qwenKreaKlein|kreaTriple/i.test(target);
   const videoAnchorMode = /video|actor|scene|extend|retake|transform/i.test(target);
   return {
     promptPrefix,

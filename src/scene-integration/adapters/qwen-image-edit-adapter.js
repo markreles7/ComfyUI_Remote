@@ -12,11 +12,7 @@ export class QwenImageEditAdapter extends BaseSceneAdapter {
   plan(input) {
     const plan = super.plan(input);
     const { profile, settings, context = {} } = input;
-    plan.supported.push("reference-image-conditioning", "image-to-image-strength");
-    plan.appliedParameters.denoise = Math.max(0.25, Math.min(
-      0.85,
-      Number(context.denoise ?? 0.55),
-    ));
+    plan.supported.push("reference-image-conditioning", "native-parameter-preservation");
     if (context.maskLink || context.maskUpload) {
       plan.supported.push("regional-mask", "background-preservation");
       plan.reasons.push("La maschera permette di mantenere invariati i pixel esterni alla zona di intervento.");
@@ -36,7 +32,7 @@ export class QwenImageEditAdapter extends BaseSceneAdapter {
       `Preserve source illumination direction ${JSON.stringify(metric(profile, "lightingProfile.mainDirection", {}))}.`,
       "Keep all pixels outside the requested edit region unchanged.",
     );
-    plan.reasons.push("Qwen riceve reference e istruzione semantica; colore e grana vengono armonizzati dopo il decode, mentre il blur matching resta disattivato sulle foto per preservare nitidezza.");
+    plan.reasons.push("Qwen riceve reference e istruzione semantica; step, guidance, denoise e forza reference restano quelli nativi del workflow. L'armonizzazione fotografica è consentita soltanto nella regione mascherata.");
     return plan;
   }
 }

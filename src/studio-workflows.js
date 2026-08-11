@@ -90,14 +90,6 @@ export const STUDIO_MODES = {
     supportsMask: true,
     legacy: true,
   },
-  perfect: {
-    id: "perfect",
-    name: "Perfect Image Studio",
-    description: "Bozze multi-modello, selezione guidata, qualità, detailer e upscale finale.",
-    input: "optional",
-    supportsReferences: true,
-    guided: true,
-  },
   qwenKreaKlein: {
     id: "qwenKreaKlein",
     name: "Qwen · Krea · Klein · SeedVR2",
@@ -541,9 +533,7 @@ function stageFolder(stage) {
 }
 
 function setStudioSavePrefixes(workflow, studioMode, stage, family) {
-  const folder = studioMode === "perfect" && stage === "drafts"
-    ? (family === "zImage" ? "02_bozze_zimage" : "01_bozze_flux2")
-    : stageFolder(stage);
+  const folder = stageFolder(stage);
   const prefix = `Studio/${studioMode}/${folder}`;
   for (const item of Object.values(workflow)) {
     if (item.class_type === "SaveImage") item.inputs.filename_prefix = prefix;
@@ -960,24 +950,6 @@ function storyboardModelSelection(raw, preset) {
   };
 }
 
-function perfectModelSelection(raw, preset, requestedProfile = "draft") {
-  const family = STORYBOARD_MODELS[String(raw.perfectFamily || "gwen")];
-  if (!family) throw new Error("Famiglia modello Perfect Image non valida.");
-  const profile = "quality";
-  const modelFile = family.id === "klein"
-    ? String(raw.perfectKleinModel || family.quality)
-    : String(raw.perfectQwenModel || family.quality);
-  const gwen = /biglovegwen2/i.test(modelFile);
-  const qwen2511 = /qwen[_-]?image[_-]?edit[_-]?2511/i.test(modelFile);
-  return {
-    family,
-    profile,
-    modelFile,
-    steps: qwen2511 ? 4 : gwen ? 6 : preset.steps,
-    guidance: qwen2511 || gwen ? 1 : preset.guidance,
-  };
-}
-
 function guidedModelSelection(raw, preset) {
   const family = String(raw.guidedModelFamily || "qwen");
   if (family === "klein" || family === "flux2") {
@@ -1001,51 +973,6 @@ function guidedModelSelection(raw, preset) {
     guidance: numberValue(raw.guidedGuidance, official2511 || bigLove ? 1 : 1, 0, 20),
     imageRecipe: "runninghub",
   };
-}
-
-function perfectRecipeSelection(raw, familyId) {
-  const requested = String(raw.perfectRecipe || "runninghub");
-  if (familyId === "klein") {
-    return requested === "standard"
-      ? { id: "standard", name: "Standard webapp", imageRecipe: "standard", upscale: false }
-      : { id: "runninghub-klein4b", name: "RunningHub Klein 4B Accelerated", imageRecipe: "klein4b", upscale: false };
-  }
-  if (requested === "standard") {
-    return { id: "standard", name: "Standard webapp", imageRecipe: "standard", upscale: false };
-  }
-  if (requested === "runninghubSeedvr") {
-    return {
-      id: "runninghub-qwen-seedvr",
-      name: "RunningHub Qwen multi-reference + SeedVR finale",
-      imageRecipe: "runninghub",
-      upscale: true,
-      upscaleMode: "seedvr2",
-      seedvrProfile: "realistic",
-      seedvrResolution: 2048,
-    };
-  }
-  return {
-    id: "runninghub-qwen",
-    name: "RunningHub Qwen multi-reference",
-    imageRecipe: "runninghub",
-    upscale: false,
-  };
-}
-
-function identityReferencePrompt(source, references) {
-  if (!source?.name) return "";
-  const assignments = [
-    "Identity reference assignment: image 1 is the exact identity of the primary adult person.",
-  ];
-  references.forEach((_reference, index) => {
-    assignments.push(
-      `Image ${index + 2} is the exact identity of adult person ${index + 2}.`
-    );
-  });
-  assignments.push(
-    "Keep each identity separate and recognizable: preserve facial geometry, eyes, nose, mouth, jaw, skin tone and hairstyle from its assigned image. Never blend, average, swap or invent the referenced faces."
-  );
-  return assignments.join(" ");
 }
 
 function editingControls(raw) {
@@ -1099,6 +1026,8 @@ function guidedEditPrompt(raw, prompt, controls) {
   const depth = String(raw.depthRelation || "integrated naturally in the scene").trim();
   const contact = String(raw.contactInstruction || "").trim();
   const preservation = String(raw.preserveInstruction || "").trim();
+  const subjectName = String(raw.subjectName || "the inserted subject").trim();
+  const insertion = ["addPerson", "addAnimal", "addObject"].includes(raw.editAction);
   const placementText = placement
     ? `Target box in normalized image coordinates: left ${Math.round(placement.x * 100)}%, top ${Math.round(placement.y * 100)}%, width ${Math.round(placement.width * 100)}%, height ${Math.round(placement.height * 100)}%. Keep the new or modified subject inside this area.`
     : "";
@@ -1106,6 +1035,9 @@ function guidedEditPrompt(raw, prompt, controls) {
     action,
     prompt,
     controls.prompt,
+    insertion && `SOURCE/WHERE: image 1 is the original photograph and defines camera, background, geometry and untouched people. Do not regenerate it globally.`,
+    insertion && `SUBJECT/WHO: ${subjectName}. Identity and appearance come only from the dedicated subject references; do not blend them with people already in the source.`,
+    insertion && `PLACEMENT/WHAT: insert only this subject in the requested region and interaction. The bounding box is placement geometry, not a rectangular edit mask.`,
     placementText,
     position && `Spatial instruction: ${position}.`,
     interaction && `Action and interaction: ${interaction}.`,
@@ -1229,8 +1161,6 @@ export function studioConfig({ modelPatches = [], preprocessors = [] } = {}) {
       flux1Realistic: FLUX1_REALISTIC,
       qwenEdit: QWEN_EDIT,
       guidedKlein: STORYBOARD_MODELS.klein.quality,
-      perfectQwen: QWEN_EDIT,
-      perfectKlein: STORYBOARD_MODELS.klein.quality,
     },
     storyboardModels: Object.values(STORYBOARD_MODELS),
   };
@@ -1345,52 +1275,12 @@ export function buildStudioJobs(studioMode, raw, uploads, loras = undefined) {
     }));
   }
 
-  if (studioMode === "perfect") {
-    const perfectModel = perfectModelSelection(raw, preset, "draft");
-    const perfectRecipe = perfectRecipeSelection(raw, perfectModel.family.id);
-    if (/qwen[_-]?image[_-]?edit[_-]?2511/i.test(perfectModel.modelFile) && !source?.name) {
-      throw new Error("Qwen Image Edit 2511 richiede una prima immagine/reference master.");
-    }
-    const identityPrompt = identityReferencePrompt(source, references);
-    return Array.from({ length: alternatives }, (_, index) =>
-      buildImageJob({
-        studioMode,
-        stage: "drafts",
-        label: `${perfectModel.family.name} · Bozza ${index + 1}`,
-        raw,
-        source,
-        references,
-        modelFile: perfectModel.modelFile,
-        prompt: `${prompt} ${identityPrompt} ${controls.prompt}`,
-        seed: seedAt(raw, index),
-        width,
-        height,
-        steps: perfectModel.steps,
-        guidance: perfectModel.guidance,
-        upscale: perfectRecipe.upscale,
-        imageRecipe: perfectRecipe.imageRecipe,
-        recipeUpscaleMode: perfectRecipe.upscaleMode,
-        recipeSeedvrProfile: perfectRecipe.seedvrProfile,
-        recipeSeedvrResolution: perfectRecipe.seedvrResolution,
-        loras,
-        extraMetadata: {
-          guidedAction: "select_draft",
-          perfectModelFamily: perfectModel.family.id,
-          perfectModelName: perfectModel.family.name,
-          perfectModelProfile: perfectModel.profile,
-          perfectRecipe: perfectRecipe.id,
-          perfectRecipeName: perfectRecipe.name,
-          identityReferenceCount: source ? references.length + 1 : 0,
-        },
-      })
-    );
-  }
-
   if (studioMode === "guidedEdit") {
     const guidedModel = guidedModelSelection(raw, preset);
     const globalAction = ["style", "relight", "background"].includes(raw.editAction);
     const masked = !globalAction || Boolean(mask?.name || automaticTarget);
-    if (masked && !mask?.name && !automaticTarget) {
+    const placement = parsePlacement(raw);
+    if (masked && !mask?.name && !automaticTarget && !placement) {
       throw new Error("Disegna l’area della modifica, traccia il riquadro di posizionamento oppure usa la selezione automatica.");
     }
     const guidedPrompt = guidedEditPrompt(raw, prompt, controls);
@@ -1411,7 +1301,7 @@ export function buildStudioJobs(studioMode, raw, uploads, loras = undefined) {
       steps: guidedModel.steps,
       guidance: guidedModel.guidance,
       imageRecipe: guidedModel.imageRecipe,
-      protectMask: masked,
+      protectMask: Boolean(mask?.name || automaticTarget),
       automaticTarget,
       loras,
       extraMetadata: {
@@ -1421,8 +1311,16 @@ export function buildStudioJobs(studioMode, raw, uploads, loras = undefined) {
         editAction: raw.editAction || "modify",
         editPreset: preset.label,
         editScope: masked ? "local" : "global",
-        placement: parsePlacement(raw),
+        placement,
         referenceCount: references.length,
+        subjectIdentity: {
+          subjectId: String(raw.subjectId || "").trim() || null,
+          subjectName: String(raw.subjectName || "").trim() || null,
+          characterId: String(raw.characterId || "").trim() || null,
+          referenceRoles: references.map((_item, referenceIndex) =>
+            ["identity", "pose", "appearance"][referenceIndex] || "appearance"
+          ),
+        },
         editingControls: controls,
         guidedAction: "select_draft",
       },
@@ -1508,11 +1406,6 @@ export function buildStudioContinuation(action, raw, selectedUpload, loras = und
   const prompt = String(raw.prompt || "").trim();
   if (!prompt) throw new Error("Inserisci le istruzioni per lo stadio successivo.");
   if (action === "variation" || action === "quality") {
-    const perfect = raw.studioMode === "perfect"
-      ? perfectModelSelection(raw, PRESETS[raw.editPreset] || PRESETS.balanced,
-        action === "quality" ? "quality" : "draft")
-      : null;
-    const perfectRecipe = perfect ? perfectRecipeSelection(raw, perfect.family.id) : null;
     const continuationReferences = Array.isArray(raw.referenceUploads)
       ? raw.referenceUploads.filter(Boolean).slice(0, 3)
       : [];
@@ -1521,22 +1414,17 @@ export function buildStudioContinuation(action, raw, selectedUpload, loras = und
       || (raw.studioMode === "smartEditor" && raw.editScope === "local")
       || (raw.studioMode === "relight" && (raw.maskUpload?.name || raw.maskTarget));
     return buildImageJob({
-      studioMode: raw.studioMode || "perfect",
+      studioMode: raw.studioMode || "guidedEdit",
       stage: action === "variation" ? "variations" : "quality",
-      label: perfect
-        ? `${perfect.family.name} · ${action === "variation" ? "Variazione" : "Qualità"}`
-        : (action === "variation" ? "Variazione controllata" : "Flux.2 qualità"),
+      label: action === "variation" ? "Variazione controllata" : "Flux.2 qualità",
       raw,
       source: selectedUpload,
       references: continuationReferences,
-      modelFile: perfect
-        ? perfect.modelFile
-        : (action === "variation"
-          ? (raw.flux2TurboModel || FLUX2_TURBO)
-          : (raw.flux2BaseModel || FLUX2_BASE)),
+      modelFile: action === "variation"
+        ? (raw.flux2TurboModel || FLUX2_TURBO)
+        : (raw.flux2BaseModel || FLUX2_BASE),
       prompt: [
         prompt,
-        perfect && identityReferencePrompt(selectedUpload, continuationReferences),
         action === "variation"
           ? "Create a controlled variation while preserving composition, character identity and color continuity."
           : "Produce the definitive high-quality version while preserving the approved composition.",
@@ -1544,26 +1432,18 @@ export function buildStudioContinuation(action, raw, selectedUpload, loras = und
       seed: seedAt(raw),
       width,
       height,
-      steps: perfect ? perfect.steps : (action === "variation" ? 8 : 22),
-      guidance: perfect ? perfect.guidance : (action === "variation" ? 1 : 4.5),
+      steps: action === "variation" ? 8 : 22,
+      guidance: action === "variation" ? 1 : 4.5,
       denoise: action === "variation" ? 0.42 : 0.22,
-      upscale: action === "quality" && Boolean(perfectRecipe?.upscale),
-      imageRecipe: perfectRecipe?.imageRecipe || "standard",
-      recipeUpscaleMode: perfectRecipe?.upscaleMode,
-      recipeSeedvrProfile: perfectRecipe?.seedvrProfile,
-      recipeSeedvrResolution: perfectRecipe?.seedvrResolution,
+      upscale: false,
+      imageRecipe: "standard",
       mask: raw.maskUpload,
       protectMask: localized,
       automaticTarget: String(raw.maskTarget || "").trim(),
       loras,
       extraMetadata: {
         guidedAction: action === "variation" ? "select_draft" : "finalize",
-        perfectModelFamily: perfect?.family.id,
-        perfectModelName: perfect?.family.name,
-        perfectModelProfile: perfect?.profile,
-        perfectRecipe: perfectRecipe?.id,
-        perfectRecipeName: perfectRecipe?.name,
-        identityReferenceCount: perfect ? continuationReferences.length + 1 : undefined,
+        identityReferenceCount: continuationReferences.length + 1,
       },
     });
   }
@@ -1582,7 +1462,7 @@ export function buildStudioContinuation(action, raw, selectedUpload, loras = und
             "99": {
               inputs: {
                 images: ["1", 0],
-                filename_prefix: `Studio/${raw.studioMode || "perfect"}/08_finale`,
+                filename_prefix: `Studio/${raw.studioMode || "guidedEdit"}/08_finale`,
               },
               class_type: "SaveImage",
               _meta: { title: "Salva senza upscale" },
@@ -1591,9 +1471,9 @@ export function buildStudioContinuation(action, raw, selectedUpload, loras = und
           metadata: {
             mediaType: "image",
             generationType: "image",
-            workflowId: `studio:${raw.studioMode || "perfect"}`,
-            workflowName: `${STUDIO_MODES[raw.studioMode || "perfect"].name} · Master veloce`,
-            studioMode: raw.studioMode || "perfect",
+            workflowId: `studio:${raw.studioMode || "guidedEdit"}`,
+            workflowName: `${STUDIO_MODES[raw.studioMode || "guidedEdit"].name} · Master veloce`,
+            studioMode: raw.studioMode || "guidedEdit",
             studioStage: "final",
             studioLabel: "Master veloce · stessa risoluzione",
             prompt,
@@ -1618,15 +1498,15 @@ export function buildStudioContinuation(action, raw, selectedUpload, loras = und
         upscaleSourceHeight: height,
         seed: raw.seed,
       }, selectedUpload, ["RealESRGAN_x2.pth"]);
-      result.workflow["99"].inputs.filename_prefix = `Studio/${raw.studioMode || "perfect"}/08_finale`;
+      result.workflow["99"].inputs.filename_prefix = `Studio/${raw.studioMode || "guidedEdit"}/08_finale`;
       return {
         ...result,
         metadata: {
           ...result.metadata,
           generationType: "image",
-          workflowId: `studio:${raw.studioMode || "perfect"}`,
-          workflowName: `${STUDIO_MODES[raw.studioMode || "perfect"].name} · Master veloce`,
-          studioMode: raw.studioMode || "perfect",
+          workflowId: `studio:${raw.studioMode || "guidedEdit"}`,
+          workflowName: `${STUDIO_MODES[raw.studioMode || "guidedEdit"].name} · Master veloce`,
+          studioMode: raw.studioMode || "guidedEdit",
           studioStage: "final",
           studioLabel: "Master veloce · upscale",
           prompt,
@@ -1640,7 +1520,7 @@ export function buildStudioContinuation(action, raw, selectedUpload, loras = und
       || (raw.studioMode === "smartEditor" && raw.editScope === "local")
       || (raw.studioMode === "relight" && (raw.maskUpload?.name || raw.maskTarget));
     return buildImageJob({
-      studioMode: raw.studioMode || "perfect",
+      studioMode: raw.studioMode || "guidedEdit",
       stage: "final",
       label: "Master finale",
       raw: {
@@ -1648,7 +1528,7 @@ export function buildStudioContinuation(action, raw, selectedUpload, loras = und
         faceDetailer,
         handDetailer,
         preserveStages: true,
-        outputBase: `Studio/${raw.studioMode || "perfect"}`,
+        outputBase: `Studio/${raw.studioMode || "guidedEdit"}`,
       },
       source: selectedUpload,
       modelFile: String(raw.flux1RefineModel || FLUX1_REALISTIC),

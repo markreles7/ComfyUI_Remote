@@ -16,6 +16,7 @@ const base = {
   alternatives: 2,
 };
 const cases = [
+  ["guidedEdit", { ...base, editAction: "addPerson", placement: JSON.stringify({ x: 0.4, y: 0.2, width: 0.2, height: 0.7 }) }, { source, mask, references }],
   ["smartphone", { ...base }, { source, mask, references }],
   ["smartEditor", { ...base, editScope: "global" }, { source, references }],
   ["inpaint", { ...base, maskTarget: "water", autoMaskEngine: "florence" }, { source, references }],
@@ -31,7 +32,6 @@ const cases = [
   ["bible", base, { source, references }],
   ["camera", base, { source, references }],
   ["relight", base, { source }],
-  ["perfect", base, { source: null, references }],
 ];
 
 const workflows = [];
@@ -42,12 +42,12 @@ for (const [mode, raw, uploads] of cases) {
 }
 const final = buildStudioContinuation("finalize", {
   ...base,
-  studioMode: "perfect",
+  studioMode: "guidedEdit",
   highresEnabled: true,
   upscaleMode: "rtx",
   autoPurge: true,
 }, source, []);
-workflows.push(["perfect:final", final.workflow]);
+workflows.push(["guidedEdit:final", final.workflow]);
 const localFinal = buildStudioContinuation("finalize", {
   ...base,
   studioMode: "smartphone",
@@ -59,11 +59,11 @@ const localFinal = buildStudioContinuation("finalize", {
 workflows.push(["smartphone:final", localFinal.workflow]);
 const speedFinal = buildStudioContinuation("finalize", {
   ...base,
-  studioMode: "perfect",
+  studioMode: "guidedEdit",
   studioPreset: "speed",
   finalOutput: "rtx",
 }, source, []);
-workflows.push(["perfect:speed-final", speedFinal.workflow]);
+workflows.push(["guidedEdit:speed-final", speedFinal.workflow]);
 
 const errors = workflows.flatMap(([name, workflow]) =>
   validateWorkflow(workflow, definitions, { label: name }).map((issue) => `${name} · ${issue}`)
