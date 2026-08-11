@@ -32,16 +32,25 @@ Se un nodo o modello manca, il report segna la capability come non disponibile. 
 ## Policy modelli
 
 - Qwen Image Edit 2511: source e multi-reference, maschera/compositing locale esterno, structure guide solo se verificata.
+- Qwen 2511 usa 4/8 step e CFG 1 soltanto quando e selezionata la corrispondente LoRA Lightning; senza Lightning usa il profilo nativo qualita a 28 step e CFG 4.
 - Flux.2 Klein: source e multi-reference, compositing locale esterno; nessun ControlNet depth viene dichiarato senza supporto verificato.
 - Step, guidance, denoise e reference strength restano quelli del workflow nativo.
 - Color match, blur, grain e ombre generiche non vengono applicati globalmente alle fotografie.
 - Per le persone non viene aggiunta una drop shadow generica.
 
+## Inserimento in un gruppo
+
+- `Spazio libero` mantiene i pixel esterni alla maschera e va usato quando la destinazione e realmente vuota.
+- `Fai spazio` permette un minimo riposizionamento dei soggetti esistenti e disattiva il reincollo rigido dei pixel originali. E la modalita corretta per inserire una persona fra due soggetti gia vicini.
+- `Automatico` sceglie `Fai spazio` quando il prompt contiene relazioni come "between", "in the middle", "tra" o "in mezzo".
+- La bbox viene ricavata anche dall'estensione della maschera dipinta quando non e stato tracciato un riquadro separato.
+- Una reference `Character sheet standard` viene ritagliata nel browser in due immagini distinte, fronte e volto neutro. Il collage completo non viene inviato al modello.
+
 ## Test manuale consigliato
 
 1. Aprire Image Studio e scegliere Editor Guidato > Persona.
 2. Caricare una foto con due uomini al bancone e una reference del terzo uomo.
-3. Disegnare una bbox tra i due uomini; dipingere una maschera locale solo se serve una regione precisa.
+3. Disegnare una bbox tra i due uomini; scegliere `Fai spazio` se i soggetti devono separarsi per accogliere il nuovo personaggio.
 4. Indicare interazione, piano di profondita e gli elementi da preservare.
 5. Generare prima con Qwen e poi, a parita di input, con Klein.
 6. Verificare nel report strategia, policy `preserve-native`, maschere reali e fallback.

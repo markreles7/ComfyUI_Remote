@@ -950,7 +950,7 @@ function storyboardModelSelection(raw, preset) {
   };
 }
 
-function guidedModelSelection(raw, preset) {
+function guidedModelSelection(raw, preset, loras = []) {
   const family = String(raw.guidedModelFamily || "qwen");
   if (family === "klein" || family === "flux2") {
     return {
@@ -965,13 +965,19 @@ function guidedModelSelection(raw, preset) {
   const modelFile = String(raw.qwenEditModel || QWEN_EDIT);
   const bigLove = /biglovegwen2/i.test(modelFile);
   const official2511 = /qwen[_-]?image[_-]?edit[_-]?2511/i.test(modelFile);
+  const loraNames = (Array.isArray(loras) ? loras : []).map((item) => String(item?.name || item));
+  const lightning4 = loraNames.some((name) => /qwen.+edit.+2511.+lightning.+4steps/i.test(name));
+  const lightning8 = loraNames.some((name) => /qwen.+edit.+2511.+lightning.+8steps/i.test(name));
+  const nativeSteps = official2511 ? 28 : bigLove ? 6 : 6;
+  const nativeGuidance = official2511 ? 4 : 1;
   return {
     family: "qwenEdit",
     name: official2511 ? "Qwen Image Edit 2511" : "BigLove Gwen / Qwen",
     modelFile,
-    steps: numberValue(raw.guidedSteps, official2511 ? 4 : bigLove ? 6 : 6, 1, 50, true),
-    guidance: numberValue(raw.guidedGuidance, official2511 || bigLove ? 1 : 1, 0, 20),
+    steps: numberValue(raw.guidedSteps, lightning4 ? 4 : lightning8 ? 8 : nativeSteps, 1, 50, true),
+    guidance: numberValue(raw.guidedGuidance, lightning4 || lightning8 ? 1 : nativeGuidance, 0, 20),
     imageRecipe: "runninghub",
+    samplingProfile: lightning4 ? "lightning-4" : lightning8 ? "lightning-8" : official2511 ? "native-quality" : "model-native",
   };
 }
 
@@ -1018,6 +1024,37 @@ function parsePlacement(raw) {
   }
 }
 
+export function resolveGuidedCompositionPolicy(raw = {}) {
+  if (["freeSpace", "recomposeGroup"].includes(raw.compositionPolicy)) {
+    return raw.compositionPolicy;
+  }
+  if (!["addPerson", "addAnimal", "addObject"].includes(raw.editAction)) return "freeSpace";
+  const instruction = [raw.spatialInstruction, raw.prompt].filter(Boolean).join(" ").toLowerCase();
+  return /\bbetween\b|\bin the middle of\b|\bat the cent(?:er|re) of (?:the )?(?:two|both)\b|\btra (?:i|le|due)\b|\bfra (?:i|le|due)\b|\bin mezzo (?:ai|alle|a due)\b/.test(instruction)
+    ? "recomposeGroup"
+    : "freeSpace";
+}
+
+function guidedNegativePrompt(raw, compositionPolicy) {
+  const original = String(raw.negativePrompt || "").trim();
+  if (compositionPolicy !== "recomposeGroup") return original;
+  const compatible = original.split(",").map((item) => item.trim()).filter((item) =>
+    item && !/outside the selected|redraw the whole|change the composition|camera angle|framing/i.test(item)
+  );
+  compatible.push(
+    "identity drift in any of the three people",
+    "changed facial features or wardrobe",
+    "duplicate people",
+    "extra people beyond the one requested",
+    "floating torso",
+    "cropped body",
+    "incorrect scale",
+    "flat pasted appearance",
+    "broken anatomy",
+  );
+  return [...new Set(compatible)].join(", ");
+}
+
 function guidedEditPrompt(raw, prompt, controls) {
   const action = GUIDED_ACTIONS[raw.editAction] || GUIDED_ACTIONS.modify;
   const placement = parsePlacement(raw);
@@ -1028,14 +1065,19 @@ function guidedEditPrompt(raw, prompt, controls) {
   const preservation = String(raw.preserveInstruction || "").trim();
   const subjectName = String(raw.subjectName || "the inserted subject").trim();
   const insertion = ["addPerson", "addAnimal", "addObject"].includes(raw.editAction);
+  const compositionPolicy = resolveGuidedCompositionPolicy(raw);
+  const recomposeGroup = insertion && compositionPolicy === "recomposeGroup";
   const placementText = placement
     ? `Target box in normalized image coordinates: left ${Math.round(placement.x * 100)}%, top ${Math.round(placement.y * 100)}%, width ${Math.round(placement.width * 100)}%, height ${Math.round(placement.height * 100)}%. Keep the new or modified subject inside this area.`
     : "";
   return [
     action,
+    recomposeGroup && "COMPOSITION POLICY: RECOMPOSE THE GROUP TO CREATE REAL PHYSICAL SPACE. Minimally move the existing subjects sideways while preserving their identity, face, wardrobe, pose character, lighting and camera perspective. This explicitly overrides generic instructions to keep every source pixel or the exact original subject positions.",
     prompt,
     controls.prompt,
-    insertion && `SOURCE/WHERE: image 1 is the original photograph and defines camera, background, geometry and untouched people. Do not regenerate it globally.`,
+    insertion && (recomposeGroup
+      ? "SOURCE/WHERE: image 1 defines the original people, camera and environment. Preserve their identity and appearance, but recompose their horizontal spacing enough to make a credible place for the new subject."
+      : "SOURCE/WHERE: image 1 is the original photograph and defines camera, background, geometry and untouched people. Do not regenerate it globally."),
     insertion && `SUBJECT/WHO: ${subjectName}. Identity and appearance come only from the dedicated subject references; do not blend them with people already in the source.`,
     insertion && `PLACEMENT/WHAT: insert only this subject in the requested region and interaction. The bounding box is placement geometry, not a rectangular edit mask.`,
     placementText,
@@ -1044,7 +1086,9 @@ function guidedEditPrompt(raw, prompt, controls) {
     depth && `Depth and occlusion: ${depth}.`,
     contact && `Physical contact and environmental reaction: ${contact}.`,
     preservation && `Must remain unchanged: ${preservation}.`,
-    "Preserve every unrequested element of the source photograph.",
+    recomposeGroup
+      ? "Preserve every unrequested visual attribute, but do not preserve the exact pixels or exact horizontal positions inside the group recomposition area."
+      : "Preserve every unrequested element of the source photograph.",
     "Match perspective, focal length, scale, anatomy, depth, occlusion, contact shadows, reflections, white balance, sensor texture and ambient light.",
     "The result must look captured in the original photograph, never pasted on top of it.",
   ].filter(Boolean).join(" ");
@@ -1276,19 +1320,24 @@ export function buildStudioJobs(studioMode, raw, uploads, loras = undefined) {
   }
 
   if (studioMode === "guidedEdit") {
-    const guidedModel = guidedModelSelection(raw, preset);
+    const guidedModel = guidedModelSelection(raw, preset, loras);
     const globalAction = ["style", "relight", "background"].includes(raw.editAction);
     const masked = !globalAction || Boolean(mask?.name || automaticTarget);
     const placement = parsePlacement(raw);
+    const compositionPolicy = resolveGuidedCompositionPolicy(raw);
     if (masked && !mask?.name && !automaticTarget && !placement) {
       throw new Error("Disegna l’area della modifica, traccia il riquadro di posizionamento oppure usa la selezione automatica.");
     }
     const guidedPrompt = guidedEditPrompt(raw, prompt, controls);
+    const guidedRaw = {
+      ...raw,
+      negativePrompt: guidedNegativePrompt(raw, compositionPolicy),
+    };
     return Array.from({ length: alternatives }, (_, index) => buildImageJob({
       studioMode,
       stage: "drafts",
       label: `Proposta guidata ${index + 1}`,
-      raw,
+      raw: guidedRaw,
       source,
       references,
       guide,
@@ -1301,17 +1350,22 @@ export function buildStudioJobs(studioMode, raw, uploads, loras = undefined) {
       steps: guidedModel.steps,
       guidance: guidedModel.guidance,
       imageRecipe: guidedModel.imageRecipe,
-      protectMask: Boolean(mask?.name || automaticTarget),
+      protectMask: compositionPolicy === "freeSpace" && Boolean(mask?.name || automaticTarget),
       automaticTarget,
       loras,
       extraMetadata: {
         guidedModelFamily: guidedModel.family,
         guidedModelName: guidedModel.name,
         guidedModelFile: guidedModel.modelFile,
+        guidedSamplingProfile: guidedModel.samplingProfile,
         editAction: raw.editAction || "modify",
         editPreset: preset.label,
         editScope: masked ? "local" : "global",
         placement,
+        compositionPolicy,
+        referencePreparation: raw.identityReferenceFormat === "characterSheet"
+          ? "character-sheet-front-and-face"
+          : raw.identityReferenceFormat || "single",
         referenceCount: references.length,
         subjectIdentity: {
           subjectId: String(raw.subjectId || "").trim() || null,

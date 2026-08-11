@@ -121,7 +121,10 @@ export function evaluateSceneCoherence(sourceProfile, resultProfile, suppliedMet
       ? suppliedMetric(suppliedMetrics, "temporalConsistency", "Consistenza temporale", "temporal-smoothing")
       : category(100, 1, "Consistenza temporale", null),
     identityPreservation: suppliedMetric(
-      suppliedMetrics, "identityPreservation", "Identità", "regional-regeneration",
+      suppliedMetrics, "identityPreservation", "Identità dei soggetti originali", "regional-regeneration",
+    ),
+    referenceIdentityMatch: suppliedMetric(
+      suppliedMetrics, "referenceIdentityMatch", "Identità del soggetto inserito", "regional-regeneration",
     ),
     backgroundPreservation: suppliedMetric(
       suppliedMetrics, "backgroundPreservation", "Sfondo", "mask-recomposite",

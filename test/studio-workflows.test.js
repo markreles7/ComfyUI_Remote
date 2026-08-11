@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   buildStudioContinuation,
   buildStudioJobs,
+  resolveGuidedCompositionPolicy,
   studioConfig,
 } from "../src/studio-workflows.js";
 
@@ -154,6 +155,57 @@ test("Editor Guidato unifica inserimento, posizione, reference e maschera protet
   assert.equal(job.workflow["950110"].class_type, "ImageCompositeMasked");
   assert.deepEqual(job.workflow["950110"].inputs.destination, ["20", 0]);
   assert.equal(job.metadata.protectedEdit, true);
+});
+
+test("Editor Guidato ricompone il gruppo quando il nuovo soggetto va tra due persone", () => {
+  assert.equal(resolveGuidedCompositionPolicy({
+    editAction: "addPerson",
+    spatialInstruction: "at the center of the two characters",
+  }), "recomposeGroup");
+  const [job] = buildStudioJobs("guidedEdit", {
+    editAction: "addPerson",
+    prompt: "Insert Marco between the two original adults.",
+    subjectName: "Marco",
+    spatialInstruction: "at the center of the two characters",
+    placement: JSON.stringify({ x: 0.38, y: 0.12, width: 0.24, height: 0.78 }),
+    compositionPolicy: "auto",
+    structureGuide: "none",
+    alternatives: 2,
+    imageWidth: 1280,
+    imageHeight: 720,
+  }, { source, mask, references: [{ name: "identity-front.png" }, { name: "identity-face.png" }] });
+
+  assert.equal(job.metadata.compositionPolicy, "recomposeGroup");
+  assert.equal(job.metadata.protectedEdit, false);
+  assert.equal(job.workflow["950110"], undefined);
+  assert.match(job.metadata.prompt, /RECOMPOSE THE GROUP/i);
+  assert.match(job.metadata.prompt, /overrides generic instructions/i);
+  assert.doesNotMatch(job.metadata.negativePrompt, /change the composition/i);
+});
+
+test("Qwen 2511 usa sampling nativo qualità senza Lightning e 4 step con la LoRA", () => {
+  const raw = {
+    editAction: "addPerson",
+    prompt: "Insert one adult in the marked free space.",
+    qwenEditModel: "QWEN\\qwen_image_edit_2511_bf16.safetensors",
+    placement: JSON.stringify({ x: 0.4, y: 0.1, width: 0.2, height: 0.8 }),
+    structureGuide: "none",
+    alternatives: 2,
+    imageWidth: 1280,
+    imageHeight: 720,
+  };
+  const [native] = buildStudioJobs("guidedEdit", raw, { source, references: [{ name: "identity.png" }] });
+  assert.equal(native.metadata.imageSettings.steps, 28);
+  assert.equal(native.metadata.imageSettings.guidance, 4);
+  assert.equal(native.metadata.guidedSamplingProfile, "native-quality");
+
+  const [accelerated] = buildStudioJobs("guidedEdit", raw, { source, references: [{ name: "identity.png" }] }, [{
+    name: "QWEN\\Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors",
+    strength: 1,
+  }]);
+  assert.equal(accelerated.metadata.imageSettings.steps, 4);
+  assert.equal(accelerated.metadata.imageSettings.guidance, 1);
+  assert.equal(accelerated.metadata.guidedSamplingProfile, "lightning-4");
 });
 
 test("Editor Guidato applica il ControlNet Canny Qwen prima del sampler", () => {

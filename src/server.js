@@ -3093,9 +3093,12 @@ app.post("/api/studio/projects", upload.any(), async (request, response, next) =
             preserve: request.body.preserveInstruction,
             placement,
             placementMethod: request.body.placementMethod,
+            compositionPolicy: job.metadata?.compositionPolicy || request.body.compositionPolicy,
             spatialInstruction: request.body.spatialInstruction,
             depthRelation: request.body.depthRelation,
-            maskFile: uploaded.mask?.name || "",
+            maskFile: job.metadata?.compositionPolicy === "recomposeGroup"
+              ? ""
+              : uploaded.mask?.name || "",
             references: (uploaded.references || []).map((item, index) => ({
               file: item.name,
               role: ["identity", "pose", "style"][index] || "appearance",
@@ -3129,7 +3132,7 @@ app.post("/api/studio/projects", upload.any(), async (request, response, next) =
       }));
     }
     jobs = await Promise.all(jobs.map((job) => integrateSceneJob(job, request.body, {
-      maskUpload: uploaded.mask || null,
+      maskUpload: job.metadata?.compositionPolicy === "recomposeGroup" ? null : uploaded.mask || null,
       structureGuideAvailable: Boolean(uploaded.guide),
       subjectType: job.metadata?.subjectInsertion?.subjectType || null,
     })));

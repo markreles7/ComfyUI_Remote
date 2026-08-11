@@ -74,6 +74,7 @@ export function planSubjectInsertion(raw, { availableNodes = [] } = {}) {
       depthApplied: applyDepth,
       localFinishingOnly: true,
       globalFinishing: false,
+      protectedPixelComposite: request.placement.compositionPolicy !== "recomposeGroup",
     },
     instructions: request.instructions,
     passes: {

@@ -12,6 +12,7 @@ const state = {
   maskTool: "draw",
   rectangleStart: null,
   rectangleSnapshot: null,
+  referenceSheetCrops: null,
   sourceImage: null,
   renderKey: "",
   editWildcardSeed: null,
@@ -250,8 +251,9 @@ function updateGuidedModel() {
   const family = $("#guidedModelFamily").value;
   toggle("#qwen-edit-model-field", family === "qwen");
   toggle("#guided-klein-model-field", family === "klein");
-  $("#guidedSteps").value = family === "klein" ? "20" : "6";
-  $("#guidedGuidance").value = family === "klein" ? "5" : "1";
+  toggle("#guided-sampling-profile", family === "qwen");
+  $("#guidedSteps").value = family === "klein" ? "20" : "";
+  $("#guidedGuidance").value = family === "klein" ? "5" : "";
   updateEditWildcardDefaults();
   renderLoras();
 }
@@ -442,6 +444,82 @@ function maskBlob() {
   return new Promise((resolve) => $("#mask-canvas").toBlob(resolve, "image/png"));
 }
 
+function placementFromPaintedMask() {
+  const canvas = $("#mask-canvas");
+  if (!state.maskTouched || !canvas.width || !canvas.height) return null;
+  const pixels = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+  let left = canvas.width;
+  let top = canvas.height;
+  let right = -1;
+  let bottom = -1;
+  for (let y = 0; y < canvas.height; y += 1) {
+    for (let x = 0; x < canvas.width; x += 1) {
+      if (pixels[(y * canvas.width + x) * 4 + 3] < 8) continue;
+      left = Math.min(left, x);
+      top = Math.min(top, y);
+      right = Math.max(right, x);
+      bottom = Math.max(bottom, y);
+    }
+  }
+  if (right < left || bottom < top) return null;
+  const margin = Math.round(Math.min(canvas.width, canvas.height) * 0.015);
+  left = Math.max(0, left - margin);
+  top = Math.max(0, top - margin);
+  right = Math.min(canvas.width - 1, right + margin);
+  bottom = Math.min(canvas.height - 1, bottom + margin);
+  return {
+    x: left / canvas.width,
+    y: top / canvas.height,
+    width: (right - left + 1) / canvas.width,
+    height: (bottom - top + 1) / canvas.height,
+  };
+}
+
+const CHARACTER_SHEET_CROPS = {
+  front: { x: 0.035, y: 0.035, width: 0.285, height: 0.535 },
+  face: { x: 0.018, y: 0.605, width: 0.205, height: 0.275 },
+};
+
+function cropImageCanvas(image, crop) {
+  const sx = Math.max(0, Math.round(image.width * crop.x));
+  const sy = Math.max(0, Math.round(image.height * crop.y));
+  const sw = Math.max(1, Math.min(image.width - sx, Math.round(image.width * crop.width)));
+  const sh = Math.max(1, Math.min(image.height - sy, Math.round(image.height * crop.height)));
+  const canvas = document.createElement("canvas");
+  canvas.width = sw;
+  canvas.height = sh;
+  canvas.getContext("2d").drawImage(image, sx, sy, sw, sh, 0, 0, sw, sh);
+  return canvas;
+}
+
+function canvasPng(canvas) {
+  return new Promise((resolve, reject) => canvas.toBlob(
+    (blob) => blob ? resolve(blob) : reject(new Error("Impossibile preparare il ritaglio della reference.")),
+    "image/png",
+  ));
+}
+
+async function prepareCharacterSheetReference() {
+  const file = document.querySelector('[name="reference1"]')?.files?.[0];
+  const format = $("#identityReferenceFormat").value;
+  const preview = $("#identity-reference-preview");
+  if (format !== "characterSheet" || !file) {
+    state.referenceSheetCrops = null;
+    preview.classList.add("hidden");
+    return null;
+  }
+  const image = await createImageBitmap(file);
+  const front = cropImageCanvas(image, CHARACTER_SHEET_CROPS.front);
+  const face = cropImageCanvas(image, CHARACTER_SHEET_CROPS.face);
+  image.close?.();
+  state.referenceSheetCrops = { file, front, face };
+  $("#identity-front-preview").src = front.toDataURL("image/jpeg", 0.9);
+  $("#identity-face-preview").src = face.toDataURL("image/jpeg", 0.9);
+  preview.classList.remove("hidden");
+  $("#identity-reference-status").textContent = "La scheda verrà inviata come due reference indipendenti: figura frontale e volto neutro.";
+  return state.referenceSheetCrops;
+}
+
 function compatibleLoras() {
   const mode = $("#studioMode").value;
   return (state.config?.loras || []).filter((name) =>
@@ -516,7 +594,17 @@ async function submitProject(event) {
   const status = $("#studio-form-status");
   try {
     syncStructuredFields();
+    if (state.maskTouched && !$("#placement").value) {
+      const inferredPlacement = placementFromPaintedMask();
+      if (inferredPlacement) $("#placement").value = JSON.stringify(inferredPlacement);
+    }
     const formData = new FormData(event.currentTarget);
+    if ($("#identityReferenceFormat").value === "characterSheet") {
+      const crops = state.referenceSheetCrops || await prepareCharacterSheetReference();
+      if (!crops) throw new Error("Carica il character sheet nella reference Identità / WHO.");
+      formData.set("reference1", await canvasPng(crops.front), "identity-front.png");
+      formData.set("reference2", await canvasPng(crops.face), "identity-face.png");
+    }
     if ($("#maskMode").value === "manual" && !$("#mask-section").classList.contains("hidden")) {
       if (!state.maskTouched && !$("#placement").value) {
         throw new Error("Disegna la maschera locale, traccia il riquadro di posizione oppure usa la selezione automatica.");
@@ -604,6 +692,7 @@ function subjectInsertionReport(generation) {
       <dl>
         <div><dt>Strategia</dt><dd>${escapeHtml(plan.strategy?.id || "non disponibile")}</dd></div>
         <div><dt>Parametri</dt><dd>${escapeHtml(plan.strategy?.parameterPolicy || "preserve-native")}</dd></div>
+        <div><dt>Composizione</dt><dd>${escapeHtml(plan.placement?.compositionPolicy || "freeSpace")}</dd></div>
         <div><dt>Maschere reali</dt><dd>${escapeHtml(realMasks.join(", ") || "nessuna")}</dd></div>
         <div><dt>Depth</dt><dd>${plan.scene?.depthApplied ? "applicata" : "non applicata"}</dd></div>
       </dl>
@@ -922,6 +1011,21 @@ $("#qwenEditModel").addEventListener("change", renderLoras);
 $("#guidedKleinModel").addEventListener("change", renderLoras);
 $("#bibleType").addEventListener("change", updateBibleDefaults);
 $("#studio-source").addEventListener("change", (event) => loadSource(event.target.files[0]));
+document.querySelector('[name="reference1"]').addEventListener("change", () => {
+  prepareCharacterSheetReference().catch((error) => {
+    $("#identity-reference-status").textContent = error.message;
+  });
+});
+$("#identityReferenceFormat").addEventListener("change", () => {
+  if ($("#identityReferenceFormat").value !== "characterSheet") {
+    $("#identity-reference-status").textContent = $("#identityReferenceFormat").value === "wholeSheet"
+      ? "La scheda completa verrà inviata come una sola reference. Usalo soltanto se il modello deve leggere tutte le viste."
+      : "Per una scheda con più viste scegli “estrai fronte + volto”: il collage intero confonde l’identità.";
+  }
+  prepareCharacterSheetReference().catch((error) => {
+    $("#identity-reference-status").textContent = error.message;
+  });
+});
 function studioPromptAssistantSource() {
   return $("#studio-source").files[0]
     || document.querySelector('[name="firstFrame"]')?.files[0]

@@ -191,6 +191,15 @@
               <option value="text">Descrizione spaziale</option>
             </select>
           </div>
+          <div class="field">
+            <label for="compositionPolicy">Gestione dello spazio</label>
+            <select id="compositionPolicy" name="compositionPolicy">
+              <option value="auto" selected>Automatico · interpreta la scena</option>
+              <option value="freeSpace">Spazio libero · conserva i pixel esterni</option>
+              <option value="recomposeGroup">Fai spazio · ricomponi il gruppo</option>
+            </select>
+            <p class="hint">Usa “Fai spazio” quando il nuovo soggetto deve entrare fra persone già vicine: le loro identità restano bloccate, ma possono spostarsi leggermente.</p>
+          </div>
           <details class="advanced-settings">
             <summary>Guida strutturale <span>Posa, sketch o profondità</span></summary>
             <div class="advanced-settings-body">
@@ -229,8 +238,8 @@
             </div>
           </details>
           <input id="placement" name="placement" type="hidden" value="">
-          <input id="guidedSteps" name="guidedSteps" type="hidden" value="6">
-          <input id="guidedGuidance" name="guidedGuidance" type="hidden" value="1">
+          <input id="guidedSteps" name="guidedSteps" type="hidden" value="">
+          <input id="guidedGuidance" name="guidedGuidance" type="hidden" value="">
         </section>
 
         <section id="mask-section" class="studio-subpanel hidden">
@@ -306,10 +315,23 @@
 
         <section id="reference-section" class="studio-subpanel hidden">
           <p class="subpanel-title">Reference soggetto</p>
+          <div class="field">
+            <label for="identityReferenceFormat">Formato reference identità</label>
+            <select id="identityReferenceFormat" name="identityReferenceFormat">
+              <option value="single" selected>Foto singola</option>
+              <option value="characterSheet">Character sheet standard · estrai fronte + volto</option>
+              <option value="wholeSheet">Character sheet intero · non ritagliare</option>
+            </select>
+            <p id="identity-reference-status" class="hint">Per una scheda con più viste scegli “estrai fronte + volto”: il collage intero confonde l’identità.</p>
+          </div>
           <div class="reference-grid">
             <label><span>Identità / WHO</span><input name="reference1" type="file" accept="image/*"></label>
             <label><span>Posa / WHAT</span><input name="reference2" type="file" accept="image/*"></label>
             <label><span>Aspetto / abito</span><input name="reference3" type="file" accept="image/*"></label>
+          </div>
+          <div id="identity-reference-preview" class="identity-reference-preview hidden">
+            <figure><img id="identity-front-preview" alt="Ritaglio frontale"><figcaption>Identità e corporatura</figcaption></figure>
+            <figure><img id="identity-face-preview" alt="Ritaglio volto"><figcaption>Volto neutro</figcaption></figure>
           </div>
           <p class="hint">La foto sorgente definisce WHERE; le reference definiscono WHO e WHAT. Non vengono interpretate come nuove scene.</p>
         </section>
@@ -431,6 +453,10 @@
             </div>
             <div id="qwen-edit-model-field" class="field hidden"><label for="qwenEditModel">Checkpoint Qwen editing guidato</label><select id="qwenEditModel" name="qwenEditModel"></select></div>
             <div id="guided-klein-model-field" class="field hidden"><label for="guidedKleinModel">Checkpoint Flux.2 / Klein guidato</label><select id="guidedKleinModel" name="guidedKleinModel"></select></div>
+            <div id="guided-sampling-profile" class="field hidden">
+              <label>Profilo sampling Qwen</label>
+              <p class="hint">Automatico: 4/8 step con la Lightning selezionata; senza Lightning usa il profilo nativo qualità 28 step, CFG 4.</p>
+            </div>
             <div id="flux2-turbo-model-field" class="field"><label for="flux2TurboModel">Flux.2 bozze</label><select id="flux2TurboModel" name="flux2TurboModel"></select></div>
             <div id="flux2-base-model-field" class="field"><label for="flux2BaseModel">Flux.2 qualità</label><select id="flux2BaseModel" name="flux2BaseModel"></select></div>
             <div id="zimage-model-field" class="field"><label for="zImageModel">Z-Image bozze</label><select id="zImageModel" name="zImageModel"></select></div>

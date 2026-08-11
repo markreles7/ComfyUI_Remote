@@ -3,7 +3,7 @@ const CORRECTION_CATEGORY = Object.freeze({
   "exposure-match": ["luminanceCoherence"],
   relighting: ["lightingDirectionCoherence"],
   "shadow-adjustment": ["shadowCoherence"],
-  "regional-regeneration": ["perspectiveCoherence", "scaleCoherence", "identityPreservation"],
+  "regional-regeneration": ["perspectiveCoherence", "scaleCoherence", "identityPreservation", "referenceIdentityMatch"],
   "depth-aware-compositing": ["depthCoherence"],
   "blur-match": ["sharpnessCoherence"],
   "grain-match": ["grainNoiseCoherence"],

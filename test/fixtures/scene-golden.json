@@ -11,7 +11,7 @@
     "confidenceScores",
     "analysisWarnings"
   ],
-  "scoreCategories": 15,
+  "scoreCategories": 16,
   "presetIterationLimits": {
     "preview": 1,
     "balanced": 2,

@@ -24,6 +24,7 @@ test("Subject Insertion separa bbox, maschera e identità e preserva i parametri
     subjectName: "Third man",
     characterId: "third-man",
     placement: { x: 0.42, y: 0.2, width: 0.2, height: 0.7 },
+    compositionPolicy: "recomposeGroup",
     references: [{ file: "third-man-front.png", role: "identity" }],
     modelFamily: "qwenEdit",
     sceneProfile: {
@@ -42,6 +43,7 @@ test("Subject Insertion separa bbox, maschera e identità e preserva i parametri
   assert.ok(plan.fallbacks.some((item) => item.includes("Maschera soggetto")));
   assert.equal(plan.scene.localFinishingOnly, true);
   assert.equal(plan.scene.globalFinishing, false);
+  assert.equal(plan.scene.protectedPixelComposite, false);
   assert.equal(subjectInsertionResult(plan, { final: "final.png" }).final, "final.png");
 });
 

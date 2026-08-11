@@ -256,7 +256,7 @@ test("evaluator produce categorie separate e correction pass soltanto per quelle
     backgroundPreservation: { score: 96, confidence: 0.9 },
     edgeCompositingQuality: { score: 90, confidence: 0.8 },
   });
-  assert.equal(Object.keys(evaluation.categories).length, 15);
+  assert.equal(Object.keys(evaluation.categories).length, 16);
   assert.ok(evaluation.categories.colorCoherence.score < 75);
   assert.equal(evaluation.categories.backgroundPreservation.score, 96);
   const correction = buildCorrectionPlan(evaluation, { iteration: 0, maxIterations: 2 });

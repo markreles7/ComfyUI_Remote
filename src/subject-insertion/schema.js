@@ -32,6 +32,10 @@ function normalizedBox(value) {
   };
 }
 
+function compositionPolicy(value) {
+  return ["freeSpace", "recomposeGroup"].includes(value) ? value : "auto";
+}
+
 export function normalizeSubjectInsertionRequest(raw = {}) {
   const operation = text(raw.operation || raw.editAction || "modify");
   const placement = object(raw.placement);
@@ -73,6 +77,7 @@ export function normalizeSubjectInsertionRequest(raw = {}) {
       text: text(placement.text || raw.spatialInstruction),
       depthRelation: text(placement.depthRelation || raw.depthRelation),
       method: text(placement.method || raw.placementMethod) || "combined",
+      compositionPolicy: compositionPolicy(placement.compositionPolicy || raw.compositionPolicy),
     },
     masks: {
       edit: text(raw.editMask || raw.maskFile),
