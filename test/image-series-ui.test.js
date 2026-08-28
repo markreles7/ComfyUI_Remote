@@ -23,6 +23,8 @@ test("client crea job separati e supporta rigenerazione card e nuova anchor", ()
   assert.match(app, /data\.set\("batchSize", "1"\)/);
   assert.match(app, /data\.set\("prompt", item\.prompt\)/);
   assert.match(app, /data\.set\("seed", String\(item\.seed\)\)/);
+  assert.match(app, /data\.set\("pulidReference", pulidReference, pulidReference\.name\)/);
+  assert.match(app, /PuLID richiede Flux\.2 Klein/);
   assert.match(app, /\/api\/image-series\/\$\{encodeURIComponent\(generationId\)\}\/regenerate/);
   assert.match(app, /data-use-series-anchor/);
   assert.match(app, /seriesAnchor\?\.url/);
@@ -31,6 +33,7 @@ test("client crea job separati e supporta rigenerazione card e nuova anchor", ()
 test("server pianifica le serie, rileva PuLID da object_info e rigenera una sola card", () => {
   assert.match(server, /app\.post\("\/api\/image-series\/plan"/);
   assert.match(server, /detectImageSeriesCapabilities\(info\)/);
+  assert.match(server, /request\.body\.pulidReferenceUpload = pulidUploaded/);
   assert.match(server, /app\.post\("\/api\/image-series\/:generationId\/regenerate"/);
   assert.match(server, /seriesSupersededBy/);
 });

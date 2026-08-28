@@ -296,7 +296,9 @@ function syncSeriesTrigger() {
 
 function seriesLoras() {
   const name = $("#seriesCharacterLora")?.value || "";
-  if (!name) return selectedLoras();
+  const consistency = $("#characterConsistency")?.value || "off";
+  const usesCharacterLora = ["lora", "loraPulid"].includes(consistency);
+  if (!name || !usesCharacterLora) return selectedLoras().filter((lora) => lora.name !== name);
   const item = { name, strength: Number($("#seriesLoraStrength").value || 1) };
   return [item, ...selectedLoras().filter((lora) => lora.name !== name)];
 }
@@ -361,23 +363,26 @@ function updateImageSeriesOptions() {
     ? `${model.name} · ${$("#imageModelFile").selectedOptions[0]?.textContent || file}`
     : "Seleziona Qwen 2512, Qwen Edit 2511 o Flux.2 Klein";
   const pulid = state.config?.imageSeries?.pulidFlux2 || {};
+  const pulidCompatibleModel = model?.family === "flux2";
   for (const option of $("#characterConsistency").options) {
-    if (["pulid", "loraPulid"].includes(option.value)) option.disabled = !pulid.available;
+    if (["pulid", "loraPulid"].includes(option.value)) option.disabled = !pulid.available || !pulidCompatibleModel;
   }
   if ($("#characterConsistency").selectedOptions[0]?.disabled) $("#characterConsistency").value = $("#seriesCharacterLora").value ? "lora" : "off";
   const pulidSelected = ["pulid", "loraPulid"].includes($("#characterConsistency").value);
   $("#pulidStrength").disabled = !pulidSelected;
   $("#pulidReference").disabled = !pulidSelected;
   $("#pulid-reference-dropzone").classList.toggle("disabled", !pulidSelected);
-  $("#pulid-capability-message").textContent = pulid.available
-    ? `PuLID pronto · ${[...(pulid.pulidNodes || []), ...(pulid.insightFaceNodes || [])].join(", ")}`
+  $("#pulid-capability-message").textContent = pulid.available && pulidCompatibleModel
+    ? `PuLID Flux.2 pronto · ${pulid.modelFile || "Klein v2"} · InsightFace CUDA`
+    : pulid.available
+      ? "PuLID pronto: seleziona Flux.2 Klein per abilitarlo."
     : pulid.reason || "PuLID Flux.2 non disponibile; Flux standard e Character LoRA restano utilizzabili.";
   const sameId = $("#samePlaceModel").value;
   $("#same-place-model-message").textContent = sameId === "qwenEdit"
     ? "Modalità principale: l’anchor originale viene inviata a ogni job Qwen Edit 2511."
     : sameId === "qwenImage"
       ? "Supporto secondario: Qwen 2512 usa Character LoRA e contesto testuale; non dispone di conditioning anchor nativo nel workflow attuale."
-      : "Best effort Flux.2: usa la reference latent nativa. PuLID resta disabilitato finché i nodi non compaiono in /object_info.";
+      : "Flux.2 usa la reference latent nativa; PuLID può aggiungere il blocco dell’identità del volto.";
 }
 
 function anchorImageUrl(item, index = 0) {
@@ -488,15 +493,14 @@ async function submitImageSeries() {
   if (!["qwen", "qwenedit", "flux2"].includes(model?.family)) {
     throw new Error("La modalità serie richiede Qwen Image 2512, Qwen Image Edit 2511 o Flux.2 Klein.");
   }
-  if (mode === "influencer" && !$("#seriesCharacterLora").value) {
-    throw new Error("Seleziona una Character LoRA per mantenere la stessa identità nella serie Influencer.");
-  }
-  const file = $("#imageModelFile").value;
   const consistency = $("#characterConsistency").value;
   if (["pulid", "loraPulid"].includes(consistency)) {
-    throw new Error(state.config?.imageSeries?.pulidFlux2?.reason || "PuLID Flux.2 non disponibile.");
+    const pulid = state.config?.imageSeries?.pulidFlux2 || {};
+    if (!pulid.available) throw new Error(pulid.reason || "PuLID Flux.2 non disponibile.");
+    if (model.family !== "flux2") throw new Error("PuLID richiede Flux.2 Klein.");
+    if (!$("#pulidReference").files[0]) throw new Error("Carica una reference volto per usare PuLID.");
   }
-  if (consistency === "lora" && !$("#seriesCharacterLora").value) {
+  if (["lora", "loraPulid"].includes(consistency) && !$("#seriesCharacterLora").value) {
     throw new Error("Seleziona una Character LoRA oppure imposta Character Consistency su Off.");
   }
   let anchor = null;
@@ -536,6 +540,12 @@ async function submitImageSeries() {
     data.set("characterTrigger", $("#seriesCharacterTrigger").value.trim());
     data.set("characterConsistency", consistency);
     data.set("pulidStrength", $("#pulidStrength").value);
+    if (["pulid", "loraPulid"].includes(consistency)) {
+      const pulidReference = $("#pulidReference").files[0];
+      data.set("pulidReference", pulidReference, pulidReference.name);
+    } else {
+      data.delete("pulidReference");
+    }
     if (mode === "samePlace") {
       data.set("imageModelId", $("#samePlaceModel").value);
       data.set("imageMode", $("#samePlaceModel").value === "qwenImage" ? "text" : "image");
@@ -543,9 +553,6 @@ async function submitImageSeries() {
       else data.set("sourceImage", anchor, anchor.name);
     } else if (anchor) {
       data.set("sourceImage", anchor, anchor.name);
-    }
-    if (model.family === "flux2" && !/pornmaster.*flux2.*klein.*v4.*turbo/i.test(file)) {
-      data.set("characterConsistency", $("#seriesCharacterLora").value ? "lora" : "off");
     }
     const generation = await api("/api/generations", { method: "POST", body: data });
     queued.push(generation);

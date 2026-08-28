@@ -499,6 +499,37 @@ function buildKlein(definition, options, upload, referenceUploads = []) {
   return workflow;
 }
 
+function applyPuLIDFlux2(workflow, options) {
+  const consistency = options.characterConsistency;
+  if (!["pulid", "loraPulid"].includes(consistency)) return;
+  if (!options.pulidReferenceUpload?.name) {
+    throw new Error("Carica una reference volto per usare PuLID Flux.2.");
+  }
+  const currentModel = workflow["13"]?.inputs?.model;
+  if (!currentModel) throw new Error("Punto di applicazione PuLID Flux.2 non trovato nel workflow.");
+  workflow["900101"] = node({
+    image: inputPath(options.pulidReferenceUpload),
+  }, "LoadImage", "Reference identità PuLID");
+  workflow["900102"] = node({
+    provider: "CUDA",
+  }, "PuLIDInsightFaceLoader", "InsightFace AntelopeV2 · CUDA");
+  workflow["900103"] = node({}, "PuLIDEVACLIPLoader", "EVA-CLIP PuLID");
+  workflow["900104"] = node({
+    pulid_file: "pulid_flux2_klein_v2.safetensors",
+  }, "PuLIDModelLoader", "PuLID Flux.2 Klein v2");
+  workflow["900105"] = node({
+    model: currentModel,
+    pulid_model: ["900104", 0],
+    strength: options.pulidStrength,
+    eva_clip: ["900103", 0],
+    face_analysis: ["900102", 0],
+    image: ["900101", 0],
+    face_index: 0,
+    debug_mode: false,
+  }, "ApplyPuLIDFlux2", "Applica identità PuLID Flux.2");
+  workflow["13"].inputs.model = ["900105", 0];
+}
+
 function buildZImage(definition, options, upload) {
   const workflow = {
     "1": node({ unet_name: definition.modelFile, weight_dtype: "default" }, "UNETLoader", definition.name),
@@ -1403,6 +1434,13 @@ export function buildImageWorkflow(modelId, rawOptions, upload, rawLoras = undef
     imageRecipe: String(rawOptions.imageRecipe || "standard"),
     preserveStages: booleanOption(rawOptions.preserveStages),
     outputBase: String(rawOptions.outputBase || "Studio/image"),
+    characterConsistency: ["off", "lora", "pulid", "loraPulid"].includes(rawOptions.characterConsistency)
+      ? rawOptions.characterConsistency
+      : "off",
+    pulidStrength: numberOption(rawOptions.pulidStrength, 1.4, {
+      min: 0, max: 2, label: "Forza PuLID",
+    }),
+    pulidReferenceUpload: rawOptions.pulidReferenceUpload || null,
   };
   if (options.batchSize > 1 && (
     options.highresEnabled
@@ -1420,6 +1458,9 @@ export function buildImageWorkflow(modelId, rawOptions, upload, rawLoras = undef
   }
   if (options.faceEnhance && !options.faceModel) {
     throw new Error("Nessun modello di miglioramento volti disponibile.");
+  }
+  if (["pulid", "loraPulid"].includes(options.characterConsistency) && definition.family !== "flux2") {
+    throw new Error("PuLID è compatibile solo con Flux.2 Klein nella configurazione attuale.");
   }
   const workflow = definition.family === "flux1"
     ? buildFlux1(definition, options, upload)
@@ -1455,6 +1496,7 @@ export function buildImageWorkflow(modelId, rawOptions, upload, rawLoras = undef
   } else {
     insertModelLoras(workflow, loras, ["1", 0], ["4"]);
   }
+  if (definition.family === "flux2") applyPuLIDFlux2(workflow, options);
   applyImagePostProcessing(workflow, definition, options);
   let finalWidth = width * (options.highresEnabled ? options.highresScale : 1);
   let finalHeight = height * (options.highresEnabled ? options.highresScale : 1);
@@ -1505,6 +1547,9 @@ export function buildImageWorkflow(modelId, rawOptions, upload, rawLoras = undef
       referenceImages: Array.isArray(rawOptions.referenceUploads)
         ? rawOptions.referenceUploads.map(inputPath)
         : [],
+      pulidReferenceImage: options.pulidReferenceUpload
+        ? inputPath(options.pulidReferenceUpload)
+        : null,
       imageSettings: {
         steps: options.steps,
         guidance: options.guidance,
@@ -1568,9 +1613,9 @@ export function buildImageWorkflow(modelId, rawOptions, upload, rawLoras = undef
       characterConsistency: ["off", "lora", "pulid", "loraPulid"].includes(rawOptions.characterConsistency)
         ? rawOptions.characterConsistency
         : null,
-      pulidStrength: rawOptions.pulidStrength === undefined || rawOptions.pulidStrength === ""
-        ? null
-        : numberOption(rawOptions.pulidStrength, 1, { min: 0, max: 2, label: "Forza PuLID" }),
+      pulidStrength: ["pulid", "loraPulid"].includes(options.characterConsistency)
+        ? options.pulidStrength
+        : null,
       loras,
     },
   };

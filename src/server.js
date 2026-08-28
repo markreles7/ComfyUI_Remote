@@ -6276,6 +6276,7 @@ app.post("/api/generations", upload.any(), async (request, response, next) => {
       validateLoras(selectedLoras, installedLoras);
     }
     let uploaded = null;
+    let pulidUploaded = null;
     let directorScenes = [];
     let availableUpscaleModels = [];
     const characterSelection = ["upscale", "ltxUpscale", "seedvr2VideoUpscale"].includes(generationType)
@@ -6294,8 +6295,16 @@ app.post("/api/generations", upload.any(), async (request, response, next) => {
       const definition = imageModelSelection(request.body.imageModelId, request.body.imageModelFile);
       const consistencyMode = String(request.body.characterConsistency || "off");
       if (["pulid", "loraPulid"].includes(consistencyMode)) {
+        if (definition.family !== "flux2") throw new Error("PuLID è compatibile solo con Flux.2 Klein.");
         const capability = detectImageSeriesCapabilities(await comfy.objectInfo()).pulidFlux2;
         if (!capability.available) throw new Error(capability.reason);
+        const pulidFile = files.find((file) => file.fieldname === "pulidReference");
+        if (!pulidFile?.mimetype.startsWith("image/")) {
+          throw new Error("Carica una reference volto PNG, JPG o WebP per PuLID.");
+        }
+        validateUploadSize(pulidFile, maxUploadMb, "La reference PuLID");
+        pulidUploaded = await comfy.uploadImage(pulidFile);
+        request.body.pulidReferenceUpload = pulidUploaded;
       }
       const modelLoader = definition.loader === "checkpoint" ? "CheckpointLoaderSimple" : "UNETLoader";
       const [info, clipInfo, vaeInfo] = await Promise.all([
@@ -6715,6 +6724,7 @@ app.post("/api/image-series/:generationId/regenerate", async (request, response,
       characterLoraStrength: source.characterLoraStrength,
       characterConsistency: source.characterConsistency,
       pulidStrength: source.pulidStrength,
+      pulidReferenceUpload: uploadedInputFromMetadata(source.pulidReferenceImage),
     };
     const selectedLoras = Array.isArray(source.loras) ? source.loras : [];
     if (selectedLoras.length) {

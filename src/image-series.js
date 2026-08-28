@@ -275,22 +275,37 @@ export function detectImageSeriesCapabilities(objectInfo = {}) {
     .map(([name]) => name).sort();
   const insightFaceNodes = entries.filter(([name, definition]) => /insight\s*face/i.test(definitionText(name, definition)))
     .map(([name]) => name).sort();
+  const requiredNodes = [
+    "PuLIDInsightFaceLoader",
+    "PuLIDEVACLIPLoader",
+    "PuLIDModelLoader",
+    "ApplyPuLIDFlux2",
+  ];
+  const missingNodes = requiredNodes.filter((name) => !objectInfo?.[name]);
+  const modelChoices = objectInfo?.PuLIDModelLoader?.input?.required?.pulid_file?.[0];
+  const installedModels = Array.isArray(modelChoices) ? modelChoices.map(String) : [];
+  const modelFile = installedModels.find((name) => /pulid_flux2_klein_v2\.safetensors$/i.test(name)) || null;
   const detected = pulidNodes.length > 0 && insightFaceNodes.length > 0;
+  const available = missingNodes.length === 0 && Boolean(modelFile);
   return {
     independentJobs: true,
     influencerCounts: [...INFLUENCER_COUNTS],
     samePlaceCounts: [...SAME_PLACE_COUNTS],
     pulidFlux2: {
       detected,
-      // PuLID graph construction is enabled only after the exact live node
-      // signatures have been verified. Merely finding similarly named nodes is
-      // not sufficient to create a safe ComfyUI graph.
-      available: false,
+      available,
       pulidNodes,
       insightFaceNodes,
-      reason: detected
-        ? "PuLID rilevato, ma nessun adapter Flux.2 è abilitato finché le firme live dei nodi non sono state verificate."
-        : "PuLID Flux.2 non disponibile: /object_info non espone sia nodi PuLID sia nodi InsightFace compatibili.",
+      requiredNodes,
+      missingNodes,
+      installedModels,
+      modelFile,
+      provider: "CUDA",
+      reason: available
+        ? null
+        : missingNodes.length
+          ? `PuLID Flux.2 non disponibile: /object_info non espone i nodi ${missingNodes.join(", ")}.`
+          : "PuLID Flux.2 non disponibile: manca pulid_flux2_klein_v2.safetensors nella cartella models/pulid del pacchetto ComfyUI attivo.",
     },
   };
 }

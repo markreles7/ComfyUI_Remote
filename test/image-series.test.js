@@ -94,7 +94,7 @@ test("prompt Same Place traduce gli slider in lock espliciti", () => {
   assert.match(prompt, /very subtle change/i);
 });
 
-test("capability PuLID deriva solo da object_info e resta sicura senza adapter verificato", () => {
+test("capability PuLID richiede adapter Flux.2 completo e peso Klein v2", () => {
   const missing = detectImageSeriesCapabilities({ KSampler: { category: "sampling" } });
   assert.equal(missing.pulidFlux2.detected, false);
   assert.equal(missing.pulidFlux2.available, false);
@@ -106,6 +106,44 @@ test("capability PuLID deriva solo da object_info e resta sicura senza adapter v
   assert.equal(detected.pulidFlux2.detected, true);
   assert.equal(detected.pulidFlux2.available, false);
   assert.deepEqual(detected.pulidFlux2.pulidNodes, ["ApplyPuLIDFlux"]);
+  const ready = detectImageSeriesCapabilities({
+    PuLIDInsightFaceLoader: { display_name: "Load InsightFace (PuLID)" },
+    PuLIDEVACLIPLoader: { display_name: "Load EVA-CLIP (PuLID)" },
+    PuLIDModelLoader: {
+      display_name: "Load PuLID Flux.2",
+      input: { required: { pulid_file: [["pulid_flux2_klein_v2.safetensors"]] } },
+    },
+    ApplyPuLIDFlux2: { display_name: "Apply PuLID Flux.2" },
+  });
+  assert.equal(ready.pulidFlux2.available, true);
+  assert.equal(ready.pulidFlux2.modelFile, "pulid_flux2_klein_v2.safetensors");
+  assert.deepEqual(ready.pulidFlux2.missingNodes, []);
+});
+
+test("workflow Flux.2 applica PuLID dopo le LoRA e conserva la reference", () => {
+  const reference = { name: "pulid-face.png", subfolder: "remote" };
+  const job = buildImageWorkflow("flux2", {
+    imageMode: "text",
+    imageModelFile: "FLUX2\\flux2Klein_9bBase.safetensors",
+    prompt: "portrait in natural light",
+    negativePrompt: "",
+    imageResolution: "portrait",
+    imageSteps: 8,
+    imageGuidance: 1,
+    seed: 123,
+    batchSize: 1,
+    characterConsistency: "loraPulid",
+    pulidStrength: 1.4,
+    pulidReferenceUpload: reference,
+  }, null, [{ name: "FLUX2\\character.safetensors", strength: 0.8 }]);
+  assert.equal(job.workflow["900102"].class_type, "PuLIDInsightFaceLoader");
+  assert.equal(job.workflow["900103"].class_type, "PuLIDEVACLIPLoader");
+  assert.equal(job.workflow["900104"].inputs.pulid_file, "pulid_flux2_klein_v2.safetensors");
+  assert.equal(job.workflow["900105"].class_type, "ApplyPuLIDFlux2");
+  assert.deepEqual(job.workflow["900105"].inputs.model, ["1016", 0]);
+  assert.deepEqual(job.workflow["13"].inputs.model, ["900105", 0]);
+  assert.equal(job.metadata.pulidReferenceImage, "remote/pulid-face.png");
+  assert.equal(job.metadata.pulidStrength, 1.4);
 });
 
 test("workflow immagine conserva metadata indipendenti della serie", () => {
