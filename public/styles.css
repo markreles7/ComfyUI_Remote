@@ -2718,6 +2718,7 @@ textarea { resize: vertical; min-height: 80px; line-height: 1.55; }
 .series-hero { padding-bottom: 28px; }
 .series-focus-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
 .series-focus-form { display: grid; gap: 18px; }
+.series-performance-status { margin: -8px 0 0; padding: 10px 12px; border: 1px solid rgba(255,255,255,.09); border-radius: 10px; background: rgba(255,255,255,.025); }
 .standalone-series-options { display: grid; gap: 16px; padding: 20px; border: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 88%, transparent); }
 .series-focus-summary { position: sticky; top: 88px; }
 .series-workflow-summary dl { display: grid; gap: 0; margin: 0; }

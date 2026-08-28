@@ -1,4 +1,5 @@
 import { loraMatchesFamily, loraOptionLabel } from "./lora-triggers.js?v=20260822-scalar-fix";
+import { SERIES_PERFORMANCE_PRESETS, resolveSeriesPerformance } from "./image-series-performance.js?v=20260828-performance-1";
 import { getAppConfig, warmAppConfig } from "./runtime-cache.js";
 
 void warmAppConfig();
@@ -61,9 +62,11 @@ function seriesMarkup() {
         <div class="field-grid">
           <div class="field"><label for="seriesModelId">Motore</label><select id="seriesModelId"></select></div>
           <div class="field"><label for="seriesModelFile">Modello installato</label><select id="seriesModelFile"></select></div>
+          <div class="field"><label for="performancePreset">Prestazioni</label><select id="performancePreset">${Object.entries(SERIES_PERFORMANCE_PRESETS).map(([value, item]) => `<option value="${value}"${value === "balanced" ? " selected" : ""}>${item.label} · ${item.description}</option>`).join("")}</select></div>
           <div class="field"><label for="seriesCount">Numero immagini</label><select id="seriesCount">${(influencer ? [1, 2, 4, 6, 9] : [2, 4, 6, 8]).map((count) => `<option value="${count}"${count === 2 ? " selected" : ""}>${count}</option>`).join("")}</select></div>
           <div class="field"><label for="seriesResolution">Formato</label><select id="seriesResolution"><option value="portrait" selected>Ritratto · 896×1152</option><option value="square">Quadrato · 1024×1024</option><option value="vertical">Verticale · 768×1344</option><option value="landscape">Orizzontale · 1152×896</option></select></div>
         </div>
+        <p id="performanceStatus" class="hint series-performance-status"></p>
 
         <section class="series-options standalone-series-options">
           <div class="series-heading"><div><p class="eyebrow">IDENTITÀ E STILE</p><h3>LoRA e consistenza</h3></div><span id="modelStatus"></span></div>
@@ -157,17 +160,32 @@ function updateModel(resetLora = true) {
   const preferred = preferredModelFile(model) || model.defaultModelFile || model.models[0]?.file;
   $("#seriesModelFile").innerHTML = model.models.map((item) => `<option value="${escapeAttribute(item.file)}">${escapeHtml(item.name)}</option>`).join("");
   if (preferred) $("#seriesModelFile").value = preferred;
-  updateSampling();
+  applyPerformancePreset();
   updateLoraFields(resetLora);
   updateConsistency();
 }
 
-function updateSampling() {
+function applyPerformancePreset() {
   const variant = selectedModelVariant();
   if (!variant) return;
-  $("#imageSteps").value = variant.defaults.steps;
-  $("#imageGuidance").value = variant.defaults.guidance;
+  const preset = $("#performancePreset").value;
+  const profile = resolveSeriesPerformance({
+    family: selectedModel()?.family,
+    file: variant.file,
+    preset,
+    defaults: preset === "custom"
+      ? { steps: $("#imageSteps").value || variant.defaults.steps, guidance: $("#imageGuidance").value || variant.defaults.guidance }
+      : variant.defaults,
+  });
+  $("#imageSteps").value = profile.steps;
+  $("#imageGuidance").value = profile.guidance;
+  $("#performanceStatus").textContent = profile.warning;
   updateSummary();
+}
+
+function markPerformanceCustom() {
+  $("#performancePreset").value = "custom";
+  applyPerformancePreset();
 }
 
 function updateConsistency() {
@@ -188,7 +206,8 @@ function updateConsistency() {
 function updateSummary() {
   const summary = $("#workflowSummary");
   if (!summary || !selectedModel()) return;
-  summary.innerHTML = `<dl><div><dt>Serie</dt><dd>${mode === "influencer" ? "Random Influencer" : "Same Place"}</dd></div><div><dt>Motore</dt><dd>${escapeHtml(selectedModel().name)}</dd></div><div><dt>Checkpoint</dt><dd>${escapeHtml(selectedModelVariant()?.name || "—")}</dd></div><div><dt>LoRA</dt><dd>${escapeHtml($("#characterLora")?.value || "Nessuna")}</dd></div><div><dt>Consistenza</dt><dd>${escapeHtml($("#characterConsistency")?.selectedOptions[0]?.textContent || "—")}</dd></div><div><dt>Output</dt><dd>${escapeHtml($("#seriesCount")?.value || "2")} job indipendenti</dd></div></dl>`;
+  const preset = SERIES_PERFORMANCE_PRESETS[$("#performancePreset")?.value] || SERIES_PERFORMANCE_PRESETS.custom;
+  summary.innerHTML = `<dl><div><dt>Serie</dt><dd>${mode === "influencer" ? "Random Influencer" : "Same Place"}</dd></div><div><dt>Motore</dt><dd>${escapeHtml(selectedModel().name)}</dd></div><div><dt>Checkpoint</dt><dd>${escapeHtml(selectedModelVariant()?.name || "—")}</dd></div><div><dt>Prestazioni</dt><dd>${escapeHtml(preset.label)} · ${escapeHtml($("#imageSteps")?.value || "—")} step · CFG ${escapeHtml($("#imageGuidance")?.value || "—")}</dd></div><div><dt>LoRA</dt><dd>${escapeHtml($("#characterLora")?.value || "Nessuna")}</dd></div><div><dt>Consistenza</dt><dd>${escapeHtml($("#characterConsistency")?.selectedOptions[0]?.textContent || "—")}</dd></div><div><dt>Output</dt><dd>${escapeHtml($("#seriesCount")?.value || "2")} job indipendenti</dd></div></dl>`;
 }
 
 function anchorUrl(item, index = 0) {
@@ -348,7 +367,10 @@ async function regenerate(button) {
 function bindEvents() {
   $("#series-form").addEventListener("submit", submitSeries);
   $("#seriesModelId").addEventListener("change", () => updateModel(true));
-  $("#seriesModelFile").addEventListener("change", updateSampling);
+  $("#seriesModelFile").addEventListener("change", applyPerformancePreset);
+  $("#performancePreset").addEventListener("change", applyPerformancePreset);
+  $("#imageSteps").addEventListener("input", markPerformanceCustom);
+  $("#imageGuidance").addEventListener("input", markPerformanceCustom);
   $("#characterLora").addEventListener("change", () => { updateLoraFields(false); updateSummary(); });
   $("#characterConsistency").addEventListener("change", updateConsistency);
   $("#seriesCount").addEventListener("change", updateSummary);

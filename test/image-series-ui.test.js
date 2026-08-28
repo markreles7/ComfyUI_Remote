@@ -13,6 +13,8 @@ const styles = fs.readFileSync(new URL("../public/styles.css", import.meta.url),
 test("Genera non espone più i due generatori serie", () => {
   assert.doesNotMatch(html, /<details id="image-series-panel"/);
   assert.doesNotMatch(html, /<section id="image-series-results"/);
+  assert.doesNotMatch(html, /legacy-image-series|imageSeriesMode|seriesCharacterLora/);
+  assert.doesNotMatch(app, /imageSeriesMode|submitImageSeries|renderSeriesResults|selectSeriesAnchor/);
   assert.doesNotMatch(app, /Usa come Series Anchor/);
   assert.match(html, /href="\/random-influencer\.html"/);
   assert.match(html, /href="\/same-place\.html"/);
@@ -23,7 +25,7 @@ test("Random Influencer e Same Place sono pagine focalizzate separate", () => {
   assert.match(samePlaceHtml, /data-series-page="samePlace"/);
   assert.match(influencerHtml, /id="series-app"/);
   assert.match(samePlaceHtml, /id="series-app"/);
-  for (const id of ["seriesModelId", "seriesModelFile", "seriesCount", "characterLora", "characterTrigger", "characterConsistency", "seriesGrid"]) {
+  for (const id of ["seriesModelId", "seriesModelFile", "performancePreset", "seriesCount", "characterLora", "characterTrigger", "characterConsistency", "seriesGrid"]) {
     assert.match(seriesApp, new RegExp(`id=\\"${id}\\"`));
   }
   assert.match(seriesApp, /\[1, 2, 4, 6, 9\]/);
