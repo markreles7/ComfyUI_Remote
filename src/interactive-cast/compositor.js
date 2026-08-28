@@ -87,13 +87,62 @@ function actorReferenceLines(actorReferences = []) {
   }).filter(Boolean);
 }
 
-function segmentPrompt(segment, actorReferences = []) {
+function overlappingEvents(segment, dialogueEvents = []) {
+  return dialogueEvents.filter((event) => Number(event.end || 0) > Number(segment.start || 0)
+    && Number(event.start || 0) < Number(segment.end || 0));
+}
+
+function anchorAction(event = {}) {
+  const action = String(event.action || "").trim();
+  if (!action) return "Place the referenced actor at the natural starting position of the requested action.";
+  if (/\b(?:enters?|comes? in|walks? in)\b.*\b(?:from the left|da sinistra)\b/i.test(action)) {
+    return "Place the referenced actor at the left edge of the frame, just beginning to enter, in a natural neutral walking stance";
+  }
+  if (/\b(?:enters?|comes? in|walks? in)\b.*\b(?:from the right|da destra)\b/i.test(action)) {
+    return "Place the referenced actor at the right edge of the frame, just beginning to enter, in a natural neutral walking stance";
+  }
+  const firstClause = action.split(/[,.]/, 1)[0]
+    .replace(/\s+(?:and\s+)?(?:says?|speaks?|delivers?|utters?|walks?|moves?|turns?|looks?)\b.*$/i, "")
+    .trim();
+  return firstClause || "Place the referenced actor at the natural starting position of the requested action.";
+}
+
+export function interactiveCastAnchorPrompt({ segment, actorReferences = [], dialogueEvents = [] } = {}) {
+  const addedActorNames = new Set(actorReferences
+    .flatMap((actor) => [actor.name, actor.actorId])
+    .filter(Boolean)
+    .map((value) => String(value).trim().toLowerCase()));
+  const events = overlappingEvents(segment, dialogueEvents).filter((event) =>
+    addedActorNames.has(String(event.speaker || "").trim().toLowerCase())
+  );
+  const actors = actorReferences.map((actor, index) =>
+    `REFERENCE IMAGE ${index + 2} identifies ${actor.name || "the added adult actor"}; preserve that person's face, hair and body proportions.`
+  );
+  return [
+    "STATIC ANCHOR EDIT ONLY. IMAGE 1 is the source movie frame and is authoritative for the camera, room, furniture, lighting and every existing person.",
+    "Insert exactly one referenced adult actor only. Do not redesign, restage or reinterpret the source frame.",
+    ...actors,
+    ...events.map((event) => `Starting pose: ${anchorAction(event)} for ${event.speaker || "the added actor"}.`),
+    "Show only the beginning of the action. Do not depict later movement, dialogue, reactions or the final pose.",
+    "Keep every source pixel outside the inserted actor region unchanged. Match scale, perspective, depth, occlusion, contact shadows, grain and color temperature.",
+    "No text, captions, subtitles, speech bubbles, signs, logos or watermarks anywhere in the image.",
+  ].filter(Boolean).join(" ");
+}
+
+export function interactiveCastVideoPrompt({ segment, actorReferences = [], dialogueEvents = [] } = {}) {
   const base = [
     `Create only the replacement video segment from ${Number(segment.start || 0).toFixed(2)}s to ${Number(segment.end || 0).toFixed(2)}s.`,
     `Mode: ${segment.mode}.`,
     `Required change: ${segment.reason || "perform the planned Interactive Cast edit"}.`,
     "Preserve the source video's camera angle, lens, lighting, background layout, original actors, clothing continuity, motion rhythm and ambience unless the segment reason explicitly changes them.",
   ];
+  const events = overlappingEvents(segment, dialogueEvents);
+  for (const event of events) {
+    if (event.action) base.push(`Timed action (${Number(event.start || 0).toFixed(2)}-${Number(event.end || 0).toFixed(2)}s): ${event.action}`);
+    if (event.dialogue && event.audioMode === "ltxNative") {
+      base.push(`Native synchronized LTX audio: ${event.speaker || "the actor"} audibly says exactly: "${event.dialogue}". Generate the spoken words in audio only; never render them as visible text or subtitles.`);
+    }
+  }
   const references = actorReferenceLines(actorReferences);
   if (references.length) {
     base.push("Use these added actor references as hard identity guidance for any new character introduced in this window.");
@@ -109,6 +158,23 @@ function segmentPrompt(segment, actorReferences = []) {
     base.push("No visual regeneration should be needed; prepare or replace only the dialogue/audio layer for this time window.");
   }
   return base.join(" ");
+}
+
+function anchorNegativePrompt(segment) {
+  return [
+    segmentNegativePrompt(segment).replace("extra people", "more than one newly added person"),
+    "caption",
+    "captions",
+    "on-screen text",
+    "letters",
+    "speech bubble",
+    "redesigned room",
+    "restaged scene",
+    "changed existing actors",
+    "duplicate reference person",
+    "multiple inserted people",
+    "changed furniture",
+  ].join(", ");
 }
 
 function segmentNegativePrompt(segment) {
@@ -159,6 +225,7 @@ export async function prepareMissingSegmentTasks({
   segments = [],
   projectDirectory,
   actorReferences = [],
+  dialogueEvents = [],
   anchorWorkflowId = "qwen-image-edit",
 }) {
   const taskDirectory = path.join(projectDirectory, "segment-tasks");
@@ -185,6 +252,7 @@ export async function prepareMissingSegmentTasks({
     } catch (error) {
       anchor = { error: error.message, time: segment.start, workflow: anchorWorkflow };
     }
+    const videoPrompt = interactiveCastVideoPrompt({ segment, actorReferences, dialogueEvents });
     tasks.push({
       segmentId: segment.id,
       mode: segment.mode,
@@ -207,7 +275,10 @@ export async function prepareMissingSegmentTasks({
           : "If no added actor reference is present, use the segment reason only and keep the scene stable.",
       ].join(" "),
       actorReferences,
-      prompt: segmentPrompt(segment, actorReferences),
+      anchorPrompt: interactiveCastAnchorPrompt({ segment, actorReferences, dialogueEvents }),
+      anchorNegativePrompt: anchorNegativePrompt(segment),
+      videoPrompt,
+      prompt: videoPrompt,
       negativePrompt: segmentNegativePrompt(segment),
       referenceRequirement: actorReferences.length
         ? "Use the listed Character Pack or temporary actor reference as identity guidance; do not invent a different person for the added actor."

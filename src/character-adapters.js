@@ -27,6 +27,7 @@ function booleanOption(value, fallback = false) {
 export function characterPromptPrefix(character, options = {}) {
   if (!character) return "";
   const hints = character.identityHints || {};
+  const blueprintIdentity = character.characterBlueprint?.identity || {};
   const locks = [];
   if (booleanOption(options.lockFace, character.settings?.lockFace)) locks.push("preserve face identity");
   if (booleanOption(options.lockHair, character.settings?.lockHair)) locks.push("preserve hair");
@@ -34,7 +35,12 @@ export function characterPromptPrefix(character, options = {}) {
   if (booleanOption(options.lockOutfit, character.settings?.lockOutfit)) locks.push("preserve outfit");
   return [
     `Virtual Actor: ${character.name}`,
-    character.description,
+    character.subjectKind && character.subjectKind !== "auto" ? `subject kind: ${character.subjectKind}` : "",
+    options.includeDescription === false ? "" : character.description,
+    blueprintIdentity.appearance,
+    blueprintIdentity.head ? `identity head: ${blueprintIdentity.head}` : "",
+    blueprintIdentity.hairOrCoat ? `identity hair or coat: ${blueprintIdentity.hairOrCoat}` : "",
+    blueprintIdentity.distinctiveFeatures?.length ? `distinctive features: ${blueprintIdentity.distinctiveFeatures.join(", ")}` : "",
     hints.face ? `face: ${hints.face}` : "",
     hints.hair ? `hair: ${hints.hair}` : "",
     hints.body ? `body: ${hints.body}` : "",
@@ -127,20 +133,39 @@ export function withCharacterPrompt(raw, adapter) {
 
 export function buildCharacterAnchorFrameRequest({
   characterId,
-  scenePrompt,
-  previousFrame = null,
+  sceneBlueprint = {},
+  videoIntent = "",
   outfit = "",
+  aspectRatio = "9:16",
+  videoEngine = "auto",
   identityStrength = "medium",
 } = {}) {
+  if (!characterId) throw new Error("Character richiesto per il Video Anchor.");
+  const ratio = ["9:16", "16:9", "1:1"].includes(aspectRatio) ? aspectRatio : "9:16";
+  const scene = String(sceneBlueprint.scene || sceneBlueprint.location || "a natural coherent setting").trim();
+  const framing = String(sceneBlueprint.framing || "medium full shot").trim();
+  const intent = String(videoIntent || sceneBlueprint.subjectMotion || "natural poised starting pose").trim();
+  const wardrobe = String(outfit || sceneBlueprint.outfit || "preserve the original appearance and outfit").trim();
   return {
-    status: "not configured",
-    characterId: characterId || null,
-    scenePrompt: String(scenePrompt || "").trim(),
-    previousFrame,
-    outfit: String(outfit || "").trim(),
+    status: "ready",
+    characterId,
+    sceneBlueprint,
+    videoIntent: intent,
+    outfit: wardrobe,
+    aspectRatio: ratio,
+    videoEngine: String(videoEngine || "auto"),
     identityStrength,
-    warnings: [
-      "Anchor frame automatico non configurato: prepara questa interfaccia per collegare Qwen/Klein/Flux in una fase successiva.",
-    ],
+    prompt: [
+      "Create one conservative photorealistic video anchor frame of the exact same character.",
+      `Scene: ${scene}.`,
+      `Starting action and pose: ${intent}.`,
+      `Framing: ${framing}; aspect ratio ${ratio}.`,
+      `Appearance: ${wardrobe}.`,
+      "This is the stable first frame for image-to-video: clear anatomy or morphology, balanced stance, coherent lighting, sharp identity-bearing details, no motion blur.",
+      "Preserve face or head geometry, hair or coat, body proportions, markings, colors and all distinctive features. Do not redesign the subject.",
+    ].join(" "),
+    negativePrompt: "identity drift, changed face, changed morphology, changed markings, changed colors, duplicate subject, extra limbs, malformed anatomy, motion blur, text, logo, watermark",
+    conservative: true,
+    denoise: identityStrength === "high" ? 0.42 : identityStrength === "low" ? 0.62 : 0.5,
   };
 }

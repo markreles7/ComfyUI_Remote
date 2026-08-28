@@ -9,9 +9,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css">
-  <script type="module" src="/video-studio.js"></script>
-  <script type="module" src="/scene-integration.js"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260822-h3-lora-picker-fix">
+  <script type="module" src="/video-studio.js?v=20260827-h3-character-context"></script>
+  <script type="module" src="/scene-integration.js?v=20260822-submit-fix"></script>
 </head>
 <body>
   <header class="topbar">
@@ -33,7 +33,7 @@
   <main class="video-studio-page">
     <section class="gallery-hero video-studio-hero">
       <div>
-        <p class="eyebrow">ACTOR REPLACEMENT / RETAKE / EXTEND / HDR / TEMPORAL</p>
+        <p class="eyebrow">MINIMAX H3 / ACTOR REPLACEMENT / RETAKE / EXTEND / HDR / TEMPORAL</p>
         <h1>Entra nella <em>scena.</em></h1>
         <p>Sostituisci un interprete oppure aggiungi un nuovo personaggio con azioni, dialoghi e risposte sincronizzate.</p>
       </div>
@@ -94,9 +94,28 @@
             <input type="radio" name="videoStudioMode" value="sequentialStory">
             <span><b>Storia continua</b><small>Scene brevi, continuity frame, purge e concat finale</small></span>
           </label>
+          <label>
+            <input type="radio" name="videoStudioMode" value="minimaxH3">
+            <span><b>MiniMax H3 Studio</b><small>T2V, I2V, first/last e reference immagini, video o audio</small></span>
+          </label>
+          <label>
+            <input type="radio" name="videoStudioMode" value="seedHunterH3">
+            <span><b>Seed Hunter H3</b><small>3 job separati a 0,25 MP · scegli un solo seed da finalizzare</small></span>
+          </label>
+          <label>
+            <input type="radio" name="videoStudioMode" value="actionH3">
+            <span><b>ACTION H3</b><small>Combattimenti e azioni frenetiche · FL2VA + Combat V2</small></span>
+          </label>
+          <label>
+            <input type="radio" name="videoStudioMode" value="ltx25Aio">
+            <span><b>LTX 2.5 AIO</b><small>Tutte le modalità 2.5 · audio nativo · purge VRAM</small></span>
+          </label>
         </fieldset>
 
         <div id="video-studio-readiness" class="video-readiness" role="status"></div>
+        <a id="video-studio-guided-workflow" class="context-guide-link" href="/guided-create.html" target="_self">
+          <span aria-hidden="true">?</span><span><b>Guida interattiva passo passo</b><small>Prepara questo workflow da zero fino al controllo finale</small></span>
+        </a>
 
         <div class="field">
           <label for="videoProjectName">Nome progetto</label>
@@ -114,6 +133,7 @@
           <input id="videoCharacterLockHair" name="lockHair" type="hidden" value="true">
           <input id="videoCharacterLockBody" name="lockBody" type="hidden" value="true">
           <input id="videoCharacterLockOutfit" name="lockOutfit" type="hidden" value="false">
+          <input id="videoCharacterPromptEnhanced" name="characterPromptEnhanced" type="hidden" value="">
         </div>
 
         <section id="actor-replacement-fields">
@@ -339,6 +359,7 @@
             <p class="eyebrow">PIPELINE IBRIDA</p>
             <h3>Scene Dialogue Rewrite</h3>
             <p>Analizza il video sorgente, crea una timeline di interventi e decide quali intervalli restano originali, quali richiedono lip-sync e quali diventano segmenti generativi.</p>
+            <a class="chip-button interactive-cast-guide-link" href="/interactive-cast-guided.html">Apri Interactive Cast guidato</a>
           </div>
           <section class="studio-subpanel interactive-cast-capability-panel">
             <div class="subpanel-heading">
@@ -401,6 +422,323 @@
             <button id="interactive-cast-create-button" class="chip-button" type="button">Analizza video e crea piano</button>
           </div>
           <p id="interactive-cast-status" class="prompt-assistant-status"></p>
+        </section>
+
+        <section id="minimax-h3-fields" class="hidden">
+          <div class="interactive-cast-banner">
+            <p class="eyebrow">MINIMAX H3 INT8 · AUDIO NATIVO</p>
+            <h3>MiniMax H3 Studio</h3>
+            <p>Scegli il ramo corretto: FL2VA per testo, immagine iniziale e first/last frame; Ref2VA per reference ordinate di immagini, video e audio.</p>
+          </div>
+          <section class="studio-subpanel">
+            <p class="subpanel-title">Preset scena riutilizzabile</p>
+            <div class="field-grid">
+              <div class="field">
+                <label for="h3ScenePreset">Ricetta</label>
+                <select id="h3ScenePreset" name="h3ScenePreset">
+                  <option value="none">Personalizzata · nessun vincolo aggiuntivo</option>
+                  <option value="fantasyVerite">Fantasy vérité · avventuriera amatoriale</option>
+                  <option value="urbanPhoneDiary">Diario urbano · selfie smartphone</option>
+                  <option value="documentaryPortrait">Ritratto documentario · attività naturale</option>
+                  <option value="dynamicTracking">Tracking dinamico · movimento credibile</option>
+                  <option value="smoothHumanMotion">Movimento umano fluido · Better Motion</option>
+                  <option value="zeroTwoDance">Zero Two Dance · coreografia dedicata</option>
+                  <option value="whisperedDialogue">Dialogo sussurrato · audio naturale</option>
+                  <option value="droneFlyover">Drone Flyover · ripresa aerea</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>&nbsp;</label>
+                <button id="h3ApplyScenePreset" class="secondary-button" type="button">Applica ricetta completa</button>
+              </div>
+            </div>
+            <p id="h3-scene-preset-hint" class="hint">Scegli una ricetta: l'anteprima 0,4 MP resta un output utilizzabile; KJ Lanczos e RTX sono finiture opzionali.</p>
+          </section>
+          <div class="field-grid">
+            <div class="field">
+              <label for="h3ModelProfile">Checkpoint H3</label>
+              <select id="h3ModelProfile" name="h3ModelProfile">
+                <option value="base">MiniMax H3 base · FL2VA / Ref2VA</option>
+                <option value="erosMax">H3 Eros Max beta3 · NSFW hybrid</option>
+              </select>
+              <p id="h3-model-hint" class="hint">Il profilo base usa i checkpoint FL2VA e Ref2VA standard.</p>
+            </div>
+            <div class="field">
+              <label for="h3Mode">Tipo di generazione</label>
+              <select id="h3Mode" name="h3Mode">
+                <option value="text">Text to Video + Audio</option>
+                <option value="image">Single Image to Video</option>
+                <option value="firstLast">First / Last Frame to Video</option>
+                <option value="references">Multi Reference · immagini, video e audio</option>
+              </select>
+            </div>
+            <div class="field"><label for="h3Duration">Durata</label><select id="h3Duration" name="duration"><option value="4">4 s</option><option value="5" selected>5 s</option><option value="6">6 s</option><option value="8">8 s · 192 frame esatti</option><option value="10">10 s</option><option value="12">12 s</option><option value="15">15 s</option></select></div>
+            <div class="field"><label for="h3AspectRatio">Formato</label><select id="h3AspectRatio" name="h3AspectRatio"><option value="16:9 (Widescreen)">16:9 orizzontale</option><option value="9:16 (Portrait Widescreen)">9:16 verticale</option><option value="1:1 (Square)">1:1 quadrato</option><option value="4:3 (Standard)">4:3</option><option value="3:4 (Portrait Standard)">3:4 verticale</option><option value="3:2 (Photo)">3:2</option><option value="2:3 (Portrait Photo)">2:3 verticale</option></select></div>
+            <div class="field"><label for="h3LookPreset">Look realistico</label><select id="h3LookPreset" name="h3LookPreset"><option value="neutral">Neutro · segue il prompt</option><option value="documentary">Documentario naturale</option><option value="amateurHandheld" selected>Amatoriale handheld realistico</option><option value="phoneSelfie">Smartphone selfie autentico</option></select><p class="hint">Per persone abbinalo a STY_Realism_People con forza 0,6–0,8.</p></div>
+          </div>
+          <div class="field">
+            <div class="label-row">
+              <label for="h3Prompt">Prompt MiniMax H3</label>
+              <div class="prompt-assistant-tools" data-ltx-prompt-tools="minimaxH3"><select id="h3PromptPreset" class="prompt-preset-select" aria-label="Preset System Prompt MiniMax H3"><option value="h3_general">General</option><option value="h3_image_to_video">Image-to-Video</option><option value="h3_eros_max">Eros Max · T2VA / Reference</option><option value="h3_action">Action</option><option value="h3_dialogue">Dialogue</option></select><button class="prompt-assistant-button" type="button" data-ltx-prompt="minimax_h3">✦ H3 Prompt</button></div>
+            </div>
+            <textarea id="h3Prompt" rows="6" placeholder="Descrivi in ordine temporale soggetto, azione, camera, luce e audio. Per le reference usa esattamente &lt;Picture 1&gt;, &lt;Video 1&gt; e &lt;Audio 1&gt;."></textarea>
+            <p id="h3-prompt-assistant-status" class="prompt-assistant-status">L’assistente prepara il prompt senza avviare la generazione.</p>
+          </div>
+          <div id="h3-first-frame-field" class="field hidden">
+            <label>Fotogramma iniziale</label>
+            <label class="dropzone video-studio-drop"><input id="h3FirstFrame" name="h3FirstFrame" type="file" accept="image/png,image/jpeg,image/webp"><span class="upload-icon">I</span><strong>Carica il primo frame</strong><small>Nel ramo I2V diventa letteralmente il frame 0.</small></label>
+          </div>
+          <div id="h3-last-frame-field" class="field hidden">
+            <label>Fotogramma finale</label>
+            <label class="dropzone video-studio-drop"><input id="h3LastFrame" name="h3LastFrame" type="file" accept="image/png,image/jpeg,image/webp"><span class="upload-icon">F</span><strong>Carica l’ultimo frame</strong><small>Usato insieme al primo nel ramo FL2VA.</small></label>
+          </div>
+          <section id="h3-reference-fields" class="studio-subpanel hidden">
+            <p class="subpanel-title">Reference multimodali ordinate</p>
+            <p class="hint">Massimo 9 immagini, 3 video e 3 audio. Nel prompt numerale nello stesso ordine: &lt;Picture 1&gt;, &lt;Video 1&gt;, &lt;Audio 1&gt;.</p>
+            <div class="field"><label>Immagini reference</label><label class="dropzone video-studio-drop"><input id="h3ReferenceImages" name="h3ReferenceImages" type="file" multiple accept="image/png,image/jpeg,image/webp"><span class="upload-icon">9×</span><strong>Seleziona fino a 9 immagini</strong></label></div>
+            <div class="field"><label>Video reference</label><label class="dropzone video-studio-drop"><input id="h3ReferenceVideos" name="h3ReferenceVideos" type="file" multiple accept="video/mp4,video/webm,video/quicktime,video/x-matroska"><span class="upload-icon">3×</span><strong>Seleziona fino a 3 video</strong><small>L’audio incorporato viene collegato alla stessa reference video.</small></label></div>
+            <div class="field"><label>Audio reference</label><label class="dropzone video-studio-drop"><input id="h3ReferenceAudios" name="h3ReferenceAudios" type="file" multiple accept="audio/*"><span class="upload-icon">3×</span><strong>Seleziona fino a 3 audio</strong></label></div>
+            <div class="field"><label for="h3ReferenceSize">Dimensione reference immagini</label><select id="h3ReferenceSize" name="h3ReferenceSize"><option value="match" selected>Match · consigliato per 12 GB VRAM</option><option value="max">Max · identità migliore, molto più lento</option></select></div>
+          </section>
+          <section class="studio-subpanel">
+            <p class="subpanel-title">Sampling e memoria</p>
+            <div class="field-grid">
+              <div class="field"><label for="h3RunProfile">Avvio del progetto</label><select id="h3RunProfile" name="h3RunProfile"><option value="preview" selected>Anteprima rapida · 0,4 MP / stesso seed</option><option value="nativeFinal">Finale H3 diretto · impostazioni sotto</option></select><p class="hint">La ricerca fra tre seed è ora un workflow autonomo: seleziona “Seed Hunter H3” in alto.</p></div>
+              <div class="field"><label for="h3FirstMegapixels">Primo sampling</label><select id="h3FirstMegapixels" name="h3FirstMegapixels"><option value="0.4">0,4 MP · più leggero</option><option value="0.6" selected>0,6 MP · consigliato con secondo passaggio</option><option value="0.9">0,9 MP · diretto / alta qualità</option></select></div>
+              <div class="field"><label for="h3RefineMode">Refine / secondo passaggio</label><select id="h3RefineMode" name="h3RefineMode"><option value="latentLearned">Learned Latent 3D · 0,25/0,6 → 1,0 MP · 3 step</option><option value="rtx">RTX VSR · rapido ma più levigato</option><option value="seedvr2">SeedVR2 3B FP8 · dettaglio temporale</option><option value="h3Balanced">H3 bilanciato · lento · 0,9 MP / 3 step</option><option value="h3Maximum">H3 massimo · molto lento · 1,0 MP / 4 step</option><option value="direct" selected>Originale H3 · nessun refine</option></select></div>
+              <div class="field"><label for="h3SecondMegapixels">Risoluzione H3 massimo</label><select id="h3SecondMegapixels" name="h3SecondMegapixels" disabled><option value="1" selected>1,0 MP · massima</option><option value="0.9">0,9 MP · più conservativa</option></select></div>
+              <div class="field"><label for="h3SeedvrResolution">Risoluzione SeedVR2</label><select id="h3SeedvrResolution" name="h3SeedvrResolution" disabled><option value="720">720 px · più leggero</option><option value="768" selected>768 px · consigliato per 12 GB</option><option value="1080">1080 px · molto pesante</option></select></div>
+            </div>
+            <div class="field-grid">
+              <div class="field"><label for="h3AttentionBackend">Backend attenzione</label><select id="h3AttentionBackend" name="h3AttentionBackend"><option value="memoryEfficient" selected>Memory Efficient Sage · consigliato</option><option value="comfyKitchen">Comfy-Kitchen · sperimentale</option></select><p class="hint">Influisce su memoria/velocità del sampling, non aumenta la risoluzione.</p></div>
+              <label id="h3-turbo-label" class="inline-check"><input id="h3UseTurbo" name="h3UseTurbo" type="checkbox" checked> <span id="h3-turbo-text">Turbo LoRA 8 step</span></label>
+              <label class="inline-check"><input id="h3PurgeBetween" name="h3PurgeBetween" type="checkbox" checked> Purge VRAM fra i due sampling / refine · modello, VAE e Qwen</label>
+              <label class="inline-check"><input id="h3PurgeAfter" name="h3PurgeAfter" type="checkbox" checked> Purge VRAM dopo il salvataggio</label>
+            </div>
+            <p id="h3-sampling-hint" class="hint">H3 bilanciato: 0,6 MP → purge forte → 0,9 MP, 3 step e denoise 0,15.</p>
+          </section>
+        </section>
+
+        <section id="seed-hunter-h3-fields" class="hidden">
+          <div class="interactive-cast-banner">
+            <p class="eyebrow">WORKFLOW AUTONOMO · 3 JOB H3 · 0,25 MP</p>
+            <h3>Seed Hunter H3</h3>
+            <p>Genera tre video separati con seed consecutivi. Quando tutti hanno finito, scegli un solo candidato e rigeneralo in qualità finale con lo stesso seed.</p>
+          </div>
+          <div class="field-grid">
+            <div class="field"><label for="seedHunterH3Mode">Tipo di generazione</label><select id="seedHunterH3Mode" name="seedHunterH3Mode"><option value="text">Text to Video + Audio</option><option value="image">Single Image to Video</option><option value="firstLast">First / Last Frame to Video</option></select></div>
+            <div class="field"><label for="seedHunterH3Duration">Durata</label><select id="seedHunterH3Duration" name="duration"><option value="4">4 s</option><option value="5" selected>5 s</option><option value="6">6 s</option><option value="8">8 s · 192 frame</option><option value="10">10 s</option><option value="12">12 s</option><option value="15">15 s</option></select></div>
+            <div class="field"><label for="seedHunterH3AspectRatio">Formato</label><select id="seedHunterH3AspectRatio" name="seedHunterH3AspectRatio"><option value="16:9 (Widescreen)">16:9 orizzontale</option><option value="9:16 (Portrait Widescreen)">9:16 verticale</option><option value="1:1 (Square)">1:1 quadrato</option><option value="4:3 (Standard)">4:3</option><option value="3:4 (Portrait Standard)">3:4 verticale</option></select></div>
+            <div class="field"><label for="seedHunterH3LookPreset">Look</label><select id="seedHunterH3LookPreset" name="seedHunterH3LookPreset"><option value="neutral">Neutro</option><option value="documentary">Documentario naturale</option><option value="amateurHandheld" selected>Amatoriale handheld realistico</option><option value="phoneSelfie">Smartphone selfie autentico</option></select></div>
+          </div>
+          <div class="field">
+            <div class="label-row">
+              <label for="seedHunterH3Prompt">Prompt Seed Hunter H3</label>
+              <div class="prompt-assistant-tools" data-ltx-prompt-tools="seedHunterH3"><select id="seedHunterH3PromptPreset" class="prompt-preset-select" aria-label="Preset System Prompt Seed Hunter H3"><option value="h3_general">General</option><option value="h3_image_to_video">Image-to-Video</option><option value="h3_dialogue">Dialogue</option></select><button class="prompt-assistant-button" type="button" data-ltx-prompt="minimax_h3">✦ H3 Prompt</button></div>
+            </div>
+            <textarea id="seedHunterH3Prompt" rows="6" placeholder="Descrivi l’intera azione in ordine temporale fino alla durata selezionata, includendo camera e audio."></textarea>
+            <p id="seed-hunter-h3-prompt-assistant-status" class="prompt-assistant-status">L’assistente prepara lo stesso prompt per tutti e tre i candidati.</p>
+          </div>
+          <div id="seed-hunter-h3-first-frame-field" class="field hidden"><label>Fotogramma iniziale</label><label class="dropzone video-studio-drop"><input id="seedHunterH3FirstFrame" name="h3FirstFrame" type="file" accept="image/png,image/jpeg,image/webp"><span class="upload-icon">I</span><strong>Carica il primo frame</strong></label></div>
+          <div id="seed-hunter-h3-last-frame-field" class="field hidden"><label>Fotogramma finale</label><label class="dropzone video-studio-drop"><input id="seedHunterH3LastFrame" name="h3LastFrame" type="file" accept="image/png,image/jpeg,image/webp"><span class="upload-icon">F</span><strong>Carica l’ultimo frame</strong></label></div>
+          <section class="studio-subpanel">
+            <p class="subpanel-title">Ricerca e finalizzazione</p>
+            <div class="field-grid">
+              <div class="field"><label for="seedHunterH3Seed">Seed iniziale</label><input id="seedHunterH3Seed" name="seed" type="number" min="0" step="1" placeholder="Casuale"></div>
+              <div class="field"><label for="seedHunterH3FinalRefine">Qualità del candidato scelto</label><select id="seedHunterH3FinalRefine" name="seedHunterH3FinalRefine"><option value="h3Balanced" selected>H3 bilanciato · 0,25 → 0,9 MP</option><option value="latentLearned">Learned Latent 3D · 0,25 → 0,9 MP</option><option value="rtx">RTX VSR · rapido</option><option value="seedvr2">SeedVR2 · dettaglio temporale</option></select></div>
+              <div class="field"><label for="seedHunterH3AttentionBackend">Backend attenzione</label><select id="seedHunterH3AttentionBackend" name="seedHunterH3AttentionBackend"><option value="memoryEfficient" selected>Memory Efficient Sage</option><option value="comfyKitchen">Comfy-Kitchen</option></select></div>
+            </div>
+            <div class="video-readiness ready"><span>3×</span><div><b>Tre generazioni realmente separate</b><p>Ogni candidato ha il proprio job, video e pulsante di scelta. Nessun salvataggio diretto del NestedTensor AV.</p></div></div>
+          </section>
+        </section>
+
+        <section id="action-h3-fields" class="hidden">
+          <div class="interactive-cast-banner">
+            <p class="eyebrow">ACTION H3 · COMBAT BASE V2 · FL2VA</p>
+            <h3>ACTION H3</h3>
+            <p>Sezione esclusiva per combattimenti e azioni frenetiche. Usa i modelli già installati, Combat V2 automatica, sampler res_multistep e scheduler simple.</p>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label for="actionH3Mode">Tipo di generazione</label>
+              <select id="actionH3Mode" name="actionH3Mode">
+                <option value="text">Text to Video + Audio</option>
+                <option value="image">Single Image to Video</option>
+                <option value="firstLast">First / Last Frame to Video</option>
+              </select>
+            </div>
+            <div class="field"><label for="actionH3Duration">Durata</label><select id="actionH3Duration" name="duration"><option value="4">4 s</option><option value="5" selected>5 s</option><option value="6">6 s</option><option value="8">8 s · 192 frame</option><option value="10">10 s</option><option value="12">12 s</option><option value="15">15 s</option></select></div>
+            <div class="field"><label for="actionH3AspectRatio">Formato</label><select id="actionH3AspectRatio" name="actionH3AspectRatio"><option value="16:9 (Widescreen)">16:9 orizzontale</option><option value="9:16 (Portrait Widescreen)">9:16 verticale</option><option value="1:1 (Square)">1:1 quadrato</option><option value="4:3 (Standard)">4:3</option><option value="3:4 (Portrait Standard)">3:4 verticale</option><option value="3:2 (Photo)">3:2</option><option value="2:3 (Portrait Photo)">2:3 verticale</option></select></div>
+          </div>
+          <div class="field">
+            <div class="label-row">
+              <label for="actionH3Prompt">Coreografia e regia dell’azione</label>
+              <div class="prompt-assistant-tools" data-ltx-prompt-tools="actionH3"><select id="actionH3PromptPreset" class="prompt-preset-select" aria-label="Preset System Prompt ACTION H3"><option value="h3_action" selected>Action</option><option value="h3_general">General</option><option value="h3_image_to_video">Image-to-Video</option><option value="h3_dialogue">Dialogue</option></select><button class="prompt-assistant-button" type="button" data-ltx-prompt="minimax_h3_action">✦ ACTION Prompt</button></div>
+            </div>
+            <textarea id="actionH3Prompt" rows="7" placeholder="Chi attacca per primo, tecnica e traiettoria, punto d’impatto, reazione, recupero, camera e audio. Completa l’azione prima dell’eventuale dialogo."></textarea>
+            <p id="action-h3-prompt-assistant-status" class="prompt-assistant-status">LM Studio costruisce la coreografia ACTION → DIALOGUE senza avviare il render.</p>
+          </div>
+          <div id="action-h3-first-frame-field" class="field hidden">
+            <label>Fotogramma iniziale</label>
+            <label class="dropzone video-studio-drop"><input id="actionH3FirstFrame" name="h3FirstFrame" type="file" accept="image/png,image/jpeg,image/webp"><span class="upload-icon">I</span><strong>Carica il primo frame</strong><small>Identità, composizione e ambiente restano ancorati.</small></label>
+          </div>
+          <div id="action-h3-last-frame-field" class="field hidden">
+            <label>Fotogramma finale</label>
+            <label class="dropzone video-studio-drop"><input id="actionH3LastFrame" name="h3LastFrame" type="file" accept="image/png,image/jpeg,image/webp"><span class="upload-icon">F</span><strong>Carica l’ultimo frame</strong><small>Il combattimento deve convergere a questo risultato senza morphing.</small></label>
+          </div>
+          <section class="studio-subpanel">
+            <div class="subpanel-heading">
+              <div>
+                <p class="subpanel-title">Preset ACTION H3</p>
+                <p id="action-h3-preset-hint" class="hint">Scegli una ricetta per coreografia, ripresa, Combat V2 e LoRA H3 già installate.</p>
+              </div>
+              <div class="video-lora-picker-actions">
+                <label class="sr-only" for="actionH3Preset">Preset ACTION H3</label>
+                <select id="actionH3Preset" name="actionH3Preset">
+                  <option value="custom">Personalizzato · non modificare</option>
+                  <option value="streetBrawlVerite">Rissa realistica · vérité handheld</option>
+                  <option value="fantasyMelee">Mischia fantasy · realismo materico</option>
+                  <option value="cinematicOneTake">Duello cinematografico · piano sequenza</option>
+                  <option value="brutalFinisher">Finisher brutale · impatto conclusivo</option>
+                  <option value="readableGroupFight">Combattimento di gruppo · leggibile</option>
+                  <option value="smoothChoreography">Coreografia fluida · Better Motion</option>
+                  <option value="fantasyBattleVerite">Battaglia fantasy · vérité</option>
+                  <option value="aerialAction">Azione aerea · Drone Shot</option>
+                </select>
+                <button id="action-h3-apply-preset" class="chip-button" type="button">Applica preset</button>
+              </div>
+            </div>
+          </section>
+          <section class="studio-subpanel">
+            <p class="subpanel-title">Profilo combattimento</p>
+            <div class="field-grid">
+              <div class="field"><label for="actionH3RunProfile">Avvio ACTION</label><select id="actionH3RunProfile" name="actionH3RunProfile"><option value="preview" selected>Anteprima rapida · 0,4 MP / stesso seed</option><option value="nativeFinal">Finale ACTION nativo · qualità selezionata</option></select><p id="action-h3-run-hint" class="hint">La ricerca seed è stata rimossa dai set ACTION e spostata nel workflow autonomo Seed Hunter H3.</p></div>
+              <div class="field"><label for="actionH3Trigger">Intensità / trigger V2</label><select id="actionH3Trigger" name="actionH3Trigger"><option value="">Nessun trigger · anatomia più stabile</option><option value="prfight2" selected>prfight2 · combattimento intenso</option><option value="prfight2, prfin1">prfight2 + prfin1 · finisher / KO</option></select></div>
+              <div class="field"><label for="actionH3CombatStrength">Forza Combat V2</label><input id="actionH3CombatStrength" name="actionH3CombatStrength" type="number" min="0" max="1.5" step="0.05" value="0.8"></div>
+              <div class="field"><label for="actionH3Quality">Qualità</label><select id="actionH3Quality" name="actionH3Quality"><option value="twoPass04">0,4 → 1,0 MP · più leggero</option><option value="twoPass06" selected>0,6 → 1,0 MP · consigliato</option><option value="direct09">0,9 MP · sampling diretto</option></select></div>
+              <div class="field"><label for="actionH3Seed">Seed</label><input id="actionH3Seed" name="actionH3Seed" type="number" min="0" step="1" placeholder="Casuale"></div>
+            </div>
+            <div class="video-readiness ready"><span>✓</span><div><b>Parametri ACTION bloccati</b><p>FL2VA INT8 · Combat Base V2 automatica · Turbo 8 step · res_multistep + simple · purge fra i passaggi e dopo il salvataggio.</p></div></div>
+          </section>
+        </section>
+
+        <section id="ltx25-aio-fields" class="hidden">
+          <div class="interactive-cast-banner">
+            <p class="eyebrow">LTX 2.5 DISTILLED INT8 · AUDIO/VIDEO NATIVO · LOW VRAM</p>
+            <h3>LTX 2.5 AIO</h3>
+            <p>Un unico pannello per generazione, keyframe, reference sheet, audio e controllo video. Gemma viene scaricata prima del sampling; nei profili two-stage il transformer e l’upscaler vengono liberati fra le fasi.</p>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label for="ltx25Mode">Tipo di generazione</label>
+              <select id="ltx25Mode" name="ltx25Mode">
+                <optgroup label="Generazione">
+                  <option value="text">Text to Video + Audio</option>
+                  <option value="multishot">Native Multishot + Audio</option>
+                  <option value="image">Single Image to Video</option>
+                  <option value="firstLast">First / Last Frame</option>
+                  <option value="keyframes">Keyframe multipli · fino a 8 guide</option>
+                  <option value="audio">Audio to Video</option>
+                  <option value="textAudio">Text to Audio</option>
+                </optgroup>
+                <optgroup label="Identità e controllo">
+                  <option value="referenceSheet">Ingredients / Character Reference Sheet</option>
+                  <option value="unionControl">Video to Video · Canny/Pose Union</option>
+                  <option value="inpaint">Video Inpainting</option>
+                  <option value="outpaint">Video Outpainting / Reframe</option>
+                  <option value="motionTrack">Motion Track</option>
+                  <option value="v2vDeblur">Video to Video · Deblur</option>
+                  <option value="multiReferenceMsr">Multi-Reference MSR · plugin opzionale</option>
+                </optgroup>
+              </select>
+              <p id="ltx25-mode-hint" class="hint">Text to Video genera video e audio sincronizzato in un singolo passaggio.</p>
+            </div>
+            <div class="field"><label for="ltx25Duration">Durata</label><select id="ltx25Duration" name="duration"><option value="3">3 s · test</option><option value="5" selected>5 s</option><option value="8">8 s</option><option value="10">10 s</option><option value="15">15 s · molto pesante</option><option value="20">20 s · sperimentale</option></select></div>
+            <div class="field"><label for="ltx25Aspect">Formato</label><select id="ltx25Aspect" name="ltx25Aspect"><option value="16:9" selected>16:9 orizzontale</option><option value="9:16">9:16 verticale</option><option value="1:1">1:1 quadrato</option><option value="4:3">4:3</option><option value="3:4">3:4 verticale</option></select></div>
+            <div class="field"><label for="ltx25Fps">FPS</label><select id="ltx25Fps" name="ltx25Fps"><option value="24" selected>24 fps · consigliato</option><option value="25">25 fps</option><option value="48">48 fps · molto pesante</option></select></div>
+          </div>
+          <div class="field">
+            <div class="label-row">
+              <label for="ltx25Prompt">Prompt LTX 2.5</label>
+              <div class="prompt-assistant-tools" data-ltx-prompt-tools="ltx25Aio"><select id="ltx25PromptPreset" class="prompt-preset-select" aria-label="Preset System Prompt LTX 2.5"><option value="ltx_general">General</option><option value="ltx_image_to_video">Image-to-Video</option><option value="ltx_multi_shot">Multi-shot</option><option value="ltx_dialogue">Dialogue</option></select><button class="prompt-assistant-button" type="button" data-ltx-prompt="ltx_architect">✦ LTX 2.5 Prompt</button></div>
+            </div>
+            <textarea id="ltx25Prompt" rows="7" placeholder="Descrivi soggetto, azione temporale, camera, luce, dialogo e soundscape. Per Native Multishot indica esplicitamente SHOT 1, CUT TO SHOT 2…"></textarea>
+            <p id="ltx25-prompt-assistant-status" class="prompt-assistant-status">LM Studio migliora il testo prima dell’inserimento dei trigger LoRA; il prompt enhancer interno LTX resta disattivato.</p>
+          </div>
+
+          <div id="ltx25-first-frame-field" class="field hidden">
+            <label>Primo frame / immagine sorgente</label>
+            <label class="dropzone video-studio-drop"><input id="ltx25FirstFrame" name="ltx25FirstFrame" type="file" accept="image/png,image/jpeg,image/webp"><span class="upload-icon">I</span><strong>Carica immagine iniziale</strong><small>Usata da I2V, FLF, keyframe, A2V opzionale e Motion Track.</small></label>
+          </div>
+          <div id="ltx25-last-frame-field" class="field hidden">
+            <label>Ultimo frame</label>
+            <label class="dropzone video-studio-drop"><input id="ltx25LastFrame" name="ltx25LastFrame" type="file" accept="image/png,image/jpeg,image/webp"><span class="upload-icon">F</span><strong>Carica frame finale</strong></label>
+          </div>
+          <div id="ltx25-keyframes-field" class="field hidden">
+            <label>Keyframe intermedi</label>
+            <label class="dropzone video-studio-drop"><input id="ltx25Keyframes" name="ltx25Keyframes" type="file" multiple accept="image/png,image/jpeg,image/webp"><span class="upload-icon">6×</span><strong>Carica fino a 6 immagini ordinate</strong><small>Primo e ultimo frame restano agli estremi; le guide intermedie vengono distribuite sulla timeline.</small></label>
+          </div>
+          <div id="ltx25-reference-sheet-field" class="field hidden">
+            <label>Ingredients / Character Reference Sheet</label>
+            <label class="dropzone video-studio-drop"><input id="ltx25ReferenceSheet" name="ltx25ReferenceSheet" type="file" accept="image/png,image/jpeg,image/webp"><span class="upload-icon">REF</span><strong>Carica la tavola reference</strong><small>Descrivi nel prompt posizione e ruolo di personaggi, vestiti, oggetti e ambiente.</small></label>
+          </div>
+          <div id="ltx25-msr-field" class="field hidden">
+            <label>Multi-Reference MSR · 1–5 immagini</label>
+            <label class="dropzone video-studio-drop"><input id="ltx25MsrReferences" name="ltx25MsrReferences" type="file" multiple accept="image/png,image/jpeg,image/webp"><span class="upload-icon">5×</span><strong>Carica soggetti e ambiente in ordine</strong><small>Ordine: soggetto 1, 2, 3, 4, poi sfondo opzionale. Nel prompt chiamali Image 1, Image 2… e descrivi chiaramente ruolo e interazione.</small></label>
+          </div>
+          <div id="ltx25-source-video-field" class="field hidden">
+            <label>Video sorgente / guida</label>
+            <label class="dropzone video-studio-drop"><input id="ltx25SourceVideo" name="ltx25SourceVideo" type="file" accept="video/mp4,video/webm,video/quicktime,video/x-matroska"><span class="upload-icon">V</span><strong>Carica video</strong><small>Movimento, audio o regione originale vengono conservati in base alla modalità.</small></label>
+          </div>
+          <div id="ltx25-mask-video-field" class="field hidden">
+            <label>Maschera video</label>
+            <label class="dropzone video-studio-drop"><input id="ltx25MaskVideo" name="ltx25MaskVideo" type="file" accept="video/mp4,video/webm,video/quicktime,video/x-matroska"><span class="upload-icon">◐</span><strong>Carica maschera B/N</strong><small>Bianco = area da rigenerare; deve avere durata e dimensioni coerenti col video.</small></label>
+          </div>
+          <div id="ltx25-audio-field" class="field hidden">
+            <label>Audio guida</label>
+            <label class="dropzone video-studio-drop"><input id="ltx25Audio" name="ltx25Audio" type="file" accept="audio/*"><span class="upload-icon">♪</span><strong>Carica dialogo, performance o soundscape</strong></label>
+          </div>
+          <div id="ltx25-union-options" class="field hidden">
+            <label for="ltx25ControlType">Guida Union Control</label>
+            <select id="ltx25ControlType" name="ltx25ControlType"><option value="canny" selected>Contorni Canny · forma e movimento</option><option value="pose">Pose · corpo e gesti</option></select>
+            <p class="hint">Il preprocessore viene calcolato dal video sorgente; il prompt può cambiare aspetto e ambiente preservando la dinamica.</p>
+          </div>
+          <div id="ltx25-motion-options" class="field hidden">
+            <label for="ltx25MotionPreset">Traiettoria Motion Track</label>
+            <select id="ltx25MotionPreset" name="ltx25MotionPreset"><option value="horizontal" selected>Orizzontale</option><option value="vertical">Verticale</option><option value="cross">Incrocio di due elementi</option><option value="customDefault">Mantieni tracce del workflow</option></select>
+          </div>
+
+          <section class="studio-subpanel">
+            <p class="subpanel-title">Qualità, decoder e memoria</p>
+            <div class="field-grid">
+              <div class="field"><label for="ltx25Profile">Profilo</label><select id="ltx25Profile" name="ltx25Profile"><option value="preview" selected>Anteprima · single-stage 512×288</option><option value="balanced">Bilanciato · single-stage 768×448</option><option value="final">Finale · Stage 1 512×288 → 1024×576</option><option value="maximum">Massimo · Stage 1 640×352 → 1280×704</option></select><p id="ltx25-profile-hint" class="hint">Anteprima: stesso seed e parametri salvabili, nessun upscaler latente.</p></div>
+              <div class="field"><label for="ltx25Decoder">Video decoder</label><select id="ltx25Decoder" name="ltx25Decoder"><option value="conv" selected>Conv VAE · rapido / 12 GB</option><option value="diffusion">Diffusion Decoder · qualità estrema / lento</option></select></div>
+              <div class="field"><label for="ltx25Seed">Seed</label><input id="ltx25Seed" name="ltx25Seed" type="number" min="0" step="1" placeholder="Casuale"></div>
+            </div>
+            <div class="video-readiness ready"><span>✓</span><div><b>Purge VRAM obbligatorio</b><p>Gemma su CPU e purge dopo encoding · purge Transformer dopo Stage 1 · purge upscaler prima del refine · decode tiled · purge completo dopo salvataggio.</p></div></div>
+          </section>
+          <section class="studio-subpanel">
+            <div class="subpanel-heading">
+              <div>
+                <p class="subpanel-title">Preset LoRA LTX 2.5</p>
+                <p id="ltx25-lora-preset-hint" class="hint">Applica uno stack verificato usando esclusivamente le LoRA già installate.</p>
+              </div>
+              <div class="video-lora-picker-actions">
+                <label class="sr-only" for="ltx25LoraPreset">Preset LoRA LTX 2.5</label>
+                <select id="ltx25LoraPreset" name="ltx25LoraPreset">
+                  <option value="custom">Personalizzato · non modificare lo stack</option>
+                  <option value="selfieOrganic">Selfie Organic</option>
+                  <option value="selfieHandheld">Selfie Handheld in movimento</option>
+                  <option value="fantasyHandheld">Fantasy Handheld Realism</option>
+                  <option value="cinematicNatural">Cinematografico naturale</option>
+                  <option value="actionHandheld">Action Handheld · rissa realistica</option>
+                  <option value="actionCinematic">Action Cinematic · piano sequenza</option>
+                  <option value="actionMultishot">Action Multishot · cambi inquadratura</option>
+                </select>
+                <button id="ltx25-apply-lora-preset" class="chip-button" type="button">Applica preset</button>
+              </div>
+            </div>
+          </section>
         </section>
 
         <section id="retake-fields" class="hidden">
@@ -516,8 +854,12 @@
 
         <section class="studio-subpanel">
           <div class="subpanel-heading">
-            <div><p class="subpanel-title">Identity e Style LoRA</p><p class="hint">Puoi concatenare più LoRA LTX 2.3 con forza indipendente.</p></div>
-            <button id="video-add-lora" class="chip-button" type="button">＋ LoRA</button>
+            <div><p class="subpanel-title">Identity e Style LoRA</p><p id="video-lora-hint" class="hint">Puoi concatenare più LoRA LTX 2.3 con forza indipendente.</p></div>
+            <div class="video-lora-picker-actions">
+              <label class="sr-only" for="video-lora-picker">LoRA da aggiungere</label>
+              <select id="video-lora-picker" aria-label="LoRA da aggiungere"></select>
+              <button id="video-add-lora" class="chip-button" type="button">Aggiungi LoRA</button>
+            </div>
           </div>
           <div id="video-loras"></div>
           <input id="video-loras-json" name="loras" type="hidden" value="[]">

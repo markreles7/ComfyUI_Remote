@@ -1,6 +1,10 @@
 import { enhanceDirectorPrompts, enhanceMainPrompt } from "./prompt-assistant.js";
 import { consumeGuidedHandoff, guidedTokenFromLocation, setInputFile } from "./guided-handoff.js";
+import { applyLoraTriggers, automaticLoraTriggers, loraMatchesFamily, loraOptionLabel } from "./lora-triggers.js?v=20260822-scalar-fix";
 import { setupUploadPreviews } from "./upload-previews.js";
+import { createAdaptivePoller, getAppConfig, warmAppConfig } from "./runtime-cache.js";
+
+void warmAppConfig();
 
 const state = {
   config: null,
@@ -52,8 +56,11 @@ function promptAssistantContext() {
   const edit = workflow.value === "editAnything";
   const textMode = $("#videoInputMode").value === "text";
   const sulphur = selectedWorkflow?.id === "ltxSulphur";
+  const minimaxH3 = selectedWorkflow?.id === "minimaxH3";
   return {
-    target: sulphur ? (edit ? "sulphur_ltxedit" : "sulphur_ltx") : (edit ? "ltxedit" : "ltx"),
+    target: minimaxH3
+      ? "minimax_h3"
+      : sulphur ? (edit ? "sulphur_ltxedit" : "sulphur_ltx") : (edit ? "ltxedit" : "ltx"),
     mode: edit ? "video" : textMode ? "text" : "image",
     workflowName: `${selectedWorkflow?.name || "LTX 2.3"} · ${$("#videoModelId").selectedOptions[0]?.textContent || ""}`,
     sourceFile: !edit && !textMode ? $("#image").files[0] || null : null,
@@ -69,6 +76,9 @@ function isSulphurPromptMode() {
 function updatePromptAssistantAvailability() {
   const qwenEditButton = $("#qwen-edit-prompt-button");
   const kleinButton = $("#klein-prompt-button");
+  const qwenPreset = $("#qwen-prompt-preset");
+  const fluxPreset = $("#flux-prompt-preset");
+  const ltxPreset = $("#ltx-prompt-preset");
   const reverseButton = $("#reverse-prompt-button");
   const ltxArchitectButton = $("#ltx-architect-prompt-button");
   const ltxSceneButton = $("#ltx-scene-prompt-button");
@@ -77,15 +87,23 @@ function updatePromptAssistantAvailability() {
   const enabled = Boolean(state.config?.promptAssistant?.enabled);
   const usable = enabled && !isUpscaleGeneration() && !$("#prompt").disabled;
   const imageUsable = usable && isImageGeneration();
+  const imageTarget = imageUsable ? promptAssistantContext().target : "";
+  const qwenUsable = imageUsable && imageTarget === "qwen";
+  const qwenEditUsable = imageUsable && /^qwenedit/.test(imageTarget);
+  const fluxUsable = imageUsable && imageTarget === "flux2";
   const isDirector = !isImageGeneration() && workflow.value === "director";
   const ltxUsable = usable && !isImageGeneration() && !isDirector;
   const sulphurUsable = ltxUsable;
-  qwenEditButton.classList.toggle("hidden", !imageUsable);
-  kleinButton.classList.toggle("hidden", !imageUsable);
+  qwenEditButton.classList.toggle("hidden", !(qwenUsable || qwenEditUsable));
+  qwenEditButton.textContent = qwenUsable ? "✦ Qwen Prompt" : "✦ Qwen Edit";
+  qwenPreset.classList.toggle("hidden", !qwenUsable);
+  kleinButton.classList.toggle("hidden", !fluxUsable);
+  fluxPreset.classList.toggle("hidden", !fluxUsable);
   reverseButton.classList.toggle("hidden", !imageUsable);
   ltxArchitectButton.classList.toggle("hidden", !ltxUsable);
   ltxSceneButton.classList.toggle("hidden", !ltxUsable);
   sulphurPromptButton.classList.toggle("hidden", !sulphurUsable);
+  ltxPreset.classList.toggle("hidden", !ltxUsable);
   directorButton?.classList.toggle("hidden", !enabled || !isDirector);
   if (!enabled) $("#prompt-assistant-status").textContent = "Prompt Assistant non configurato";
 }
@@ -104,12 +122,79 @@ function showToast(message) {
   showToast.timer = setTimeout(() => toast.classList.remove("visible"), 2600);
 }
 
+function poseCategoryLabel(category) {
+  return {
+    upright: "In piedi / seduta",
+    raised_arm: "Braccio alzato",
+    leaning: "Appoggiata / inclinata",
+    reclining: "Sdraiata / reclinata",
+    partial_body: "Mezza figura / dettaglio",
+  }[category] || category;
+}
+
+function updatePoseLibraryControls() {
+  const panel = $("#pose-library-panel");
+  const select = $("#pose-library-category");
+  const button = $("#pose-library-random");
+  const status = $("#pose-library-status");
+  const library = state.config?.poseLibrary;
+  const usable = Boolean(library?.installed) && !$("#prompt").disabled;
+  panel.classList.toggle("hidden", !usable);
+  select.disabled = !usable;
+  button.disabled = !usable;
+  if (!usable) return;
+  if (select.options.length === 1) {
+    for (const category of library.categories || []) {
+      select.insertAdjacentHTML("beforeend", `<option value="${escapeAttribute(category)}">${escapeHtml(poseCategoryLabel(category))}</option>`);
+    }
+  }
+  status.textContent = `${library.count} pose analizzate · aggiunge solo una direzione testuale, senza OpenPose o immagini reference.`;
+}
+
+function removePreviousPoseSuffix() {
+  const previous = state.posePromptSuffix;
+  if (!previous) return;
+  const input = $("#prompt");
+  const suffix = `, ${previous}`;
+  if (input.value.trimEnd().endsWith(suffix)) input.value = input.value.trimEnd().slice(0, -suffix.length).trimEnd();
+  state.posePromptSuffix = null;
+}
+
+async function insertTextualPose() {
+  const button = $("#pose-library-random");
+  const status = $("#pose-library-status");
+  button.disabled = true;
+  try {
+    removePreviousPoseSuffix();
+    const result = await api("/api/pose-library/select", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        prompt: $("#prompt").value,
+        category: $("#pose-library-category").value,
+      }),
+    });
+    const suffix = String(result.promptSuffix || "").trim();
+    if (!suffix) throw new Error("La posa selezionata non contiene una descrizione testuale.");
+    const input = $("#prompt");
+    input.value = [input.value.trim().replace(/[,.]$/, ""), suffix].filter(Boolean).join(", ");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    state.posePromptSuffix = suffix;
+    status.textContent = `Inserita: ${poseCategoryLabel(result.selection.pose.category)} · ${result.selection.pose.tags.join(", ")}. Premi di nuovo il dado per sostituirla.`;
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+
 function escapeAttribute(text) {
   return escapeHtml(text).replaceAll('"', "&quot;");
 }
 
 function compatibleLoras() {
   if (isUpscaleGeneration() || isSeedvr2VideoUpscaleGeneration()) return [];
+  if (!isImageGeneration() && workflow.value === "minimaxH3") return [];
   const all = state.config?.loras || [];
   let prefix = "LTX2.3\\";
   if (isImageGeneration()) {
@@ -118,21 +203,20 @@ function compatibleLoras() {
       ? "QWEN\\"
       : model?.family === "flux2"
         ? "FLUX2\\"
-        : model?.family === "zimage"
+      : model?.family === "zimage"
           ? "ZIMG\\"
+          : ["mageflow", "mageflowedit"].includes(model?.family)
+            ? "MAGEFLOW\\"
           : "FLUX\\";
   }
-  return all.filter((name) => {
-    const compatiblePrefix = name.toLocaleUpperCase().startsWith(prefix.toLocaleUpperCase());
-    if (!compatiblePrefix) return false;
-    return true;
-  });
+  const family = prefix.replace("\\", "").toLocaleUpperCase();
+  return all.filter((name) => loraMatchesFamily(name, family, state.config?.loraMetadata));
 }
 
 function loraOptions(selected = "") {
   const available = compatibleLoras();
   return `<option value="">Scegli una LoRA…</option>${available.map((name) =>
-    `<option value="${escapeAttribute(name)}"${name === selected ? " selected" : ""}>${escapeHtml(name)}</option>`
+    `<option value="${escapeAttribute(name)}"${name === selected ? " selected" : ""}>${escapeHtml(loraOptionLabel(name, state.config?.loraMetadata))}</option>`
   ).join("")}`;
 }
 
@@ -156,13 +240,21 @@ function addLora(values = {}) {
 }
 
 function syncLoras() {
-  const values = [...document.querySelectorAll(".lora-row")].map((row) => ({
-    name: row.querySelector("[data-lora-name]").value,
-    strength: Number(row.querySelector("[data-lora-strength]").value),
-  })).filter((item) => item.name);
+  const values = selectedLoras();
   $("#loras").value = JSON.stringify(values);
   $("#lora-count").textContent = `${values.length} ${values.length === 1 ? "attiva" : "attive"}`;
   $("#lora-empty-hint").classList.toggle("hidden", document.querySelectorAll(".lora-row").length > 0);
+}
+
+function selectedLoras() {
+  return [...document.querySelectorAll(".lora-row")].map((row) => ({
+    name: row.querySelector("[data-lora-name]").value,
+    strength: Number(row.querySelector("[data-lora-strength]").value),
+  })).filter((item) => item.name);
+}
+
+function selectedPromptTriggers() {
+  return automaticLoraTriggers(selectedLoras(), state.config?.loraMetadata || {});
 }
 
 function refreshLoraOptions() {
@@ -350,7 +442,9 @@ function imageOptionsChanged(updateDefaults = false) {
   const previousMode = modeSelect.value;
   const labels = {
     text: "Text to Image",
-    image: model.family === "qwenedit"
+    image: model.family === "mageflowedit"
+      ? "Image Edit · Mage-Flow"
+      : model.family === "qwenedit"
       ? "Image Edit 2511"
       : model.family === "flux2"
         ? "Image Edit / Reference"
@@ -379,8 +473,9 @@ function imageOptionsChanged(updateDefaults = false) {
   }
   const mode = modeSelect.value;
   const needsImage = mode !== "text";
-  $("#batchSize").max = model.family === "qwenedit" ? "1" : "4";
-  if (model.family === "qwenedit") $("#batchSize").value = "1";
+  const singleImageModel = ["qwenedit", "mageflow", "mageflowedit"].includes(model.family);
+  $("#batchSize").max = singleImageModel ? "1" : "4";
+  if (singleImageModel) $("#batchSize").value = "1";
   $("#source-image-field").classList.toggle("hidden", !needsImage);
   $("#sourceImage").disabled = !needsImage;
   $("#sourceImage").required = needsImage;
@@ -388,7 +483,7 @@ function imageOptionsChanged(updateDefaults = false) {
   $("#source-image-copy").textContent = mode === "reference"
     ? "Carica l’immagine di riferimento"
     : "Carica l’immagine da modificare";
-  const nativeInstructionEdit = ["flux2", "qwenedit"].includes(model.family);
+  const nativeInstructionEdit = ["flux2", "qwenedit", "mageflowedit"].includes(model.family);
   $("#denoise-field").classList.toggle("hidden", mode !== "image" || nativeInstructionEdit);
   $("#denoise").disabled = mode !== "image" || nativeInstructionEdit;
   $("#reference-strength-field").classList.toggle("hidden", mode !== "reference");
@@ -766,6 +861,7 @@ function generationTypeChanged(type) {
   updateEnhancementOptions();
   refreshLoraOptions();
   updatePromptAssistantAvailability();
+  updatePoseLibraryControls();
 }
 
 async function applyGuidedCreation() {
@@ -1024,7 +1120,8 @@ function renderHistory() {
 }
 
 async function loadHistory() {
-  state.history = await api("/api/generations");
+  const payload = await api("/api/generations?paged=1&limit=24&offset=0&archive=active");
+  state.history = payload.items || [];
   renderHistory();
 }
 
@@ -1091,6 +1188,7 @@ form.addEventListener("submit", async (event) => {
   button.querySelector("span").textContent = "Invio a ComfyUI…";
   try {
     syncLoras();
+    applyLoraTriggers($("#prompt"), selectedPromptTriggers());
     const data = new FormData(form);
 
     if (isLtxUpscaleGeneration()) {
@@ -1647,6 +1745,7 @@ async function runImagePromptPreset(target, button, successMessage) {
     $("#prompt-assistant-status").classList.add("prompt-assistant-error");
     return;
   }
+  const triggers = selectedPromptTriggers();
   try {
     await enhanceMainPrompt({
       input: $("#prompt"),
@@ -1654,19 +1753,22 @@ async function runImagePromptPreset(target, button, successMessage) {
       status: $("#prompt-assistant-status"),
       ...context,
       target,
+      promptPreset: target.startsWith("qwen") ? $("#qwen-prompt-preset").value : $("#flux-prompt-preset").value,
       workflowName: `${context.workflowName} · ${target === "qwen_image_edit_architect" ? "Qwen Edit Prompt" : "Klein Prompt"}`,
       negativeInput: $("#negativePrompt"),
       includeNegative: isImageGeneration() && (context.mode !== "text" || target.includes("edit") || target.includes("klein")),
     });
-    showToast(successMessage);
+    applyLoraTriggers($("#prompt"), triggers);
+    showToast(`${successMessage}${triggers.length ? ` Trigger: ${triggers.join(", ")}.` : ""}`);
   } catch {
     // Il dettaglio resta visibile accanto al prompt.
   }
 }
 
 $("#qwen-edit-prompt-button").addEventListener("click", () => {
+  const target = promptAssistantContext().target === "qwen" ? "qwen" : "qwen_image_edit_architect";
   runImagePromptPreset(
-    "qwen_image_edit_architect",
+    target,
     $("#qwen-edit-prompt-button"),
     "Prompt Qwen Edit creato; clicca Genera quando vuoi."
   );
@@ -1711,6 +1813,7 @@ async function runReversePrompt(target, button) {
     status.classList.add("prompt-assistant-error");
     return;
   }
+  const triggers = selectedPromptTriggers();
   try {
     const payload = await enhanceMainPrompt({
       input: $("#prompt"),
@@ -1720,9 +1823,10 @@ async function runReversePrompt(target, button) {
       mode: "reverse",
       workflowName: target === "reverse_qwen" ? "Reverse Prompt · Qwen" : "Reverse Prompt · FLUX.2 Klein",
       sourceFile: file,
-      text: "Descrivi fedelmente tutti gli elementi visibili e trasformali in un prompt di generazione.",
+      text: "Transcribe every visible element literally and precisely into a generation prompt. Preserve the exact SFW or clearly-adult NSFW content without omissions, euphemisms, metaphors, moral commentary or invented details.",
     });
     if (!payload) return;
+    applyLoraTriggers($("#prompt"), triggers);
     reversePromptDialog.close();
     showToast(target === "reverse_qwen"
       ? "Reverse Prompt Qwen inserito."
@@ -1747,6 +1851,7 @@ async function runLtxPromptPreset(target, button, successMessage) {
   const resolvedTarget = isSulphurPromptMode() && !target.startsWith("sulphur_")
     ? `sulphur_${target}`
     : target;
+  const triggers = selectedPromptTriggers();
   try {
     await enhanceMainPrompt({
       input: $("#prompt"),
@@ -1754,11 +1859,13 @@ async function runLtxPromptPreset(target, button, successMessage) {
       status: $("#prompt-assistant-status"),
       ...context,
       target: resolvedTarget,
+      promptPreset: $("#ltx-prompt-preset").value,
       workflowName: `${context.workflowName} · ${target === "sulphur_prompt" ? "LTX Sulphur" : target === "ltx_scenes" ? "Prompt a scene" : "Prompt Architect"}`,
       negativeInput: $("#negativePrompt"),
       includeNegative: true,
     });
-    showToast(successMessage);
+    applyLoraTriggers($("#prompt"), triggers);
+    showToast(`${successMessage}${triggers.length ? ` Trigger: ${triggers.join(", ")}.` : ""}`);
   } catch {
     // Il dettaglio resta visibile accanto al prompt.
   }
@@ -1818,6 +1925,7 @@ $("#videoModelId").addEventListener("change", () => {
 $("#imageMode").addEventListener("change", () => imageOptionsChanged());
 $("#imageModelId").addEventListener("change", () => imageOptionsChanged(true));
 $("#imageModelFile").addEventListener("change", () => imageOptionsChanged(true));
+$("#pose-library-random").addEventListener("click", insertTextualPose);
 $("#characterId").addEventListener("change", () => {
   syncCharacterFields();
   if (isImageGeneration()) imageOptionsChanged();
@@ -1836,8 +1944,9 @@ $("#faceEnhance").addEventListener("change", () => updateEnhancementOptions());
 $("#batchSize").addEventListener("change", () => updateEnhancementOptions(true));
 
 async function start() {
+  const historyPromise = loadHistory().catch((error) => showToast(error.message));
   try {
-    state.config = await api("/api/config");
+    state.config = await getAppConfig();
     workflow.innerHTML = state.config.workflows.map((item) =>
       `<option value="${item.id}">${escapeHtml(item.name)}</option>`
     ).join("");
@@ -1847,6 +1956,7 @@ async function start() {
     $("#imageModelId").innerHTML = state.config.imageModels.map((item) =>
       `<option value="${item.id}">${escapeHtml(item.name)}${item.available ? "" : " · non installato"}</option>`
     ).join("");
+    updatePoseLibraryControls();
     const seedProfiles = state.config.imageEnhancements?.seedvr2Profiles || [];
     $("#seedvrProfile").innerHTML = seedProfiles.map((profile) =>
       `<option value="${escapeAttribute(profile.id)}"${profile.available ? "" : " disabled"}>${escapeHtml(profile.name)}${profile.available ? "" : " · non installato"}</option>`
@@ -1892,9 +2002,9 @@ async function start() {
     setupUploadPreviews();
     await applyGuidedCreation();
     setupUploadPreviews();
-    await Promise.all([checkHealth(), loadHistory()]);
+    await Promise.all([checkHealth(), historyPromise]);
     connectEvents();
-    setInterval(checkHealth, 15000);
+    createAdaptivePoller(checkHealth, { idleMs: 15_000, hiddenMs: 60_000 });
   } catch (error) {
     $("#form-error").textContent = error.message;
   }

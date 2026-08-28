@@ -87,6 +87,26 @@ export class InteractiveCastProjectStore extends HistoryStore {
     };
   }
 
+  writeAnchorCandidate(projectId, segmentId, sourcePath, attempt = 1) {
+    if (!sourcePath || !fs.existsSync(sourcePath)) throw new Error("Anchor candidate Interactive Cast mancante.");
+    const directory = path.join(this.projectAssetDirectory(projectId), "anchor-candidates");
+    fs.mkdirSync(directory, { recursive: true });
+    const extension = path.extname(sourcePath) || ".png";
+    const filename = `${safeName(segmentId)}-attempt-${Number(attempt) || 1}${extension}`;
+    const target = path.join(directory, filename);
+    fs.copyFileSync(sourcePath, target);
+    const buffer = fs.readFileSync(target);
+    return {
+      path: target,
+      filename,
+      relativePath: `anchor-candidates/${filename}`,
+      mimeType: extension.toLowerCase() === ".jpg" || extension.toLowerCase() === ".jpeg" ? "image/jpeg" : "image/png",
+      size: buffer.length,
+      sha256: sha256(buffer),
+      attempt: Number(attempt) || 1,
+    };
+  }
+
   writeDialogueAudio(projectId, eventId, file) {
     if (!file?.buffer) throw new Error("Audio dialogo Interactive Cast mancante.");
     const directory = path.join(this.projectAssetDirectory(projectId), "dialogue-audio");

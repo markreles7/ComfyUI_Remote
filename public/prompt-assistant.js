@@ -3,13 +3,17 @@ export async function enhanceMainPrompt({
   button,
   status,
   target,
+  promptPreset = "",
+  duration = "",
   mode,
   workflowName,
   sourceFile,
+  sourceFiles = [],
   text,
   negativeInput,
   includeNegative = false,
   buttonScope = null,
+  fields = {},
 }) {
   if (window.__promptAssistantBusy) {
     status.textContent = "Prompt Assistant già in esecuzione: attendi il risultato corrente.";
@@ -22,15 +26,25 @@ export async function enhanceMainPrompt({
   const data = new FormData();
   data.set("text", String(text ?? input.value).trim());
   data.set("target", target);
+  if (promptPreset) data.set("promptPreset", promptPreset);
+  if (duration !== "") data.set("duration", String(duration));
   data.set("mode", mode);
   data.set("workflowName", workflowName || target);
   data.set("includeNegative", includeNegative ? "true" : "false");
-  if (sourceFile) data.set("sourceImage", sourceFile);
+  for (const [name, value] of Object.entries(fields || {})) {
+    if (value !== undefined && value !== null && String(value) !== "") data.set(name, String(value));
+  }
+  const suppliedFiles = (sourceFiles.length ? sourceFiles : sourceFile ? [sourceFile] : []).filter(Boolean).slice(0, 9);
+  if (suppliedFiles.length <= 1) {
+    if (suppliedFiles[0]) data.set("sourceImage", suppliedFiles[0]);
+  } else {
+    for (const file of suppliedFiles) data.append("sourceImages", file);
+  }
 
   window.__promptAssistantBusy = true;
   for (const item of assistantButtons) item.disabled = true;
   button.disabled = true;
-  button.textContent = sourceFile ? "Analisi immagine…" : "Scrittura prompt…";
+  button.textContent = suppliedFiles.length ? `Analisi ${suppliedFiles.length === 1 ? "immagine" : `${suppliedFiles.length} immagini`}…` : "Scrittura prompt…";
   status.textContent = "Avvio LM Studio e caricamento del modello locale…";
   status.classList.remove("prompt-assistant-error");
   try {
@@ -48,9 +62,11 @@ export async function enhanceMainPrompt({
       : payload.cleanup?.comfyMemoryReason === "queue-busy"
         ? "LM Studio scaricato · ComfyUI sta ancora lavorando"
         : "LM Studio scaricato";
+    const vision = payload.usedVision ? ` · Vision attiva (${payload.usedImageCount || suppliedFiles.length || 1} immagini)` : "";
+    const normalized = payload.visionTranscodedCount ? ` · ${payload.visionTranscodedCount} WebP normalizzato in PNG` : "";
     status.textContent = payload.partial
-      ? `${payload.model} · completato con fallback per alcune scene · ${memory}`
-      : `${payload.model} · ${memory}`;
+      ? `${payload.model}${vision}${normalized} · completato con fallback per alcune scene · ${memory}`
+      : `${payload.model}${vision}${normalized} · ${memory}`;
     return payload;
   } catch (error) {
     status.textContent = error.message;

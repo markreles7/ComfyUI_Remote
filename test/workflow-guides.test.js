@@ -33,6 +33,9 @@ test("la guida comprende tutti i workflow Video Studio", () => {
   assert.deepEqual(
     VIDEO_WORKFLOW_GUIDES.map((guide) => guide.id),
     [
+      "videoMiniMaxH3",
+      "videoActionH3",
+      "videoInteractiveCast",
       "videoActorReplacement",
       "videoInteractiveScene",
       "videoSceneTransform",
@@ -44,7 +47,7 @@ test("la guida comprende tutti i workflow Video Studio", () => {
   );
   assert.equal(ALL_WORKFLOW_GUIDES.length, PUBLIC_WORKFLOW_GUIDES.length + VIDEO_WORKFLOW_GUIDES.length + 1);
   assert.deepEqual(
-    ALL_WORKFLOW_GUIDES.slice(0, -7).map((guide) => guide.id),
+    ALL_WORKFLOW_GUIDES.slice(0, -VIDEO_WORKFLOW_GUIDES.length).map((guide) => guide.id),
     ["sceneIntegration", ...PUBLIC_WORKFLOW_GUIDES.map((guide) => guide.id)],
   );
   for (const guide of VIDEO_WORKFLOW_GUIDES) {

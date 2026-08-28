@@ -7,6 +7,15 @@ import {
   safeReferenceType,
   writeReferenceFiles,
 } from "./character-pack-builder.js";
+import {
+  blueprintDescription,
+  blueprintIdentityHints,
+  normalizeCharacterBlueprint,
+  normalizeGenesis,
+  normalizeSubjectKind,
+} from "./character-genesis.js";
+import { normalizeReferencePlan } from "./character-reference-factory.js";
+import { normalizeIdentityEvaluation, normalizeManualReview } from "./identity-evaluation.js";
 
 const DEFAULT_SETTINGS = {
   identityStrength: "medium",
@@ -17,6 +26,19 @@ const DEFAULT_SETTINGS = {
 };
 
 const EMPTY_HINTS = { hair: "", face: "", body: "" };
+
+function normalizeVoiceProfile(raw = {}) {
+  return {
+    language: safeText(raw.language || "auto", 40),
+    speaker: safeText(raw.speaker || "", 120),
+    notes: safeText(raw.notes || "", 500),
+    referenceAudio: safeText(raw.referenceAudio || "", 300),
+  };
+}
+
+function preferred(value, allowed, fallback) {
+  return allowed.includes(value) ? value : fallback;
+}
 
 function ensureDirectory(directory) {
   fs.mkdirSync(directory, { recursive: true });
@@ -59,6 +81,7 @@ function publicReference(characterId, reference, characterDirectory = null) {
   const available = referenceFileAvailable(characterDirectory, reference);
   return {
     ...reference,
+    manualReview: normalizeManualReview(reference.manualReview),
     assetAvailable: available,
     assetMissing: !available,
     url: available
@@ -72,6 +95,7 @@ function publicCharacter(character, characterDirectory = null) {
     publicReference(character.id, reference, characterDirectory),
   );
   const heroReference = references.find((item) => item.id === character.heroImage) || references[0] || null;
+  const characterPack = buildCharacterPack(character);
   const approved = references.filter((item) => item.status !== "rejected");
   const checklist = {
     hero: approved.some((item) => item.type === "hero") || Boolean(heroReference),
@@ -82,17 +106,36 @@ function publicCharacter(character, characterDirectory = null) {
   };
   return {
     ...character,
+    subjectKind: normalizeSubjectKind(character.subjectKind || character.characterBlueprint?.subjectKind),
+    characterBlueprint: normalizeCharacterBlueprint(character.characterBlueprint || {}, {
+      sourceDescription: character.description,
+    }),
+    genesis: character.genesis ? normalizeGenesis(character.genesis) : null,
+    identityEvaluation: normalizeIdentityEvaluation(character.identityEvaluation || {}),
+    characterPack,
+    readiness: characterPack.readiness,
+    referencePlan: character.referencePlan
+      ? normalizeReferencePlan(character.referencePlan, {
+          subjectKind: character.subjectKind === "auto"
+            ? character.referencePlan.subjectKind
+            : character.subjectKind || character.characterBlueprint?.subjectKind,
+          workflow: character.referencePlan.workflow,
+          existingPlan: character.referencePlan,
+        })
+      : null,
     references,
     heroUrl: heroReference?.assetAvailable ? heroReference.url : null,
     faceRefs: references.filter((item) => item.type === "face"),
     bodyRefs: references.filter((item) => item.type === "full_body" || item.type === "bust"),
     otherRefs: references.filter((item) => !["hero", "face", "full_body", "bust", "sheet"].includes(item.type)),
-    packStatus: character.characterPack?.status || "Needs references",
+    packStatus: characterPack.status,
     referenceCount: references.filter((item) => item.status !== "rejected").length,
     checklist,
     assetWarnings: references
       .filter((item) => item.assetMissing)
       .map((item) => `${item.originalName || item.id}: file mancante`),
+    voiceReferenceAvailable: Boolean(character.voiceProfile?.referenceAudio && characterDirectory
+      && fs.existsSync(path.resolve(characterDirectory, character.voiceProfile.referenceAudio))),
   };
 }
 
@@ -167,9 +210,13 @@ export class CharacterStore {
     if (fs.existsSync(path.join(directory, "meta.json"))) {
       throw new Error("Esiste gia' un personaggio con questo ID.");
     }
-    for (const child of ["hero", "refs", "face", "body", "sheet", "masks", "derived"]) {
+    for (const child of ["hero", "refs", "face", "body", "sheet", "masks", "derived", "voice"]) {
       ensureDirectory(path.join(directory, child));
     }
+    const characterBlueprint = normalizeCharacterBlueprint(raw.characterBlueprint || {}, {
+      sourceDescription: raw.description,
+    });
+    const blueprintHints = blueprintIdentityHints(characterBlueprint);
     const character = {
       id,
       name: safeText(raw.name || "Nuovo personaggio", 120),
@@ -179,23 +226,33 @@ export class CharacterStore {
       bodyRefs: [],
       otherRefs: [],
       references: [],
-      description: safeText(raw.description),
+      description: safeText(raw.description || blueprintDescription(characterBlueprint)),
+      subjectKind: normalizeSubjectKind(raw.subjectKind || characterBlueprint.subjectKind),
+      characterBlueprint,
+      genesis: raw.genesis ? normalizeGenesis(raw.genesis) : null,
+      referencePlan: raw.referencePlan
+        ? normalizeReferencePlan(raw.referencePlan, {
+            subjectKind: normalizeSubjectKind(raw.subjectKind || characterBlueprint.subjectKind) === "auto"
+              ? raw.referencePlan.subjectKind
+              : raw.subjectKind || characterBlueprint.subjectKind,
+            workflow: raw.referencePlan.workflow,
+          })
+        : null,
       wardrobe: normalizeArray(raw.wardrobe),
+      voiceProfile: normalizeVoiceProfile(raw.voiceProfile),
+      preferredImagePreset: preferred(raw.preferredImagePreset, ["fast", "balanced", "max"], "balanced"),
+      preferredVideoPreset: preferred(raw.preferredVideoPreset, ["original", "improved", "quality"], "improved"),
+      preferredVideoEngine: safeText(raw.preferredVideoEngine || "auto", 80),
       identityHints: {
-        hair: safeText(raw.identityHints?.hair || raw.hair, 500),
-        face: safeText(raw.identityHints?.face || raw.face, 500),
-        body: safeText(raw.identityHints?.body || raw.body, 500),
+        hair: safeText(raw.identityHints?.hair || raw.hair || blueprintHints.hair, 500),
+        face: safeText(raw.identityHints?.face || raw.face || blueprintHints.face, 500),
+        body: safeText(raw.identityHints?.body || raw.body || blueprintHints.body, 500),
       },
       settings: {
         ...DEFAULT_SETTINGS,
         ...(raw.settings || {}),
       },
-      identityEvaluation: {
-        enabled: false,
-        engine: null,
-        referenceEmbedding: null,
-        threshold: null,
-      },
+      identityEvaluation: normalizeIdentityEvaluation(),
       characterPack: buildCharacterPack({ id, references: [] }),
       createdAt: now,
       updatedAt: now,
@@ -206,17 +263,61 @@ export class CharacterStore {
     character.settings.identityStrength = ["low", "medium", "high"].includes(character.settings.identityStrength)
       ? character.settings.identityStrength
       : "medium";
+    character.characterPack = buildCharacterPack(character);
     return this.writeRaw(character);
   }
 
   updateCharacter(id, raw = {}) {
     const character = this.readRaw(id);
     const settings = raw.settings || {};
+    const characterBlueprint = raw.characterBlueprint === undefined
+      ? normalizeCharacterBlueprint(character.characterBlueprint || {}, { sourceDescription: character.description })
+      : normalizeCharacterBlueprint(raw.characterBlueprint, { sourceDescription: raw.description || character.description });
+    const nextSubjectKind = raw.subjectKind === undefined
+      ? normalizeSubjectKind(character.subjectKind || characterBlueprint.subjectKind)
+      : normalizeSubjectKind(raw.subjectKind);
+    const referencePlanKindChanged = Boolean(
+      character.referencePlan
+      && nextSubjectKind !== "auto"
+      && character.referencePlan.subjectKind !== nextSubjectKind,
+    );
     const updated = {
       ...character,
       name: raw.name === undefined ? character.name : safeText(raw.name, 120),
       description: raw.description === undefined ? character.description : safeText(raw.description),
       wardrobe: raw.wardrobe === undefined ? character.wardrobe : normalizeArray(raw.wardrobe),
+      voiceProfile: raw.voiceProfile === undefined
+        ? normalizeVoiceProfile(character.voiceProfile)
+        : normalizeVoiceProfile({ ...character.voiceProfile, ...raw.voiceProfile }),
+      preferredImagePreset: raw.preferredImagePreset === undefined
+        ? preferred(character.preferredImagePreset, ["fast", "balanced", "max"], "balanced")
+        : preferred(raw.preferredImagePreset, ["fast", "balanced", "max"], "balanced"),
+      preferredVideoPreset: raw.preferredVideoPreset === undefined
+        ? preferred(character.preferredVideoPreset, ["original", "improved", "quality"], "improved")
+        : preferred(raw.preferredVideoPreset, ["original", "improved", "quality"], "improved"),
+      preferredVideoEngine: raw.preferredVideoEngine === undefined
+        ? safeText(character.preferredVideoEngine || "auto", 80)
+        : safeText(raw.preferredVideoEngine || "auto", 80),
+      subjectKind: nextSubjectKind,
+      characterBlueprint,
+      genesis: raw.genesis === undefined
+        ? (character.genesis ? normalizeGenesis(character.genesis) : null)
+        : (raw.genesis ? normalizeGenesis(raw.genesis, character.genesis || {}) : null),
+      referencePlan: raw.referencePlan === undefined
+        ? (character.referencePlan && !referencePlanKindChanged ? normalizeReferencePlan(character.referencePlan, {
+            subjectKind: normalizeSubjectKind(raw.subjectKind || character.subjectKind || characterBlueprint.subjectKind) === "auto"
+              ? character.referencePlan.subjectKind
+              : raw.subjectKind || character.subjectKind || characterBlueprint.subjectKind,
+            workflow: character.referencePlan.workflow,
+            existingPlan: character.referencePlan,
+          }) : null)
+        : (raw.referencePlan ? normalizeReferencePlan(raw.referencePlan, {
+            subjectKind: normalizeSubjectKind(raw.subjectKind || character.subjectKind || characterBlueprint.subjectKind) === "auto"
+              ? raw.referencePlan.subjectKind
+              : raw.subjectKind || character.subjectKind || characterBlueprint.subjectKind,
+            workflow: raw.referencePlan.workflow,
+            existingPlan: character.referencePlan,
+          }) : null),
       identityHints: {
         ...EMPTY_HINTS,
         ...(character.identityHints || {}),
@@ -294,14 +395,62 @@ export class CharacterStore {
     }, raw);
   }
 
+  setVoiceReference(id, file) {
+    const character = this.readRaw(id);
+    if (!file?.buffer || !["audio/wav", "audio/mpeg", "audio/mp4", "audio/x-m4a"].includes(file.mimetype)) {
+      throw new Error("Reference voce non valida: usa WAV, MP3 o M4A.");
+    }
+    const extension = ({ "audio/wav": ".wav", "audio/mpeg": ".mp3", "audio/mp4": ".m4a", "audio/x-m4a": ".m4a" })[file.mimetype];
+    const relative = path.join("voice", `reference-${crypto.randomUUID()}${extension}`);
+    const target = path.resolve(this.characterDirectory(id), relative);
+    ensureDirectory(path.dirname(target));
+    fs.writeFileSync(target, file.buffer);
+    const previous = character.voiceProfile?.referenceAudio;
+    if (previous) {
+      const previousPath = path.resolve(this.characterDirectory(id), previous);
+      if (previousPath.startsWith(`${this.characterDirectory(id)}${path.sep}`) && fs.existsSync(previousPath)) fs.rmSync(previousPath);
+    }
+    return this.writeRaw({
+      ...character,
+      voiceProfile: { ...normalizeVoiceProfile(character.voiceProfile), referenceAudio: relative.replaceAll(path.sep, "/") },
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  voiceReferencePath(id) {
+    const character = this.readRaw(id);
+    const relative = character.voiceProfile?.referenceAudio;
+    if (!relative) return null;
+    const base = this.characterDirectory(id);
+    const target = path.resolve(base, relative);
+    return target.startsWith(`${base}${path.sep}`) && fs.existsSync(target) ? target : null;
+  }
+
   updateIdentityEvaluation(id, report = {}) {
     const character = this.readRaw(id);
     const updated = {
       ...character,
-      identityEvaluation: {
+      identityEvaluation: normalizeIdentityEvaluation({
         ...report,
-        updatedAt: new Date().toISOString(),
-      },
+        evaluatedAt: report.evaluatedAt || new Date().toISOString(),
+      }),
+      updatedAt: new Date().toISOString(),
+    };
+    updated.characterPack = buildCharacterPack(updated);
+    return this.writeRaw(updated);
+  }
+
+  updateReferencePlan(id, referencePlan) {
+    const character = this.readRaw(id);
+    const updated = {
+      ...character,
+      referencePlan: normalizeReferencePlan(referencePlan, {
+        subjectKind: character.subjectKind === "auto"
+          ? referencePlan?.subjectKind
+          : character.subjectKind || character.characterBlueprint?.subjectKind,
+        workflow: referencePlan?.workflow,
+        existingPlan: character.referencePlan,
+      }),
       updatedAt: new Date().toISOString(),
     };
     updated.characterPack = buildCharacterPack(updated);
@@ -333,6 +482,9 @@ export class CharacterStore {
         type: safeReferenceType(raw.type || raw.referenceType || reference.type),
         status: raw.status ? safeText(raw.status, 40) : reference.status,
         tags: raw.tags === undefined ? reference.tags : normalizeArray(raw.tags),
+        manualReview: raw.manualReview === undefined
+          ? normalizeManualReview(reference.manualReview)
+          : normalizeManualReview(raw.manualReview),
         updatedAt: new Date().toISOString(),
       };
     });
@@ -397,6 +549,7 @@ export class CharacterStore {
       path: fullPath,
       asset: reference,
       mimeType: reference.mimeType || "image/png",
+      stats: fs.statSync(fullPath),
     };
   }
 

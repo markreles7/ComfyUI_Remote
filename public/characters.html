@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0c10">
-  <title>Character Library · LTX Remote Studio</title>
+  <title>Character Studio · LTX Remote Studio</title>
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -32,10 +32,24 @@
   <main class="characters-page">
     <section class="gallery-hero characters-hero">
       <div>
-        <p class="eyebrow">CHARACTER LIBRARY / VIRTUAL ACTOR</p>
-        <h1>Personaggi <em>riutilizzabili.</em></h1>
-        <p>Crea Character Pack persistenti da hero image, sheet e reference, poi usali in Generate, Image Studio e Video Studio.</p>
+        <p class="eyebrow">CHARACTER STUDIO / CHARACTER LIBRARY</p>
+        <h1>Crea un’identità <em>riutilizzabile.</em></h1>
+        <p>Parti da poche parole in italiano o da una fotografia. LM Studio prepara automaticamente blueprint e prompt tecnici.</p>
       </div>
+    </section>
+
+    <section id="character-studio" class="panel character-studio-guide" aria-labelledby="character-studio-title">
+      <div class="section-heading">
+        <span id="character-studio-step">01</span>
+        <div><h2 id="character-studio-title">Cosa vuoi fare?</h2><p id="character-studio-subtitle">Scegli un percorso semplice. Nessun prompt tecnico è obbligatorio.</p></div>
+      </div>
+      <div id="character-studio-content" class="character-studio-content">
+        <div class="guided-choice-grid character-studio-choices">
+          <button type="button" data-genesis-action="new"><span>＋</span><b>Crea un nuovo Character</b><small>Da descrizione o fotografia</small></button>
+          <button type="button" data-genesis-action="existing"><span>✓</span><b>Usa un Character esistente</b><small>Apri la Library qui sotto</small></button>
+        </div>
+      </div>
+      <p id="character-studio-status" class="prompt-assistant-status" aria-live="polite"></p>
     </section>
 
     <div class="characters-layout">
@@ -44,10 +58,13 @@
           <span>01</span>
           <div><h2>Library</h2><p>Personaggi salvati in .data/characters</p></div>
         </div>
-        <form id="create-character-form" class="character-create-row">
-          <input id="newCharacterName" name="name" required placeholder="Nome personaggio">
-          <button class="submit-button" type="submit">Crea</button>
-        </form>
+        <details class="character-manual-create">
+          <summary>Creazione manuale avanzata</summary>
+          <form id="create-character-form" class="character-create-row">
+            <input id="newCharacterName" name="name" required placeholder="Nome Character">
+            <button class="submit-button" type="submit">Crea vuoto</button>
+          </form>
+        </details>
         <div id="character-list" class="character-list"></div>
       </aside>
 
@@ -82,6 +99,15 @@
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="subjectKind">Tipo di soggetto</label>
+              <select id="subjectKind" name="subjectKind">
+                <option value="auto">Automatico</option>
+                <option value="human">Umano</option>
+                <option value="animal">Animale</option>
+                <option value="other">Altro</option>
               </select>
             </div>
           </div>
@@ -119,12 +145,64 @@
           <label><input id="lockOutfit" type="checkbox"> Outfit</label>
         </fieldset>
 
+        <details id="character-advanced" class="studio-subpanel character-advanced-panel">
+          <summary>Dettagli avanzati / Advanced</summary>
+          <div class="field">
+            <label for="genesisTechnicalPrompt">Prompt tecnico LM Studio</label>
+            <textarea id="genesisTechnicalPrompt" rows="5"></textarea>
+          </div>
+          <div class="field">
+            <label for="genesisTechnicalNegativePrompt">Negative prompt tecnico LM Studio</label>
+            <textarea id="genesisTechnicalNegativePrompt" rows="3"></textarea>
+          </div>
+          <div class="field-grid">
+            <div class="field"><label for="genesisModel">Modello / workflow</label><input id="genesisModel"></div>
+            <div class="field"><label for="genesisSeed">Seed Hero</label><input id="genesisSeed" inputmode="numeric"></div>
+            <div class="field"><label for="voiceLanguage">Voce · lingua</label><input id="voiceLanguage" placeholder="it"></div>
+            <div class="field"><label for="voiceSpeaker">Voce · speaker</label><input id="voiceSpeaker" placeholder="Nome o speaker"></div>
+            <div class="field"><label for="preferredImagePreset">Preset foto preferito</label><select id="preferredImagePreset"><option value="fast">Veloce</option><option value="balanced">Bilanciata</option><option value="max">Massima</option></select></div>
+            <div class="field"><label for="preferredVideoPreset">Preset video preferito</label><select id="preferredVideoPreset"><option value="original">Originale</option><option value="improved">Migliorato</option><option value="quality">Qualità</option></select></div>
+            <div class="field"><label for="preferredVideoEngine">Video Engine preferito</label><input id="preferredVideoEngine" placeholder="auto"></div>
+          </div>
+          <div class="field"><label for="voiceNotes">Voce · note</label><textarea id="voiceNotes" rows="2" placeholder="Timbro, ritmo e intenzione"></textarea></div>
+          <div class="field"><label for="voiceReference">Reference voce per Chatterbox</label><input id="voiceReference" type="file" accept="audio/wav,audio/mpeg,audio/mp4,audio/x-m4a"><small id="voice-reference-status" class="hint"></small></div>
+          <div id="identity-advanced-details" class="character-pack-checklist"></div>
+        </details>
+
+        <section id="character-reference-factory" class="studio-subpanel character-reference-factory">
+          <div class="guided-step-heading">
+            <span>REF</span>
+            <div>
+              <p class="subpanel-title">Completiamo le reference</p>
+              <p class="hint">Dalla Hero creiamo solo le viste che mancano. LM Studio prepara automaticamente ogni istruzione tecnica.</p>
+            </div>
+          </div>
+          <div class="reference-factory-progress" aria-label="Avanzamento reference">
+            <span id="reference-factory-progress-bar"></span>
+          </div>
+          <p id="reference-factory-progress-label" class="hint"></p>
+          <div id="reference-factory-content" class="reference-factory-content"></div>
+          <div class="field reference-engine-field">
+            <label for="referenceEngine">Motore reference identitarie</label>
+            <select id="referenceEngine">
+              <option value="qwen2511">Qwen Image Edit 2511</option>
+              <option value="pornmaster-v4-turbo">PornMaster Flux2 Klein v4Turbo</option>
+            </select>
+            <small id="reference-engine-note" class="hint">Scegli lo stesso motore con cui è stata creata la Hero quando vuoi ridurre al minimo lo scarto identitario.</small>
+          </div>
+          <div class="action-row reference-factory-actions">
+            <button id="prepare-reference-plan-button" type="button">✦ Prepara piano adattivo</button>
+            <button id="generate-missing-references-button" class="submit-button" type="button">Genera mancanti</button>
+          </div>
+          <p id="reference-factory-status" class="prompt-assistant-status" aria-live="polite"></p>
+        </section>
+
         <section class="studio-subpanel character-tool-panel">
           <div class="guided-step-heading">
             <span>AI</span>
             <div>
               <p class="subpanel-title">Tool Character</p>
-              <p class="hint">Scegli il workflow usato per generare la sheet. Identity Check usa un controllo percettivo locale sulle reference caricate.</p>
+              <p class="hint">La verifica identità usa soltanto provider reali compatibili con il soggetto. Quando non disponibili resta sempre possibile la revisione manuale.</p>
             </div>
           </div>
           <div class="field-grid">
@@ -151,11 +229,194 @@
 
         <div class="action-row">
           <button class="submit-button" type="submit">Salva personaggio</button>
+          <button id="create-photo-button" class="submit-button" type="button">📷 CREA FOTO</button>
+          <button id="create-video-button" class="submit-button" type="button">🎬 CREA VIDEO</button>
           <button id="build-pack-button" type="button">Build Character Pack</button>
           <button id="generate-sheet-button" type="button">Generate Character Sheet</button>
-          <button id="identity-check-button" type="button">Identity Check</button>
+          <button id="orbit-sheet-button" type="button">OrbitSheets H3</button>
+          <button id="identity-check-button" type="button">Verifica identità</button>
+          <button id="complete-references-button" type="button">Completa Reference</button>
           <button id="delete-character-button" class="danger-button" type="button">Elimina</button>
         </div>
+
+        <section id="character-photo-panel" class="studio-subpanel character-photo-panel hidden">
+          <div class="guided-step-heading">
+            <span>FOTO</span>
+            <div>
+              <p class="subpanel-title">Creiamo una nuova fotografia</p>
+              <p class="hint">Scegli in modo semplice oppure scrivi una frase. LM Studio completerà scena, fotografia e reference adatte.</p>
+            </div>
+          </div>
+          <div id="character-photo-choices">
+            <div class="field-grid character-photo-choice-grid">
+              <div class="field">
+                <label for="photoEngine">Motore identità</label>
+                <select id="photoEngine">
+                  <option value="qwen2511">Qwen Image Edit 2511</option>
+                  <option value="pornmaster-v4-turbo">PornMaster Flux2 Klein v4Turbo</option>
+                  <option value="pornmaster-v4-base-bf16">PornMaster Flux2 Klein v4 Base BF16</option>
+                </select>
+                <small id="photo-engine-note" class="hint">Sono mostrati soltanto i tre motori dedicati al Character Photo Set.</small>
+              </div>
+              <div class="field">
+                <label for="photoLocation">Dove vuoi ambientarlo?</label>
+                <select id="photoLocation">
+                  <option value="surprise">🎲 Sorprendimi</option><option value="city">Città</option><option value="home">Casa</option><option value="sea">Mare</option><option value="nature">Natura</option><option value="venue">Locale</option><option value="other">Altro</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="photoAction">Cosa sta facendo?</label>
+                <select id="photoAction">
+                  <option value="automatic">Casuale</option><option value="walking">Cammina</option><option value="sitting">Seduto</option><option value="selfie">Selfie</option><option value="at a computer">Al PC</option><option value="looking at the camera">Guarda la fotocamera</option><option value="other">Altro</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="photoMood">Che atmosfera vuoi?</label>
+                <select id="photoMood">
+                  <option value="automatic">Automatica</option><option value="natural">Naturale</option><option value="cinematic">Cinematografica</option><option value="casual">Casual</option><option value="night">Notturna</option><option value="elegant">Elegante</option><option value="other">Altro</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="photoQuality">Qualità</label>
+                <select id="photoQuality">
+                  <option value="fast">Veloce</option><option value="balanced" selected>Bilanciata</option><option value="max">Massima</option>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label for="photoIntent">Oppure raccontalo con una breve frase</label>
+              <textarea id="photoIntent" rows="2" placeholder="Al mare di sera mentre cammina sulla spiaggia."></textarea>
+            </div>
+            <div id="photo-outfit-field" class="field">
+              <label for="photoOutfitMode">Vuoi mantenere l'aspetto originale?</label>
+              <select id="photoOutfitMode">
+                <option value="keep">Mantieni tutto</option><option value="change">Puoi cambiare abbigliamento</option><option value="choose">Scegliamo l'abbigliamento</option>
+              </select>
+              <input id="photoOutfit" class="hidden" placeholder="Descrivi semplicemente l'abbigliamento desiderato">
+            </div>
+            <p id="photo-appearance-note" class="hint hidden">L'aspetto identitario originale sarà mantenuto; LM Studio adatterà soltanto la scena.</p>
+            <div class="action-row">
+              <button id="prepare-photo-plan-button" type="button">Anteprima scena</button>
+            </div>
+            <section class="character-photo-set-box" aria-labelledby="photo-set-title">
+              <div class="guided-step-heading">
+                <span>SET</span>
+                <div>
+                  <p id="photo-set-title" class="subpanel-title">Crea un set fotografico coerente</p>
+                  <p class="hint">Ogni foto riparte dalla Hero e dalle reference approvate: nessun training LoRA e nessuna catena cumulativa.</p>
+                </div>
+              </div>
+              <div class="field-grid">
+                <div class="field"><label for="photoSetPreset">Tipo di set</label><select id="photoSetPreset"><option value="influencer-amateur">Influencer · 50 amatoriali</option><option value="influencer-professional">Influencer · 50 professionali</option><option value="influencer-mixed">Influencer · misto 100 prompt</option><option value="lifestyle">Lifestyle quotidiano</option><option value="fashion">Fashion editoriale</option><option value="fantasy">Fantasy realistico</option><option value="custom">Basato sulla mia frase</option></select></div>
+                <div class="field"><label for="photoSetCount">Numero foto</label><select id="photoSetCount"><option value="4">4</option><option value="6" selected>6</option><option value="8">8</option></select></div>
+                <div class="field"><label for="photoSetQuality">Qualità set</label><select id="photoSetQuality"><option value="fast" selected>Single-stage · consigliato</option><option value="balanced">Master bilanciato</option></select></div>
+              </div>
+              <div id="photo-set-prompt-preview" class="photo-set-prompt-preview hidden"></div>
+              <div class="action-row">
+                <button id="prepare-photo-set-button" type="button">✦ Prepara tutti i prompt</button>
+                <button id="create-photo-set-button" class="submit-button" type="button" disabled>Genera Photo Set</button>
+              </div>
+              <p id="photo-set-status" class="prompt-assistant-status" aria-live="polite"></p>
+            </section>
+          </div>
+          <div id="character-photo-confirmation" class="character-photo-confirmation hidden">
+            <p class="subpanel-title">Prima di generare</p>
+            <p id="character-photo-summary" class="character-photo-summary"></p>
+            <div id="character-photo-reference-summary" class="character-photo-reference-summary"></div>
+            <div id="character-master-progress" class="character-master-progress"></div>
+            <div id="character-master-preview" class="character-master-preview hidden"></div>
+            <div class="action-row">
+              <button id="generate-character-photo-button" class="submit-button" type="button">Genera</button>
+              <button id="change-character-photo-button" type="button">Cambia idea</button>
+            </div>
+            <details class="character-photo-advanced">
+              <summary>Advanced</summary>
+              <fieldset class="character-master-stage-controls">
+                <legend>Stage automatici</legend>
+                <label><input id="photoStageKrea" type="checkbox" checked> Krea conservative refine</label>
+                <label><input id="photoStageKlein" type="checkbox"> Klein fine refine</label>
+                <label><input id="photoStageSeedvr2" type="checkbox" checked> SeedVR2 3B Master</label>
+              </fieldset>
+              <div class="field"><label for="characterPhotoTechnicalPrompt">Prompt tecnico generato</label><textarea id="characterPhotoTechnicalPrompt" rows="6"></textarea></div>
+              <div class="field"><label for="characterPhotoNegativePrompt">Negative prompt</label><textarea id="characterPhotoNegativePrompt" rows="3"></textarea></div>
+              <div class="field"><label for="characterPhotoSeed">Seed</label><input id="characterPhotoSeed" inputmode="numeric" placeholder="random"></div>
+              <pre id="character-photo-blueprint"></pre>
+              <div id="character-master-intermediates" class="character-master-intermediates"></div>
+            </details>
+          </div>
+          <p id="character-photo-status" class="prompt-assistant-status" aria-live="polite"></p>
+        </section>
+
+        <section id="character-video-panel" class="studio-subpanel character-video-panel hidden">
+          <div class="guided-step-heading">
+            <span>VIDEO</span>
+            <div>
+              <p class="subpanel-title">Crea un video guidato</p>
+              <p class="hint">Descrivi cosa deve accadere. LM Studio costruirà automaticamente Video Blueprint e Motion Prompt per un engine realmente disponibile.</p>
+            </div>
+          </div>
+          <div id="character-video-choices">
+            <div class="character-video-step"><b>1. Da quale immagine partiamo?</b>
+              <select id="videoSourceMode">
+                <option value="auto">Genera automaticamente un nuovo Video Anchor</option>
+                <option value="hero">Usa Hero</option>
+                <option value="generated">Usa una foto generata del Character</option>
+                <option value="upload">Carica una nuova immagine</option>
+              </select>
+              <select id="videoGeneratedSource" class="hidden" aria-label="Foto generata"></select>
+              <input id="videoSourceUpload" class="hidden" type="file" accept="image/png,image/jpeg,image/webp">
+            </div>
+            <div class="character-video-step"><b>2. Cosa deve fare il Character?</b>
+              <textarea id="videoIntent" rows="3" placeholder="Cammina sulla spiaggia guardando ogni tanto la fotocamera."></textarea>
+            </div>
+            <div class="character-video-step"><b>3. Come vuoi il video?</b>
+              <div class="field-grid">
+                <div class="field"><label for="videoFilmingStyle">Ripresa</label><select id="videoFilmingStyle"><option value="automatic">Automatica</option><option value="natural">Naturale</option><option value="selfie">Selfie</option><option value="cinematic">Cinematografica</option><option value="dynamic">Dinamica</option></select></div>
+                <div class="field"><label for="videoAspectRatio">Formato</label><select id="videoAspectRatio"><option value="9:16">Verticale 9:16</option><option value="16:9">Orizzontale 16:9</option></select></div>
+                <div class="field"><label for="videoDuration">Durata</label><select id="videoDuration"><option value="5">5 secondi</option><option value="8">8 secondi</option><option value="10">10 secondi</option></select></div>
+              </div>
+            </div>
+            <div class="character-video-step"><b>4. Deve parlare?</b>
+              <label><input id="videoDialogueEnabled" type="checkbox"> Sì</label>
+              <div id="video-dialogue-fields" class="field-grid hidden">
+                <div class="field"><label for="videoDialogue">Battuta</label><textarea id="videoDialogue" rows="2" placeholder="Testo esatto da pronunciare"></textarea></div>
+                <div class="field"><label for="videoEmotion">Performance</label><select id="videoEmotion"><option value="natural">Naturale</option><option value="happy">Allegro</option><option value="calm">Calmo</option><option value="serious">Serio</option><option value="excited">Emozionato</option><option value="other">Altro</option></select></div>
+                <div class="field"><label for="videoAudioMode">Audio</label><select id="videoAudioMode"></select></div>
+                <div id="video-existing-audio-field" class="field hidden"><label for="videoDialogueAudio">File audio</label><input id="videoDialogueAudio" type="file" accept="audio/wav,audio/mpeg,audio/mp4,audio/x-m4a"></div>
+              </div>
+              <p id="video-audio-capability-note" class="hint"></p>
+            </div>
+            <div class="character-video-step"><b>5. Qualità</b>
+              <div class="field-grid">
+                <div class="field"><label for="videoQuality">Preset</label><select id="videoQuality"><option value="fast">Veloce</option><option value="balanced" selected>Bilanciata</option><option value="max">Massima</option></select></div>
+                <div class="field"><label for="videoEngine">Video Engine</label><select id="videoEngine"><option value="auto">Auto</option></select></div>
+                <div class="field"><label for="videoRefinePreset">Video finale</label><select id="videoRefinePreset"><option value="original">Originale</option><option value="improved" selected>Migliorato</option><option value="quality">Qualità</option></select></div>
+              </div>
+            </div>
+            <div class="action-row"><button id="prepare-character-video-button" type="button">Prepara Video e Anchor</button></div>
+          </div>
+          <div id="character-video-confirmation" class="hidden">
+            <div class="character-video-step"><b>6. Anteprima Anchor</b><p id="character-video-summary" class="hint"></p><div id="character-video-anchor-status" class="character-master-progress"></div><div id="character-video-anchor-preview" class="character-video-anchor-preview"></div></div>
+            <div class="character-video-step"><b>7. Genera</b><div class="action-row"><button id="generate-character-video-button" class="submit-button" type="button" disabled>Genera video</button><button id="change-character-video-button" type="button">Cambia idea</button></div></div>
+            <details class="character-video-advanced">
+              <summary>Advanced</summary>
+              <p id="character-video-route" class="hint"></p>
+              <div class="field"><label for="characterVideoScenePrompt">Scene Prompt tecnico LM Studio</label><textarea id="characterVideoScenePrompt" rows="5"></textarea></div>
+              <div class="field"><label for="characterVideoMotionPrompt">Motion Prompt tecnico LM Studio</label><textarea id="characterVideoMotionPrompt" rows="8"></textarea></div>
+              <div class="field"><label for="characterVideoAudioPrompt">Audio Prompt tecnico LM Studio</label><textarea id="characterVideoAudioPrompt" rows="4"></textarea></div>
+              <div class="field"><label for="characterVideoDialogueInstructions">Dialogue Instructions</label><textarea id="characterVideoDialogueInstructions" rows="3"></textarea></div>
+              <div class="field"><label for="characterVideoEmotionInstructions">Emotion Instructions</label><textarea id="characterVideoEmotionInstructions" rows="3"></textarea></div>
+              <div class="field"><label for="characterVideoSeed">Seed</label><input id="characterVideoSeed" inputmode="numeric" placeholder="random"></div>
+              <pre id="character-video-blueprint"></pre>
+            </details>
+          </div>
+          <p id="character-video-status" class="prompt-assistant-status" aria-live="polite"></p>
+          <div id="character-video-pipeline" class="character-master-progress"></div>
+          <div id="character-video-master-preview" class="character-video-anchor-preview"></div>
+        </section>
+
+        <section class="studio-subpanel"><p class="subpanel-title">Foto generate</p><div id="character-generated-photos" class="character-master-intermediate-grid"></div></section>
+        <section class="studio-subpanel"><p class="subpanel-title">Video generati</p><div id="character-generated-videos" class="character-master-intermediate-grid"></div></section>
 
         <section class="studio-subpanel">
           <div class="guided-step-heading">

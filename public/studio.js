@@ -1,7 +1,11 @@
 import { WORKFLOW_GUIDE_BY_ID } from "./workflow-guides.js";
 import { enhanceMainPrompt } from "./prompt-assistant.js";
 import { consumeGuidedHandoff, guidedTokenFromLocation, setInputFile } from "./guided-handoff.js";
+import { applyLoraTriggers, automaticLoraTriggers, loraMatchesFamily, loraOptionLabel } from "./lora-triggers.js?v=20260822-scalar-fix";
 import { setupUploadPreviews } from "./upload-previews.js";
+import { createAdaptivePoller, getAppConfig, warmAppConfig } from "./runtime-cache.js";
+
+void warmAppConfig();
 
 const state = {
   config: null,
@@ -129,6 +133,20 @@ function toggle(selector, visible) {
   $(selector)?.classList.toggle("hidden", !visible);
 }
 
+function selectedKreaTripleModel() {
+  const value = $("#kreaTripleModel")?.value;
+  return (state.config?.studio?.kreaTripleModels || []).find((model) => model.file === value) || null;
+}
+
+function updateKreaTripleModel() {
+  const model = selectedKreaTripleModel();
+  const hint = $("#krea-triple-model-hint");
+  if (!hint) return;
+  hint.textContent = model?.moodyPromptAnchor
+    ? "Moody ha una preferenza per volti asiatici: LM Studio inizierà il prompt con un’identità adulta precisa e, se l’etnia non è indicata, userà un aspetto sud-europeo/mediterraneo."
+    : "DarkBeast usa il prompt Krea 2 normale, senza l’ancoraggio etnico aggiuntivo di Moody.";
+}
+
 function updateEditWildcardDefaults() {
   const mode = $("#studioMode").value;
   if (mode === "guidedEdit") {
@@ -152,14 +170,27 @@ function updateEditWildcardDefaults() {
 function updateMode() {
   const mode = studioMode();
   if (!mode) return;
-  const staticQwenKreaKlein = mode.id === "qwenKreaKlein";
+  const guidedRoute = { guidedEdit: "editorGuided", storyboard: "storyboardDirector" }[mode.id];
+  const guidedLink = $("#studio-guided-workflow");
+  guidedLink?.classList.toggle("hidden", !guidedRoute);
+  if (guidedLink && guidedRoute) guidedLink.href = `/guided-create.html?workflow=${guidedRoute}`;
+  const staticQwenKreaKlein = ["qwenKreaKlein", "animeToReal"].includes(mode.id);
   const kreaTriple = mode.id === "kreaTriple";
   const kreaTripleOperation = $("#kreaTripleOperation")?.value || "text";
   $("#studio-description").textContent = mode.description;
   renderQuickGuide(WORKFLOW_GUIDE_BY_ID[mode.id]);
   toggle("#source-section", mode.input !== "firstLast" && !(kreaTriple && kreaTripleOperation === "text"));
   toggle("#qwen-krea-klein-section", staticQwenKreaKlein);
+  if (staticQwenKreaKlein) {
+    $("#static-workflow-title").textContent = mode.id === "animeToReal"
+      ? "The Best Anime to Real"
+      : "Workflow Qwen_Krea_Klein";
+    $("#static-workflow-hint").textContent = mode.id === "animeToReal"
+      ? "Prompt enhanced LM Studio → Qwen Edit → refine Z-Image → master SeedVR2. Qwen-VL interno rimosso."
+      : "Usa il JSON API originale: Qwen Image Editing, Krea refine, Klein refine e SeedVR2 finale nello stesso job.";
+  }
   toggle("#krea-triple-section", kreaTriple);
+  if (kreaTriple) updateKreaTripleModel();
   toggle("#krea-triple-denoise-field", kreaTriple && kreaTripleOperation !== "text");
   toggle("#guided-edit-section", mode.id === "guidedEdit");
   toggle("#guided-zone-heading", mode.id === "guidedEdit");
@@ -193,7 +224,9 @@ function updateMode() {
   }
   $("#studio-prompt").required = mode.id !== "firstLast";
   if (staticQwenKreaKlein) {
-    $("#studio-prompt").placeholder = "Istruzione Qwen Image Editing da applicare alla foto sorgente...";
+    $("#studio-prompt").placeholder = mode.id === "animeToReal"
+      ? "Incolla il prompt enhanced di LM Studio per trasformare l'immagine in una fotografia ultra realistica..."
+      : "Istruzione Qwen Image Editing da applicare alla foto sorgente...";
     $("#edit-wildcard-panel").classList.add("hidden");
   } else if (kreaTriple) {
     $("#studio-prompt").placeholder = kreaTripleOperation === "text"
@@ -522,18 +555,15 @@ async function prepareCharacterSheetReference() {
 
 function compatibleLoras() {
   const mode = $("#studioMode").value;
+  const requestedFamilies = mode === "guidedEdit"
+    ? [$("#guidedModelFamily").value === "klein" ? "FLUX2" : "QWEN"]
+    : mode === "storyboard"
+      ? [$("#storyboardFamily").value === "gwen" ? "QWEN" : "FLUX2"]
+      : mode === "firstLast"
+        ? ["LTX2.3"]
+        : ["FLUX2", "FLUX", "ZIMG"];
   return (state.config?.loras || []).filter((name) =>
-    mode === "guidedEdit"
-      ? String(name).toUpperCase().startsWith(
-        $("#guidedModelFamily").value === "klein" ? "FLUX2\\" : "QWEN\\"
-      )
-      : mode === "storyboard"
-        ? String(name).toUpperCase().startsWith(
-          $("#storyboardFamily").value === "gwen" ? "QWEN\\" : "FLUX2\\"
-        )
-      : (mode === "firstLast"
-      ? String(name).toUpperCase().startsWith("LTX2.3\\")
-      : /^(FLUX2|FLUX|ZIMG)\\/i.test(name))
+    requestedFamilies.some((family) => loraMatchesFamily(name, family, state.config?.loraMetadata))
   );
 }
 
@@ -542,7 +572,7 @@ function renderLoras() {
   document.querySelectorAll(".studio-lora-row select").forEach((select) => {
     const current = select.value;
     select.innerHTML = choices.map((name) =>
-      `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`
+      `<option value="${escapeHtml(name)}">${escapeHtml(loraOptionLabel(name, state.config?.loraMetadata))}</option>`
     ).join("");
     if (choices.includes(current)) select.value = current;
   });
@@ -555,7 +585,7 @@ function addLora() {
   const row = document.createElement("div");
   row.className = "studio-lora-row";
   row.innerHTML = `
-    <select>${choices.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("")}</select>
+    <select>${choices.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(loraOptionLabel(name, state.config?.loraMetadata))}</option>`).join("")}</select>
     <input type="number" min="-2" max="2" step=".05" value="1" aria-label="Forza LoRA">
     <button type="button" aria-label="Rimuovi LoRA">×</button>
   `;
@@ -569,11 +599,18 @@ function addLora() {
 }
 
 function syncLoras() {
-  const loras = [...document.querySelectorAll(".studio-lora-row")].map((row) => ({
+  $("#studio-loras-json").value = JSON.stringify(selectedStudioLoras());
+}
+
+function selectedStudioLoras() {
+  return [...document.querySelectorAll(".studio-lora-row")].map((row) => ({
     name: row.querySelector("select").value,
     strength: Number(row.querySelector("input").value),
   })).filter((item) => item.name);
-  $("#studio-loras-json").value = JSON.stringify(loras);
+}
+
+function selectedStudioPromptTriggers() {
+  return automaticLoraTriggers(selectedStudioLoras(), state.config?.loraMetadata || {});
 }
 
 function syncStructuredFields() {
@@ -594,6 +631,8 @@ async function submitProject(event) {
   const status = $("#studio-form-status");
   try {
     syncStructuredFields();
+    syncLoras();
+    applyLoraTriggers($("#studio-prompt"), selectedStudioPromptTriggers());
     if (state.maskTouched && !$("#placement").value) {
       const inferredPlacement = placementFromPaintedMask();
       if (inferredPlacement) $("#placement").value = JSON.stringify(inferredPlacement);
@@ -616,13 +655,20 @@ async function submitProject(event) {
     }
     button.disabled = true;
     status.textContent = "Caricamento e creazione dei workflow…";
-    const project = await api("/api/studio/projects", { method: "POST", body: formData });
+    const project = await api("/api/studio/projects", {
+      method: "POST",
+      body: formData,
+      signal: AbortSignal.timeout(180_000),
+    });
     state.projects.unshift(project);
     renderProjects();
     status.textContent = `${project.generations.length} lavoro/i aggiunti alla coda.`;
     showToast("Progetto Studio creato.");
   } catch (error) {
-    status.textContent = error.message;
+    status.textContent = error.name === "TimeoutError"
+      ? "La creazione ha superato 3 minuti. Lo stato dei progetti è stato aggiornato: verifica la scheda prima di riprovare."
+      : error.message;
+    await refreshProjects();
   } finally {
     button.disabled = false;
   }
@@ -845,7 +891,7 @@ async function animateStoryboard(projectId) {
 
 async function refreshProjects() {
   try {
-    state.projects = await api("/api/studio/projects");
+    state.projects = await api("/api/studio/projects?limit=24");
     renderProjects();
   } catch {
     // Il polling riproverà senza bloccare la pagina.
@@ -869,12 +915,20 @@ async function cancelProjectGeneration(button) {
 
 async function start() {
   [state.config, state.projects] = await Promise.all([
-    api("/api/config"),
-    api("/api/studio/projects"),
+    getAppConfig(),
+    api("/api/studio/projects?limit=24"),
   ]);
   $("#studioMode").innerHTML = state.config.studio.modes.map((mode) =>
     `<option value="${mode.id}">${escapeHtml(mode.name)}</option>`
   ).join("");
+  const kreaModels = state.config.studio.kreaTripleModels || [];
+  $("#kreaTripleModel").innerHTML = kreaModels.map((model) =>
+    `<option value="${escapeHtml(model.file)}"${model.available ? "" : " disabled"}>${escapeHtml(model.name)}${model.available ? "" : " · non installato"}</option>`
+  ).join("");
+  const preferredKreaModel = kreaModels.find((model) => model.id === "darkBeast" && model.available)
+    || kreaModels.find((model) => model.available)
+    || kreaModels[0];
+  if (preferredKreaModel) $("#kreaTripleModel").value = preferredKreaModel.file;
   const requestedWorkflow = new URLSearchParams(location.search).get("workflow");
   if (state.config.studio.modes.some((mode) => mode.id === requestedWorkflow)) {
     $("#studioMode").value = requestedWorkflow;
@@ -928,8 +982,10 @@ async function start() {
   $("#studio-klein-prompt").classList.toggle("hidden", !state.config.promptAssistant?.enabled);
   renderProjects();
   checkHealth();
-  setInterval(checkHealth, 15000);
-  setInterval(refreshProjects, 3500);
+  createAdaptivePoller(checkHealth, { idleMs: 15_000, hiddenMs: 60_000 });
+  createAdaptivePoller(refreshProjects, {
+    active: () => state.projects.some((project) => (project.generations || []).some((item) => ["queued", "running"].includes(item.status))),
+  });
 }
 
 async function applyGuidedCreation() {
@@ -988,6 +1044,7 @@ async function applyGuidedCreation() {
 $("#studioMode").addEventListener("change", updateMode);
 $("#studioCharacterId").addEventListener("change", syncCharacterFields);
 $("#kreaTripleOperation").addEventListener("change", updateMode);
+$("#kreaTripleModel").addEventListener("change", updateKreaTripleModel);
 $("#open-workflow-guide").addEventListener("click", openQuickGuide);
 $("#close-workflow-guide").addEventListener("click", () => $("#workflow-guide-dialog").close());
 $("#workflow-guide-dialog").addEventListener("click", (event) => {
@@ -1034,9 +1091,12 @@ function studioPromptAssistantSource() {
 
 $("#studio-prompt-assistant").addEventListener("click", async () => {
   const source = studioPromptAssistantSource();
+  const kreaModel = selectedKreaTripleModel();
   const target = $("#studioMode").value === "firstLast"
     ? "ltx"
-    : $("#studioMode").value === "qwenKreaKlein"
+    : $("#studioMode").value === "kreaTriple"
+      ? (kreaModel?.moodyPromptAnchor ? "krea2_moody" : "krea2")
+    : ["qwenKreaKlein", "animeToReal"].includes($("#studioMode").value)
       ? "qwen_image_edit_architect"
     : $("#studioMode").value === "guidedEdit"
       ? "qwenedit"
@@ -1045,6 +1105,7 @@ $("#studio-prompt-assistant").addEventListener("click", async () => {
           ? (source ? "qwenedit" : "qwen")
           : "flux2")
         : "studio";
+  const triggers = selectedStudioPromptTriggers();
   try {
     await enhanceMainPrompt({
       input: $("#studio-prompt"),
@@ -1052,12 +1113,15 @@ $("#studio-prompt-assistant").addEventListener("click", async () => {
       status: $("#studio-prompt-assistant-status"),
       target,
       mode: source ? "image" : "text",
-      workflowName: studioMode()?.name || "Image Studio",
+      workflowName: $("#studioMode").value === "kreaTriple"
+        ? `${studioMode()?.name || "Krea Triple"} · ${kreaModel?.name || "Krea 2"}`
+        : studioMode()?.name || "Image Studio",
       sourceFile: source,
       negativeInput: $("#studio-negative"),
       includeNegative: Boolean(source) && $("#studioMode").value !== "firstLast",
     });
-    showToast("Prompt Studio creato; modello LM Studio scaricato.");
+    applyLoraTriggers($("#studio-prompt"), triggers);
+    showToast(`Prompt Studio creato; modello LM Studio scaricato.${triggers.length ? ` Trigger: ${triggers.join(", ")}.` : ""}`);
     if (state.config.promptAssistant?.autoGenerate) $("#studio-form").requestSubmit();
   } catch {
     // Il dettaglio resta vicino al prompt.
@@ -1066,6 +1130,7 @@ $("#studio-prompt-assistant").addEventListener("click", async () => {
 
 async function runStudioImagePromptPreset(target, button, successMessage) {
   const source = studioPromptAssistantSource();
+  const triggers = selectedStudioPromptTriggers();
   try {
     await enhanceMainPrompt({
       input: $("#studio-prompt"),
@@ -1078,7 +1143,8 @@ async function runStudioImagePromptPreset(target, button, successMessage) {
       negativeInput: $("#studio-negative"),
       includeNegative: Boolean(source) || target.includes("edit") || target.includes("klein"),
     });
-    showToast(successMessage);
+    applyLoraTriggers($("#studio-prompt"), triggers);
+    showToast(`${successMessage}${triggers.length ? ` Trigger: ${triggers.join(", ")}.` : ""}`);
   } catch {
     // Il dettaglio resta vicino al prompt.
   }

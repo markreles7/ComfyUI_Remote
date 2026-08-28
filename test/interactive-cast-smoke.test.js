@@ -8,6 +8,7 @@ import {
   ffmpeg,
   ffprobeJson,
   muxAudioIntoVideo,
+  normalizeGeneratedSegment,
 } from "../src/interactive-cast/ffmpeg.js";
 import {
   concatReadySegments,
@@ -115,6 +116,65 @@ test("interactive cast smoke: prepare original segments and concat replacement",
   const duration = Number(probe.format?.duration || 0);
   assert.equal(fs.existsSync(finalVideo), true);
   assert.ok(duration > 2.4, `durata finale troppo breve: ${duration}`);
+});
+
+test("interactive cast smoke: normalizza il segmento LTX e ripristina l'audio sorgente", async (t) => {
+  const ffmpegStatus = await commandVersion("ffmpeg");
+  const ffprobeStatus = await commandVersion("ffprobe");
+  if (!ffmpegStatus.available || !ffprobeStatus.available) {
+    t.skip("FFmpeg/FFprobe non disponibili nello smoke environment.");
+    return;
+  }
+
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "interactive-cast-normalize-smoke-"));
+  const source = path.join(root, "source-with-audio.mp4");
+  const generated = path.join(root, "generated.mp4");
+  const output = path.join(root, "normalized.mp4");
+  await createSyntheticAvClip(source, "black", 440, 1);
+  await createSyntheticClip(generated, "blue", 1);
+
+  const result = await normalizeGeneratedSegment({
+    generatedVideo: generated,
+    sourceClip: source,
+    output,
+    duration: 1,
+  });
+  const probe = await ffprobeJson(output);
+  const video = (probe.streams || []).find((stream) => stream.codec_type === "video");
+
+  assert.equal(result.audioSource, "original-segment");
+  assert.equal(video.width, 160);
+  assert.equal(video.height, 96);
+  assert.equal((probe.streams || []).some((stream) => stream.codec_type === "audio"), true);
+});
+
+test("interactive cast smoke: limita l'audio nativo LTX alla finestra della nuova battuta", async (t) => {
+  const ffmpegStatus = await commandVersion("ffmpeg");
+  const ffprobeStatus = await commandVersion("ffprobe");
+  if (!ffmpegStatus.available || !ffprobeStatus.available) {
+    t.skip("FFmpeg/FFprobe non disponibili nello smoke environment.");
+    return;
+  }
+
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "interactive-cast-native-dialogue-smoke-"));
+  const source = path.join(root, "source.mp4");
+  const generated = path.join(root, "generated.mp4");
+  const output = path.join(root, "mixed.mp4");
+  await createSyntheticAvClip(source, "black", 220, 1);
+  await createSyntheticAvClip(generated, "blue", 880, 1);
+
+  const result = await normalizeGeneratedSegment({
+    generatedVideo: generated,
+    sourceClip: source,
+    output,
+    duration: 1,
+    nativeDialogueWindows: [{ start: 0.25, end: 0.75 }],
+  });
+  const probe = await ffprobeJson(output);
+
+  assert.equal(result.audioSource, "original-segment+ltx-native-dialogue");
+  assert.deepEqual(result.nativeDialogueWindows, [{ start: 0.25, end: 0.75 }]);
+  assert.equal((probe.streams || []).some((stream) => stream.codec_type === "audio"), true);
 });
 
 test("interactive cast smoke: applies feathered mask composite replacement", async (t) => {
@@ -346,6 +406,7 @@ test("interactive cast smoke: orchestrates analyze, minimal edit, remix and fina
       dialogue: "I thought you had already left.",
       action: "Sarah enters the scene and speaks.",
       mode: "generative",
+      audioMode: "external",
       preserveVoice: true,
       preserveFace: true,
     }],

@@ -33,6 +33,12 @@ function isNewActorEvent(event = {}) {
     || /new actor|nuovo|character:|temporaryReference|new-/i.test(String(event.speaker || event.actorId || ""));
 }
 
+function normalizedAudioMode(event = {}, visualMode = null) {
+  const requested = String(event.audioMode || "").trim();
+  if (["ltxNative", "external"].includes(requested)) return requested;
+  return visualMode === "generative" || isNewActorEvent(event) ? "ltxNative" : "external";
+}
+
 export function eventEditMode(event = {}) {
   const explicitMode = normalizedWindowMode(event.mode || event.windowMode || event.visualMode || event.visualImpact);
   if (explicitMode && explicitMode !== "original") return explicitMode;
@@ -82,6 +88,7 @@ export function normalizeDialogueEvents(rawEvents = [], duration = 0) {
   return events.map((event, index) => {
     const start = number(event.start, index * 2, 0, duration || 3600);
     const end = number(event.end, Math.min((duration || start + 2), start + 2), start, duration || 3600);
+    const mode = normalizedWindowMode(event.mode || event.windowMode || event.visualMode || event.visualImpact);
     return {
       id: event.id || `event-${index + 1}`,
       speaker: text(event.speaker, 120) || "New Actor",
@@ -93,7 +100,8 @@ export function normalizeDialogueEvents(rawEvents = [], duration = 0) {
       action: text(event.action, 800),
       preserveVoice: event.preserveVoice !== false,
       preserveFace: event.preserveFace !== false,
-      mode: normalizedWindowMode(event.mode || event.windowMode || event.visualMode || event.visualImpact),
+      mode,
+      audioMode: normalizedAudioMode(event, mode),
       reaction: ["none", "look", "speak", "move"].includes(event.reaction) ? event.reaction : "none",
     };
   }).filter((event) => event.dialogue || event.action);

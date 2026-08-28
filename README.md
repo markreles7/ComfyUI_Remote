@@ -95,6 +95,36 @@ LTX richiede dimensioni divisibili per 32. Le etichette dell'interfaccia corrisp
 | 480p | 832×480 | 480×832 |
 | 720p | 1280×704 | 704×1280 |
 
+## MiniMax H3 INT8
+
+Il workflow `Super flusso di lavoro all-in-one MiniMax H3 (uso personale)_api.json` resta disponibile nella home come **MiniMax H3 INT8**. Video Studio include inoltre una sezione **MiniMax H3 Studio** che ricostruisce i rami completi del workflow originale:
+
+- Text to Video, Single Image to Video e First / Last Frame tramite FL2VA;
+- Multi Reference tramite Ref2VA, con un massimo di 9 immagini, 3 video e 3 audio; l'audio incorporato nei video reference viene collegato automaticamente;
+- LoRA personali lette esclusivamente da `E:\ComfyUI\Data\Models\Lora\H3` e applicate al modello H3 selezionato;
+- Turbo LoRA a 8 step attiva per impostazione predefinita; senza Turbo il primo sampling usa 25 step.
+
+Il profilo **H3 bilanciato** genera prima a 0,4 o 0,6 MP, esegue un purge forte di modello, VAE e Qwen3-VL, ridimensiona a 0,9 MP e rifinisce con 3 step e denoise 0,15. **H3 massimo** porta il refine a 1,0 MP, 4 step e denoise 0,2. In alternativa **SeedVR2 3B FP8** applica un restauro temporale tiled a 768 px, mentre **RTX VSR** esegue rapidamente denoise, deblur e upscale hardware; il profilo diretto usa 0,9 MP e salta il refine. Dopo il salvataggio, un secondo purge svuota anche le cache dedicate SeedVR2 e Qwen. Il purge intermedio resta fra decode e refine, mai dentro un sampler attivo.
+
+Il pulsante **H3 Prompt** usa uno dei quattro System Prompt H3 isolati: General, Image-to-Video, Action o Dialogue. Le modalità con immagini inviano le reference vision in ordine come `<Picture 1>…<Picture N>` (massimo 9); il preset Image-to-Video tratta `<Picture 1>` come primo frame esatto e concentra il testo sui cambiamenti successivi. Il risultato usa i tre campi H3 `integrated_multimodal_description`, `overall_soundscape` e `non_diegetic_music`.
+
+Il controllo **Look realistico** aggiunge dopo LM Studio una direzione documentaristica, amatoriale handheld o smartphone selfie. I preset usano movimento a piccola ampiezza, imperfezioni di reframing, autofocus ed esposizione credibili, lieve rolling shutter, luce pratica, grana/compressione moderate e texture della pelle non levigata; evitano beauty filter, luce pubblicitaria e jitter casuale. Per persone è consigliata `H3\STY_Realism_People.safetensors` a 0,6–0,8 con trigger automatico `r34l1sm`.
+
+### ACTION H3
+
+Video Studio espone **ACTION H3** come profilo separato dedicato esclusivamente a combattimenti e azioni frenetiche. Usa soltanto FL2VA nelle modalità Text to Video, Single Image e First / Last Frame; applica automaticamente `H3\STY_Combat.safetensors` (Combat Base V2) e la Turbo LoRA già installata, con sampler `res_multistep` e scheduler `simple`. La qualità predefinita è 0,6 → 1,0 MP con purge tra i due passaggi e dopo il salvataggio; sono disponibili anche 0,4 → 1,0 MP e il passaggio diretto a 0,9 MP. Il Prompt Assistant ACTION organizza ogni sequenza come attacco → impatto/schivata → reazione → recupero → azione successiva, completando l'azione prima dell'eventuale dialogo.
+
+I file richiesti sono:
+
+- `models/diffusion_models/minimax_h3_ref2va_int8_convrot.safetensors`;
+- `models/diffusion_models/minimax_h3_fl2va_int8_convrot.safetensors`;
+- `models/text_encoders/qwen3vl_32b_minimax_h3_int8_convrot.safetensors`;
+- `models/vae/minimax_h3_video_vae_int8_convrot.safetensors`;
+- `models/vae/minimax_h3_audio_vae_fp32.safetensors`;
+- `models/loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors`.
+
+Sulla RTX 4070 SUPER da 12 GB il workflow usa reference ridimensionate all'area di generazione. È comunque una pipeline molto pesante: ComfyUI deve essere avviato in modalità Low VRAM e può usare RAM e pagefile durante il caricamento dei checkpoint INT8.
+
 ## Storyboard Director
 
 Selezionando `LTX 2.3 Director 2 UHD`, il normale campo immagine/prompt viene sostituito da uno storyboard.
@@ -133,9 +163,13 @@ Selezionando **Immagine** nella home sono disponibili:
 - **Image to Image** classico per le famiglie Flux.1 e Z-Image;
 - **Image Edit / Reference** nativo per la famiglia Flux.2;
 - **Image Edit** nativo con Qwen Image Edit 2511;
+- **Text to Image** nativo con Microsoft Mage-Flow 4B BF16;
+- **Image Edit** nativo con Microsoft Mage-Flow Edit 4B BF16 e fino a tre immagini complessive;
 - **Reference Image** tramite Flux Redux per la famiglia Flux.1.
 
-La scelta avviene su due livelli: prima la famiglia/workflow (**Flux.1**, **Flux.2**, **Qwen Text to Image**, **Qwen Image Edit 2511** o **Z-Image**), poi il modello installato. La lista è letta direttamente da ComfyUI e comprende automaticamente i file presenti rispettivamente sotto `FLUX1D\`, `FLUX2\`, `QWEN\` e `Z-IMG\`. I checkpoint Qwen possono anche essere collocati direttamente nella cartella diffusion models: vengono riconosciuti dal nome. I modelli aggiunti in futuro compaiono dopo il riavvio di ComfyUI e il ricaricamento della webapp, senza modificare il codice.
+La scelta avviene su due livelli: prima la famiglia/workflow (**Flux.1**, **Flux.2**, **Qwen Text to Image**, **Qwen Image Edit 2511**, **Mage-Flow**, **Mage-Flow Edit** o **Z-Image**), poi il modello installato. La lista è letta direttamente da ComfyUI e comprende automaticamente i file presenti rispettivamente sotto `FLUX1D\`, `FLUX2\`, `QWEN\` e `Z-IMG\`, oltre ai checkpoint `mage_flow_bf16.safetensors` e `mage_flow_edit_bf16.safetensors`. I checkpoint Qwen possono anche essere collocati direttamente nella cartella diffusion models: vengono riconosciuti dal nome. I modelli aggiunti in futuro compaiono dopo il riavvio di ComfyUI e il ricaricamento della webapp, senza modificare il codice.
+
+La configurazione usata da Generate, Image Studio e Video Studio viene condivisa e salvata in `.data/app-config-cache.json`. Al primo avvio il backend attende al massimo `APP_CONFIG_BOOTSTRAP_WAIT_MS` (predefinito 1200 ms), quindi mostra una configurazione provvisoria e completa in background l'inventario ComfyUI. `APP_CONFIG_TTL_SECONDS` (predefinito 60) controlla ogni quanto viene aggiornato l'inventario; le capability più pesanti di Interactive Cast e Scene Integration non bloccano il rendering iniziale.
 
 Qwen usa due workflow distinti perché i modelli hanno scopi diversi:
 
@@ -143,6 +177,8 @@ Qwen usa due workflow distinti perché i modelli hanno scopi diversi:
 - **Qwen Image Edit 2511** modifica una fotografia tramite istruzione, usa `TextEncodeQwenImageEditPlus`, `CFGNorm`, reference latent e denoise nativo `1`.
 
 Per entrambi servono `qwen_2.5_vl_7b_fp8_scaled.safetensors` nei text encoder e `qwen_image_vae.safetensors` nei VAE. La webapp verifica separatamente checkpoint, text encoder e VAE e mostra il componente mancante senza tentare download automatici.
+
+Mage-Flow usa il checkpoint RL-aligned `mage_flow_bf16.safetensors` con 20 step e CFG 5. Richiede `qwen3vl_4b_bf16.safetensors` nei text encoder e `mage_flow_vae_bf16.safetensors` nei VAE. Sulla RTX 4070 SUPER il batch è limitato a una singola immagine e ComfyUI gestisce automaticamente l'offload tra GPU e RAM.
 
 BigLove Gwen 2 viene rilevato come modello Edit 2511 dal marcatore interno `index_timestep_zero`. La variante **MXFP8** usa il loader nativo ed è il profilo predefinito; la variante **NF4** usa `RemoteUNETLoaderNF4`, incluso in `comfyui_nodes/ComfyUI_Remote_Model_Loaders`, e richiede `bitsandbytes >= 0.50.0`. Un vero checkpoint Qwen Image 2512, quando installato, resta selezionabile separatamente.
 
@@ -265,6 +301,8 @@ Il vecchio Face Swap diretto, KeyFrame e Control Studio non sono più esposti co
 
 ## Character Library / Virtual Actor
 
+La sezione **Character Photo Set** parte dalla Hero e dalle sole reference approvate, genera 4, 6 o 8 fotografie indipendenti e non avvia alcun training LoRA. I tre motori dedicati sono **Qwen Image Edit 2511**, **PornMaster Flux2 Klein v4Turbo FP8** e **PornMaster Flux2 Klein v4 Base BF16**. Ogni risultato riuscito può essere approvato con **Usa come reference** e diventa subito disponibile al Character Pack e alle generazioni successive. PornMaster Turbo usa 4 step / CFG 1; PornMaster Base BF16 usa il profilo qualità 12 step / CFG 2 ed è sensibilmente più pesante. Entrambi normalizzano le reference senza crop e un purge viene eseguito dopo ogni salvataggio. I preset Influencer usano un catalogo interno verificato di 100 scene (50 amatoriali e 50 professionali), disponibili anche in modalità mista, anteponendo automaticamente il contratto di conservazione dell'identità a ogni scena selezionata.
+
 `/characters.html` sostituisce la vecchia sezione dedicata ai profili creator con una libreria locale di personaggi persistenti. Ogni Virtual Actor viene salvato in `.data/characters/<id>/` con `meta.json`, hero image, character sheet, reference viso, reference corpo, reference generiche e derivative workflow.
 
 Funzioni principali:
@@ -278,9 +316,14 @@ Funzioni principali:
 
 Limiti espliciti:
 
-- face detection, segmentation, ArcFace/InsightFace, Qwen-VL e generazione automatica del character sheet sono marcati `not configured` finche' non vengono collegati nodi o modelli dedicati;
-- nei workflow video il sistema prepara l'architettura per anchor frame, ma non automatizza ancora la generazione del keyframe identitario;
+- le capability vengono dichiarate operative soltanto quando adapter, runtime e file modello richiesti sono realmente presenti;
 - i dati legacy `.data/virtual-influencers.json` e `.data/virtual-influencer-assets/` non vengono cancellati dalla webapp.
+
+### Talking Character e Video Master Pipeline
+
+Create Video mantiene un flusso semplice (anchor, azione, ripresa, eventuale battuta e qualità) e confina Scene/Motion/Audio Prompt, istruzioni e seed in **Advanced**. Le modalità mostrate dipendono dalle capability effettive: nessun audio, audio nativo LTX 2.3, Chatterbox Multilingual con MuseTalk 1.5, oppure un WAV/MP3/M4A esistente con MuseTalk.
+
+Ogni richiesta crea una History root con stage persistenti `Video Anchor → Dialogue/Audio → Raw Video → Talking Performance → Video Refine → Master Video`. Gli output intermedi restano archiviati e collegati al root. In caso di errore isolato, la pipeline conserva l'ultimo video valido. `Originale` non applica refine; `Migliorato` usa SeedVR2 Video 3B a 720p; `Qualità` usa SeedVR2 Video 3B a 1080p. La pagina Character mostra separatamente le foto e i Master Video generati e salva profilo voce, preset ed engine preferiti.
 
 ## Dati locali
 
@@ -295,7 +338,7 @@ Accanto al prompt principale delle schermate **Genera**, **Image Studio** e **Vi
 1. libera i modelli ComfyUI soltanto se la coda è vuota;
 2. avvia automaticamente il server locale LM Studio sulla porta 1234;
 3. carica il modello vision configurato in `LM_STUDIO_MODEL`, oppure `LM_STUDIO_SULPHUR_MODEL` quando il workflow video usa Sulphur 2 Base;
-4. trasforma la frase in un prompt specifico per Flux, Qwen, Z-Image, LTX 2.3 o Sulphur 2;
+4. per MiniMax H3, LTX 2.5/2.3, Qwen Image 2512 e FLUX.2 Klein usa un catalogo isolato di 16 System Prompt (quattro preset per famiglia), senza concatenare le precedenti istruzioni globali;
 5. nei workflow basati su una sorgente invia anche l'immagine al modello vision;
 6. scarica sempre l'istanza LM Studio e richiede nuovamente la pulizia VRAM;
 7. inserisce il prompt nella casella e, con `LM_STUDIO_AUTO_GENERATE=true`, avvia la generazione soltanto dopo la pulizia.
@@ -304,7 +347,9 @@ Impostando `LM_STUDIO_AUTO_GENERATE=false`, il prompt generato resta nella casel
 
 In modalità immagine è disponibile anche **Reverse Prompt**: si carica una foto e si sceglie **Qwen** oppure **Klein**. LM Studio analizza la foto, inserisce nella casella principale una descrizione ottimizzata per il modello scelto, scarica il modello vision e libera la VRAM. Questa funzione non avvia mai automaticamente la generazione.
 
-Le istruzioni personalizzate si trovano in `config/prompt-assistant-instructions.md`. Modello, endpoint, timeout, contesto e lunghezza massima sono configurabili tramite le variabili `LM_STUDIO_*` presenti in `.env.example`. `LM_STUDIO_SULPHUR_MODEL` è facoltativo: se valorizzato, viene usato solo quando selezioni Sulphur 2 Base; se resta vuoto, il Prompt Assistant usa `LM_STUDIO_MODEL` con istruzioni Sulphur dedicate. Per Qwen3.5 il reasoning viene forzato su `off`, evitando che il modello consumi tempo e token in analisi nascosta.
+I preset generativi disponibili sono: **H3** General, Image-to-Video, Action e Dialogue; **LTX 2.5/2.3** General, Image-to-Video, Multi-shot e Dialogue; **Qwen Image 2512** General, Human/Selfie, Cinematic e Text/Poster; **FLUX.2 Klein** General, Photo, JSON e Reference/Edit. A LM Studio viene inviata come input soltanto la scena dell'utente; formato, lingua e regole del modello risiedono interamente nel System Prompt selezionato. I preset FLUX non richiedono né producono un negative prompt.
+
+Le istruzioni personalizzate in `config/prompt-assistant-instructions.md` restano disponibili soltanto per workflow e planner non inclusi nel nuovo catalogo generativo; non vengono aggiunte ai 16 System Prompt. Modello, endpoint, timeout, contesto e lunghezza massima sono configurabili tramite le variabili `LM_STUDIO_*` presenti in `.env.example`. Il modello generale predefinito è `gemma-4-e4b-uncensored-hauhaucs-aggressive`. `LM_STUDIO_SULPHUR_MODEL` è facoltativo: se valorizzato, viene usato solo quando selezioni Sulphur 2 Base; se resta vuoto, il Prompt Assistant usa `LM_STUDIO_MODEL` con istruzioni Sulphur dedicate. Il reasoning viene forzato su `off`, evitando che il modello consumi tempo e token in analisi nascosta.
 
 ## Test
 

@@ -19,9 +19,38 @@ test("espone soltanto i workflow Studio distinti", () => {
       "firstLast",
       "bible",
       "qwenKreaKlein",
+      "animeToReal",
       "kreaTriple",
     ],
   );
+});
+
+test("Anime to Real rimuove Qwen-VL e usa prompt LM Studio con asset locali", () => {
+  const prompt = "Ultra realistic live-action photograph preserving pose, costume and composition.";
+  const [job] = buildStudioJobs("animeToReal", {
+    prompt,
+    seed: 777,
+    imageWidth: 1024,
+    imageHeight: 1024,
+  }, { source, references: [] });
+
+  assert.equal(job.metadata.workflowId, "studio:animeToReal");
+  assert.equal(job.metadata.imageSettings.qwenVlRemoved, true);
+  assert.equal(job.workflow["22"].inputs.image, "remote/pool.jpg");
+  assert.equal(job.workflow["147"].inputs.prompt, prompt);
+  assert.equal(job.workflow["269"].inputs.text, prompt);
+  assert.equal(job.workflow["271"], undefined);
+  assert.ok(!Object.values(job.workflow).some((node) => node.class_type === "Qwen3_VQA"));
+  assert.equal(job.workflow["122"].class_type, "KSampler");
+  assert.equal(job.workflow["268"].class_type, "BasicScheduler");
+  assert.equal(job.workflow["98"].inputs.unet_name, "QWEN\\qwen_image_edit_2511_bf16.safetensors");
+  assert.equal(job.workflow["158"].inputs.lora_name, "QWEN\\Anime2Real_v4-22.safetensors");
+  assert.equal(job.workflow["284"].inputs.unet_name, "Z-IMG\\moodyProMix_zitV13.safetensors");
+  assert.equal(job.workflow["261"].inputs.vae_name, "ae.safetensors");
+  assert.equal(job.workflow["256"].inputs.filename_prefix, "Studio/anime_to_real/08_finale");
+  assert.equal(job.workflow["940200"].class_type, "RemoteImageTensorNormalize");
+  assert.deepEqual(job.workflow["940200"].inputs.image, ["257", 0]);
+  assert.deepEqual(job.workflow["256"].inputs.images, ["940200", 0]);
 });
 
 test("Qwen Krea Klein usa il workflow API statico con input runtime", () => {
@@ -60,6 +89,8 @@ test("Krea Triple Text to Image usa il template T2I e normalizza SeedVR2", () =>
   assert.equal(job.metadata.workflowId, "studio:kreaTriple");
   assert.equal(job.metadata.imageSettings.operation, "text");
   assert.equal(job.metadata.imageSettings.staticWorkflow, "KreaTriple_T2I_API.json");
+  assert.equal(job.workflow["2"].inputs.unet_name, "FLUX1D\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors");
+  assert.equal(job.metadata.imageSettings.kreaModelId, "darkBeast");
   assert.equal(job.workflow["5"].inputs.text, "Realistic editorial poolside portrait.");
   assert.equal(job.workflow["15"].inputs.text, "Realistic editorial poolside portrait.");
   assert.equal(job.workflow["59"].inputs.text, "Realistic editorial poolside portrait.");
@@ -69,6 +100,21 @@ test("Krea Triple Text to Image usa il template T2I e normalizza SeedVR2", () =>
   assert.equal(job.workflow["99"].inputs.cache_model, true);
   assert.equal(job.workflow["99"].inputs.attention_mode, "sdpa");
   assert.equal(job.workflow["23"].inputs.use_custom_resolution, true);
+});
+
+test("Krea Triple permette Moody e registra l'ancoraggio prompt dedicato", () => {
+  const moody = "FLUX1D\\moodyKrea2Mix_v50.safetensors";
+  const [job] = buildStudioJobs("kreaTriple", {
+    kreaTripleOperation: "text",
+    kreaTripleModel: moody,
+    prompt: "A woman walking through a fantasy village.",
+    seed: 7,
+    imageWidth: 1152,
+    imageHeight: 896,
+  }, { references: [] });
+  assert.equal(job.workflow["2"].inputs.unet_name, moody);
+  assert.equal(job.metadata.imageSettings.kreaModelId, "moodyKrea");
+  assert.equal(job.metadata.imageSettings.moodyPromptAnchor, true);
 });
 
 test("Krea Triple Image to Image richiede source e usa denoise regolabile", () => {
@@ -139,7 +185,10 @@ test("Editor Guidato unifica inserimento, posizione, reference e maschera protet
     imageHeight: 900,
   }, { source, mask, references });
 
-  assert.equal(job.workflow["1"].inputs.unet_name, "QWEN\\BigLoveGwen2_mxfp8.safetensors");
+  assert.equal(job.workflow["1"].inputs.unet_name, "QWEN\\qwen_image_edit_2511_bf16.safetensors");
+  assert.equal(job.metadata.guidedSamplingProfile, "native-quality");
+  assert.equal(job.metadata.imageSettings.steps, 28);
+  assert.equal(job.metadata.imageSettings.guidance, 4);
   assert.equal(job.metadata.editAction, "addPerson");
   assert.equal(job.metadata.referenceCount, 2);
   assert.deepEqual(job.metadata.placement, { x: 0.56, y: 0.25, width: 0.28, height: 0.6 });

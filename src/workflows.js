@@ -42,6 +42,16 @@ export const WORKFLOWS = {
     supportsVideoModelSelection: false,
     sulphurPromptAssistant: true,
   },
+  minimaxH3: {
+    id: "minimaxH3",
+    name: "MiniMax H3 INT8",
+    description: "Workflow Ref2VA all-in-one INT8 con audio nativo e secondo passaggio FL2VA Turbo.",
+    file: "Super flusso di lavoro all-in-one MiniMax H3 (uso personale)_api.json",
+    supportsQuality: false,
+    supportsTextToVideo: false,
+    supportsVideoModelSelection: false,
+    supportsAdditionalLoras: false,
+  },
   director: {
     id: "director",
     name: "LTX 2.3 Director 2 UHD",
@@ -136,6 +146,12 @@ const LTX23_SULPHUR_BUILTIN_LORAS = [
   },
   {
     name: "LTX2.3\\sulphur_lora_rank_768.safetensors",
+    strength: 1,
+  },
+];
+const MINIMAX_H3_BUILTIN_LORAS = [
+  {
+    name: "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
     strength: 1,
   },
 ];
@@ -308,6 +324,28 @@ function applyLtxSulphurWorkflow(workflow, options, upload, inputMode, width, he
   }
 }
 
+function applyMiniMaxH3Workflow(workflow, options, upload, width, height, seed) {
+  workflow["83"].inputs.value = options.prompt;
+  workflow["84"].inputs.value = options.duration;
+  workflow["97"].inputs.image = inputPath(upload);
+  workflow["108"].inputs.width = width;
+  workflow["108"].inputs.height = height;
+  workflow["108"].inputs.ref_image_size = "match";
+  workflow["108"].inputs["ref_images.ref_image_0"] = ["99", 0];
+  delete workflow["108"].inputs["ref_images.ref_image_1"];
+  delete workflow["108"].inputs["ref_images.ref_image_2"];
+  workflow["243"].inputs.noise_seed = seed;
+  workflow["300"].inputs.noise_seed = seed;
+  workflow["291"].inputs.width = width;
+  workflow["291"].inputs.height = height;
+  workflow["293"].class_type = "LTXVConcatAVLatent";
+  workflow["360"].inputs.filename_prefix = "video/MINIMAX_H3_INT8";
+
+  for (const id of ["100", "101", "102", "103", "105", "129", "130", "132", "297"]) {
+    delete workflow[id];
+  }
+}
+
 function applyLtxSulphurQuality(workflow, quality) {
   if (workflow["47"]) {
     workflow["47"].inputs.steps = quality === "preview" ? 12 : 24;
@@ -414,7 +452,7 @@ function booleanOption(value, fallback = false) {
 
 function applyEditAnything(workflow, rawOptions, upload, seed) {
   const settings = {
-    maxDimension: numberOption(rawOptions.maxDimension, 960, {
+    maxDimension: numberOption(rawOptions.maxDimension, 1280, {
       min: 320, max: 1920, integer: true, label: "Lato massimo",
     }),
     steps: numberOption(rawOptions.steps, 8, {
@@ -429,12 +467,8 @@ function applyEditAnything(workflow, rawOptions, upload, seed) {
     editStrength: numberOption(rawOptions.editStrength, 1, {
       min: 0, max: 2, label: "Intensità Edit Anything",
     }),
-    auxiliaryLoraStrength: numberOption(rawOptions.auxiliaryLoraStrength, 0.95, {
-      min: 0, max: 2, label: "Intensità LoRA aggiuntiva",
-    }),
     promptEnhancer: booleanOption(rawOptions.promptEnhancer),
     useInputAudio: booleanOption(rawOptions.useInputAudio, true),
-    auxiliaryLora: booleanOption(rawOptions.auxiliaryLora),
   };
 
   workflow["840"].inputs.video = inputPath(upload);
@@ -449,12 +483,8 @@ function applyEditAnything(workflow, rawOptions, upload, seed) {
   workflow["93"].inputs.cfg = settings.cfg;
   workflow["5389"].inputs.nag_scale = settings.nagScale;
   workflow["5343"].inputs.lora_1.strength = settings.editStrength;
-  if (settings.auxiliaryLora) {
-    workflow["218"].inputs.strength_model = settings.auxiliaryLoraStrength;
-  } else {
-    workflow["5343"].inputs.model = ["219", 0];
-    delete workflow["218"];
-  }
+  workflow["5343"].inputs.model = ["219", 0];
+  delete workflow["218"];
 
   // Il nodo VHS presente nel workflow pubblico non veniva sempre incluso
   // negli output terminali da alcune build recenti di ComfyUI. Il percorso
@@ -555,10 +585,16 @@ export function buildWorkflow(workflowId, rawOptions, upload, directorScenes = [
         file: resolveLocalVideoModelFile(VIDEO_MODELS[definition.dedicatedVideoModelId]),
       }
     : selectVideoModel(definition, rawOptions.videoModelId);
-  const builtInLoras = workflowId === "ltxSulphur" ? LTX23_SULPHUR_BUILTIN_LORAS : [];
+  const builtInLoras = workflowId === "ltxSulphur"
+    ? LTX23_SULPHUR_BUILTIN_LORAS
+    : workflowId === "minimaxH3"
+      ? MINIMAX_H3_BUILTIN_LORAS
+      : [];
   const builtInLoraNames = new Set(builtInLoras.map((lora) => lora.name.toLowerCase()));
   const parsedLoras = parseLoras(rawLoras ?? rawOptions.loras);
-  const loras = parsedLoras.filter((lora) => !builtInLoraNames.has(lora.name.toLowerCase()));
+  const loras = definition.supportsAdditionalLoras === false
+    ? []
+    : parsedLoras.filter((lora) => !builtInLoraNames.has(lora.name.toLowerCase()));
   let editSettings = null;
   let loraSourceLink = null;
   let loraConsumerIds = null;
@@ -567,6 +603,8 @@ export function buildWorkflow(workflowId, rawOptions, upload, directorScenes = [
     applyLtxSulphurWorkflow(workflow, options, upload, inputMode, width, height, seed);
     loraSourceLink = ["59", 0];
     loraConsumerIds = ["8", "42"];
+  } else if (workflowId === "minimaxH3") {
+    applyMiniMaxH3Workflow(workflow, options, upload, width, height, seed);
   } else if (workflowId === "standard") {
     workflow["121"].inputs.text = options.prompt;
     workflow["110"].inputs.text = options.negativePrompt;
@@ -653,9 +691,17 @@ export function buildWorkflow(workflowId, rawOptions, upload, directorScenes = [
       quality: definition.supportsQuality ? options.quality : null,
       seed,
       inputMode,
-      videoModelId: workflowId === "ltxSulphur" ? "ltx23-sulphur" : (videoModel?.id || "devfp8"),
-      videoModelName: workflowId === "ltxSulphur" ? "LTX 2.3 Dev + Sulphur LoRA" : (videoModel?.name || "LTX 2.3 Dev FP8"),
-      videoModelFile: workflowId === "ltxSulphur" ? "ltx-2.3-22b-dev-fp8.safetensors" : (videoModel?.file || "ltx-2.3-22b-dev-fp8.safetensors"),
+      videoModelId: workflowId === "ltxSulphur"
+        ? "ltx23-sulphur"
+        : workflowId === "minimaxH3" ? "minimax-h3-int8" : (videoModel?.id || "devfp8"),
+      videoModelName: workflowId === "ltxSulphur"
+        ? "LTX 2.3 Dev + Sulphur LoRA"
+        : workflowId === "minimaxH3" ? "MiniMax H3 INT8 ConvRot" : (videoModel?.name || "LTX 2.3 Dev FP8"),
+      videoModelFile: workflowId === "ltxSulphur"
+        ? "ltx-2.3-22b-dev-fp8.safetensors"
+        : workflowId === "minimaxH3"
+          ? "minimaxH3INT8INT4_ref2vaINT8Pruned.safetensors + minimaxH3INT8INT4_fl2vaINT8Pruned.safetensors"
+          : (videoModel?.file || "ltx-2.3-22b-dev-fp8.safetensors"),
       sourceImage: (inputMode === "image" || workflowId === "director") && firstUpload
         ? inputPath(firstUpload)
         : null,

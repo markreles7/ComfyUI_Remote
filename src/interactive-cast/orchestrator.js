@@ -24,7 +24,7 @@ import {
   prepareLipSyncTasks,
 } from "./lipsync-engine.js";
 import { verifySegmentIdentity } from "./identity-check.js";
-import { cutVideoSegment, muxAudioIntoVideo } from "./ffmpeg.js";
+import { cutVideoSegment, muxAudioIntoVideo, normalizeGeneratedSegment } from "./ffmpeg.js";
 import { renderPackageCacheKey, stageStatus } from "./pipeline-state.js";
 import { buildInteractiveCastPlan } from "./planner.js";
 import { detectSceneCuts, extractVideoArtifacts, probeVideo } from "./video-analysis.js";
@@ -417,6 +417,7 @@ export class InteractiveCastOrchestrator {
         segments: prepared.segments,
         projectDirectory,
         actorReferences,
+        dialogueEvents: project.dialogueEvents || [],
         anchorWorkflowId: project.settings?.anchorWorkflowId,
       });
       const audioTasks = await prepareDialogueAudioTasks({
@@ -528,11 +529,22 @@ export class InteractiveCastOrchestrator {
     const normalizedDirectory = path.join(this.store.projectAssetDirectory(id), "generated-normalized");
     fs.mkdirSync(normalizedDirectory, { recursive: true });
     const normalizedPath = path.join(normalizedDirectory, `${segmentId.replace(/[^\w-]+/g, "_")}.mp4`);
-    await cutVideoSegment({
-      input: generated.path,
+    const nativeDialogueWindows = (project.dialogueEvents || [])
+      .filter((event) => event.audioMode === "ltxNative"
+        && event.dialogue
+        && Number(event.end || 0) > Number(segment.start || 0)
+        && Number(event.start || 0) < Number(segment.end || 0))
+      .map((event) => ({
+        start: Math.max(0, Number(event.start || 0) - Number(segment.start || 0)),
+        end: Math.min(duration, Number(event.end || 0) - Number(segment.start || 0)),
+        speaker: event.speaker,
+      }));
+    const normalization = await normalizeGeneratedSegment({
+      generatedVideo: generated.path,
+      sourceClip: segment.sourceClipPath,
       output: normalizedPath,
-      start: 0,
-      end: duration,
+      duration,
+      nativeDialogueWindows,
     });
     const file = {
       buffer: fs.readFileSync(normalizedPath),
@@ -551,7 +563,9 @@ export class InteractiveCastOrchestrator {
             status: "completed",
             phase: "video",
             generationId: generated.generationId || task.generation?.generationId || null,
-            engine: "LTX 2.3 I2V",
+            engine: generated.engine || "LTX 2.3 Union Control",
+            preservationMode: "source-video-authoritative",
+            normalization,
             updatedAt: new Date().toISOString(),
           },
         }
@@ -1074,14 +1088,49 @@ export class InteractiveCastOrchestrator {
       stages: stageStatus(project, "identityCheck", "running", { segmentId }),
       updatedAt: new Date().toISOString(),
     });
-    const report = await verifySegmentIdentity({
-      segment,
-      referenceFrame: task?.anchorFrame?.path ? task.anchorFrame : null,
-      replacementPath: segment.replacementPath,
-      projectDirectory,
-      threshold: Number(raw.threshold || 0.58),
-      sampleCount: Number(raw.sampleCount || 6),
-    });
+    const anchorVerification = task?.generation?.anchorVerification || null;
+    const anchorCandidate = task?.generation?.anchorCandidate?.path
+      ? task.generation.anchorCandidate
+      : null;
+    const checkAnchor = raw.scope === "anchor" || (!segment.replacementPath && anchorVerification);
+    let report;
+    if (checkAnchor) {
+      if (!anchorVerification) {
+        report = {
+          status: "insufficient-output",
+          scope: "anchor",
+          engine: "interactive-cast-anchor-gate",
+          warning: "Carica o genera prima un anchor da verificare.",
+          checkedAt: new Date().toISOString(),
+        };
+      } else {
+        const similarity = Number(anchorVerification.bestIdentitySimilarity);
+        report = {
+          status: anchorVerification.status === "passed" ? "passed" : "drift-detected",
+          scope: "anchor",
+          engine: anchorVerification.engine || "interactive-cast-anchor-gate",
+          averageSimilarity: Number.isFinite(similarity) ? similarity : null,
+          minSimilarity: Number.isFinite(similarity) ? similarity : null,
+          sourceFaceCount: anchorVerification.sourceFaceCount ?? null,
+          candidateFaceCount: anchorVerification.candidateFaceCount ?? null,
+          failures: anchorVerification.failures || [],
+          warning: anchorVerification.status === "passed"
+            ? null
+            : `Anchor da rivedere: ${(anchorVerification.failures || []).join(", ") || "identity gate non superato"}.`,
+          checkedAt: new Date().toISOString(),
+        };
+      }
+    } else {
+      report = await verifySegmentIdentity({
+        segment,
+        referenceFrame: anchorCandidate || (task?.anchorFrame?.path ? task.anchorFrame : null),
+        replacementPath: segment.replacementPath,
+        projectDirectory,
+        threshold: Number(raw.threshold || 0.58),
+        sampleCount: Number(raw.sampleCount || 6),
+      });
+      report.scope = "video";
+    }
     const latest = this.get(id);
     const identityReports = {
       ...(latest.renderPackage?.identityReports || {}),

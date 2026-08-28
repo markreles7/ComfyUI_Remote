@@ -57,6 +57,7 @@ export async function prepareDialogueAudioTasks({
 
   for (const event of dialogueEvents) {
     if (!event.dialogue) continue;
+    if (event.audioMode === "ltxNative" && event.mode === "generative") continue;
     const eventId = safeId(event.id);
     const start = Math.max(0, Number(event.start) || 0);
     const end = Math.max(start + 0.05, Number(event.end) || start + 1.5);

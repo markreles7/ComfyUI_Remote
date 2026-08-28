@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
-  <script type="module" src="/app.js"></script>
+  <script type="module" src="/app.js?v=20260825-reverse-webp-vision-fix"></script>
   <script type="module" src="/scene-integration.js"></script>
 </head>
 <body>
@@ -653,21 +653,64 @@
             <div class="label-row">
               <label id="prompt-label" for="prompt">Prompt positivo</label>
               <div class="prompt-assistant-tools">
+                <select id="qwen-prompt-preset" class="prompt-preset-select hidden" aria-label="Preset System Prompt Qwen">
+                  <option value="qwen_general">Qwen · General</option>
+                  <option value="qwen_human">Qwen · Human / Selfie</option>
+                  <option value="qwen_cinematic">Qwen · Cinematic</option>
+                  <option value="qwen_text">Qwen · Text / Poster</option>
+                </select>
                 <button id="qwen-edit-prompt-button" class="prompt-assistant-button hidden" type="button">✦ Qwen Edit</button>
+                <select id="flux-prompt-preset" class="prompt-preset-select hidden" aria-label="Preset System Prompt FLUX.2 Klein">
+                  <option value="flux_general">FLUX · General</option>
+                  <option value="flux_photo">FLUX · Photo</option>
+                  <option value="flux_json">FLUX · JSON</option>
+                  <option value="flux_reference">FLUX · Reference / Edit</option>
+                </select>
                 <button id="klein-prompt-button" class="prompt-assistant-button hidden" type="button">✦ Klein</button>
                 <button id="reverse-prompt-button" class="prompt-assistant-button hidden" type="button">⌁ Reverse Prompt</button>
                 <button id="ltx-architect-prompt-button" class="prompt-assistant-button hidden" type="button">✦ LTX Prompt</button>
                 <button id="ltx-scene-prompt-button" class="prompt-assistant-button hidden" type="button">✦ LTX Scene</button>
                 <button id="sulphur-prompt-button" class="prompt-assistant-button hidden" type="button">✦ LTX Sulphur</button>
+                <select id="ltx-prompt-preset" class="prompt-preset-select hidden" aria-label="Preset System Prompt LTX 2.3">
+                  <option value="ltx_general">LTX · General</option>
+                  <option value="ltx_image_to_video">LTX · Image-to-Video</option>
+                  <option value="ltx_multi_shot">LTX · Multi-shot</option>
+                  <option value="ltx_dialogue">LTX · Dialogue</option>
+                </select>
                 <span id="prompt-count">0</span>
               </div>
             </div>
             <textarea id="prompt" name="prompt" rows="6" placeholder="Descrivi scena, movimento, camera, luce e atmosfera…" required></textarea>
             <p id="prompt-assistant-status" class="prompt-assistant-status">LM Studio locale · il modello viene scaricato dopo il prompt</p>
           </div>
+
+          <section id="pose-library-panel" class="pose-library-panel hidden" aria-label="Libreria pose testuale">
+            <div class="pose-library-heading">
+              <div>
+                <span class="eyebrow">POSE LIBRARY</span>
+                <strong>Posa testuale</strong>
+              </div>
+              <span class="pose-library-mode">Solo prompt</span>
+            </div>
+            <div class="field-grid compact-grid">
+              <div class="field">
+                <label for="pose-library-category">Tipo di posa</label>
+                <select id="pose-library-category" aria-label="Tipo di posa">
+                  <option value="auto">Auto dal prompt</option>
+                </select>
+              </div>
+              <div class="field pose-library-action">
+                <button id="pose-library-random" class="chip-button" type="button">🎲 Scegli posa</button>
+              </div>
+            </div>
+            <p id="pose-library-status" class="hint">Aggiunge una breve direzione di posa al prompt; non usa OpenPose, ControlNet o immagini reference.</p>
+          </section>
         </div>
 
         <section id="director-storyboard" class="director-storyboard hidden">
+          <a class="context-guide-link" href="/guided-create.html?workflow=director">
+            <span aria-hidden="true">?</span><span><b>Guida interattiva Director</b><small>Costruisci timeline, continuita e prompt scena per scena</small></span>
+          </a>
           <div class="storyboard-heading">
             <div>
               <p class="eyebrow">DIRECTOR TIMELINE</p>
@@ -852,8 +895,9 @@
                 <select id="maxDimension" name="maxDimension" disabled>
                   <option value="640">640 px · Anteprima</option>
                   <option value="768">768 px</option>
-                  <option value="960" selected>960 px · Workflow</option>
-                  <option value="1280">1280 px · Alta</option>
+                  <option value="960">960 px · Media</option>
+                  <option value="1280" selected>1280 px · Alta</option>
+                  <option value="1920">1920 px · Full HD, più VRAM</option>
                 </select>
                 <p class="hint">Mantiene il rapporto del video.</p>
               </div>
@@ -873,15 +917,10 @@
                 <label for="editStrength">Intensità Edit Anything</label>
                 <input id="editStrength" name="editStrength" type="number" min="0" max="2" step="0.05" value="1" disabled>
               </div>
-              <div class="field">
-                <label for="auxiliaryLoraStrength">Intensità LoRA aggiuntiva</label>
-                <input id="auxiliaryLoraStrength" name="auxiliaryLoraStrength" type="number" min="0" max="2" step="0.05" value="0.95" disabled>
-              </div>
             </div>
             <div class="toggle-list">
               <label><input id="promptEnhancer" name="promptEnhancer" type="checkbox" disabled><span><b>Prompt enhancer</b><small>Normalizza l’istruzione in inglese tramite il modello del workflow.</small></span></label>
               <label><input id="useInputAudio" name="useInputAudio" type="checkbox" checked disabled><span><b>Mantieni audio originale</b><small>Riutilizza la traccia audio del video sorgente.</small></span></label>
-              <label><input id="auxiliaryLora" name="auxiliaryLora" type="checkbox" disabled><span><b>LoRA aggiuntiva del workflow</b><small>Abilita la LoRA “breastsway” inclusa nel JSON originale.</small></span></label>
             </div>
           </div>
         </details>
@@ -954,7 +993,7 @@
         <div>
           <p class="eyebrow">LM STUDIO VISION</p>
           <h2>Reverse Prompt</h2>
-          <p>Carica un’immagine: il modello locale la descrive come prompt pronto per il generatore scelto.</p>
+          <p>Carica un’immagine: il modello locale ne trascrive letteralmente ogni elemento visibile, SFW o adulto esplicito, senza eufemismi né invenzioni.</p>
         </div>
         <button id="reverse-prompt-close" class="dialog-close" type="submit" value="cancel" aria-label="Chiudi">×</button>
       </header>
@@ -969,7 +1008,7 @@
         <button id="reverse-prompt-qwen" class="primary-action" type="button">Genera per Qwen</button>
         <button id="reverse-prompt-klein" class="primary-action" type="button">Genera per Klein</button>
       </div>
-      <p id="reverse-prompt-status" class="prompt-assistant-status">Il prompt sostituirà il contenuto della casella principale; la generazione non partirà automaticamente.</p>
+      <p id="reverse-prompt-status" class="prompt-assistant-status">Fedeltà letterale attiva · il prompt sostituirà la casella principale; la generazione non partirà automaticamente.</p>
     </form>
   </dialog>
 

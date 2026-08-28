@@ -1,0 +1,689 @@
+{
+  "4": {
+    "inputs": {
+      "clip_name": "qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
+      "type": "minimax",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "5": {
+    "inputs": {
+      "vae_name": "minimax_h3_video_vae_int8_convrot.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "6": {
+    "inputs": {
+      "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "8": {
+    "inputs": {
+      "unet_name": "minimaxH3INT8INT4_fl2vaINT8Pruned.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "9": {
+    "inputs": {
+      "unet_name": "minimaxH3INT8INT4_ref2vaINT8Pruned.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "83": {
+    "inputs": {
+      "value": "subject_definitions:\n<Subject 1> is the female doctor from <Picture 1>, with dark hair tied back in a neat bun, wearing a white doctor's coat over a green medical scrub top and a stethoscope around her neck.\n<Subject 2> is the young male patient from <Picture 2>, with short black hair, wearing a solid blue t-shirt and black trousers.\n<Subject 3> is the hospital outpatient consultation room from <Picture 3>, featuring a light-beige wall, a desk with a computer monitor, medical posters, a window with blinds, and chairs.\n\nsummary:\n[reference generation] The target video establishes the consultation room in <Subject 3>. <Subject 1> reviews medical records while <Subject 2> watches nervously, leading into their initial dialogue exchange about his medical results.\n\nretention_analysis:\n<Subject 1> (appears in [Shot 1], [Shot 2]): fully_preserved - appearance, hair, doctor's coat, green scrub top, and stethoscope are retained from <Picture 1>.\n<Subject 2> (appears in [Shot 1], [Shot 3]): fully_preserved - appearance, short black hair, blue t-shirt, and trousers are retained from <Picture 2>.\n<Subject 3> (appears in [Shot 1], [Shot 2], [Shot 3]): fully_preserved - the consultation room layout, desk, window, and wall posters are retained from <Picture 3>.\n\ndetailed_description:\nLive-action, realistic cinematic narrative style with natural daylight illumination inside a hospital room.\n[Shot 1] A wide shot establishes <Subject 3>, the hospital consultation room. <Subject 1>, the female doctor with dark hair in a bun wearing a white coat and green scrub top, sits at the desk looking down and flipping through paper medical records on a clipboard. Across from her, <Subject 2>, the young male patient in a blue t-shirt, sits leaning forward, watching her face with an anxious and expectant expression. The camera holds a static shot for two seconds as paper rustles softly.\n[Shot 2] At 00:04.000, the shot cuts to a medium close-up of <Subject 1> (S1), the female doctor. She slowly nods while skim-reading the pages. <Subject 1> (S1) speaks in a gentle, warm tone with a steady, reassuring pace: <d>[Chinese] 嗯，不错，所有指标都非常好，没什么问题。</d> She finishes the line with a mild nod.\n[Shot 3] At 00:08.000, the shot cuts to a medium close-up of <Subject 2> (S2), the young male patient. He lifts his head slightly, his worried face instantly relaxing into a relieved smile. <Subject 2> (S2) says in an eager, lighthearted voice: <d>[Chinese] 是不是代表我彻底好了呀医生。</d> He rests his hands on his knees as the camera pushes in with small amplitude at slow speed toward his smiling face.\n\noverall_soundscape:\nThe soft rustle of paper pages flipping, light keyboard clicks from the background desk, and quiet indoor room ambience.\n\nnon_diegetic_music:\nN/A"
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "Prompt MiniMax H3"
+    }
+  },
+  "84": {
+    "inputs": {
+      "value": 12
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "视频时长（秒）"
+    }
+  },
+  "92": {
+    "inputs": {
+      "expression": "max(5, round(a * 24)) + (5 - (max(5, round(a * 24)) % 17)) % 17",
+      "values.a": [
+        "84",
+        0
+      ]
+    },
+    "class_type": "ComfyMathExpression",
+    "_meta": {
+      "title": "Math Expression"
+    }
+  },
+  "97": {
+    "inputs": {
+      "image": "63dc6416ef867b6f390f15c20ffe99f9fe8ca2f67617b579195b9c16a5c2c963.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "99": {
+    "inputs": {
+      "aspect_ratio": "original",
+      "proportional_width": 1,
+      "proportional_height": 1,
+      "fit": "crop",
+      "method": "lanczos",
+      "round_to_multiple": "32",
+      "scale_to_side": "total_pixel(kilo pixel)",
+      "scale_to_length": 1536,
+      "background_color": "#000000",
+      "image": [
+        "97",
+        0
+      ]
+    },
+    "class_type": "LayerUtility: ImageScaleByAspectRatio V2",
+    "_meta": {
+      "title": "LayerUtility: ImageScaleByAspectRatio V2"
+    }
+  },
+  "100": {
+    "inputs": {
+      "images": [
+        "99",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
+    }
+  },
+  "101": {
+    "inputs": {
+      "image": "22785d770f0efdcf632f8e8a954a4b05032b63a4ac5a92e74da551fed6020ab2.jpg"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "102": {
+    "inputs": {
+      "aspect_ratio": "original",
+      "proportional_width": 1,
+      "proportional_height": 1,
+      "fit": "crop",
+      "method": "lanczos",
+      "round_to_multiple": "32",
+      "scale_to_side": "total_pixel(kilo pixel)",
+      "scale_to_length": 1536,
+      "background_color": "#000000",
+      "image": [
+        "101",
+        0
+      ]
+    },
+    "class_type": "LayerUtility: ImageScaleByAspectRatio V2",
+    "_meta": {
+      "title": "LayerUtility: ImageScaleByAspectRatio V2"
+    }
+  },
+  "103": {
+    "inputs": {
+      "images": [
+        "102",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
+    }
+  },
+  "105": {
+    "inputs": {
+      "aspect_ratio": "16:9 (Widescreen)",
+      "megapixels": 0.6000000000000001,
+      "multiple": 32
+    },
+    "class_type": "ResolutionSelector",
+    "_meta": {
+      "title": "分辨率选择器"
+    }
+  },
+  "108": {
+    "inputs": {
+      "prompt": [
+        "83",
+        0
+      ],
+      "width": [
+        "105",
+        0
+      ],
+      "height": [
+        "105",
+        1
+      ],
+      "length": [
+        "92",
+        1
+      ],
+      "ref_image_size": "max",
+      "clip": [
+        "4",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ],
+      "audio_vae": [
+        "6",
+        0
+      ],
+      "ref_images.ref_image_0": [
+        "99",
+        0
+      ],
+      "ref_images.ref_image_1": [
+        "102",
+        0
+      ],
+      "ref_images.ref_image_2": [
+        "129",
+        0
+      ]
+    },
+    "class_type": "MiniMaxH3ReferenceToVideo",
+    "_meta": {
+      "title": "MiniMax H3 Reference to Video"
+    }
+  },
+  "114": {
+    "inputs": {
+      "model": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "MiniMaxH3MemoryEfficientSageAttentionPatch",
+    "_meta": {
+      "title": "MiniMax H3 Memory Efficient Sage Attention Patch"
+    }
+  },
+  "125": {
+    "inputs": {
+      "model": [
+        "9",
+        0
+      ]
+    },
+    "class_type": "MiniMaxH3MemoryEfficientSageAttentionPatch",
+    "_meta": {
+      "title": "MiniMax H3 Memory Efficient Sage Attention Patch"
+    }
+  },
+  "129": {
+    "inputs": {
+      "aspect_ratio": "original",
+      "proportional_width": 1,
+      "proportional_height": 1,
+      "fit": "crop",
+      "method": "lanczos",
+      "round_to_multiple": "32",
+      "scale_to_side": "total_pixel(kilo pixel)",
+      "scale_to_length": 1536,
+      "background_color": "#000000",
+      "image": [
+        "132",
+        0
+      ]
+    },
+    "class_type": "LayerUtility: ImageScaleByAspectRatio V2",
+    "_meta": {
+      "title": "LayerUtility: ImageScaleByAspectRatio V2"
+    }
+  },
+  "130": {
+    "inputs": {
+      "images": [
+        "129",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
+    }
+  },
+  "132": {
+    "inputs": {
+      "image": "ccdfa9981fda9e6d1d6ca858ff717afd359a62c2ddf4d322449653d5814d265e.jpg"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "186": {
+    "inputs": {
+      "lora_name": "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
+      "strength_model": 1.0000000000000002,
+      "model": [
+        "114",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Load LoRA"
+    }
+  },
+  "187": {
+    "inputs": {
+      "lora_name": "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
+      "strength_model": 1.0000000000000002,
+      "model": [
+        "125",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Load LoRA"
+    }
+  },
+  "243": {
+    "inputs": {
+      "noise_seed": 260473938288040
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "RandomNoise"
+    }
+  },
+  "246": {
+    "inputs": {
+      "model": [
+        "187",
+        0
+      ],
+      "conditioning": [
+        "108",
+        0
+      ]
+    },
+    "class_type": "BasicGuider",
+    "_meta": {
+      "title": "Basic Guider"
+    }
+  },
+  "247": {
+    "inputs": {
+      "noise": [
+        "243",
+        0
+      ],
+      "guider": [
+        "246",
+        0
+      ],
+      "sampler": [
+        "249",
+        0
+      ],
+      "sigmas": [
+        "248",
+        0
+      ],
+      "latent_image": [
+        "108",
+        1
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "SamplerCustomAdvanced"
+    }
+  },
+  "248": {
+    "inputs": {
+      "scheduler": "beta",
+      "steps": 8,
+      "denoise": 1,
+      "model": [
+        "187",
+        0
+      ]
+    },
+    "class_type": "BasicScheduler",
+    "_meta": {
+      "title": "BasicScheduler"
+    }
+  },
+  "249": {
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSamplerSelect"
+    }
+  },
+  "288": {
+    "inputs": {
+      "audio": [
+        "366",
+        0
+      ],
+      "vae": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "VAEEncodeAudio",
+    "_meta": {
+      "title": "VAE Encode Audio"
+    }
+  },
+  "289": {
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSamplerSelect"
+    }
+  },
+  "290": {
+    "inputs": {
+      "scheduler": "beta",
+      "steps": 4,
+      "denoise": 0.20000000000000004,
+      "model": [
+        "125",
+        0
+      ]
+    },
+    "class_type": "BasicScheduler",
+    "_meta": {
+      "title": "BasicScheduler"
+    }
+  },
+  "291": {
+    "inputs": {
+      "width": [
+        "297",
+        0
+      ],
+      "height": [
+        "297",
+        1
+      ],
+      "upscale_method": "nvidia_rtx_vsr",
+      "keep_proportion": "crop",
+      "pad_color": "0, 0, 0",
+      "crop_position": "center",
+      "divisible_by": 0,
+      "device": "cpu",
+      "image": [
+        "361",
+        0
+      ]
+    },
+    "class_type": "ImageResizeKJv2",
+    "_meta": {
+      "title": "Resize Image v2"
+    }
+  },
+  "292": {
+    "inputs": {
+      "pixels": [
+        "291",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode"
+    }
+  },
+  "293": {
+    "inputs": {
+      "video_latent": [
+        "292",
+        0
+      ],
+      "audio_latent": [
+        "288",
+        0
+      ]
+    },
+    "class_type": "LTXVConcatAVLatent",
+    "_meta": {
+      "title": "PT H3 Concat AV Latent"
+    }
+  },
+  "294": {
+    "inputs": {
+      "model": [
+        "125",
+        0
+      ],
+      "conditioning": [
+        "108",
+        0
+      ]
+    },
+    "class_type": "BasicGuider",
+    "_meta": {
+      "title": "Basic Guider"
+    }
+  },
+  "295": {
+    "inputs": {
+      "noise": [
+        "300",
+        0
+      ],
+      "guider": [
+        "294",
+        0
+      ],
+      "sampler": [
+        "289",
+        0
+      ],
+      "sigmas": [
+        "290",
+        0
+      ],
+      "latent_image": [
+        "293",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "SamplerCustomAdvanced"
+    }
+  },
+  "296": {
+    "inputs": {
+      "samples": [
+        "295",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "297": {
+    "inputs": {
+      "aspect_ratio": "16:9 (Widescreen)",
+      "megapixels": 1,
+      "multiple": 32
+    },
+    "class_type": "ResolutionSelector",
+    "_meta": {
+      "title": "分辨率选择器"
+    }
+  },
+  "300": {
+    "inputs": {
+      "noise_seed": 257401780659235
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "RandomNoise"
+    }
+  },
+  "356": {
+    "inputs": {
+      "frame_rate": 24,
+      "loop_count": 0,
+      "filename_prefix": "H3_Ref2VA一采",
+      "format": "video/h264-mp4",
+      "pix_fmt": "yuv420p",
+      "crf": 19,
+      "save_metadata": true,
+      "trim_to_audio": false,
+      "pingpong": false,
+      "save_output": false,
+      "no_preview": false,
+      "images": [
+        "367",
+        0
+      ],
+      "audio": [
+        "366",
+        0
+      ]
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "Video Combine 🎥🅥🅗🅢"
+    }
+  },
+  "358": {
+    "inputs": {
+      "samples": [
+        "295",
+        0
+      ],
+      "vae": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "VAEDecodeAudio",
+    "_meta": {
+      "title": "VAE Decode Audio"
+    }
+  },
+  "360": {
+    "inputs": {
+      "frame_rate": 24,
+      "loop_count": 0,
+      "filename_prefix": "H3_Ref2VA二采",
+      "format": "video/h264-mp4",
+      "pix_fmt": "yuv420p",
+      "crf": 19,
+      "save_metadata": true,
+      "trim_to_audio": false,
+      "pingpong": false,
+      "save_output": true,
+      "no_preview": false,
+      "images": [
+        "296",
+        0
+      ],
+      "audio": [
+        "358",
+        0
+      ]
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "Video Combine 🎥🅥🅗🅢"
+    }
+  },
+  "361": {
+    "inputs": {
+      "anything": [
+        "367",
+        0
+      ]
+    },
+    "class_type": "easy cleanGpuUsed",
+    "_meta": {
+      "title": "Clean VRAM Used"
+    }
+  },
+  "366": {
+    "inputs": {
+      "samples": [
+        "247",
+        0
+      ],
+      "vae": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "VAEDecodeAudio",
+    "_meta": {
+      "title": "VAE Decode Audio"
+    }
+  },
+  "367": {
+    "inputs": {
+      "samples": [
+        "247",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  }
+}

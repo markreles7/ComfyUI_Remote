@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0c10">
+  <title>Interactive Cast guidato · LTX Remote Studio</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/interactive-cast-guided.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"></span><span>LTX <b>REMOTE</b></span></a>
+    <div class="topbar-actions">
+      <nav class="primary-nav" aria-label="Navigazione principale">
+        <a href="/guided-create.html">Crea guidata</a>
+        <a href="/">Genera</a>
+        <a href="/studio.html">Image Studio</a>
+        <a class="active" href="/video-studio.html?workflow=interactiveCast">Video Studio</a>
+        <a href="/characters.html">Character Library</a>
+        <a href="/workflow-guide.html">Guida</a>
+        <a href="/generations.html">Generazioni</a>
+      </nav>
+      <div id="connection" class="connection checking"><span></span>Connessione...</div>
+    </div>
+  </header>
+
+  <main class="guided-create-page interactive-cast-guided-page">
+    <section class="guided-create-hero">
+      <p class="eyebrow">INTERACTIVE CAST / PRODUZIONE GUIDATA</p>
+      <h1>Costruiamo l'ingresso.<br><em>Uno snodo alla volta.</em></h1>
+      <p>La clip originale resta la regia. La guida prepara l'anchor con il nuovo attore, la finestra Union Control e il ripristino dell'audio sorgente.</p>
+    </section>
+
+    <div class="guided-create-layout">
+      <section class="guided-chat panel" aria-label="Guida Interactive Cast">
+        <div class="guided-chat-head">
+          <div><span class="guided-orb" aria-hidden="true"></span><div><b>Regia Interactive Cast</b><small id="cast-guide-step">Preparazione</small></div></div>
+          <button id="cast-guide-reset" class="secondary-button" type="button">Ricomincia</button>
+        </div>
+        <div id="cast-guide-messages" class="guided-messages" aria-live="polite"></div>
+        <div id="cast-guide-composer" class="guided-composer"></div>
+      </section>
+
+      <aside class="guided-summary panel">
+        <p class="eyebrow">PIANO DI INSERIMENTO</p>
+        <h2 id="cast-guide-title">Nuovo progetto</h2>
+        <p id="cast-guide-description">Il video non viene generato da questa pagina: al termine troverai Interactive Cast già compilato.</p>
+        <div id="cast-guide-summary" class="guided-summary-items"></div>
+        <div id="cast-guide-readiness" class="guided-readiness"></div>
+        <button id="cast-guide-open" class="primary-action" type="button" disabled>Apri il piano in Video Studio</button>
+        <p class="guided-privacy">Il segmento originale guida camera e movimento. L'audio sorgente resta la base; l'eventuale battuta nativa LTX viene miscelata soltanto nella sua finestra temporale.</p>
+      </aside>
+    </div>
+    <div id="toast" class="toast"></div>
+  </main>
+</body>
+</html>

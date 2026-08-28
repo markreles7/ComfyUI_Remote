@@ -184,7 +184,9 @@ export function validateWorkflow(workflow, definitions, {
       ...(definition.input?.optional || {}),
     };
     for (const [inputName, specification] of Object.entries(definition.input?.required || {})) {
-      if (!(inputName in node.inputs)) {
+      const dynamicPrefixPresent = specification?.[0] === "COMFY_AUTOGROW_V3"
+        && Object.keys(node.inputs).some((name) => name.startsWith(`${inputName}.`));
+      if (!(inputName in node.inputs) && !dynamicPrefixPresent) {
         issues.push(`${path} (${node.class_type}): input obbligatorio "${inputName}" mancante`);
       }
     }
@@ -216,7 +218,9 @@ export function validateWorkflow(workflow, definitions, {
       const choices = comboOptions(specification);
       const uploadInput = specification?.[1]?.image_upload === true
         || specification?.[1]?.video_upload === true
-        || (node.class_type === "VHS_LoadVideoFFmpeg" && inputName === "video");
+        || specification?.[1]?.audio_upload === true
+        || (["VHS_LoadVideo", "VHS_LoadVideoFFmpeg"].includes(node.class_type) && inputName === "video")
+        || (node.class_type === "LoadAudio" && inputName === "audio");
       if (!uploadInput && choices.length && !choices.includes(value)) {
         issues.push(`${inputPath}: valore "${value}" non presente fra le opzioni installate`);
       }

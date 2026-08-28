@@ -106,6 +106,72 @@ export async function cutVideoSegment({ input, output, start = 0, end = 0 }) {
   return output;
 }
 
+export async function normalizeGeneratedSegment({ generatedVideo, sourceClip, output, duration, nativeDialogueWindows = [] }) {
+  const [probe, generatedProbe] = await Promise.all([
+    ffprobeJson(sourceClip),
+    ffprobeJson(generatedVideo),
+  ]);
+  const video = (probe.streams || []).find((stream) => stream.codec_type === "video") || {};
+  const width = Math.max(2, Number(video.width) || 1280);
+  const height = Math.max(2, Number(video.height) || 720);
+  const fps = frameRate(video.avg_frame_rate || video.r_frame_rate) || 24;
+  const targetDuration = Math.max(0.04, Number(duration) || Number(probe.format?.duration) || 1);
+  const videoFilter = `[0:v]scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,fps=${fps},setsar=1[v]`;
+  const hasGeneratedAudio = (generatedProbe.streams || []).some((stream) => stream.codec_type === "audio");
+  const hasSourceAudio = (probe.streams || []).some((stream) => stream.codec_type === "audio");
+  const dialogueWindows = hasGeneratedAudio && hasSourceAudio
+    ? nativeDialogueWindows
+      .map((window) => ({
+        start: Math.max(0, Math.min(targetDuration, Number(window.start) || 0)),
+        end: Math.max(0, Math.min(targetDuration, Number(window.end) || 0)),
+      }))
+      .filter((window) => window.end > window.start)
+    : [];
+  const filterParts = [videoFilter];
+  let audioMap = "1:a?";
+  if (dialogueWindows.length) {
+    const duckExpression = dialogueWindows
+      .map((window) => `between(t\\,${window.start.toFixed(3)}\\,${window.end.toFixed(3)})`)
+      .join("+");
+    filterParts.push(`[1:a]volume='if(gt(${duckExpression}\\,0)\\,0.35\\,1)'[source_audio]`);
+    const generatedLabels = dialogueWindows.map((window, index) => {
+      const label = `native_${index}`;
+      const delay = Math.round(window.start * 1000);
+      filterParts.push(`[0:a]atrim=start=${window.start.toFixed(3)}:end=${window.end.toFixed(3)},asetpts=PTS-STARTPTS,adelay=${delay}|${delay}[${label}]`);
+      return `[${label}]`;
+    });
+    filterParts.push(`[source_audio]${generatedLabels.join("")}amix=inputs=${generatedLabels.length + 1}:duration=first:normalize=0[audio]`);
+    audioMap = "[audio]";
+  }
+  await ffmpeg([
+    "-y",
+    "-i", generatedVideo,
+    "-i", sourceClip,
+    "-filter_complex", filterParts.join(";"),
+    "-map", "[v]",
+    "-map", audioMap,
+    "-t", String(targetDuration),
+    "-c:v", "libx264",
+    "-preset", "veryfast",
+    "-crf", "18",
+    "-pix_fmt", "yuv420p",
+    "-c:a", "aac",
+    "-b:a", "192k",
+    "-ar", "48000",
+    "-movflags", "+faststart",
+    output,
+  ], { timeout: 600_000 });
+  return {
+    output,
+    width,
+    height,
+    fps,
+    duration: targetDuration,
+    audioSource: dialogueWindows.length ? "original-segment+ltx-native-dialogue" : "original-segment",
+    nativeDialogueWindows: dialogueWindows,
+  };
+}
+
 export async function mixAudioOverlays({ baseAudio, overlays = [], output }) {
   const readyOverlays = overlays.filter((overlay) => overlay?.input);
   if (!readyOverlays.length) {

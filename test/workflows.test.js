@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import test from "node:test";
 import { buildFirstLastWorkflow, buildWorkflow, videoModelConfig } from "../src/workflows.js";
 
@@ -59,6 +60,31 @@ test("configura Dev FP8 mantenendo lo stesso seed nei due passaggi", () => {
   assert.equal(workflow["136"].inputs.sampler_name, "euler");
   assert.equal(workflow["128"].inputs.cfg, 1);
   assert.equal(workflow["103"].inputs.cfg, 1);
+});
+
+test("configura MiniMax H3 INT8 con una reference e due passaggi audio-video", () => {
+  const { workflow, metadata } = buildWorkflow("minimaxH3", base, upload);
+  assert.equal(workflow["83"].inputs.value, base.prompt);
+  assert.equal(workflow["84"].inputs.value, 8);
+  assert.equal(workflow["97"].inputs.image, "remote/frame.png");
+  assert.equal(workflow["108"].inputs.width, 480);
+  assert.equal(workflow["108"].inputs.height, 832);
+  assert.equal(workflow["108"].inputs.ref_image_size, "match");
+  assert.deepEqual(workflow["108"].inputs["ref_images.ref_image_0"], ["99", 0]);
+  assert.equal(workflow["108"].inputs["ref_images.ref_image_1"], undefined);
+  assert.equal(workflow["243"].inputs.noise_seed, 1234);
+  assert.equal(workflow["300"].inputs.noise_seed, 1234);
+  assert.equal(workflow["291"].inputs.width, 480);
+  assert.equal(workflow["291"].inputs.height, 832);
+  assert.equal(workflow["293"].class_type, "LTXVConcatAVLatent");
+  assert.equal(workflow["101"], undefined);
+  assert.equal(metadata.workflowId, "minimaxH3");
+  assert.equal(metadata.videoModelId, "minimax-h3-int8");
+  assert.equal(metadata.sourceImage, "remote/frame.png");
+  assert.deepEqual(metadata.loras, [{
+    name: "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
+    strength: 1,
+  }]);
 });
 
 test("configura Dev FP8 Text-to-Video bypassando entrambe le guide immagine", () => {
@@ -231,8 +257,6 @@ test("configura il workflow V2V Edit Anything con video e impostazioni avanzate"
     editStrength: "0.8",
     promptEnhancer: "on",
     useInputAudio: "on",
-    auxiliaryLora: "on",
-    auxiliaryLoraStrength: "0.7",
   }, video);
 
   assert.equal(workflow["840"].inputs.video, "remote/source video.mp4");
@@ -245,7 +269,8 @@ test("configura il workflow V2V Edit Anything con video e impostazioni avanzate"
   assert.equal(workflow["93"].inputs.cfg, 1.5);
   assert.equal(workflow["5389"].inputs.nag_scale, 9);
   assert.equal(workflow["5343"].inputs.lora_1.strength, 0.8);
-  assert.equal(workflow["218"].inputs.strength_model, 0.7);
+  assert.equal(workflow["218"], undefined);
+  assert.deepEqual(workflow["5343"].inputs.model, ["219", 0]);
   assert.equal(workflow["5324"].inputs.value, true);
   assert.equal(workflow["5414"].inputs.value, true);
   assert.equal(metadata.sourceVideo, "remote/source video.mp4");
@@ -269,6 +294,13 @@ test("V2V disabilita per default la LoRA aggiuntiva specifica del template", () 
   assert.equal(workflow["5414"].inputs.value, true);
 });
 
+test("V2V usa 1280 px come lato massimo predefinito", () => {
+  const video = { name: "source.mp4", subfolder: "", type: "input" };
+  const { workflow, metadata } = buildWorkflow("editAnything", base, video);
+  assert.equal(workflow["846"].inputs.value, 1280);
+  assert.equal(metadata.resolution, "1280px max");
+});
+
 test("Edit Anything usa LTX 2.3 normale per default", () => {
   const video = { name: "source.mp4", subfolder: "", type: "input" };
   const defaultBuild = buildWorkflow("editAnything", base, video);
@@ -279,6 +311,20 @@ test("Edit Anything usa LTX 2.3 normale per default", () => {
   assert.equal(defaultBuild.workflow["216"].class_type, "DualCLIPLoader");
   assert.equal(defaultBuild.workflow["218"], undefined);
   assert.deepEqual(defaultBuild.workflow["5343"].inputs.model, ["219", 0]);
+});
+
+test("il template API Edit Anything non contiene modello o LoRA legacy", () => {
+  const template = JSON.parse(fs.readFileSync(
+    new URL("../workflows/LTX23_V2V_EDIT_ANYTHING_API.json", import.meta.url),
+    "utf8",
+  ));
+  assert.equal(template["218"], undefined);
+  assert.equal(
+    template["219"].inputs.unet_name,
+    "LTX2.3\\ltx-2.3-22b-distilled-1.1_transformer_only_fp8_scaled.safetensors",
+  );
+  assert.deepEqual(template["5343"].inputs.model, ["219", 0]);
+  assert.equal(template["846"].inputs.value, 1280);
 });
 
 test("rifiuta un modello video LTX non riconosciuto", () => {

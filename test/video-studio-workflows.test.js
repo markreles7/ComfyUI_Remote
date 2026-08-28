@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildInteractiveCastUnionJob,
   buildVideoStudioInitialJob,
   buildVideoStudioLipdubJob,
   videoStudioConfig,
@@ -154,6 +155,30 @@ test("Scene Transform V2V usa Union Control con video guida e frame target", () 
   assert.match(job.workflow["2483"].inputs.text, /Bahamas/);
   assert.equal(job.metadata.videoStudioMode, "sceneTransform");
   assert.equal(job.metadata.engine, "unionControl");
+});
+
+test("Interactive Cast usa il segmento originale come guida e l'anchor approvato come reference", () => {
+  const job = buildInteractiveCastUnionJob({
+    prompt: "Marco enters from the left and approaches the table.",
+    negativePrompt: "subtitles",
+    projectId: "cast-1",
+    segmentId: "segment-2",
+    duration: 5,
+    quality: "preview",
+    controlType: "edges",
+    controlStrength: 1.15,
+    seed: 91,
+  }, { guideVideo: sourceVideo, referenceSheet: identityImage }, config);
+
+  assert.equal(job.workflow["5001"].inputs.file, "remote/scene.mp4");
+  assert.equal(job.workflow["2004"].inputs.image, "remote/identity.jpg");
+  assert.deepEqual(job.workflow["5028"].inputs.input, ["4991", 0]);
+  assert.match(job.workflow["2483"].inputs.text, /source clip is authoritative/i);
+  assert.match(job.workflow["2483"].inputs.text, /Do not invent a different shot/i);
+  assert.match(job.workflow["2483"].inputs.text, /Never render captions/i);
+  assert.equal(job.metadata.videoStudioMode, "interactiveCast");
+  assert.equal(job.metadata.preservationMode, "source-video-authoritative");
+  assert.equal(job.metadata.restoreSourceAudio, true);
 });
 
 test("costruisce Actor Replacement con video, maschera, identità e LoRA", () => {

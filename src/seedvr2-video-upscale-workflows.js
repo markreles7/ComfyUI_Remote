@@ -150,7 +150,6 @@ export function buildSeedvr2VideoUpscaleWorkflow(rawOptions = {}, upload) {
         frame_load_cap: frameLoadCap,
         skip_first_frames: 0,
         select_every_nth: 1,
-        format: "video",
       },
       "VHS_LoadVideo",
       "Video sorgente",
@@ -162,21 +161,8 @@ export function buildSeedvr2VideoUpscaleWorkflow(rawOptions = {}, upload) {
       "VHS_VideoInfo",
       "FPS sorgente",
     ),
-    "3": node(
-      {
-        backend: "inductor",
-        mode: "default",
-        fullgraph: false,
-        dynamic: false,
-        dynamo_cache_size_limit: 64,
-        dynamo_recompile_limit: 128,
-      },
-      "SeedVR2TorchCompileSettings",
-      "Torch compile SeedVR2",
-    ),
     "4": node(
       {
-        torch_compile_args: ["3", 0],
         model,
         device: "cuda:0",
         blocks_to_swap: profile.blocksToSwap,
@@ -190,7 +176,6 @@ export function buildSeedvr2VideoUpscaleWorkflow(rawOptions = {}, upload) {
     ),
     "5": node(
       {
-        torch_compile_args: ["3", 0],
         model: vae,
         device: "cuda:0",
         encode_tiled: true,
@@ -311,11 +296,9 @@ export function seedvr2VideoUpscaleConfig({
       return actual === wanted || actual.endsWith(`\\${wanted}`);
     });
 
-  const optionalTorchCompile = nodes.has("SeedVR2TorchCompileSettings");
   const missingNodes = SEEDVR2_VIDEO_UPSCALE_REQUIRED_NODES.filter(
     (name) => !nodes.has(name),
   );
-  if (!optionalTorchCompile) missingNodes.push("SeedVR2TorchCompileSettings");
 
   const profiles = Object.values(SEEDVR2_VIDEO_UPSCALE_PROFILES).map((profile) => ({
     ...profile,

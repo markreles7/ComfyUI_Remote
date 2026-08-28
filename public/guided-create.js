@@ -1,6 +1,9 @@
 import { enhanceMainPrompt } from "./prompt-assistant.js";
 import { saveGuidedHandoff } from "./guided-handoff.js";
 import { setupUploadPreviews } from "./upload-previews.js";
+import { createAdaptivePoller, getAppConfig, warmAppConfig } from "./runtime-cache.js";
+
+void warmAppConfig();
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -41,12 +44,16 @@ const BRANCHES = {
     { id: "director", title: "Creare scene consecutive", description: "Director con 1–3 scene e continuità" },
   ],
   video: [
+    { id: "ltx25Aio", title: "LTX 2.5 AIO", description: "Audio/video nativo, keyframe, reference e controllo V2V" },
+    { id: "minimaxH3", title: "MiniMax H3 multimodale", description: "Testo, frame e reference immagini/video/audio" },
+    { id: "actionH3", title: "ACTION H3", description: "Combattimenti e azioni frenetiche con Combat V2" },
     { id: "textVideo", title: "Video da una descrizione", description: "Text to Video LTX 2.3" },
     { id: "videoEdit", title: "Modificare un video esistente", description: "Scene Transform V2V con Union Control" },
     { id: "actorReplace", title: "Sostituire un attore", description: "Viso, testa o corpo" },
     { id: "actorAdd", title: "Aggiungere un personaggio", description: "Azioni, dialoghi e risposte" },
     { id: "retake", title: "Rigenerare una clip", description: "Mantiene struttura e audio" },
     { id: "extend", title: "Continuare un video", description: "Prosegue dal frame finale" },
+    { id: "sequentialStory", title: "Creare una storia continua", description: "Scene collegate con continuity frame" },
   ],
   character: [
     { id: "storyboard", title: "Storyboard di 2–4 immagini", description: "Shot coerenti dalle stesse reference" },
@@ -88,6 +95,43 @@ const ROUTES = {
   upscale: { page: "/", generationType: "upscale", target: null, title: "Upscaling e detailer", uploads: [{ key: "upscaleImage", label: "Carica la foto da migliorare", accept: "image/*" }] },
   temporal: { page: "/video-studio.html", videoStudioMode: "temporalUpscale", target: null, title: "Temporal Upscaler 2×", uploads: [{ key: "sourceVideo", label: "Carica il video", accept: "video/*" }] },
   hdr: { page: "/video-studio.html", videoStudioMode: "hdr", target: "videostudio", title: "HDR Studio", uploads: [{ key: "sourceVideo", label: "Carica il video da correggere", accept: "video/*" }] },
+  sequentialStory: { page: "/video-studio.html", videoStudioMode: "sequentialStory", target: "videostudio", title: "Storia continua", uploads: [{ key: "sequentialInitialImage", label: "Frame iniziale (facoltativo)", accept: "image/*", optional: true }] },
+  minimaxH3: { page: "/video-studio.html", videoStudioMode: "minimaxH3", target: "videostudio", title: "MiniMax H3 Studio" },
+  actionH3: { page: "/video-studio.html", videoStudioMode: "actionH3", target: "videostudio", title: "ACTION H3" },
+  ltx25Aio: { page: "/video-studio.html", videoStudioMode: "ltx25Aio", target: "videostudio", title: "LTX 2.5 AIO" },
+};
+
+const DIRECT_WORKFLOWS = {
+  editorGuided: "guidedEdit",
+  guidedEdit: "guidedEdit",
+  storyboardDirector: "storyboard",
+  storyboard: "storyboard",
+  director: "director",
+  actorReplacement: "actorReplace",
+  interactiveScene: "actorAdd",
+  sceneTransform: "videoEdit",
+  retake: "retake",
+  extend: "extend",
+  hdr: "hdr",
+  sequentialStory: "sequentialStory",
+  minimaxH3: "minimaxH3",
+  actionH3: "actionH3",
+  ltx25Aio: "ltx25Aio",
+};
+
+const WORKFLOW_CHECKLISTS = {
+  storyboard: ["Reference master", "Numero e ordine degli shot", "Continuita di identita, luce e location", "Controllo finale prima del render"],
+  director: ["Numero e durata delle scene", "Continuita globale", "Prompt indipendente per ogni scena", "Revisione timeline prima della generazione"],
+  actorReplace: ["Clip sorgente breve e continua", "Reference nitida della nuova identita", "Area da sostituire", "Preflight e prova veloce"],
+  actorAdd: ["Keyframe master con tutti i personaggi gia posizionati", "Descrizione da sinistra a destra", "Azioni, dialoghi e camera", "Preflight Ingredients IC-LoRA"],
+  videoEdit: ["Video guida", "Frame target con il risultato desiderato", "Tipo di controllo Edge o Pose", "Preflight Union Control"],
+  retake: ["Clip da rigenerare", "Un solo cambiamento principale", "Vincoli da conservare", "Confronto con audio e scena originali"],
+  extend: ["Clip originale", "Azione immediatamente successiva", "Durata aggiuntiva", "Controllo raccordo sul frame finale"],
+  hdr: ["Video sorgente", "Direzione di luce e contrasto", "Esposizione", "Controllo highlight, ombre ed eventuale EXR"],
+  sequentialStory: ["Idea completa e ordine degli eventi", "Testo o immagine iniziale", "Numero e durata delle scene", "Scaletta, continuity frame e avvio sequenza"],
+  minimaxH3: ["Scegli T2V, singola immagine, first/last o multi-reference", "Imposta 0,4/0,6 → 1,0 MP oppure sampling diretto 0,9 MP", "Seleziona LoRA H3 e reference", "Controlla i purge VRAM prima di avviare"],
+  actionH3: ["Scegli T2V, singola immagine o first/last", "Descrivi attacco, impatto, reazione e recupero", "Scegli trigger Combat V2 e qualità", "Verifica res_multistep + simple prima del render"],
+  ltx25Aio: ["Scegli generazione, reference o controllo video", "Parti da Anteprima e conserva il seed", "Carica gli input richiesti dalla modalità", "Controlla il piano Purge VRAM prima del render finale"],
 };
 
 function escapeHtml(value) {
@@ -180,6 +224,7 @@ function selectIntent() {
 
 function selectBranch(id) {
   const branch = Object.values(BRANCHES).flat().find((item) => item.id === id);
+  if (!branch || !ROUTES[id]) return showToast("Workflow guidato non disponibile.");
   state.route = { ...ROUTES[id], id };
   state.answers.branch = id;
   message("user", escapeHtml(branch.title));
@@ -231,7 +276,7 @@ function askDirectorSetup() {
 
 function askUploads() {
   const uploads = state.route.uploads || [];
-  if (!uploads.length) return askEngine();
+  if (!uploads.length) return askWorkflowDetails();
   $("#guided-step-label").textContent = "3 · Carica il materiale";
   message("assistant", `<b>Prepariamo il materiale di partenza.</b><p>I file verranno passati automaticamente al workflow.</p>`);
   $("#guided-composer").innerHTML = `
@@ -254,6 +299,57 @@ function askUploads() {
     const missing = requiredUploads().find((upload) => !state.files[upload.key]);
     if (missing) return showToast(`Manca: ${missing.label}`);
     message("user", `${Object.values(state.files).filter(Boolean).length} file ${Object.values(state.files).filter(Boolean).length === 1 ? "caricato" : "caricati"}`);
+    askWorkflowDetails();
+  });
+}
+
+function askWorkflowDetails() {
+  const id = state.route.id;
+  if (id === "actorAdd") {
+    return workflowDetailsForm("4 · Imposta la scena", "Definisci il keyframe master", [
+      ["referenceDescription", "Chi compare nel keyframe?", "Da sinistra a destra: nome, posizione e abito di ogni persona", "textarea"],
+      ["duration", "Durata in secondi", "10", "number"],
+      ["cameraMotion", "Movimento camera", "subtle handheld", "text"],
+    ]);
+  }
+  if (id === "videoEdit") {
+    return workflowDetailsForm("4 · Controllo strutturale", "Come deve seguire il video originale?", [
+      ["editUseCase", "Tipo di modifica", "background", "select:background=sfondo/location|style=look/atmosfera|wardrobe=abito/oggetti|character=personaggio"],
+      ["controlType", "Guida temporale", "edges", "select:edges=Edge/composizione|pose=Pose/performance"],
+      ["controlStrength", "Forza controllo (0-1.5)", "0.78", "number"],
+    ]);
+  }
+  if (id === "retake") return workflowDetailsForm("4 · Durata", "Quanto deve durare il retake?", [["duration", "Secondi", "10", "number"]]);
+  if (id === "extend") return workflowDetailsForm("4 · Continuazione", "Quanto video vuoi aggiungere?", [["extendDuration", "Secondi da aggiungere", "5", "number"]]);
+  if (id === "hdr") return workflowDetailsForm("4 · Esposizione", "Imposta il punto di partenza HDR", [["hdrExposure", "Esposizione", "7.1", "number"]]);
+  if (id === "sequentialStory") {
+    return workflowDetailsForm("4 · Struttura della storia", "Definisci la sequenza prima della scaletta", [
+      ["sequentialSceneCount", "Numero scene", "3", "number"],
+      ["sequentialSceneDuration", "Secondi per scena", "10", "number"],
+      ["sequentialGlobalStyle", "Stile e continuita globale", "realistic cinematic LTX, coherent identity, lighting and camera", "text"],
+    ]);
+  }
+  askEngine();
+}
+
+function workflowDetailsForm(step, title, fields) {
+  $("#guided-step-label").textContent = step;
+  message("assistant", `<b>${escapeHtml(title)}</b><p>Questi valori verranno trasferiti nel pannello corretto e resteranno modificabili.</p>`);
+  const fieldHtml = fields.map(([key, label, value, type]) => {
+    if (type === "textarea") return `<label><span>${escapeHtml(label)}</span><textarea data-workflow-detail="${escapeHtml(key)}" rows="3" placeholder="${escapeHtml(value)}"></textarea></label>`;
+    if (String(type).startsWith("select:")) {
+      const options = String(type).slice(7).split("|").map((entry) => entry.split("="));
+      return `<label><span>${escapeHtml(label)}</span><select data-workflow-detail="${escapeHtml(key)}">${options.map(([optionValue, optionLabel]) => `<option value="${escapeHtml(optionValue)}" ${optionValue === value ? "selected" : ""}>${escapeHtml(optionLabel)}</option>`).join("")}</select></label>`;
+    }
+    return `<label><span>${escapeHtml(label)}</span><input data-workflow-detail="${escapeHtml(key)}" type="${type === "number" ? "number" : "text"}" value="${escapeHtml(value)}"></label>`;
+  }).join("");
+  $("#guided-composer").innerHTML = `<div class="guided-question-form">${fieldHtml}</div><button id="guided-details-next" class="primary-action" type="button">Continua →</button>`;
+  $("#guided-details-next").addEventListener("click", () => {
+    document.querySelectorAll("[data-workflow-detail]").forEach((input) => {
+      state.answers[input.dataset.workflowDetail] = input.value.trim();
+    });
+    message("user", "Impostazioni del workflow confermate");
+    renderSummary();
     askEngine();
   });
 }
@@ -572,6 +668,17 @@ function buildHandoff() {
     quality: state.answers.quality,
     engine: state.answers.engine || "auto",
     directorScenes: state.answers.directorScenes || null,
+    referenceDescription: state.answers.referenceDescription || "",
+    duration: state.answers.duration || "",
+    cameraMotion: state.answers.cameraMotion || "",
+    editUseCase: state.answers.editUseCase || "",
+    controlType: state.answers.controlType || "",
+    controlStrength: state.answers.controlStrength || "",
+    extendDuration: state.answers.extendDuration || "",
+    hdrExposure: state.answers.hdrExposure || "",
+    sequentialSceneCount: state.answers.sequentialSceneCount || "",
+    sequentialSceneDuration: state.answers.sequentialSceneDuration || "",
+    sequentialGlobalStyle: state.answers.sequentialGlobalStyle || "",
   };
   return {
     version: 1,
@@ -597,6 +704,25 @@ async function continueToWorkflow() {
   }
 }
 
+function startDirectWorkflow(requested) {
+  const routeId = DIRECT_WORKFLOWS[requested];
+  if (!routeId) return false;
+  if (routeId === "guidedEdit") {
+    state.answers.intent = "edit";
+    state.answers.intentTitle = "Editor Guidato";
+    $("#guided-step-label").textContent = "1 · Tipo di modifica";
+    message("assistant", "<b>Editor Guidato, dall'immagine iniziale al controllo finale.</b><p>Scegli l'operazione: la guida preparera reference, prompt, vincoli di conservazione, modello e qualita.</p>");
+    choices(BRANCHES.edit, selectBranch);
+    return true;
+  }
+  const branch = Object.values(BRANCHES).flat().find((item) => item.id === routeId);
+  state.answers.intentTitle = branch?.title || ROUTES[routeId].title;
+  const checklist = WORKFLOW_CHECKLISTS[routeId] || [];
+  message("assistant", `<b>${escapeHtml(ROUTES[routeId].title)}: procedura completa.</b>${checklist.length ? `<ol class="guided-inline-checklist">${checklist.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ol>` : ""}<p>Nessuna generazione partira automaticamente: arriverai al form finale gia compilato per l'ultima verifica.</p>`);
+  selectBranch(routeId);
+  return true;
+}
+
 function reset() {
   state.route = null;
   state.answers = {};
@@ -606,7 +732,8 @@ function reset() {
   $("#guided-messages").innerHTML = "";
   $("#guided-composer").innerHTML = "";
   renderSummary();
-  selectIntent();
+  const requested = new URLSearchParams(location.search).get("workflow");
+  if (!startDirectWorkflow(requested)) selectIntent();
 }
 
 async function checkHealth() {
@@ -623,12 +750,10 @@ async function checkHealth() {
 
 async function start() {
   try {
-    const response = await fetch("/api/config");
-    if (!response.ok) throw new Error(`Configurazione non disponibile (${response.status})`);
-    state.config = await response.json();
+    state.config = await getAppConfig();
     reset();
     checkHealth();
-    setInterval(checkHealth, 15000);
+    createAdaptivePoller(checkHealth, { idleMs: 15_000, hiddenMs: 60_000 });
   } catch (error) {
     message("assistant", `<b>Impossibile avviare la guida.</b><p>${escapeHtml(error.message)}</p>`);
   }

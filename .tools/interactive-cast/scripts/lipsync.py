@@ -13,6 +13,14 @@ def tool_directory():
     return Path(configured).resolve() if configured else Path(__file__).resolve().parents[1]
 
 
+def media_duration(file):
+    probe = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", str(file)],
+        capture_output=True, text=True, encoding="utf-8", errors="replace", check=True,
+    )
+    return max(0.04, float(probe.stdout.strip()))
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--video", required=True)
@@ -93,7 +101,18 @@ def main():
             f"MuseTalk 1.5 did not produce the expected output (exit {completed.returncode}). "
             f"Last engine output: {tail}"
         )
-    shutil.copy2(generated, output)
+    source_duration = media_duration(video)
+    normalized = work_dir / "duration-normalized.mp4"
+    normalize = subprocess.run([
+        "ffmpeg", "-y", "-i", str(generated),
+        "-vf", "tpad=stop_mode=clone:stop_duration=3600",
+        "-af", "apad", "-t", f"{source_duration:.6f}",
+        "-c:v", "libx264", "-preset", "medium", "-crf", "16", "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(normalized),
+    ], capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
+    if normalize.returncode != 0 or not normalized.is_file():
+        raise RuntimeError(f"Lip-sync duration normalization failed: {normalize.stderr[-1000:]}")
+    shutil.copy2(normalized, output)
     shutil.rmtree(work_dir, ignore_errors=True)
     print(json.dumps({
         "path": str(output),
@@ -102,6 +121,7 @@ def main():
         "mode": "jaw-region-lipsync",
         "sourceStart": args.start,
         "sourceEnd": args.end,
+        "duration": source_duration,
         "externalMaskUsed": False,
         "externalMaskNote": "MuseTalk 1.5 applies its own parsed jaw mask." if args.mask else None,
     }))

@@ -28,12 +28,13 @@ import {
 } from "../src/interactive-cast/lipsync-engine.js";
 import { InteractiveCastOrchestrator } from "../src/interactive-cast/orchestrator.js";
 import { interactiveCastCapabilities } from "../src/interactive-cast/capabilities.js";
-import { interactiveCastPython, interactiveCastScript } from "../src/interactive-cast/python-tools.js";
+import { interactiveCastPython, interactiveCastScript, parsePythonJsonOutput } from "../src/interactive-cast/python-tools.js";
 import { cacheKey, renderPackageCacheKey, stableJson, stageStatus } from "../src/interactive-cast/pipeline-state.js";
 import { InteractiveCastProjectStore } from "../src/interactive-cast/project-store.js";
 import { parseSceneDetectLog, referenceFrameTimes, sceneWindowsFromCuts } from "../src/interactive-cast/video-analysis.js";
 import { voiceEngineCapabilities, VoiceEngineNotConfiguredError } from "../src/interactive-cast/voice-engine.js";
 import { verifySegmentIdentity } from "../src/interactive-cast/identity-check.js";
+import { selectAnchorPlacement } from "../src/interactive-cast/anchor-verification.js";
 import { GpuResourceBusyError, GpuResourceManager } from "../src/gpu-resource-manager.js";
 
 test("interactive cast normalizes dialogue events and preserves original windows", () => {
@@ -45,10 +46,24 @@ test("interactive cast normalizes dialogue events and preserves original windows
   const windows = planEditWindows({ duration: 10, dialogueEvents: events });
 
   assert.equal(events.length, 2);
+  assert.equal(events[0].audioMode, "ltxNative");
+  assert.equal(events[1].audioMode, "external");
   assert.equal(windows[0].mode, "original");
   assert.equal(windows.some((window) => window.mode === "generative"), true);
   assert.equal(windows.some((window) => window.mode === "lipSyncOnly"), true);
   assert.equal(windows.at(-1).mode, "original");
+});
+
+test("python JSON parser ignores native diagnostics before the final payload", () => {
+  const parsed = parsePythonJsonOutput('E:\\ComfyUI\\models\\insightface\nOpenCV initialized\n{"status":"passed","faces":3}');
+  assert.deepEqual(parsed, { status: "passed", faces: 3 });
+});
+
+test("python JSON parser rejects output without a payload and keeps diagnostics", () => {
+  assert.throws(
+    () => parsePythonJsonOutput("E:\\ComfyUI\\models\\insightface"),
+    /privo di JSON valido.*insightface/,
+  );
 });
 
 test("interactive cast planner respects explicit edit modes and merges overlapping windows", () => {
@@ -212,6 +227,15 @@ test("interactive cast segment tasks carry added actor references into prompts",
       characterPack: { status: "Ready", referenceCount: 4 },
     }],
     anchorWorkflowId: "qwen-krea-klein",
+    dialogueEvents: [{
+      speaker: "Selly",
+      start: 3,
+      end: 5,
+      dialogue: "I am here.",
+      action: "enters from the left and walks toward the table",
+      mode: "generative",
+      audioMode: "ltxNative",
+    }],
   });
 
   assert.equal(tasks.tasks.length, 1);
@@ -221,6 +245,12 @@ test("interactive cast segment tasks carry added actor references into prompts",
   assert.match(tasks.tasks[0].prompt, /Use these added actor references/);
   assert.match(tasks.tasks[0].prompt, /Selly/);
   assert.match(tasks.tasks[0].prompt, /oval face and direct gaze/);
+  assert.match(tasks.tasks[0].videoPrompt, /Native synchronized LTX audio/);
+  assert.match(tasks.tasks[0].videoPrompt, /I am here\./);
+  assert.doesNotMatch(tasks.tasks[0].anchorPrompt, /I am here\./);
+  assert.doesNotMatch(tasks.tasks[0].anchorPrompt, /walks toward the table/);
+  assert.match(tasks.tasks[0].anchorPrompt, /STATIC ANCHOR EDIT ONLY/);
+  assert.match(tasks.tasks[0].anchorNegativePrompt, /captions/);
   assert.match(tasks.tasks[0].referenceRequirement, /Character Pack or temporary actor reference/);
 });
 
@@ -337,6 +367,85 @@ test("interactive cast prepares dialogue audio tasks without claiming voice clon
   assert.equal(tasks.tasks[0].mix.duckVolume, 0.45);
   assert.equal(tasks.readiness.ready, false);
   assert.equal(audioTaskReadiness(tasks.tasks.map((task) => ({ ...task, replacementPath: "line.wav" }))).ready, true);
+});
+
+test("interactive cast leaves generative LTX dialogue inside the video model", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "interactive-cast-ltx-audio-"));
+  const tasks = await prepareDialogueAudioTasks({
+    sourceAudio: null,
+    projectDirectory: root,
+    dialogueEvents: [
+      {
+        id: "event-native",
+        speaker: "New Actor",
+        start: 2,
+        end: 4,
+        dialogue: "Questo si che e strano.",
+        mode: "generative",
+        audioMode: "ltxNative",
+      },
+      {
+        id: "event-external",
+        speaker: "Original Actor 1",
+        start: 4,
+        end: 5,
+        dialogue: "Hai ragione.",
+        mode: "lipSyncOnly",
+        audioMode: "external",
+      },
+    ],
+  });
+
+  assert.equal(tasks.tasks.length, 1);
+  assert.equal(tasks.tasks[0].eventId, "event-external");
+});
+
+test("interactive cast forces Qwen Image Edit 2511 and protects the source outside the anchor region", () => {
+  const server = fs.readFileSync(new URL("../src/server.js", import.meta.url), "utf8");
+  const assistant = fs.readFileSync(new URL("../src/lm-studio-client.js", import.meta.url), "utf8");
+  const ui = fs.readFileSync(new URL("../public/video-studio.js", import.meta.url), "utf8");
+
+  assert.match(server, /QWEN\\\\qwen_image_edit_2511_bf16\.safetensors/);
+  assert.match(server, /ImageCompositeMasked/);
+  assert.match(server, /task\.anchorPrompt \|\| task\.anchorRequirement/);
+  assert.match(server, /protectedOutsideRegion: true/);
+  assert.match(server, /verifyAnchorCandidate/);
+  assert.match(server, /INTERACTIVE_CAST_ANCHOR_MAX_ATTEMPTS = 3/);
+  assert.match(server, /placementGuideIncluded: false/);
+  assert.match(server, /placementMaskMode: "latent-noise-mask"/);
+  assert.match(server, /class_type: "SetLatentNoiseMask"/);
+  assert.match(server, /segments\/:segmentId\/external-anchor/);
+  assert.match(server, /approve-anchor/);
+  assert.match(ui, /data-interactive-cast-approve-anchor/);
+  assert.match(ui, /Approva anchor e genera LTX/);
+  assert.match(ui, /LTX resterà bloccato fino alla tua approvazione/);
+  assert.match(assistant, /"audioMode":"ltxNative"/);
+  assert.match(ui, /Audio nativo LTX/);
+});
+
+test("anchor placement avoids an occupied requested side", () => {
+  const placement = selectAnchorPlacement({
+    instruction: "the actor enters from the left",
+    faces: [
+      { normalizedBox: [0.18, 0.20, 0.08, 0.14] },
+      { normalizedBox: [0.66, 0.20, 0.08, 0.14] },
+    ],
+  });
+
+  assert.equal(placement.requested, "left");
+  assert.equal(placement.label, "center-safe");
+  assert.equal(placement.overridden, true);
+  assert.ok(placement.candidates.find((item) => item.label === "left").occupancy > placement.occupancy);
+});
+
+test("anchor placement keeps the requested side when it is free", () => {
+  const placement = selectAnchorPlacement({
+    instruction: "the actor enters from the right",
+    faces: [{ normalizedBox: [0.15, 0.20, 0.08, 0.14] }],
+  });
+
+  assert.equal(placement.label, "right-safe");
+  assert.equal(placement.overridden, false);
 });
 
 test("voice reference selection prefers the longest window assigned to the event actor", () => {
@@ -517,6 +626,44 @@ test("interactive cast identity check reports insufficient output without crashi
   assert.equal(report.engine, "interactive-cast-perceptual-pgm");
 });
 
+test("interactive cast anchor identity report reuses the verified external anchor gate", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "interactive-cast-anchor-identity-"));
+  const store = new InteractiveCastProjectStore({
+    file: path.join(root, "projects.json"),
+    assetDirectory: path.join(root, "assets"),
+  });
+  store.add({
+    id: "cast-anchor",
+    renderPackage: {
+      segments: [{ id: "segment-1", requiredGenerated: true, status: "waiting_for_ai_segment" }],
+      segmentTasks: {
+        tasks: [{
+          segmentId: "segment-1",
+          generation: {
+            anchorVerification: {
+              status: "passed",
+              engine: "insightface-anchor-gate",
+              bestIdentitySimilarity: 0.81,
+              sourceFaceCount: 2,
+              candidateFaceCount: 3,
+              failures: [],
+            },
+          },
+        }],
+      },
+    },
+    stages: {},
+  });
+  const orchestrator = new InteractiveCastOrchestrator({ root, store, characterStore: null });
+
+  const updated = await orchestrator.verifySegmentIdentity("cast-anchor", "segment-1", { scope: "anchor" });
+  const report = updated.renderPackage.identityReports["segment-1"];
+
+  assert.equal(report.status, "passed");
+  assert.equal(report.scope, "anchor");
+  assert.equal(report.averageSimilarity, 0.81);
+});
+
 test("interactive cast audio analysis preserves explicit fallback stem metadata", () => {
   const analysis = audioAnalysisFallback({ audioStreams: [{}] }, {
     sourceSeparation: "FALLBACK",
@@ -626,6 +773,20 @@ test("interactive cast python tool paths stay inside isolated tool directory", (
 
   assert.match(script, /[\\/]\.tools[\\/]interactive-cast[\\/]scripts[\\/]track\.py$/);
   assert.ok(python === "python" || /[\\/]\.tools[\\/]interactive-cast[\\/]\.venv[\\/]Scripts[\\/]python\.exe$|[\\/]\.tools[\\/]interactive-cast[\\/]\.venv[\\/]bin[\\/]python$/.test(python));
+});
+
+test("identity provider può riusare il Python ComfyUI già installato", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "comfy-python-"));
+  const python = path.join(root, "python.exe");
+  fs.writeFileSync(python, "test");
+  const previous = process.env.COMFYUI_PYTHON_EXE;
+  process.env.COMFYUI_PYTHON_EXE = python;
+  try {
+    assert.equal(interactiveCastPython({ root, environment: "comfyui" }), path.resolve(python));
+  } finally {
+    if (previous === undefined) delete process.env.COMFYUI_PYTHON_EXE;
+    else process.env.COMFYUI_PYTHON_EXE = previous;
+  }
 });
 
 test("interactive cast actor tracking falls back when isolated script is unavailable", async () => {

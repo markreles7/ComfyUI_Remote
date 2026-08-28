@@ -1,6 +1,11 @@
-import { enhanceMainPrompt } from "./prompt-assistant.js";
+import { enhanceMainPrompt } from "./prompt-assistant.js?v=20260827-h3-character-context";
 import { consumeGuidedHandoff, guidedTokenFromLocation, setInputFile } from "./guided-handoff.js";
+import { applyH3LoraTriggers, applyLoraTriggers, automaticLoraTriggers, loraOptionLabel, uniquePromptTriggers } from "./lora-triggers.js?v=20260824-h3-fields";
 import { setupUploadPreviews } from "./upload-previews.js";
+import { createAdaptivePoller, getAppConfig, warmAppConfig } from "./runtime-cache.js";
+import { attachFormDraft } from "./form-draft.js";
+
+void warmAppConfig();
 
 const state = {
   config: null,
@@ -14,18 +19,181 @@ const state = {
   interactiveCastProjects: [],
   interactiveCastView: "config",
   interactiveCastActiveProjectId: "",
+  interactiveCastPreferredQuality: "preview",
   interactiveCastEvents: [
-    { speaker: "New Actor", start: 3, end: 5, dialogue: "", action: "enters the scene", reaction: "none", mode: "" },
-    { speaker: "Original Actor 1", start: 5, end: 7, dialogue: "", action: "turns and answers", reaction: "speak", mode: "" },
+    { speaker: "New Actor", start: 3, end: 5, dialogue: "", action: "enters the scene", reaction: "none", mode: "", audioMode: "ltxNative" },
+    { speaker: "Original Actor 1", start: 5, end: 7, dialogue: "", action: "turns and answers", reaction: "speak", mode: "", audioMode: "external" },
   ],
   sequentialPlan: null,
   actorFrame: null,
   actorMask: null,
   actorDrawing: false,
+  comfyOnline: null,
+  configRefreshInFlight: false,
   projectsRenderKey: "",
+  readiness: { ready: true, title: "", detail: "" },
 };
 
 const $ = (selector) => document.querySelector(selector);
+
+const H3_SCENE_PRESETS = Object.freeze({
+  fantasyVerite: {
+    hint: "Fantasy vérité: I2V verticale 8 s, handheld, Realism People 0,70. L'anteprima 0,4 MP è già utilizzabile; KJ Lanczos è la finitura conservativa consigliata.",
+    mode: "image", duration: "8", aspect: "9:16 (Portrait Widescreen)", look: "amateurHandheld", lora: "realism", strength: 0.7,
+    starter: "The same adult adventurer walks slowly along the existing forest path toward the edge of a small lived-in medieval fantasy hamlet, holding the consumer camera at arm's length. Her gaze alternates briefly between the path and lens; she blinks, breathes, gives one restrained half-smile and brushes one loose curl away without posing. Preserve the source identity, wardrobe, props, close portrait framing, practical forest light and location. Continuous diegetic sound only: footsteps on dry earth, leather creak, cloth, birds, wind and distant village activity. No dialogue, no music, no cuts.",
+  },
+  urbanPhoneDiary: {
+    hint: "Diario urbano: I2V verticale 8 s, selfie smartphone autentico e Realism People 0,65; dialogo e audio nativo restano nel prompt.",
+    mode: "image", duration: "8", aspect: "9:16 (Portrait Widescreen)", look: "phoneSelfie", lora: "realism", strength: 0.65,
+    starter: "The same adult woman records one continuous arm's-length phone selfie while walking at an ordinary pace through a lived-in city street. She speaks naturally in Italian with small pauses, glances briefly at the path, then returns her eyes to the lens. Preserve her identity, clothes and surroundings. Practical street light, minor wrist corrections, brief phone autofocus and exposure adaptation, natural footsteps, traffic and distant voices. No beauty filter, no cuts, no music, no subtitles.",
+  },
+  documentaryPortrait: {
+    hint: "Ritratto documentario: 8 s, attività semplice e non recitata, Realism People 0,70, luce disponibile e camera osservativa.",
+    mode: "image", duration: "8", aspect: "16:9 (Widescreen)", look: "documentary", lora: "realism", strength: 0.7,
+    starter: "The same adult subject performs one simple everyday task in a single observational take. Preserve exact identity, anatomy, wardrobe, props and location. The subject breathes, blinks and makes small unplanned gaze shifts while the camera operator holds a restrained imperfect frame. Practical available light, natural room tone and object sounds, normal motion blur and subtle sensor texture. No posing, no beauty retouching, no cuts, no music.",
+  },
+  dynamicTracking: {
+    hint: "Tracking dinamico: Motion Booster 0,60 con trigger dynv2; azione continua, inerzia leggibile e camera energica ma plausibile.",
+    mode: "image", duration: "6", aspect: "16:9 (Widescreen)", look: "amateurHandheld", lora: "motion", strength: 0.6,
+    starter: "The same adult subject moves quickly through the existing environment in one continuous tracking shot. Preserve exact identity, outfit, props and location. Show readable acceleration, planted footsteps, balance, inertia and a stable ending while the camera operator follows a fraction late and makes small corrective reframes. Coherent parallax, natural motion blur, cloth and hair response, synchronized footsteps and ambience. No speed ramp, no random shake, no cuts, no morphing.",
+  },
+  smoothHumanMotion: {
+    hint: "Movimento umano fluido: Better Motion 0,55, Turbo disattivata, 0,9 MP diretto. Ideale per camminate, gesti e interazioni naturali.",
+    mode: "image", duration: "8", aspect: "16:9 (Widescreen)", look: "documentary", lora: "betterMotion", strength: 0.55, final: true,
+    starter: "The same adult subject performs one clear continuous action with grounded foot placement, natural acceleration and deceleration, small balance corrections, breathing, blinking and physically plausible cloth and hair inertia. Keep the motion description short and explicit. Preserve identity, anatomy, wardrobe and location. One continuous observational take, available light, natural room tone, no cuts, no speed ramp, no synthetic camera shake.",
+  },
+  zeroTwoDance: {
+    hint: "Zero Two Dance: coreografia dedicata 0,75, verticale 6 s. Il trigger doing the zero-two dance viene inserito automaticamente.",
+    mode: "image", duration: "6", aspect: "9:16 (Portrait Widescreen)", look: "phoneSelfie", lora: "zeroTwo", strength: 0.75,
+    starter: "The same adult subject performs the Zero Two dance in one readable full-body take, keeping planted feet, stable anatomy, rhythmic weight transfer and coherent arm arcs. The handheld phone operator makes only small corrective reframes. Preserve identity, outfit and location. Synchronized footsteps and clothing rustle, no cuts, no duplicated limbs, no morphing.",
+  },
+  whisperedDialogue: {
+    hint: "Dialogo sussurrato: Whispering 0,70 + Realism 0,55. Scrivi la battuta con il formato H3 <d>[Italian] ...</d>.",
+    mode: "image", duration: "8", aspect: "9:16 (Portrait Widescreen)", look: "phoneSelfie", lora: "whisper", strength: 0.7, extraLoras: [{ type: "realism", strength: 0.55 }],
+    starter: "The same adult woman records a close handheld phone selfie and leans slightly toward the microphone. (S1) whispers: <d>[Italian] Inserisci qui la battuta in italiano</d>. Her lips, breath and tiny pauses remain synchronized and restrained. Preserve identity, skin texture, wardrobe and room. Quiet diegetic ambience only, no music, no cuts.",
+  },
+  droneFlyover: {
+    hint: "Drone Flyover: Drone Shot 0,70, 16:9 e 8 s. Trigger dr0nesh0t automatico; niente Motion Booster per evitare conflitti.",
+    mode: "text", duration: "8", aspect: "16:9 (Widescreen)", look: "documentary", lora: "drone", strength: 0.7,
+    starter: "A single continuous low-altitude drone shot advances over the environment, then rises gradually while yawing just enough to reveal the wider geography. Stable horizon, coherent parallax, plausible inertia, subtle wind buffeting and realistic exposure adaptation. Preserve spatial continuity and scale. Natural environmental sound only, no cuts, no impossible acceleration, no random orbit.",
+  },
+});
+
+const ACTION_H3_PRESETS = Object.freeze({
+  custom: {
+    hint: "Personalizzato: mantiene parametri e stack LoRA ACTION correnti.",
+    loras: [],
+  },
+  streetBrawlVerite: {
+    hint: "Rissa realistica vérité: scontri ravvicinati, camera umana e impatti credibili. Combat 0,75 · Realism 0,65 · Motion 0,30 · diretto 0,9 MP.",
+    duration: "6", aspect: "16:9 (Widescreen)", trigger: "prfight2", combatStrength: 0.75, quality: "direct09", look: "amateurHandheld",
+    loras: [{ type: "realism", strength: 0.65 }, { type: "motion", strength: 0.3 }],
+  },
+  fantasyMelee: {
+    hint: "Mischia fantasy realistica: peso di armi, cuoio, fango e collisioni ambientali senza effetto CGI. Combat 0,80 · Realism 0,55 · Motion 0,35 · diretto 0,9 MP.",
+    duration: "8", aspect: "16:9 (Widescreen)", trigger: "prfight2", combatStrength: 0.8, quality: "direct09", look: "documentary",
+    loras: [{ type: "realism", strength: 0.55 }, { type: "motion", strength: 0.35 }],
+  },
+  cinematicOneTake: {
+    hint: "Duello cinematografico one-take: regia motivata, silhouette leggibili e nessun taglio inventato. Combat 0,70 · Realism 0,50 · Motion 0,35 · 0,4 → 1,0 MP.",
+    duration: "8", aspect: "16:9 (Widescreen)", trigger: "prfight2", combatStrength: 0.7, quality: "twoPass04", look: "documentary",
+    loras: [{ type: "realism", strength: 0.5 }, { type: "motion", strength: 0.35 }],
+  },
+  brutalFinisher: {
+    hint: "Finisher brutale: escalation breve e un solo colpo conclusivo enfatizzato, con reazione e recupero completi. Combat 0,90 · Realism 0,60 · Motion 0,25 · diretto 0,9 MP.",
+    duration: "6", aspect: "16:9 (Widescreen)", trigger: "prfight2, prfin1", combatStrength: 0.9, quality: "direct09", look: "amateurHandheld",
+    loras: [{ type: "realism", strength: 0.6 }, { type: "motion", strength: 0.25 }],
+  },
+  readableGroupFight: {
+    hint: "Combattimento di gruppo leggibile: un protagonista, attacchi scaglionati e geografia stabile. Combat 0,80 · Realism 0,55 · Motion 0,45 · diretto 0,9 MP.",
+    duration: "6", aspect: "16:9 (Widescreen)", trigger: "prfight2", combatStrength: 0.8, quality: "direct09", look: "amateurHandheld",
+    loras: [{ type: "realism", strength: 0.55 }, { type: "motion", strength: 0.45 }],
+  },
+  smoothChoreography: {
+    hint: "Coreografia fluida: Combat 0,75 · Better Motion 0,45 · Realism 0,50 · Turbo OFF · 0,9 MP. Evita Motion Booster e privilegia contatti leggibili.",
+    duration: "8", aspect: "16:9 (Widescreen)", trigger: "prfight2", combatStrength: 0.75, quality: "direct09", look: "documentary", turbo: false,
+    loras: [{ type: "betterMotion", strength: 0.45 }, { type: "realism", strength: 0.5 }],
+  },
+  fantasyBattleVerite: {
+    hint: "Battaglia fantasy vérité: Combat 0,80 · Better Motion 0,45 · Realism 0,55 · camera fisica, 0,9 MP e Turbo OFF.",
+    duration: "8", aspect: "16:9 (Widescreen)", trigger: "prfight2", combatStrength: 0.8, quality: "direct09", look: "amateurHandheld", turbo: false,
+    loras: [{ type: "betterMotion", strength: 0.45 }, { type: "realism", strength: 0.55 }],
+  },
+  aerialAction: {
+    hint: "Azione aerea: Combat 0,65 · Drone 0,60 · Realism 0,45. Per inseguimenti o battaglie leggibili dall’alto, senza Motion Booster.",
+    duration: "8", aspect: "16:9 (Widescreen)", trigger: "prfight2", combatStrength: 0.65, quality: "direct09", look: "documentary", turbo: false,
+    loras: [{ type: "drone", strength: 0.6 }, { type: "realism", strength: 0.45 }],
+  },
+});
+
+const LTX25_LORA_PRESETS = Object.freeze({
+  custom: {
+    hint: "Personalizzato: lo stack LoRA corrente non viene modificato.",
+    loras: [],
+  },
+  selfieOrganic: {
+    hint: "Selfie Organic: massima aderenza al volto, contrasto meno lucido e movimento semplice. Amateur Hour 0,60.",
+    loras: [{ match: /AmateurHour.*rank16/i, strength: 0.6 }],
+  },
+  selfieHandheld: {
+    hint: "Selfie Handheld: resa amatoriale, autofocus imperfetto e movimento fisico più credibile. Amateur 0,50 · VBVR 390K 0,55 · Soft 0,20.",
+    loras: [
+      { match: /AmateurHour.*rank16/i, strength: 0.5 },
+      { match: /VBVR-I2V-390K-R32/i, strength: 0.55 },
+      { match: /Soft_Enhance/i, strength: 0.2 },
+    ],
+  },
+  fantasyHandheld: {
+    hint: "Fantasy Handheld: live-action fantasy più materico, con camera e movimento plausibili. Amateur 0,40 · Fantasy Realism 0,45 · VBVR 390K 0,50.",
+    loras: [
+      { match: /AmateurHour.*rank16/i, strength: 0.4 },
+      { match: /Fantasy_Realism/i, strength: 0.45 },
+      { match: /VBVR-I2V-390K-R32/i, strength: 0.5 },
+    ],
+  },
+  cinematicNatural: {
+    hint: "Cinematografico naturale: dettaglio controllato senza pelle eccessivamente affilata, con coerenza temporale. Crisp 0,30 · Soft 0,20 · VBVR 390K 0,45.",
+    loras: [
+      { match: /Crisp_Enhance/i, strength: 0.3 },
+      { match: /Soft_Enhance/i, strength: 0.2 },
+      { match: /VBVR-I2V-390K-R32/i, strength: 0.45 },
+    ],
+  },
+  actionHandheld: {
+    hint: "Action Handheld: combattimento crudo e fisico, camera imperfetta ma leggibile. Amateur 0,40 · Fantasy Realism 0,45 · VBVR 390K 0,50 · Crisp 0,20.",
+    loras: [
+      { match: /AmateurHour.*rank16/i, strength: 0.4 },
+      { match: /Fantasy_Realism/i, strength: 0.45 },
+      { match: /VBVR-I2V-390K-R32/i, strength: 0.5 },
+      { match: /Crisp_Enhance/i, strength: 0.2 },
+    ],
+  },
+  actionCinematic: {
+    hint: "Action Cinematic: duello continuo, movimento controllato e impatti definiti senza tagli automatici. VBVR 390K 0,50 · Crisp 0,30 · Fantasy Realism 0,30.",
+    loras: [
+      { match: /VBVR-I2V-390K-R32/i, strength: 0.5 },
+      { match: /Crisp_Enhance/i, strength: 0.3 },
+      { match: /Fantasy_Realism/i, strength: 0.3 },
+    ],
+  },
+  actionMultishot: {
+    hint: "Action Multishot: montaggio d'azione con veri cambi d'inquadratura. Cinematic Hardcut 0,40 · VBVR 390K 0,45 · Crisp 0,25. Non usarlo per un piano sequenza.",
+    loras: [
+      { match: /Cinematic hardcut/i, strength: 0.4 },
+      { match: /VBVR-I2V-390K-R32/i, strength: 0.45 },
+      { match: /Crisp_Enhance/i, strength: 0.25 },
+    ],
+  },
+});
+
+const LTX25_PRESET_LORA_MATCHERS = Object.freeze([
+  /AmateurHour.*rank16/i,
+  /VBVR-I2V-390K-R32/i,
+  /Soft_Enhance/i,
+  /Fantasy_Realism/i,
+  /Crisp_Enhance/i,
+  /Cinematic hardcut/i,
+]);
 
 async function api(url, options) {
   const response = await fetch(url, options);
@@ -47,6 +215,30 @@ function escapeHtml(value) {
   const div = document.createElement("div");
   div.textContent = String(value ?? "");
   return div.innerHTML;
+}
+
+function interactiveCastChatGptAnchorPrompt(project, segment, task) {
+  const actor = task?.actorReferences?.[0] || {};
+  const actorName = actor.name || "the added adult actor";
+  const requestedChange = String(segment?.reason || task?.anchorRequirement || "insert the added actor naturally into the scene")
+    .replace(/\s+/g, " ")
+    .trim();
+  const identityDetails = [
+    actor.identityHints?.face ? `face: ${actor.identityHints.face}` : "",
+    actor.identityHints?.hair ? `hair: ${actor.identityHints.hair}` : "",
+    actor.identityHints?.body ? `body: ${actor.identityHints.body}` : "",
+  ].filter(Boolean).join("; ");
+
+  return [
+    "Edit IMAGE 1 using IMAGE 2 only as the visual identity reference for the new person.",
+    "IMAGE 1 is the authoritative source frame. Preserve its exact aspect ratio, framing, camera position, lens, perspective, background, set, lighting, color grade, grain, depth of field, and every original person.",
+    `Add exactly one adult person matching IMAGE 2: ${actorName}.`,
+    identityDetails ? `Identity details to preserve: ${identityDetails}.` : "Preserve the face, hair, body proportions, age, and recognizable identity shown in IMAGE 2.",
+    `Requested scene change: ${requestedChange}.`,
+    "Create one believable static movie frame from the early part of that action, with the added person already clearly visible and naturally integrated. Show the face clearly enough to verify identity. Match scale, eyeline, pose, occlusion, contact shadows, reflected light, sharpness, motion blur, and film grain to IMAGE 1.",
+    "Do not replace, move, duplicate, restyle, or alter the original people. Do not import the background, layout, text, borders, or composition of IMAGE 2. Do not create a collage, split screen, character sheet, inset, frame-within-a-frame, or before/after comparison.",
+    "Do not add subtitles, captions, labels, watermarks, or visible dialogue. Output only the final edited image at the same dimensions as IMAGE 1.",
+  ].join("\n\n");
 }
 
 function showToast(message) {
@@ -71,6 +263,7 @@ function syncCharacterFields() {
   $("#videoCharacterLockHair").value = String(settings.lockHair ?? true);
   $("#videoCharacterLockBody").value = String(settings.lockBody ?? true);
   $("#videoCharacterLockOutfit").value = String(settings.lockOutfit ?? false);
+  $("#videoCharacterPromptEnhanced").value = "";
   $("#video-character-hint").textContent = character
     ? "Per i video il Character Pack prepara reference e futuro anchor frame; se il workflow non supporta conditioning verra' dichiarato come fallback."
     : "Usa il Character Pack come identita, reference sheet o base futura per anchor frame.";
@@ -89,8 +282,20 @@ function setConnection(online) {
 async function checkHealth() {
   try {
     await api("/api/health");
+    const shouldRefreshCapabilities = state.comfyOnline !== true || !state.readiness.ready;
+    state.comfyOnline = true;
     setConnection(true);
+    if (shouldRefreshCapabilities && state.config && !state.configRefreshInFlight) {
+      state.configRefreshInFlight = true;
+      try {
+        state.config = await getAppConfig({ force: true });
+        updateReadiness();
+      } finally {
+        state.configRefreshInFlight = false;
+      }
+    }
   } catch {
+    state.comfyOnline = false;
     setConnection(false);
   }
 }
@@ -109,7 +314,7 @@ function renderDialogue() {
 }
 
 function syncDialogue() {
-  state.dialogue = [...document.querySelectorAll(".dialogue-row")].map((row) => ({
+  state.dialogue = [...document.querySelectorAll("#dialogue-list .dialogue-row")].map((row) => ({
     speaker: row.querySelector(".dialogue-speaker").value.trim(),
     line: row.querySelector(".dialogue-line").value.trim(),
     delivery: row.querySelector(".dialogue-delivery").value.trim(),
@@ -117,18 +322,79 @@ function syncDialogue() {
   $("#dialogue-json").value = JSON.stringify(state.dialogue);
 }
 
+function videoLoraChoices(selectedMode = mode()) {
+  const h3ModeActive = ["minimaxH3", "actionH3", "seedHunterH3"].includes(selectedMode);
+  const choices = h3ModeActive
+    ? state.config?.videoStudio?.h3Loras || []
+    : state.config?.videoStudio?.ltxLoras || [];
+  return choices.filter((name) => selectedMode !== "actionH3" || name !== state.config?.videoStudio?.h3?.files?.combat);
+}
+
+function renderLoraPicker() {
+  const picker = $("#video-lora-picker");
+  const addButton = $("#video-add-lora");
+  if (!picker || !addButton) return;
+  const metadata = state.config?.loraMetadata || state.config?.videoStudio?.h3LoraMetadata;
+  const selectedNames = new Set(state.loras.map((item) => item.name));
+  const choices = videoLoraChoices().filter((name) => !selectedNames.has(name));
+  picker.innerHTML = choices.length
+    ? choices.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(loraOptionLabel(name, metadata))}</option>`).join("")
+    : '<option value="">Nessuna altra LoRA disponibile</option>';
+  picker.disabled = choices.length === 0;
+  addButton.disabled = choices.length === 0;
+}
+
 function renderLoras() {
-  const choices = state.config?.videoStudio?.ltxLoras || [];
+  const choices = videoLoraChoices();
   $("#video-loras").innerHTML = state.loras.map((row, index) => `
     <div class="studio-lora-row" data-video-lora="${index}">
       <select aria-label="LoRA Video Studio ${index + 1}">
-        ${choices.map((name) => `<option value="${escapeHtml(name)}" ${name === row.name ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}
+        ${choices.map((name) => {
+          const label = loraOptionLabel(name, state.config?.loraMetadata || state.config?.videoStudio?.h3LoraMetadata);
+          return `<option value="${escapeHtml(name)}" ${name === row.name ? "selected" : ""}>${escapeHtml(label)}</option>`;
+        }).join("")}
       </select>
       <input aria-label="Forza LoRA Video Studio ${index + 1}" type="number" min="-2" max="2" step=".05" value="${Number(row.strength ?? .8)}">
       <button type="button" data-remove-lora="${index}" aria-label="Rimuovi LoRA ${index + 1}">×</button>
     </div>
   `).join("");
   syncLoras();
+  renderLoraPicker();
+}
+
+function ltx25LoraBasename(name) {
+  return String(name || "").split(/[\\/]/).pop() || "";
+}
+
+function updateLtx25LoraPresetHint() {
+  const preset = LTX25_LORA_PRESETS[$("#ltx25LoraPreset")?.value] || LTX25_LORA_PRESETS.custom;
+  const hint = $("#ltx25-lora-preset-hint");
+  if (hint) hint.textContent = preset.hint;
+}
+
+function applyLtx25LoraPreset() {
+  const presetId = $("#ltx25LoraPreset")?.value || "custom";
+  const preset = LTX25_LORA_PRESETS[presetId] || LTX25_LORA_PRESETS.custom;
+  updateLtx25LoraPresetHint();
+  if (presetId === "custom") return showToast("Stack LoRA LTX 2.5 lasciato invariato.");
+
+  const available = videoLoraChoices("ltx25Aio");
+  const managed = (name) => LTX25_PRESET_LORA_MATCHERS.some((matcher) => matcher.test(ltx25LoraBasename(name)));
+  const preserved = state.loras.filter((item) => !managed(item.name));
+  const missing = [];
+  const selected = preset.loras.flatMap((entry) => {
+    const name = available.find((candidate) => entry.match.test(ltx25LoraBasename(candidate)));
+    if (!name) {
+      missing.push(String(entry.match).replaceAll("/", ""));
+      return [];
+    }
+    return [{ name, strength: entry.strength }];
+  });
+  state.loras = [...preserved, ...selected];
+  renderLoras();
+  showToast(missing.length
+    ? `Preset applicato parzialmente: ${missing.length} LoRA non trovate.`
+    : `Preset applicato: ${preset.hint.split(":")[0]}.`);
 }
 
 function syncLoras() {
@@ -139,6 +405,159 @@ function syncLoras() {
   $("#video-loras-json").value = JSON.stringify(state.loras);
 }
 
+function findH3RealismPeopleLora() {
+  return (state.config?.videoStudio?.h3Loras || []).find((name) => /(?:^|[\\/])STY_Realism_People\.safetensors$/i.test(name)) || "";
+}
+
+function findH3MotionBoosterLora() {
+  return (state.config?.videoStudio?.h3Loras || []).find((name) => /(?:^|[\\/])STY_Motion_Booster\.safetensors$/i.test(name)) || "";
+}
+
+function findH3PresetLora(type) {
+  const matchers = {
+    realism: /STY_Realism_People\.safetensors$/i,
+    motion: /STY_Motion_Booster\.safetensors$/i,
+    betterMotion: /MOT_Better_Motion\.safetensors$/i,
+    zeroTwo: /MOT_Zero_Two_Dance\.safetensors$/i,
+    whisper: /AUD_Whispering\.safetensors$/i,
+    drone: /CAM_Drone_Shot\.safetensors$/i,
+  };
+  return (state.config?.videoStudio?.h3Loras || []).find((name) => matchers[type]?.test(name)) || "";
+}
+
+function updateActionH3PresetHint() {
+  const preset = ACTION_H3_PRESETS[$("#actionH3Preset")?.value] || ACTION_H3_PRESETS.custom;
+  const hint = $("#action-h3-preset-hint");
+  if (hint) hint.textContent = preset.hint;
+}
+
+function applyActionH3Preset() {
+  const presetId = $("#actionH3Preset")?.value || "custom";
+  const preset = ACTION_H3_PRESETS[presetId] || ACTION_H3_PRESETS.custom;
+  updateActionH3PresetHint();
+  if (presetId === "custom") return showToast("Parametri ACTION H3 lasciati invariati.");
+
+  $("#actionH3Duration").value = preset.duration;
+  $("#actionH3AspectRatio").value = preset.aspect;
+  $("#actionH3RunProfile").value = "preview";
+  $("#actionH3Trigger").value = preset.trigger;
+  $("#actionH3CombatStrength").value = String(preset.combatStrength);
+  $("#actionH3Quality").value = preset.quality;
+  $("#h3LookPreset").value = preset.look;
+  $("#h3ScenePreset").value = "none";
+  if (typeof preset.turbo === "boolean") $("#h3UseTurbo").checked = preset.turbo;
+
+  const installedByType = {
+    realism: findH3RealismPeopleLora(),
+    motion: findH3MotionBoosterLora(),
+    betterMotion: findH3PresetLora("betterMotion"),
+    drone: findH3PresetLora("drone"),
+  };
+  const managedNames = Object.values(installedByType).filter(Boolean);
+  state.loras = state.loras.filter((item) => !managedNames.includes(item.name));
+  const missing = [];
+  for (const entry of preset.loras) {
+    const name = installedByType[entry.type];
+    if (name) state.loras.push({ name, strength: entry.strength });
+    else missing.push(entry.type);
+  }
+  renderLoras();
+  updateActionH3Fields();
+  $("#actionH3Prompt")?.dispatchEvent(new Event("input", { bubbles: true }));
+  showToast(missing.length
+    ? `Preset ACTION applicato parzialmente: LoRA ${missing.join(", ")} non trovata.`
+    : `Preset ACTION applicato: ${preset.hint.split(":")[0]}.`);
+}
+
+function updateH3ScenePresetHint() {
+  const selected = $("#h3ScenePreset")?.value;
+  const hint = $("#h3-scene-preset-hint");
+  if (!hint) return;
+  hint.textContent = H3_SCENE_PRESETS[selected]?.hint
+    || "Personalizzata: nessun vincolo scena aggiuntivo; i singoli controlli restano interamente manuali.";
+}
+
+function applyH3ScenePreset() {
+  const preset = H3_SCENE_PRESETS[$("#h3ScenePreset")?.value];
+  if (!preset) {
+    updateH3ScenePresetHint();
+    return showToast("Seleziona una ricetta H3 per applicarla.");
+  }
+  $("#h3Mode").value = preset.mode;
+  $("#h3Duration").value = preset.duration;
+  $("#h3AspectRatio").value = preset.aspect;
+  $("#h3LookPreset").value = preset.look;
+  $("#h3RunProfile").value = preset.final ? "nativeFinal" : "preview";
+  $("#h3FirstMegapixels").value = preset.final ? "0.9" : "0.4";
+  $("#h3RefineMode").value = "direct";
+  $("#h3AttentionBackend").value = "memoryEfficient";
+  $("#h3UseTurbo").checked = false;
+  $("#h3PurgeBetween").checked = true;
+  $("#h3PurgeAfter").checked = true;
+  $("#h3ReferenceSize").value = "match";
+  if (!$("#h3Prompt").value.trim()) $("#h3Prompt").value = preset.starter;
+
+  const managedLoras = ["realism", "motion", "betterMotion", "zeroTwo", "whisper", "drone"].map(findH3PresetLora).filter(Boolean);
+  state.loras = state.loras.filter((item) => !managedLoras.includes(item.name));
+  const selectedLora = findH3PresetLora(preset.lora);
+  if (selectedLora) {
+    state.loras.push({ name: selectedLora, strength: preset.strength });
+  }
+  for (const entry of preset.extraLoras || []) {
+    const name = findH3PresetLora(entry.type);
+    if (name) state.loras.push({ name, strength: entry.strength });
+  }
+  renderLoras();
+  updateH3Fields();
+  updateH3ScenePresetHint();
+  $("#h3Prompt").dispatchEvent(new Event("input", { bubbles: true }));
+  showToast(selectedLora
+    ? `Preset H3 applicato con ${preset.lora} ${preset.strength.toFixed(2).replace(".", ",")}.`
+    : "Preset applicato; la LoRA consigliata non è installata, quindi la ricetta prosegue senza LoRA.");
+}
+
+function selectedVideoPromptTriggers(selectedMode) {
+  const metadata = state.config?.loraMetadata || state.config?.videoStudio?.h3LoraMetadata || {};
+  const triggers = automaticLoraTriggers(state.loras, metadata);
+  if (selectedMode === "actionH3") {
+    triggers.unshift($("#actionH3Trigger")?.value || "");
+  }
+  return uniquePromptTriggers(triggers);
+}
+
+function h3LoraPromptContract(triggers = []) {
+  const selected = uniquePromptTriggers(triggers);
+  if (!selected.length) return "No verified LoRA activation word is required.";
+  const directions = selected.map((trigger) => {
+    const key = trigger.toLocaleLowerCase();
+    if (key === "r34l1sm") return "r34l1sm: favor natural human appearance, skin texture, restrained performance and physically ordinary imperfections; avoid polished AI gloss.";
+    if (key === "dynv2") return "dynv2: describe one readable continuous motion path with acceleration, inertia, camera response and a stable ending; do not replace choreography with vague dynamic language.";
+    if (key === "hmmotion") return "hmmotion: describe contact, body mechanics and temporal motion precisely, but only for actions explicitly requested by the user.";
+    if (key === "prfight2") return "prfight2: intensify coherent combat motion, impacts and cumulative reactions while preserving anatomy and readable staging.";
+    if (key === "prfin1") return "prfin1: reserve the strongest emphasis for the requested decisive final action and its complete physical recovery or fall.";
+    return `${trigger}: preserve this verified activation word exactly and adapt the scene only to the LoRA purpose implied by the selected LoRA and the user's request.`;
+  });
+  return `Selected H3 LoRA behavior is active. Do not copy activation words into the rewritten output; the application inserts them after LM Studio finishes. LoRA-specific direction: ${directions.join(" ")}`;
+}
+
+function applyVideoPromptTriggers(input, selectedMode, triggers = selectedVideoPromptTriggers(selectedMode)) {
+  if (["minimaxH3", "actionH3", "seedHunterH3"].includes(selectedMode)) {
+    return applyH3LoraTriggers(input, triggers);
+  }
+  return applyLoraTriggers(input, triggers);
+}
+
+function capabilityBlockDetail(capability, fallback) {
+  if (!capability) return fallback;
+  const problems = [];
+  if (capability.modelReady === false) problems.push("modello/LoRA richiesto non rilevato");
+  if (capability.commonReady === false) problems.push("checkpoint LTX 2.3 o text encoder non rilevato");
+  if (capability.nodesReady === false && capability.missingNodes?.length) {
+    problems.push(`nodi ComfyUI mancanti: ${capability.missingNodes.join(", ")}`);
+  }
+  return problems.length ? problems.join(" · ") : fallback;
+}
+
 function updateReadiness() {
   const videoConfig = state.config.videoStudio;
   const selectedMode = mode();
@@ -147,18 +566,51 @@ function updateReadiness() {
   let title;
   let detail;
 
-  if (selectedMode === "sequentialStory") {
+  if (selectedMode === "ltx25Aio") {
+    ready = Boolean(videoConfig.ltx25?.available);
+    title = ready ? "LTX 2.5 AIO INT8 pronto" : "LTX 2.5 AIO non disponibile";
+    const selectedLtx25Mode = $("#ltx25Mode")?.value || "text";
+    const selectedCapability = videoConfig.ltx25?.modes?.[selectedLtx25Mode];
+    if (ready && selectedCapability?.available === false) {
+      ready = false;
+      title = `${$("#ltx25Mode")?.selectedOptions?.[0]?.textContent || selectedLtx25Mode} non installato`;
+      detail = selectedCapability.reason || "Manca una dipendenza opzionale per questa modalità.";
+    } else {
+      detail = ready
+        ? "Transformer e Gemma INT8, VAE audio/video e purge multi-fase rilevati. Conv VAE tiled consigliato per 12 GB."
+        : videoConfig.ltx25?.reason || "Controlla modelli LTX 2.5 e nodi ComfyUI-LTXVideo.";
+    }
+  } else if (selectedMode === "minimaxH3") {
+    ready = Boolean(videoConfig.h3?.available);
+    title = ready ? "MiniMax H3 INT8 pronto" : "MiniMax H3 non disponibile";
+    detail = ready
+      ? `${videoConfig.h3Loras.length} LoRA H3 rilevate · FL2VA e Ref2VA pronti · doppio sampling con purge disponibile.`
+      : videoConfig.h3?.reason || "Controlla modelli, VAE, Qwen3-VL e nodi H3.";
+  } else if (selectedMode === "seedHunterH3") {
+    ready = Boolean(videoConfig.h3?.available && videoConfig.h3?.seedHunter?.available);
+    title = ready ? "Seed Hunter H3 pronto · 3 job" : "Seed Hunter H3 non disponibile";
+    detail = ready
+      ? "Tre sampling separati a 0,25 MP, seed consecutivi e selezione individuale; nessun SaveLatent su NestedTensor AV."
+      : videoConfig.h3?.reason || "Controlla modelli e nodi MiniMax H3.";
+  } else if (selectedMode === "actionH3") {
+    ready = Boolean(videoConfig.h3?.actionAvailable);
+    title = ready ? "ACTION H3 pronto" : "ACTION H3 non disponibile";
+    detail = ready
+      ? `FL2VA INT8 · ${videoConfig.h3.files.combat} · res_multistep + simple · nessun modello aggiuntivo.`
+      : videoConfig.h3?.actionReason || videoConfig.h3?.reason || "Controlla FL2VA e Combat Base V2.";
+  } else if (selectedMode === "sequentialStory") {
     ready = Boolean(state.config.promptAssistant?.enabled);
     title = ready ? "Storia continua pronta" : "Storia continua richiede LM Studio";
     detail = ready
       ? "LM Studio pianifica le scene; Node genera una clip alla volta, estrae continuity frame, fa purge e concatena."
       : "Configura il Prompt Assistant locale per generare la scaletta JSON prima del render.";
   } else if (selectedMode === "interactiveScene") {
-    ready = videoConfig.capabilities.ingredients.available;
+    const capability = videoConfig.capabilities.ingredients;
+    ready = capability.available;
     title = ready ? "Interactive Scene pronto" : "Interactive Scene non disponibile";
     detail = ready
       ? `Ingredients installato${videoConfig.capabilities.lipdub.available ? " · LipDub disponibile" : " · LipDub mancante"}`
-      : "Manca la IC-LoRA Ingredients oppure uno dei nodi LTX richiesti.";
+      : capabilityBlockDetail(capability, "Manca la IC-LoRA Ingredients oppure uno dei nodi LTX richiesti.");
   } else if (selectedMode === "interactiveCast") {
     const cast = state.config.interactiveCast;
     ready = Boolean(cast?.matrix?.videoAnalysis && cast?.matrix?.temporalSplice);
@@ -167,11 +619,12 @@ function updateReadiness() {
       ? `Pipeline ibrida pronta: tracking, timeline, anchor e segmenti LTX automatici${cast?.matrix?.voiceClone ? " · voce locale" : ""}${cast?.matrix?.lipSync ? " · lip-sync locale" : ""}. Le capability opzionali sono indicate nella matrice.`
       : "Installa FFmpeg/FFprobe nel PATH prima di creare progetti Interactive Cast.";
   } else if (selectedMode === "sceneTransform") {
-    ready = videoConfig.capabilities.unionControl.available;
+    const capability = videoConfig.capabilities.unionControl;
+    ready = capability.available;
     title = ready ? "Scene Transform Union Control pronto" : "Union Control non disponibile";
     detail = ready
       ? "Usa il video come guida temporale e il frame/reference come destinazione visiva."
-      : "Installa la IC-LoRA Union Control e i nodi Canny/DW Pose LTX 2.3.";
+      : capabilityBlockDetail(capability, "Installa la IC-LoRA Union Control e i nodi Canny/DW Pose LTX 2.3.");
   } else if (selectedMode === "actorReplacement") {
     const engine = $("#actorEngine").value;
     ready = engine === "unionControl"
@@ -222,7 +675,31 @@ function updateReadiness() {
   }
   readiness.className = `video-readiness ${ready ? "ready" : "blocked"}`;
   readiness.innerHTML = `<span>${ready ? "✓" : "!"}</span><div><b>${escapeHtml(title)}</b><p>${escapeHtml(detail)}</p></div>`;
-  $("#video-studio-submit").disabled = !ready;
+  state.readiness = { ready, title, detail };
+  const submit = $("#video-studio-submit");
+  submit.disabled = false;
+  submit.dataset.preflightBlocked = ready ? "false" : "true";
+  submit.setAttribute("aria-disabled", String(!ready));
+  submit.title = ready ? "" : `${title}: ${detail}`;
+  return state.readiness;
+}
+
+function updateWorkflowGuideLink() {
+  const routes = {
+    actorReplacement: "actorReplacement",
+    interactiveScene: "interactiveScene",
+    sceneTransform: "sceneTransform",
+    retake: "retake",
+    extend: "extend",
+    hdr: "hdr",
+    sequentialStory: "sequentialStory",
+    minimaxH3: "minimaxH3",
+    actionH3: "actionH3",
+  };
+  const link = $("#video-studio-guided-workflow");
+  const route = routes[mode()];
+  link?.classList.toggle("hidden", !route);
+  if (link && route) link.href = `/guided-create.html?workflow=${route}`;
 }
 
 function castStatusClass(status) {
@@ -272,7 +749,7 @@ function renderInteractiveCastCapabilities() {
   `;
 }
 
-async function refreshInteractiveCastCapabilities(button = null) {
+async function refreshInteractiveCastCapabilities(button = null, { silent = false } = {}) {
   if (button) {
     button.disabled = true;
     button.textContent = "Aggiorno...";
@@ -281,15 +758,222 @@ async function refreshInteractiveCastCapabilities(button = null) {
     state.config.interactiveCast = await api("/api/interactive-cast/capabilities");
     renderInteractiveCastCapabilities();
     updateReadiness();
-    if (button) showToast("Capability Interactive Cast aggiornate.");
+    if (button && !silent) showToast("Capability Interactive Cast aggiornate.");
   } catch (error) {
-    showToast(error.message);
+    if (!silent) showToast(error.message);
   } finally {
     if (button) {
       button.disabled = false;
       button.textContent = "Aggiorna capability";
     }
   }
+}
+
+function updateH3Fields() {
+  updateH3ScenePresetHint();
+  const active = mode() === "minimaxH3";
+  const modelSelect = $("#h3ModelProfile");
+  const erosCapability = state.config?.videoStudio?.h3?.modelProfiles?.erosMax;
+  const erosOption = [...(modelSelect?.options || [])].find((option) => option.value === "erosMax");
+  if (erosOption) {
+    erosOption.disabled = erosCapability?.available === false;
+    erosOption.title = erosOption.disabled ? "h3ErosMax_beta3.safetensors non è installato." : "Turbo integrato · 6 step er_sde/simple";
+  }
+  if (modelSelect?.selectedOptions[0]?.disabled) modelSelect.value = "base";
+  const erosMax = modelSelect?.value === "erosMax";
+  const firstLastOption = [...($("#h3Mode")?.options || [])].find((option) => option.value === "firstLast");
+  if (firstLastOption) {
+    firstLastOption.disabled = erosMax;
+    firstLastOption.title = erosMax ? "Eros Max usa T2VA o reference; First/Last non è supportato." : "";
+  }
+  if (erosMax && $("#h3Mode")?.value === "firstLast") $("#h3Mode").value = "text";
+  const h3Mode = $("#h3Mode")?.value || "text";
+  const promptPreset = $("#h3PromptPreset");
+  if (erosMax && promptPreset) {
+    promptPreset.value = "h3_eros_max";
+  } else if (["image", "firstLast"].includes(h3Mode) && promptPreset?.value === "h3_general") {
+    promptPreset.value = "h3_image_to_video";
+  } else if (h3Mode === "text" && promptPreset?.value === "h3_image_to_video") {
+    promptPreset.value = "h3_general";
+  }
+  const modelHint = $("#h3-model-hint");
+  if (modelHint) modelHint.textContent = erosMax
+    ? "Eros Max beta3: T2V usa T2VA; Single Image viene inviata come Picture 1 Ref2VA. Turbo è già incorporato: 6 step er_sde/simple."
+    : "Il profilo base usa i checkpoint FL2VA e Ref2VA standard.";
+  const turboToggle = $("#h3UseTurbo");
+  if (turboToggle) turboToggle.disabled = !active || erosMax;
+  if ($("#h3-turbo-text")) $("#h3-turbo-text").textContent = erosMax ? "Turbo integrato nel checkpoint · 6 step" : "Turbo LoRA 8 step";
+  const firstFrame = $("#h3-first-frame-field");
+  const lastFrame = $("#h3-last-frame-field");
+  const references = $("#h3-reference-fields");
+  const showFirst = active && ["image", "firstLast"].includes(h3Mode);
+  const showLast = active && h3Mode === "firstLast";
+  const showReferences = active && h3Mode === "references";
+  firstFrame?.classList.toggle("hidden", !showFirst);
+  lastFrame?.classList.toggle("hidden", !showLast);
+  references?.classList.toggle("hidden", !showReferences);
+  firstFrame?.querySelectorAll("input").forEach((input) => { input.disabled = !showFirst; });
+  lastFrame?.querySelectorAll("input").forEach((input) => { input.disabled = !showLast; });
+  references?.querySelectorAll("input, select").forEach((input) => { input.disabled = !showReferences; });
+
+  const refineSelect = $("#h3RefineMode");
+  const refineAvailability = state.config?.videoStudio?.h3?.refineAvailability || {};
+  for (const option of refineSelect?.options || []) {
+    if (["latentLearned", "seedvr2", "rtx"].includes(option.value)) {
+      option.disabled = refineAvailability[option.value] === false;
+      option.title = option.disabled ? "Nodo ComfyUI non disponibile: riavvia o reinstalla il refine selezionato." : "";
+    }
+  }
+  if (refineSelect?.selectedOptions[0]?.disabled) {
+    refineSelect.value = refineAvailability.seedvr2 !== false ? "seedvr2" : "h3Balanced";
+  }
+  const attentionSelect = $("#h3AttentionBackend");
+  const attentionAvailability = state.config?.videoStudio?.h3?.attentionAvailability || {};
+  for (const option of attentionSelect?.options || []) {
+    option.disabled = attentionAvailability[option.value] === false;
+  }
+  if (attentionSelect?.selectedOptions[0]?.disabled) attentionSelect.value = "memoryEfficient";
+  const refineMode = refineSelect?.value || "rtx";
+  const hasRefine = active && refineMode !== "direct";
+  $("#h3SecondMegapixels").disabled = !active || !["latentLearned", "h3Maximum"].includes(refineMode);
+  $("#h3SeedvrResolution").disabled = !active || refineMode !== "seedvr2";
+  $("#h3PurgeBetween").disabled = !hasRefine;
+  if (active && !hasRefine) {
+    $("#h3FirstMegapixels").value = "0.9";
+  } else if (active && hasRefine && $("#h3FirstMegapixels").value === "0.9") {
+    $("#h3FirstMegapixels").value = "0.6";
+  }
+  const hint = $("#h3-sampling-hint");
+  const firstMp = $("#h3FirstMegapixels").value.replace(".", ",");
+  const hints = {
+    latentLearned: `Learned Latent 3D: ${firstMp} MP → upscaler neurale temporale → ${$("#h3SecondMegapixels").value.replace(".", ",")} MP → 3 step a sigmas manuali. Più rapido del decode/upscale/re-encode e conserva meglio il moto.`,
+    h3Balanced: `H3 bilanciato: ${firstMp} MP → purge forte → 0,9 MP, 3 step e denoise 0,15. Ripete la diffusione H3 ed è lento: usalo solo su clip brevi.`,
+    h3Maximum: `H3 massimo: ${firstMp} MP → purge forte → ${$("#h3SecondMegapixels").value.replace(".", ",")} MP, 4 step e denoise 0,20. Ripete H3 ad alta risoluzione: può richiedere ore.`,
+    seedvr2: `SeedVR2 3B FP8: ${firstMp} MP → purge forte → restauro temporale a ${$("#h3SeedvrResolution").value} px. Più dettaglio senza ripetere H3.`,
+    rtx: `RTX VSR: ${firstMp} MP → purge forte → deblur leggero e upscale hardware. È il refine predefinito e più rapido; nei look realistici conserva grana e imperfezioni.`,
+    direct: "Sampling H3 diretto a 0,9 MP: nessun refine intermedio; resta attivo soltanto il purge finale.",
+  };
+  if (hint) {
+    const h3RunProfile = $("#h3RunProfile")?.value;
+    hint.textContent = h3RunProfile === "preview"
+      ? `ANTEPRIMA: H3 usa temporaneamente 0,4 MP, ${erosMax ? "Turbo Eros integrato a 6 step" : "Turbo 8 step"} e nessun refine. Impostazioni finale salvate: ${hints[refineMode] || hints.h3Balanced}`
+      : hints[refineMode] || hints.h3Balanced;
+  }
+  const loraHint = $("#video-lora-hint");
+  if (loraHint) loraHint.textContent = active
+    ? "Mostra esclusivamente le LoRA presenti in H3. Se una LoRA ha un trigger univoco verificato, viene aggiunto automaticamente all'inizio del prompt dopo LM Studio."
+    : "Puoi concatenare più LoRA LTX 2.3 con forza indipendente.";
+}
+
+function updateActionH3Fields() {
+  const active = mode() === "actionH3";
+  const actionMode = $("#actionH3Mode")?.value || "text";
+  const firstFrame = $("#action-h3-first-frame-field");
+  const lastFrame = $("#action-h3-last-frame-field");
+  const showFirst = active && ["image", "firstLast"].includes(actionMode);
+  const showLast = active && actionMode === "firstLast";
+  firstFrame?.classList.toggle("hidden", !showFirst);
+  lastFrame?.classList.toggle("hidden", !showLast);
+  firstFrame?.querySelectorAll("input").forEach((input) => { input.disabled = !showFirst; });
+  lastFrame?.querySelectorAll("input").forEach((input) => { input.disabled = !showLast; });
+  const loraHint = $("#video-lora-hint");
+  if (active && loraHint) {
+    loraHint.textContent = "Combat Base V2 viene applicata automaticamente a 0,8 con il trigger scelto sopra; le eventuali LoRA H3 supplementari aggiungono il proprio trigger verificato dopo LM Studio.";
+  }
+  const actionRunProfile = $("#actionH3RunProfile")?.value;
+  const preview = actionRunProfile === "preview";
+  const runHint = $("#action-h3-run-hint");
+  if (runHint) {
+    runHint.textContent = preview
+        ? "ANTEPRIMA: 0,4 MP, Combat V2, Turbo 8 step e res_multistep/simple; nessun secondo sampling. La qualità finale resta salvata per la rigenerazione nativa."
+        : "FINALE NATIVO: applica il profilo qualità ACTION selezionato con lo stesso stack Combat V2.";
+  }
+  updateActionH3PresetHint();
+}
+
+function updateSeedHunterH3Fields() {
+  const active = mode() === "seedHunterH3";
+  const selected = $("#seedHunterH3Mode")?.value || "text";
+  const showFirst = active && ["image", "firstLast"].includes(selected);
+  const showLast = active && selected === "firstLast";
+  for (const [selector, show] of [
+    ["#seed-hunter-h3-first-frame-field", showFirst],
+    ["#seed-hunter-h3-last-frame-field", showLast],
+  ]) {
+    const field = $(selector);
+    field?.classList.toggle("hidden", !show);
+    field?.querySelectorAll("input").forEach((input) => { input.disabled = !show; });
+  }
+  const preset = $("#seedHunterH3PromptPreset");
+  if (preset && ["image", "firstLast"].includes(selected) && preset.value === "h3_general") preset.value = "h3_image_to_video";
+  if (preset && selected === "text" && preset.value === "h3_image_to_video") preset.value = "h3_general";
+}
+
+const LTX25_MODE_HINTS = Object.freeze({
+  text: "Text to Video: genera immagine e audio nativo dal prompt.",
+  multishot: "Native Multishot: usa SHOT e CUT nel prompt per più inquadrature coerenti in una sola generazione.",
+  image: "Image to Video: l’immagine caricata diventa l’ancora iniziale della clip.",
+  firstLast: "First/Last: interpola fra due immagini con guide esatte ai frame estremi; usa single-stage per stabilità.",
+  keyframes: "Keyframe multipli: primo, immagini intermedie e ultimo frame vengono distribuiti sulla timeline.",
+  audio: "Audio to Video: dialogo, ritmo e soundscape del file audio guidano il video; il primo frame è opzionale.",
+  textAudio: "Text to Audio: genera soltanto audio nativo LTX 2.5 dal prompt.",
+  referenceSheet: "Ingredients: una tavola descrive personaggi, abiti, oggetti e luogo; indica chiaramente le posizioni nel prompt.",
+  unionControl: "V2V Union: usa il video come guida temporale Canny o Pose e mantiene il movimento di base. Depth resta opzionale finché non è installato il relativo preprocessore.",
+  inpaint: "Inpainting: rigenera soltanto la regione bianca della maschera video.",
+  outpaint: "Outpainting: estende il canvas del video verso il formato selezionato.",
+  motionTrack: "Motion Track: l’immagine iniziale e le traiettorie preconfigurate guidano il movimento degli elementi.",
+  v2vDeblur: "V2V Deblur: rifinisce un video mantenendo struttura e audio; richiede la IC-LoRA Deblur.",
+  multiReferenceMsr: "True Multi-Reference: fino a cinque soggetti separati; richiede plugin e LoRA Licon MSR.",
+});
+
+function updateLtx25Fields() {
+  const active = mode() === "ltx25Aio";
+  const selected = $("#ltx25Mode")?.value || "text";
+  const first = ["image", "firstLast", "keyframes", "audio", "motionTrack"].includes(selected);
+  const last = ["firstLast", "keyframes"].includes(selected);
+  const keyframes = selected === "keyframes";
+  const reference = selected === "referenceSheet";
+  const msr = selected === "multiReferenceMsr";
+  const sourceVideo = ["unionControl", "inpaint", "outpaint", "v2vDeblur"].includes(selected);
+  const maskVideo = selected === "inpaint";
+  const audio = selected === "audio";
+  const visibility = {
+    "#ltx25-first-frame-field": first,
+    "#ltx25-last-frame-field": last,
+    "#ltx25-keyframes-field": keyframes,
+    "#ltx25-reference-sheet-field": reference,
+    "#ltx25-msr-field": msr,
+    "#ltx25-source-video-field": sourceVideo,
+    "#ltx25-mask-video-field": maskVideo,
+    "#ltx25-audio-field": audio,
+    "#ltx25-union-options": selected === "unionControl",
+    "#ltx25-motion-options": selected === "motionTrack",
+  };
+  for (const [selector, show] of Object.entries(visibility)) {
+    const section = $(selector);
+    section?.classList.toggle("hidden", !(active && show));
+    section?.querySelectorAll("input, select, textarea").forEach((input) => { input.disabled = !(active && show); });
+  }
+  const hint = $("#ltx25-mode-hint");
+  if (hint) hint.textContent = LTX25_MODE_HINTS[selected] || "Modalità LTX 2.5.";
+  const profile = $("#ltx25Profile")?.value || "preview";
+  const profileHint = $("#ltx25-profile-hint");
+  if (profileHint) {
+    profileHint.textContent = selected === "multiReferenceMsr"
+      ? "MSR usa single-stage nativo con encode tiled delle reference, crop degli slot prima del decode e purge finale; Finale/Massimo aumentano direttamente la risoluzione."
+      : ["referenceSheet", "unionControl", "inpaint", "outpaint", "motionTrack", "v2vDeblur", "audio", "textAudio"].includes(selected)
+        ? "Questa modalità usa il workflow ufficiale dedicato; i purge sono inseriti nei confini disponibili senza alterare il controllo IC-LoRA."
+      : ["firstLast", "keyframes"].includes(selected) && ["final", "maximum"].includes(profile)
+      ? "First/Last e keyframe usano il workflow ufficiale single-stage: il profilo aumenta la risoluzione senza secondo sampling."
+      : ["final", "maximum"].includes(profile)
+        ? "Two-stage: Stage 1 → purge Transformer → upscaler latente ×2 → purge upscaler → refine 3 step."
+        : "Single-stage: più rapido; il seed rimane ripetibile per una successiva generazione finale.";
+  }
+  const loraHint = $("#video-lora-hint");
+  if (active && loraHint) {
+    loraHint.textContent = "Mostra le LoRA LTX compatibili; dopo LM Studio i trigger verificati vengono anteposti automaticamente al prompt.";
+  }
+  updateLtx25LoraPresetHint();
 }
 
 function updateMode() {
@@ -304,6 +988,10 @@ function updateMode() {
     hdr: "#hdr-fields",
     temporalUpscale: "#temporal-fields",
     sequentialStory: "#sequential-story-fields",
+    minimaxH3: "#minimax-h3-fields",
+    seedHunterH3: "#seed-hunter-h3-fields",
+    actionH3: "#action-h3-fields",
+    ltx25Aio: "#ltx25-aio-fields",
   };
   for (const [id, selector] of Object.entries(sections)) {
     const active = id === selected;
@@ -320,8 +1008,30 @@ function updateMode() {
   });
   $("#video-studio-submit").classList.toggle("hidden", selected === "sequentialStory");
   $("#video-studio-submit").classList.toggle("hidden", ["sequentialStory", "interactiveCast"].includes(selected));
+  updateH3Fields();
+  updateSeedHunterH3Fields();
+  updateActionH3Fields();
+  updateLtx25Fields();
+  const submitLabel = $("#video-studio-submit span");
+  if (submitLabel) {
+    const h3Preview = selected === "minimaxH3" && $("#h3RunProfile")?.value === "preview";
+    const actionPreview = selected === "actionH3" && $("#actionH3RunProfile")?.value === "preview";
+    submitLabel.textContent = selected === "seedHunterH3"
+      ? "Genera 3 candidati Seed Hunter"
+      : h3Preview
+      ? "Crea anteprima MiniMax H3"
+      : actionPreview
+        ? "Crea anteprima ACTION H3"
+        : selected === "ltx25Aio" && $("#ltx25Profile")?.value === "preview"
+          ? "Crea anteprima LTX 2.5 AIO"
+          : "Crea progetto Video Studio";
+  }
+  const loraChoices = videoLoraChoices(selected);
+  state.loras = state.loras.filter((item) => loraChoices.includes(item.name));
+  renderLoras();
   syncInteractiveCastWorkspace();
   renderInteractiveCastCapabilities();
+  updateWorkflowGuideLink();
   updateReadiness();
 }
 
@@ -530,11 +1240,15 @@ function projectsRenderKey(projects) {
     status: project.status,
     archived: Boolean(project.archived),
     updatedAt: project.updatedAt || "",
+    sceneRecipeSeed: project.sceneRecipe?.seed ?? null,
     generations: (project.generations || []).map((generation) => ({
       id: generation.id,
       status: generation.status,
       progress: generation.progress || 0,
       error: generation.error || "",
+      h3Stage: generation.h3Stage || "",
+      seed: generation.seed ?? null,
+      candidateIndex: generation.candidateIndex ?? null,
       videos: (generation.videos || []).map((file) => `${file.type || ""}/${file.subfolder || ""}/${file.filename || ""}`),
     })),
   })));
@@ -560,6 +1274,12 @@ function renderProjects() {
       item.status === "completed" && item.videos?.length
     );
     const active = (project.generations || []).some((item) => ["queued", "running"].includes(item.status));
+    const completedPreview = [...(project.generations || [])].reverse().find((item) =>
+      item.status === "completed" && item.h3Stage === "preview" && item.videos?.length
+    );
+    const h3RecipeReady = ["minimaxH3", "actionH3"].includes(project.videoStudioMode) && project.sceneRecipe && completedPreview;
+    const h3ProjectName = project.videoStudioMode === "actionH3" ? "ACTION H3" : "MiniMax H3";
+    const finishing = state.config.videoStudio.h3?.previewFinishing;
     const modeName = state.config.videoStudio.modes.find((item) => item.id === project.videoStudioMode)?.name || project.videoStudioMode;
     return `
       <article class="video-project-card">
@@ -575,12 +1295,16 @@ function renderProjects() {
           </div>
         </header>
         <p>${escapeHtml(project.prompt || "Progetto guidato Video Studio")}</p>
+        ${project.sceneRecipe ? `<div class="h3-scene-recipe"><b>Ricetta scena salvata</b><span>Seed ${escapeHtml(project.sceneRecipe.seed)} · ${escapeHtml(project.sceneRecipe.h3Mode)} · ${escapeHtml(project.sceneRecipe.aspectRatio)}</span></div>` : ""}
         <div class="video-project-stages">
           ${(project.generations || []).map((generation) => `
             <section>
               <div class="studio-result-label"><span>${escapeHtml(generation.videoStudioLabel || generation.workflowName)}</span><b>${escapeHtml(statusLabel(generation.status))}</b></div>
               ${generationMedia(generation)}
               ${generation.error ? `<p class="video-stage-error">${escapeHtml(generation.error)}</p>` : ""}
+              ${project.videoStudioMode === "seedHunterH3" && generation.status === "completed" && generation.h3Stage === "seedCandidate" && generation.videos?.length && !active
+                ? `<button class="chip-button" type="button" data-h3-seed-promote="${escapeHtml(project.id)}" data-generation="${escapeHtml(generation.id)}" data-seed="${escapeHtml(generation.seed)}">Scegli candidato ${escapeHtml(generation.candidateIndex || "")} · seed ${escapeHtml(generation.seed)}</button>`
+                : ""}
               ${["queued", "running"].includes(generation.status)
                 ? `<button class="cancel-generation-button compact" type="button" data-cancel-job="${generation.id}">Annulla generazione</button>`
                 : ""}
@@ -593,6 +1317,28 @@ function renderProjects() {
           </button>
         ` : ""}
         <div class="video-project-actions">
+          ${completedVideo && ["minimaxH3", "actionH3"].includes(project.videoStudioMode) && !active ? `
+            <button class="chip-button" type="button" data-h3-derope="${escapeHtml(project.id)}" data-generation="${escapeHtml(completedVideo.id)}"
+              ${state.config.videoStudio.h3?.temporalDeRope?.available === false ? 'disabled title="MAINodes non ancora caricato: riavvia ComfyUI"' : ""}>
+              Temporal De-Rope · bilanciato
+            </button>
+            <button class="chip-button" type="button" data-h3-ltx2k="${escapeHtml(project.id)}" data-generation="${escapeHtml(completedVideo.id)}"
+              ${state.config.videoStudio.ltx25?.modes?.h3Ltx2k?.available === false ? `disabled title="${escapeHtml(state.config.videoStudio.ltx25.modes.h3Ltx2k.reason || "IC-LoRA mancante")}"` : ""}>
+              H3 → LTX 2.5 IC · 2K
+            </button>
+          ` : ""}
+          ${h3RecipeReady && !active ? `
+            <button class="chip-button h3-promote-action" type="button" data-h3-promote="${escapeHtml(project.id)}" data-finishing="kjLanczos" data-generation="${escapeHtml(completedPreview.id)}">
+              KJ Lanczos · conserva il look
+            </button>
+            <button class="chip-button h3-promote-action" type="button" data-h3-promote="${escapeHtml(project.id)}" data-finishing="rtx" data-generation="${escapeHtml(completedPreview.id)}"
+              ${finishing?.available === false ? `disabled title="Nodi mancanti: ${escapeHtml((finishing.missingNodes || []).join(", "))}"` : ""}>
+              RTX · FILM ×2 → VSR → RCAS
+            </button>
+            <button class="chip-button" type="button" data-h3-native="${escapeHtml(project.id)}" data-generation="${escapeHtml(completedPreview.id)}">
+              Rigenera ${h3ProjectName} nativo · stesso seed
+            </button>
+          ` : ""}
           ${!active ? `<button class="chip-button" type="button" data-video-project-archive="${escapeHtml(project.id)}">Nascondi</button>` : ""}
         </div>
       </article>
@@ -900,6 +1646,15 @@ function renderInteractiveCastEvents() {
           ].map(([value, label]) => `<option value="${value}" ${value === (event.mode || "") ? "selected" : ""}>${label}</option>`).join("")}
         </select>
       </label>
+      <label class="cast-event-field cast-event-audio-mode">
+        <span>Voce</span>
+        <select class="cast-audio-mode" aria-label="Voce evento ${index + 1}">
+          ${[
+            ["ltxNative", "Audio nativo LTX"],
+            ["external", "Voce esterna / clone"],
+          ].map(([value, label]) => `<option value="${value}" ${value === (event.audioMode || "ltxNative") ? "selected" : ""}>${label}</option>`).join("")}
+        </select>
+      </label>
       <button class="cast-event-remove" type="button" title="Rimuovi intervento" aria-label="Rimuovi evento ${index + 1}" data-remove-cast-event="${index}">×</button>
     </div>
   `).join("");
@@ -914,9 +1669,98 @@ function syncInteractiveCastEvents() {
     action: row.querySelector(".cast-action").value.trim(),
     reaction: row.querySelector(".cast-reaction").value,
     mode: row.querySelector(".cast-mode").value,
+    audioMode: row.querySelector(".cast-audio-mode").value,
     preserveVoice: true,
     preserveFace: true,
   }));
+}
+
+function interactiveCastProductionGuide(project) {
+  const renderPackage = project.renderPackage || null;
+  const requiredSegments = (renderPackage?.segments || []).filter((segment) => segment.requiredGenerated);
+  const tasks = renderPackage?.segmentTasks?.tasks || [];
+  const taskFor = (segment) => tasks.find((task) => task.segmentId === segment.id) || null;
+  const pendingSegment = requiredSegments.find((segment) => segment.status !== "ready") || null;
+  const pendingTask = pendingSegment ? taskFor(pendingSegment) : null;
+  const generatedReady = requiredSegments.length > 0 && requiredSegments.every((segment) => segment.status === "ready");
+  const identityReports = renderPackage?.identityReports || {};
+  const identityChecked = generatedReady && requiredSegments.every((segment) => Boolean(identityReports[segment.id]));
+  const finalReady = Boolean(project.outputs?.finalVideo?.relativePath);
+  const steps = [
+    { label: "Analisi e piano", done: Boolean((project.editWindows || []).length) },
+    { label: "Segmenti preparati", done: Boolean(renderPackage) },
+    { label: "Anchor e clip LTX", done: generatedReady },
+    { label: "Controllo identità", done: identityChecked, optional: true },
+    { label: "Video finale", done: finalReady },
+  ];
+
+  let action = null;
+  let title = "Produzione completata";
+  let description = "Il video finale è pronto: controlla immagine, continuità e audio prima del download.";
+  if (!(project.editWindows || []).length) {
+    title = "Torna alla Configurazione";
+    description = "Manca ancora il piano degli interventi. Completa l'analisi e crea il piano prima di produrre.";
+    action = { label: "Apri Configurazione", attrs: 'data-interactive-cast-guide-config="true"' };
+  } else if (!renderPackage) {
+    title = "Prepara le clip di lavoro";
+    description = "Divide il video in parti originali e parti da generare. È il primo passo della Produzione.";
+    action = { label: "Prepara segmenti", attrs: `data-interactive-cast-segments="${escapeHtml(project.id)}"` };
+  } else if (pendingSegment && !pendingTask) {
+    title = "Rigenera il pacchetto di produzione";
+    description = "Il segmento richiesto non ha ancora un task associato. Preparalo di nuovo prima di continuare.";
+    action = { label: "Prepara segmenti", attrs: `data-interactive-cast-segments="${escapeHtml(project.id)}"` };
+  } else if (pendingSegment && pendingTask) {
+    const generationStatus = pendingTask.generation?.status || "idle";
+    const verification = pendingTask.generation?.anchorVerification;
+    if (["queued", "running", "anchorValidated"].includes(generationStatus)) {
+      title = generationStatus === "anchorValidated" ? "Anchor valida, preparazione LTX" : "Generazione in corso";
+      description = "Non serve premere altro: lo stato si aggiorna automaticamente. Attendi il completamento del passaggio corrente.";
+    } else if (generationStatus === "anchorReady" && verification?.status === "passed") {
+      title = "Controlla e approva l'anchor";
+      description = "Verifica presenza, volto, scala, prospettiva e luce. L'approvazione avvia la clip LTX mantenendo il video originale come guida.";
+      action = { label: "Approva anchor e genera LTX", attrs: `data-interactive-cast-approve-anchor="${escapeHtml(project.id)}:${escapeHtml(pendingSegment.id)}"` };
+    } else if (pendingSegment.mode === "generative") {
+      title = generationStatus === "failed" || generationStatus === "anchorRejected"
+        ? "Correggi l'anchor rifiutata"
+        : "Genera l'anchor del nuovo soggetto";
+      description = "Crea l'immagine ponte che integra il nuovo soggetto nella scena. Dopo la verifica potrai approvarla e avviare LTX.";
+      action = { label: generationStatus === "idle" ? "Genera anchor" : "Rigenera anchor", attrs: `data-interactive-cast-generate="${escapeHtml(project.id)}:${escapeHtml(pendingSegment.id)}"` };
+    } else {
+      title = "Completa il segmento evidenziato";
+      description = "Questo segmento richiede compositing o un file sostitutivo. Usa i controlli nel riquadro del segmento.";
+      action = { label: "Vai al segmento", attrs: `data-interactive-cast-guide-target="${escapeHtml(pendingSegment.id)}"` };
+    }
+  } else if (!finalReady) {
+    title = identityChecked ? "Ricomponi il video finale" : "Controlla l'identità, poi ricomponi";
+    description = identityChecked
+      ? "Tutte le clip obbligatorie sono pronte. Ricomponi le parti mantenendo l'audio disponibile."
+      : "Le clip sono pronte. L'Identity Check è consigliato ma non bloccante; puoi controllare i segmenti oppure creare subito il finale.";
+    action = { label: "Ricomponi MP4 finale", attrs: `data-interactive-cast-concat="${escapeHtml(project.id)}"` };
+  }
+
+  return `
+    <section class="interactive-cast-production-guide" aria-label="Guida produzione Interactive Cast">
+      <div class="interactive-cast-guide-heading">
+        <div><small>ASSISTENTE PRODUZIONE</small><h4>${escapeHtml(title)}</h4></div>
+        <span>${steps.filter((step) => step.done).length}/${steps.length}</span>
+      </div>
+      <div class="interactive-cast-guide-steps">
+        ${steps.map((step) => `<span class="${step.done ? "done" : ""} ${step.optional ? "optional" : ""}">${step.done ? "OK" : step.optional ? "OPZ" : ""} ${escapeHtml(step.label)}</span>`).join("")}
+      </div>
+      <p>${escapeHtml(description)}</p>
+      ${action ? `<button class="primary-button compact" type="button" ${action.attrs}>${escapeHtml(action.label)}</button>` : ""}
+      <details>
+        <summary>Cosa devo controllare e cosa posso ignorare?</summary>
+        <div class="interactive-cast-guide-notes">
+          <p><b>Attori originali:</b> assegna i nomi solo se devi indirizzare reazioni o battute a persone precise.</p>
+          <p><b>Frame e audio stems fallback:</b> sono anteprime diagnostiche; non richiedono modifiche per una semplice entrata in scena.</p>
+          <p><b>Speaker diarization:</b> lasciala non assegnata se non devi sostituire o sincronizzare le voci originali.</p>
+          <p><b>Anchor:</b> è il controllo decisivo. Non approvarla se il soggetto non è già credibile dentro luce, scala e prospettiva della scena.</p>
+          <p><b>Dopo l'anchor:</b> approva, attendi LTX, esegui facoltativamente Identity Check, quindi ricomponi l'MP4 finale.</p>
+        </div>
+      </details>
+    </section>
+  `;
 }
 
 function renderInteractiveCastProjects() {
@@ -948,6 +1792,7 @@ function renderInteractiveCastProjects() {
         <span>${Number(project.analysis?.fps || 0).toFixed(2)} fps</span>
         <span>${escapeHtml(project.analysis?.codec || "codec n/d")}</span>
       </div>
+      ${productionView ? interactiveCastProductionGuide(project) : ""}
       ${project.stages ? `
         <div class="interactive-cast-stages">
           ${Object.entries(project.stages).map(([stage, info]) => `
@@ -1047,8 +1892,15 @@ function renderInteractiveCastProjects() {
             const task = taskForSegment(project, segment.id);
             const anchor = task?.anchorFrame?.relativePath ? task.anchorFrame : null;
             const identityReport = project.renderPackage.identityReports?.[segment.id] || null;
+            const anchorVerification = task?.generation?.anchorVerification || null;
+            const anchorCandidate = task?.generation?.anchorCandidate?.relativePath
+              ? task.generation.anchorCandidate
+              : null;
+            const chatGptAnchorPrompt = task
+              ? interactiveCastChatGptAnchorPrompt(project, segment, task)
+              : "";
             return `
-              <div class="interactive-cast-segment-slot ${segment.status === "ready" ? "ready" : ""}">
+              <div class="interactive-cast-segment-slot ${segment.status === "ready" ? "ready" : ""}" data-interactive-cast-segment="${escapeHtml(segment.id)}">
                 <small><b>${segment.status === "ready" ? "AI ready" : "Missing AI"}</b> ${Number(segment.start || 0).toFixed(2)}-${Number(segment.end || 0).toFixed(2)} · ${escapeHtml(segment.mode)} · ${escapeHtml(segment.reason)}</small>
                 ${anchor ? `
                   <figure class="interactive-cast-task-anchor">
@@ -1083,11 +1935,20 @@ function renderInteractiveCastProjects() {
                   </details>
                 ` : ""}
                 ${task && segment.mode === "generative" && segment.status !== "ready" ? `
+                  ${anchorCandidate ? `
+                    <figure class="interactive-cast-anchor-candidate">
+                      <img src="${assetUrl(project, anchorCandidate.relativePath)}" alt="Anteprima anchor composta ${escapeHtml(segment.id)}">
+                      <figcaption>
+                        <b>Anchor composta · tentativo ${Number(anchorCandidate.attempt || task.generation?.anchorAttempt || 1)}</b>
+                        <span>Controlla presenza, identità, scala, prospettiva e luce prima di avviare LTX.</span>
+                      </figcaption>
+                    </figure>
+                  ` : ""}
                   <div class="interactive-cast-generate-controls">
                     <label class="compact-field">Qualità
                       <select data-cast-generate-quality="${escapeHtml(project.id)}:${escapeHtml(segment.id)}">
-                        <option value="preview">Anteprima rapida</option>
-                        <option value="max">Massima</option>
+                        <option value="preview" ${state.interactiveCastPreferredQuality === "preview" ? "selected" : ""}>Anteprima rapida</option>
+                        <option value="max" ${state.interactiveCastPreferredQuality === "max" ? "selected" : ""}>Massima</option>
                       </select>
                     </label>
                     <label class="compact-field">Risoluzione LTX
@@ -1103,10 +1964,51 @@ function renderInteractiveCastProjects() {
                       ${["queued", "running"].includes(task.generation?.status) ? "disabled" : ""}>
                       ${["queued", "running"].includes(task.generation?.status)
                         ? `In esecuzione · ${escapeHtml(task.generation?.phase || "anchor")}`
-                        : task.generation?.status === "failed" ? "Riprova generazione" : "Genera automaticamente"}
+                        : task.generation?.status === "anchorReady" ? "Rigenera anchor"
+                          : task.generation?.status === "failed" ? "Riprova anchor" : "Genera anchor"}
                     </button>
+                    ${task.generation?.status === "anchorReady" && anchorVerification?.status === "passed" ? `
+                      <button class="primary-button compact" type="button"
+                        data-interactive-cast-approve-anchor="${escapeHtml(project.id)}:${escapeHtml(segment.id)}">
+                        Approva anchor e genera LTX
+                      </button>
+                    ` : ""}
+                  </div>
+                  <div class="interactive-cast-external-anchor">
+                    <div class="interactive-cast-chatgpt-prompt">
+                      <div>
+                        <b>Prompt per ChatGPT Image</b>
+                        <small>Allega prima il frame sorgente come IMAGE 1, poi la reference del nuovo attore come IMAGE 2.</small>
+                      </div>
+                      <textarea readonly rows="10"
+                        data-cast-chatgpt-anchor-prompt="${escapeHtml(project.id)}:${escapeHtml(segment.id)}">${escapeHtml(chatGptAnchorPrompt)}</textarea>
+                      <button class="chip-button compact" type="button"
+                        data-interactive-cast-copy-anchor-prompt="${escapeHtml(project.id)}:${escapeHtml(segment.id)}">
+                        Copia prompt
+                      </button>
+                    </div>
+                    <label class="compact-file">
+                      <input type="file" accept="image/png,image/jpeg,image/webp"
+                        data-cast-external-anchor-file="${escapeHtml(project.id)}:${escapeHtml(segment.id)}">
+                      <span>Carica anchor esterno</span>
+                    </label>
+                    <button class="chip-button compact" type="button"
+                      data-interactive-cast-external-anchor="${escapeHtml(project.id)}:${escapeHtml(segment.id)}">
+                      Verifica anchor esterno
+                    </button>
+                    <small>Per immagini create con ChatGPT Image o un altro editor: devono contenere il nuovo attore e preservare gli attori originali.</small>
                   </div>
                   ${task.generation?.generationId ? `<small><b>Job</b> ${escapeHtml(task.generation.generationId)} · ${escapeHtml(task.generation.status || "queued")}</small>` : ""}
+                  ${task.generation?.anchorAttempt ? `<small><b>Anchor</b> tentativo ${Number(task.generation.anchorAttempt)} / ${Number(task.generation.anchorMaxAttempts || 3)} · ${escapeHtml(anchorVerification?.status || task.generation.status || "in attesa")}</small>` : ""}
+                  ${anchorVerification ? `
+                    <div class="interactive-cast-anchor-verification ${anchorVerification.status === "passed" ? "ready" : "warning"}">
+                      <small><b>Identity gate</b> ${escapeHtml(anchorVerification.status)} · volti ${Number(anchorVerification.sourceFaceCount || 0)} → ${Number(anchorVerification.candidateFaceCount || 0)} · similarità reference ${Number(anchorVerification.bestIdentitySimilarity || 0).toFixed(2)}</small>
+                      ${(anchorVerification.failures || []).length ? `<em>${escapeHtml(anchorVerification.failures.join(", "))}</em>` : ""}
+                      <button class="chip-button compact" type="button"
+                        data-interactive-cast-identity="${escapeHtml(project.id)}:${escapeHtml(segment.id)}"
+                        data-identity-scope="anchor">Identity check anchor</button>
+                    </div>
+                  ` : ""}
                   ${task.generation?.error ? `<em class="video-stage-error">${escapeHtml(task.generation.error)}</em>` : ""}
                 ` : ""}
                 ${segment.status === "ready" && segment.replacementRelativePath
@@ -1125,7 +2027,7 @@ function renderInteractiveCastProjects() {
                        <button class="chip-button compact" type="button" data-interactive-cast-replacement="${escapeHtml(project.id)}:${escapeHtml(segment.id)}">Aggancia</button>`}
                 ${identityReport ? `
                   <div class="interactive-cast-identity-report status-${escapeHtml(identityReport.status || "unknown")}">
-                    <small><b>Identity</b> ${escapeHtml(identityReport.status || "unknown")} · avg ${escapeHtml(identityReport.averageSimilarity ?? "n/d")} · min ${escapeHtml(identityReport.minSimilarity ?? "n/d")}</small>
+                    <small><b>Identity ${identityReport.scope === "anchor" ? "anchor" : "video"}</b> ${escapeHtml(identityReport.status || "unknown")} · avg ${escapeHtml(identityReport.averageSimilarity ?? "n/d")} · min ${escapeHtml(identityReport.minSimilarity ?? "n/d")}</small>
                     ${identityReport.warning ? `<em>${escapeHtml(identityReport.warning)}</em>` : ""}
                   </div>
                 ` : ""}
@@ -1200,7 +2102,7 @@ function renderInteractiveCastProjects() {
 
 async function refreshInteractiveCastProjects() {
   try {
-    const payload = await api("/api/interactive-cast/projects");
+    const payload = await api("/api/interactive-cast/projects?limit=12");
     const nextProjects = payload.projects || [];
     const changed = JSON.stringify(nextProjects) !== JSON.stringify(state.interactiveCastProjects);
     state.interactiveCastProjects = nextProjects;
@@ -1307,11 +2209,83 @@ async function generateInteractiveCastSegment(button) {
       item.id === payload.project.id ? payload.project : item
     );
     renderInteractiveCastProjects();
-    showToast("Anchor Interactive Cast in coda; LTX partirà automaticamente dopo la rifinitura.");
+    showToast("Anchor Interactive Cast in coda. LTX resterà bloccato fino alla tua approvazione.");
   } catch (error) {
     button.disabled = false;
     button.textContent = "Riprova generazione";
     showToast(error.message);
+  }
+}
+
+async function approveInteractiveCastAnchor(button) {
+  const [projectId, segmentId] = button.dataset.interactiveCastApproveAnchor.split(":");
+  button.disabled = true;
+  button.textContent = "Avvio LTX...";
+  try {
+    const payload = await api(`/api/interactive-cast/projects/${projectId}/segments/${segmentId}/approve-anchor`, {
+      method: "POST",
+    });
+    state.interactiveCastProjects = state.interactiveCastProjects.map((item) =>
+      item.id === payload.project.id ? payload.project : item
+    );
+    renderInteractiveCastProjects();
+    showToast("Anchor approvata. Il segmento LTX è stato accodato.");
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = "Approva anchor e genera LTX";
+    showToast(error.message);
+  }
+}
+
+async function importInteractiveCastExternalAnchor(button) {
+  const [projectId, segmentId] = button.dataset.interactiveCastExternalAnchor.split(":");
+  const key = `${projectId}:${segmentId}`;
+  const input = document.querySelector(`[data-cast-external-anchor-file="${CSS.escape(key)}"]`);
+  const file = input?.files?.[0] || null;
+  if (!file) {
+    showToast("Scegli prima l'immagine anchor esterna.");
+    return;
+  }
+  button.disabled = true;
+  button.textContent = "Verifico...";
+  try {
+    const form = new FormData();
+    form.set("anchorImage", file);
+    const payload = await api(`/api/interactive-cast/projects/${projectId}/segments/${segmentId}/external-anchor`, {
+      method: "POST",
+      body: form,
+    });
+    state.interactiveCastProjects = state.interactiveCastProjects.map((item) =>
+      item.id === payload.project.id ? payload.project : item
+    );
+    renderInteractiveCastProjects();
+    showToast(payload.verification?.status === "passed"
+      ? "Anchor esterno verificato: ora puoi approvarlo e avviare LTX."
+      : "Anchor esterno rifiutato: controlla identity gate e presenza attore.");
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = "Verifica anchor esterno";
+    showToast(error.message);
+  }
+}
+
+async function copyInteractiveCastAnchorPrompt(button) {
+  const key = button.dataset.interactiveCastCopyAnchorPrompt;
+  const textarea = document.querySelector(`[data-cast-chatgpt-anchor-prompt="${CSS.escape(key)}"]`);
+  const prompt = textarea?.value?.trim() || "";
+  if (!prompt) {
+    showToast("Prompt ChatGPT non disponibile per questo segmento.");
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(prompt);
+    showToast("Prompt per ChatGPT Image copiato.");
+  } catch {
+    textarea.focus();
+    textarea.select();
+    document.execCommand("copy");
+    textarea.setSelectionRange(0, 0);
+    showToast("Prompt per ChatGPT Image copiato.");
   }
 }
 
@@ -1578,14 +2552,16 @@ async function runInteractiveCastIdentityCheck(button) {
   button.disabled = true;
   button.textContent = "Controllo...";
   try {
-    const payload = await jsonApi(`/api/interactive-cast/projects/${projectId}/segments/${segmentId}/identity-check`, {});
+    const payload = await jsonApi(`/api/interactive-cast/projects/${projectId}/segments/${segmentId}/identity-check`, {
+      scope: button.dataset.identityScope || "auto",
+    });
     state.interactiveCastProjects = state.interactiveCastProjects.map((item) =>
       item.id === payload.project.id ? payload.project : item
     );
     renderInteractiveCastProjects();
     showToast(payload.report?.status === "drift-detected"
-      ? "Identity drift possibile: controlla il segmento."
-      : "Identity check completato.");
+      ? `Identity ${payload.report?.scope === "anchor" ? "anchor" : "video"} da rivedere.`
+      : `Identity check ${payload.report?.scope === "anchor" ? "anchor" : "video"} completato.`);
   } catch (error) {
     button.disabled = false;
     button.textContent = "Identity check";
@@ -1641,7 +2617,7 @@ function populateInteractiveCastCharacters() {
 
 async function refreshSequentialStories() {
   try {
-    const payload = await api("/api/video-studio/sequential-story");
+    const payload = await api("/api/video-studio/sequential-story?limit=12");
     state.sequentialStories = payload.projects || [];
     renderSequentialStories();
   } catch {
@@ -1651,7 +2627,7 @@ async function refreshSequentialStories() {
 
 async function refreshProjects() {
   try {
-    state.projects = await api("/api/video-studio/projects");
+    state.projects = await api("/api/video-studio/projects?limit=20");
     renderProjects();
   } catch {
     // Il polling riprova senza bloccare il form.
@@ -1660,11 +2636,15 @@ async function refreshProjects() {
 
 async function submitProject(event) {
   event.preventDefault();
+  const readiness = updateReadiness();
+  if (!readiness.ready) {
+    const message = `${readiness.title}. ${readiness.detail}`;
+    $("#video-studio-status").textContent = message;
+    showToast(message);
+    return;
+  }
   syncDialogue();
   syncLoras();
-  const button = $("#video-studio-submit");
-  const status = $("#video-studio-status");
-  const form = new FormData(event.currentTarget);
   const selectedMode = mode();
   const promptByMode = {
     actorReplacement: "#actorPrompt",
@@ -1673,16 +2653,42 @@ async function submitProject(event) {
     retake: "#retakePrompt",
     extend: "#extendPrompt",
     hdr: "#hdrPrompt",
+    minimaxH3: "#h3Prompt",
+    seedHunterH3: "#seedHunterH3Prompt",
+    actionH3: "#actionH3Prompt",
+    ltx25Aio: "#ltx25Prompt",
   };
+  const promptInput = promptByMode[selectedMode] ? $(promptByMode[selectedMode]) : null;
+  applyVideoPromptTriggers(promptInput, selectedMode);
+  const button = $("#video-studio-submit");
+  const status = $("#video-studio-status");
+  const form = new FormData(event.currentTarget);
   const durationByMode = {
     actorReplacement: "#duration",
     interactiveScene: "#interactiveDuration",
     sceneTransform: "#duration",
     retake: "#retakeDuration",
+    minimaxH3: "#h3Duration",
+    seedHunterH3: "#seedHunterH3Duration",
+    actionH3: "#actionH3Duration",
+    ltx25Aio: "#ltx25Duration",
   };
   form.set("videoStudioMode", selectedMode);
   form.set("prompt", promptByMode[selectedMode] ? $(promptByMode[selectedMode]).value : "Temporal interpolation");
   if (durationByMode[selectedMode]) form.set("duration", $(durationByMode[selectedMode]).value);
+  const seedByMode = {
+    minimaxH3: "#videoSeed",
+    seedHunterH3: "#seedHunterH3Seed",
+    actionH3: "#actionH3Seed",
+    ltx25Aio: "#ltx25Seed",
+  };
+  if (seedByMode[selectedMode]) form.set("seed", $(seedByMode[selectedMode])?.value || "");
+  if (["minimaxH3", "actionH3"].includes(selectedMode)) {
+    for (const name of ["h3UseTurbo", "h3PurgeBetween", "h3PurgeAfter"]) {
+      form.set(name, String($(`#${name}`)?.checked));
+    }
+    form.set("h3SecondPass", String(["latentLearned", "h3Balanced", "h3Maximum"].includes($("#h3RefineMode").value)));
+  }
   form.set("dialogue", $("#dialogue-json").value);
   form.set("loras", $("#video-loras-json").value);
   button.disabled = true;
@@ -1697,8 +2703,16 @@ async function submitProject(event) {
     const project = await api("/api/video-studio/projects", { method: "POST", body: form });
     state.projects.unshift(project);
     renderProjects();
-    status.textContent = "Progetto aggiunto alla coda.";
-    showToast("Video Studio: progetto creato.");
+    const isH3Preview = (selectedMode === "minimaxH3" && form.get("h3RunProfile") === "preview")
+      || (selectedMode === "actionH3" && form.get("actionH3RunProfile") === "preview");
+    const isSeedHunter = selectedMode === "seedHunterH3";
+    const isLtx25Preview = selectedMode === "ltx25Aio" && form.get("ltx25Profile") === "preview";
+    status.textContent = isH3Preview
+      ? `Anteprima aggiunta alla coda. La ricetta e il seed ${project.sceneRecipe?.seed ?? "effettivo"} sono stati salvati.`
+      : isSeedHunter ? "Tre candidati Seed Hunter aggiunti come job separati. Attendi il completamento e scegline uno." : isLtx25Preview ? "Anteprima LTX 2.5 aggiunta alla coda con purge VRAM automatico." : "Progetto aggiunto alla coda.";
+    showToast(isH3Preview
+      ? `${selectedMode === "actionH3" ? "ACTION H3" : "MiniMax H3"}: anteprima e ricetta create.`
+      : isSeedHunter ? "Seed Hunter H3: tre candidati creati." : "Video Studio: progetto creato.");
   } catch (error) {
     status.textContent = error.message;
     showToast(error.message);
@@ -1721,6 +2735,87 @@ async function applyLipdub(button) {
     showToast("LipDub aggiunto alla coda.");
   } catch (error) {
     button.disabled = false;
+    showToast(error.message);
+  }
+}
+
+async function promoteH3Preview(button) {
+  button.disabled = true;
+  const finishingMode = button.dataset.finishing || "rtx";
+  button.textContent = "Preparazione finishing…";
+  try {
+    const project = await api(`/api/video-studio/projects/${button.dataset.h3Promote}/promote-preview`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ generationId: button.dataset.generation, finishingMode, rcasStrength: 0.35 }),
+    });
+    state.projects = state.projects.map((item) => item.id === project.id ? project : item);
+    renderProjects();
+    showToast(finishingMode === "kjLanczos"
+      ? "Finitura KJ Lanczos conservativa aggiunta alla coda."
+      : "Finishing FILM → RTX ×2 → RCAS aggiunto alla coda.");
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = finishingMode === "kjLanczos" ? "KJ Lanczos · conserva il look" : "RTX · FILM ×2 → VSR → RCAS";
+    showToast(error.message);
+  }
+}
+
+async function regenerateH3Native(button) {
+  button.disabled = true;
+  button.textContent = "Preparazione finale H3…";
+  try {
+    const project = await api(`/api/video-studio/projects/${button.dataset.h3Native}/regenerate-native`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ generationId: button.dataset.generation, seed: button.dataset.seed || undefined }),
+    });
+    state.projects = state.projects.map((item) => item.id === project.id ? project : item);
+    renderProjects();
+    showToast(button.dataset.seed
+      ? `Candidato seed ${button.dataset.seed} scelto: finale H3 aggiunto alla coda.`
+      : "Finale H3 nativo con lo stesso seed aggiunto alla coda.");
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = "Rigenera H3 nativo · stesso seed";
+    showToast(error.message);
+  }
+}
+
+async function promoteH3ToLtx2k(button) {
+  button.disabled = true;
+  button.textContent = "Preparazione LTX 2.5 IC…";
+  try {
+    const project = await api(`/api/video-studio/projects/${button.dataset.h3Ltx2k}/h3-ltx2k`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ generationId: button.dataset.generation }),
+    });
+    state.projects = state.projects.map((item) => item.id === project.id ? project : item);
+    renderProjects();
+    showToast("Refine H3 → LTX 2.5 IC 2K aggiunto alla coda con purge dedicati.");
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = "H3 → LTX 2.5 IC · 2K";
+    showToast(error.message);
+  }
+}
+
+async function repairH3TemporalMotion(button) {
+  button.disabled = true;
+  button.textContent = "Analisi jerk e riparazione…";
+  try {
+    const project = await api(`/api/video-studio/projects/${button.dataset.h3Derope}/temporal-derope`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ generationId: button.dataset.generation, profile: "balanced" }),
+    });
+    state.projects = state.projects.map((item) => item.id === project.id ? project : item);
+    renderProjects();
+    showToast("Temporal De-Rope bilanciato aggiunto alla coda; interviene solo sui segmenti veloci rilevati.");
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = "Temporal De-Rope · bilanciato";
     showToast(error.message);
   }
 }
@@ -1771,13 +2866,16 @@ async function deleteVideoProject(button) {
 }
 
 async function start() {
-  const sequentialPayloadPromise = api("/api/video-studio/sequential-story").catch(() => ({ projects: [] }));
-  [state.config, state.projects, state.sequentialStories] = await Promise.all([
-    api("/api/config"),
-    api("/api/video-studio/projects"),
-    sequentialPayloadPromise.then((payload) => payload.projects || []),
+  const [config, projects, sequentialPayload, interactivePayload] = await Promise.all([
+    getAppConfig(),
+    api("/api/video-studio/projects?limit=20"),
+    api("/api/video-studio/sequential-story?limit=12").catch(() => ({ projects: [] })),
+    api("/api/interactive-cast/projects?limit=12").catch(() => ({ projects: [] })),
   ]);
-  await refreshInteractiveCastProjects();
+  state.config = config;
+  state.projects = projects;
+  state.sequentialStories = sequentialPayload.projects || [];
+  state.interactiveCastProjects = interactivePayload.projects || [];
   const engines = state.config.videoStudio.engines;
   $("#actorEngine").innerHTML = engines.map((engine) =>
     `<option value="${engine.id}" ${engine.available ? "" : "disabled"}>${escapeHtml(engine.name)}${engine.available ? "" : " · non installato"}</option>`
@@ -1809,6 +2907,21 @@ async function start() {
   renderDialogue();
   renderLoras();
   updateMode();
+  attachFormDraft($("#video-studio-form"), {
+    key: "ltx-remote:video-studio-draft:v1",
+    onRestore: () => {
+      try {
+        state.dialogue = JSON.parse($("#dialogue-json").value || "[]");
+        state.loras = JSON.parse($("#video-loras-json").value || "[]");
+      } catch {
+        // I singoli campi della bozza restano comunque validi.
+      }
+      renderDialogue();
+      renderLoras();
+      updateMode();
+      syncCharacterFields();
+    },
+  });
   await applyGuidedCreation();
   updateEngine();
   for (const tools of document.querySelectorAll("[data-ltx-prompt-tools]")) {
@@ -1818,12 +2931,21 @@ async function start() {
   renderSequentialStories();
   renderInteractiveCastEvents();
   renderInteractiveCastProjects();
+  void refreshInteractiveCastCapabilities(null, { silent: true });
   setupUploadPreviews();
   checkHealth();
-  setInterval(checkHealth, 15000);
-  setInterval(refreshProjects, 3500);
-  setInterval(refreshSequentialStories, 3500);
-  setInterval(refreshInteractiveCastProjects, 3500);
+  createAdaptivePoller(checkHealth, { idleMs: 15_000, hiddenMs: 60_000 });
+  createAdaptivePoller(async () => {
+    await Promise.all([
+      refreshProjects(),
+      refreshSequentialStories(),
+      refreshInteractiveCastProjects(),
+    ]);
+  }, {
+    active: () => state.projects.some((project) => (project.generations || []).some((item) => ["queued", "running"].includes(item.status)))
+      || state.sequentialStories.some((project) => ["queued", "running", "generating"].includes(project.status))
+      || state.interactiveCastProjects.some((project) => ["queued", "running"].includes(project.status)),
+  });
 }
 
 function promptInputForMode(selectedMode) {
@@ -1834,6 +2956,10 @@ function promptInputForMode(selectedMode) {
     retake: $("#retakePrompt"),
     extend: $("#extendPrompt"),
     hdr: $("#hdrPrompt"),
+    minimaxH3: $("#h3Prompt"),
+    seedHunterH3: $("#seedHunterH3Prompt"),
+    actionH3: $("#actionH3Prompt"),
+    ltx25Aio: $("#ltx25Prompt"),
   }[selectedMode] || null;
 }
 
@@ -1879,6 +3005,125 @@ function ltxPromptConfigForMode(selectedMode) {
       mode: () => "video",
       toast: "Prompt Extend creato; clicca Crea progetto quando vuoi.",
     },
+    minimaxH3: {
+      input: $("#h3Prompt"),
+      status: $("#h3-prompt-assistant-status"),
+      workflowName: "Video Studio · MiniMax H3",
+      sourceFile: () => null,
+      sourceFiles: () => {
+        const h3Mode = $("#h3Mode")?.value;
+        if (h3Mode === "image") return [$("#h3FirstFrame")?.files[0]].filter(Boolean);
+        if (h3Mode === "firstLast") return [$("#h3FirstFrame")?.files[0], $("#h3LastFrame")?.files[0]].filter(Boolean);
+        if (h3Mode === "references") return [...($("#h3ReferenceImages")?.files || [])].slice(0, 9);
+        return [];
+      },
+      mode: () => {
+        const h3Mode = $("#h3Mode")?.value;
+        if ($("#h3ModelProfile")?.value === "erosMax" && h3Mode === "image") return "references";
+        if (h3Mode === "references") return "references";
+        if (h3Mode === "firstLast") return "firstLast";
+        if (h3Mode === "image") return "image";
+        return "text";
+      },
+      promptPreset: () => {
+        if ($("#h3ModelProfile")?.value === "erosMax") return "h3_eros_max";
+        const selected = $("#h3PromptPreset")?.value || "h3_general";
+        return ["image", "firstLast"].includes($("#h3Mode")?.value) && selected === "h3_general"
+          ? "h3_image_to_video"
+          : selected;
+      },
+      duration: () => $("#h3Duration")?.value || "",
+      text: (triggers = []) => {
+        const h3Mode = $("#h3Mode")?.value || "text";
+        const erosMax = $("#h3ModelProfile")?.value === "erosMax";
+        const modeName = erosMax && h3Mode === "image"
+          ? "Eros Single Reference (Ref2VA with <Picture 1>, never first-frame I2VA)"
+          : { text: "T2VA", image: "I2VA", firstLast: "FL2VA", references: "Ref2VA" }[h3Mode];
+        const referenceCounts = h3Mode === "references"
+          ? ` Supplied references: ${Math.min(9, $("#h3ReferenceImages")?.files?.length || 0)} pictures, ${Math.min(3, $("#h3ReferenceVideos")?.files?.length || 0)} videos, ${Math.min(3, $("#h3ReferenceAudios")?.files?.length || 0)} separate audio files.`
+          : "";
+        const sceneHint = H3_SCENE_PRESETS[$("#h3ScenePreset")?.value]?.hint || "";
+        return `H3 input mode: ${modeName}. Target duration: ${$("#h3Duration")?.value || 5} seconds.${referenceCounts} ${h3LoraPromptContract(triggers)}${sceneHint ? ` Scene preset: ${sceneHint}` : ""} User request: ${$("#h3Prompt").value}`;
+      },
+      toast: "Prompt MiniMax H3 creato; controlla i tag reference e avvia quando vuoi.",
+    },
+    seedHunterH3: {
+      input: $("#seedHunterH3Prompt"),
+      status: $("#seed-hunter-h3-prompt-assistant-status"),
+      workflowName: "Video Studio · Seed Hunter H3 · tre candidati",
+      sourceFile: () => null,
+      sourceFiles: () => {
+        const selected = $("#seedHunterH3Mode")?.value || "text";
+        if (selected === "image") return [$("#seedHunterH3FirstFrame")?.files[0]].filter(Boolean);
+        if (selected === "firstLast") return [$("#seedHunterH3FirstFrame")?.files[0], $("#seedHunterH3LastFrame")?.files[0]].filter(Boolean);
+        return [];
+      },
+      mode: () => {
+        const selected = $("#seedHunterH3Mode")?.value || "text";
+        return selected === "firstLast" ? "firstLast" : selected === "image" ? "image" : "text";
+      },
+      promptPreset: () => $("#seedHunterH3PromptPreset")?.value || "h3_general",
+      duration: () => $("#seedHunterH3Duration")?.value || "",
+      text: (triggers = []) => `H3 Seed Hunter input mode: ${$("#seedHunterH3Mode")?.value || "text"}. Target duration: ${$("#seedHunterH3Duration")?.value || 5} seconds. The identical complete timeline will be tested with three consecutive seeds. ${h3LoraPromptContract(triggers)} User request: ${$("#seedHunterH3Prompt").value}`,
+      toast: "Prompt Seed Hunter H3 creato; verrà applicato identico ai tre candidati.",
+    },
+    actionH3: {
+      input: $("#actionH3Prompt"),
+      status: $("#action-h3-prompt-assistant-status"),
+      workflowName: "Video Studio · ACTION H3 · FL2VA Combat V2",
+      sourceFile: () => null,
+      sourceFiles: () => {
+        const actionMode = $("#actionH3Mode")?.value;
+        if (actionMode === "image") return [$("#actionH3FirstFrame")?.files[0]].filter(Boolean);
+        if (actionMode === "firstLast") return [$("#actionH3FirstFrame")?.files[0], $("#actionH3LastFrame")?.files[0]].filter(Boolean);
+        return [];
+      },
+      mode: () => {
+        const actionMode = $("#actionH3Mode")?.value || "text";
+        return actionMode === "firstLast" ? "firstLast" : actionMode === "image" ? "image" : "text";
+      },
+      promptPreset: () => $("#actionH3PromptPreset")?.value || "h3_action",
+      duration: () => $("#actionH3Duration")?.value || "",
+      text: (triggers = []) => {
+        const actionMode = $("#actionH3Mode")?.value || "text";
+        const modeName = { text: "T2VA", image: "I2VA", firstLast: "FL2VA" }[actionMode];
+        const trigger = $("#actionH3Trigger")?.value || "no trigger";
+        const preset = ACTION_H3_PRESETS[$("#actionH3Preset")?.value] || ACTION_H3_PRESETS.custom;
+        return `H3 input mode: ${modeName}. Target duration: ${$("#actionH3Duration")?.value || 5} seconds. ${h3LoraPromptContract(triggers)} Combat Base V2 trigger: ${trigger}. ACTION preset direction: ${preset.hint} Complete every action beat before dialogue. User request: ${$("#actionH3Prompt").value}`;
+      },
+      toast: "Coreografia ACTION H3 creata; verifica impatti, reazioni e ordine temporale.",
+    },
+    ltx25Aio: {
+      input: $("#ltx25Prompt"),
+      status: $("#ltx25-prompt-assistant-status"),
+      workflowName: "Video Studio · LTX 2.5 AIO",
+      sourceFile: () => $("#ltx25ReferenceSheet")?.files[0] || $("#ltx25MsrReferences")?.files[0] || $("#ltx25FirstFrame")?.files[0] || null,
+      sourceFiles: () => [
+        $("#ltx25FirstFrame")?.files[0],
+        ...([...($("#ltx25Keyframes")?.files || [])]),
+        $("#ltx25LastFrame")?.files[0],
+        $("#ltx25ReferenceSheet")?.files[0],
+        ...([...($("#ltx25MsrReferences")?.files || [])]),
+      ].filter(Boolean).slice(0, 8),
+      mode: () => ["text", "multishot", "textAudio"].includes($("#ltx25Mode")?.value) ? "text" : "image",
+      promptPreset: () => $("#ltx25PromptPreset")?.value || "ltx_general",
+      duration: () => $("#ltx25Duration")?.value || "",
+      text: (triggers = []) => {
+        const selected = $("#ltx25Mode")?.value || "text";
+        const triggerContract = triggers.length
+          ? `Put these verified LoRA activation words exactly once at the very beginning: ${triggers.join(", ")}. `
+          : "";
+        if (selected === "v2vDeblur") {
+          return `${triggerContract}Rewrite the user request for the official LTX IC-LoRA Deblur convention. Output one concise prompt in this exact semantic order: Reference shows <accurate source scene description>, heavily out of focus with soft defocused blur and no fine detail. Edited shows the same scene in sharp focus with crisp detail and clean edges. DEBLUR <the same scene description>. Subject identity, framing, background geometry, motion and timing are identical to the reference; only focus and sharpness differ. Do not invent scene changes. User request: ${$("#ltx25Prompt").value}`;
+        }
+        if (selected === "multiReferenceMsr") {
+          const count = Math.min(5, $("#ltx25MsrReferences")?.files?.length || 0);
+          return `${triggerContract}Create a production-ready LTX 2.5 Multiple Subject Reference prompt for ${count || "1-5"} ordered images. Refer to every supplied source explicitly as Image 1, Image 2, Image 3, Image 4 and Image 5 only when present; Image 5 is the optional environment/background. Assign each subject a stable role, appearance and spatial position, then describe chronological interaction, camera, synchronized dialogue and diegetic audio without merging identities. User request: ${$("#ltx25Prompt").value}`;
+        }
+        return `${triggerContract}Create a production-ready LTX 2.5 ${selected} prompt. Respect the requested duration, chronological action, camera, synchronized dialogue and diegetic audio. User request: ${$("#ltx25Prompt").value}`;
+      },
+      toast: "Prompt LTX 2.5 creato; controlla timeline, audio e trigger prima di avviare.",
+    },
   }[selectedMode] || null;
 }
 
@@ -1887,6 +3132,9 @@ function ltxPromptLabel(target) {
     ltx_architect: "LTX Prompt",
     ltx_scenes: "LTX Scene",
     sulphur_prompt: "LTX Sulphur",
+    minimax_h3: "H3 Prompt",
+    minimax_h3_fantasy_verite: "H3 Fantasy vérité",
+    minimax_h3_action: "ACTION Prompt",
   }[target] || "LTX Prompt";
 }
 
@@ -1895,21 +3143,44 @@ async function runVideoStudioLtxPrompt(button) {
   const selectedMode = tools?.dataset.ltxPromptTools || mode();
   const config = ltxPromptConfigForMode(selectedMode);
   if (!config?.input) return;
-  const target = button.dataset.ltxPrompt;
+  let target = button.dataset.ltxPrompt;
+  if (selectedMode === "minimaxH3" && $("#h3ScenePreset")?.value === "fantasyVerite") {
+    target = "minimax_h3_fantasy_verite";
+  }
+  syncLoras();
+  const selectedPromptTriggers = selectedVideoPromptTriggers(selectedMode);
   try {
-    await enhanceMainPrompt({
+    const enhanced = await enhanceMainPrompt({
       input: config.input,
       button,
       status: config.status,
       target,
+      promptPreset: config.promptPreset?.() || "",
+      duration: config.duration?.() || "",
       mode: config.mode(),
       workflowName: `${config.workflowName} · ${ltxPromptLabel(target)}`,
       sourceFile: config.sourceFile(),
+      sourceFiles: config.sourceFiles?.() || [],
+      text: config.promptPreset ? config.input.value : config.text?.(selectedPromptTriggers),
       negativeInput: $("#videoNegativePrompt"),
-      includeNegative: true,
+      includeNegative: !["minimaxH3", "actionH3", "seedHunterH3"].includes(selectedMode),
       buttonScope: tools,
+      fields: {
+        characterId: $("#videoCharacterId")?.value || "",
+        identityStrength: $("#videoCharacterIdentityStrength")?.value || "medium",
+        lockFace: $("#videoCharacterLockFace")?.value || "true",
+        lockHair: $("#videoCharacterLockHair")?.value || "true",
+        lockBody: $("#videoCharacterLockBody")?.value || "true",
+        lockOutfit: $("#videoCharacterLockOutfit")?.value || "false",
+        videoStudioMode: selectedMode,
+      },
     });
-    showToast(config.toast);
+    $("#videoCharacterPromptEnhanced").value = enhanced?.character?.id || "";
+    applyVideoPromptTriggers(config.input, selectedMode, selectedPromptTriggers);
+    const triggerNotice = selectedPromptTriggers.length
+      ? ` Trigger applicato: ${selectedPromptTriggers.join(", ")}.`
+      : "";
+    showToast(`${config.toast}${triggerNotice}`);
   } catch {
     // Stato mostrato accanto al prompt; il testo originale resta nel textarea.
   }
@@ -1927,6 +3198,25 @@ async function applyGuidedCreation() {
     : null;
   if (modeInput) modeInput.checked = true;
   updateMode();
+  if (selectedMode === "interactiveCast") {
+    if (fields.interactiveCastNewActorName) {
+      $("#interactiveCastNewActorName").value = fields.interactiveCastNewActorName;
+    }
+    if (fields.interactiveCastCharacterId !== undefined) {
+      $("#interactiveCastNewActor").value = fields.interactiveCastCharacterId || "";
+    }
+    if (fields.interactiveCastAnchorWorkflow) {
+      $("#interactiveCastAnchorWorkflow").value = fields.interactiveCastAnchorWorkflow;
+    }
+    if (fields.interactiveCastBrief) {
+      $("#interactiveCastBrief").value = fields.interactiveCastBrief;
+    }
+    if (Array.isArray(fields.interactiveCastEvents) && fields.interactiveCastEvents.length) {
+      state.interactiveCastEvents = fields.interactiveCastEvents;
+      renderInteractiveCastEvents();
+    }
+    state.interactiveCastPreferredQuality = fields.quality === "max" ? "max" : "preview";
+  }
   if (["normal", "sulphur"].includes(fields.engine)) {
     const option = [...$("#studioVideoModel").options].find((item) => item.value === fields.engine && !item.disabled);
     if (option) $("#studioVideoModel").value = fields.engine;
@@ -1947,6 +3237,31 @@ async function applyGuidedCreation() {
     promptInput.value = fields.prompt;
     promptInput.dispatchEvent(new Event("input", { bubbles: true }));
   }
+  if (mode() === "sequentialStory" && fields.prompt) {
+    $("#sequentialDescription").value = fields.prompt;
+  }
+  const transferredFields = {
+    referenceDescription: "#referenceDescription",
+    duration: mode() === "interactiveScene" ? "#interactiveDuration" : mode() === "retake" ? "#retakeDuration" : null,
+    cameraMotion: "#cameraMotion",
+    editUseCase: "#editUseCase",
+    controlType: "#sceneControlType",
+    controlStrength: "#sceneControlStrength",
+    extendDuration: "#extendDuration",
+    hdrExposure: "#hdrExposure",
+    sequentialSceneCount: "#sequentialSceneCount",
+    sequentialSceneDuration: "#sequentialSceneDuration",
+    sequentialGlobalStyle: "#sequentialGlobalStyle",
+  };
+  for (const [field, selector] of Object.entries(transferredFields)) {
+    if (!selector || fields[field] === undefined || fields[field] === "") continue;
+    const input = $(selector);
+    if (input) input.value = fields[field];
+  }
+  if (mode() === "sequentialStory" && handoff.files?.sequentialInitialImage) {
+    $("#sequentialInputMode").value = "image";
+    syncSequentialInputMode();
+  }
   for (const [name, file] of Object.entries(handoff.files || {})) {
     const input = document.querySelector(`[name="${CSS.escape(name)}"]:not([disabled])`)
       || document.querySelector(`[name="${CSS.escape(name)}"]`);
@@ -1957,6 +3272,53 @@ async function applyGuidedCreation() {
 }
 
 document.querySelectorAll("[name=videoStudioMode]").forEach((input) => input.addEventListener("change", updateMode));
+$("#h3Mode").addEventListener("change", () => {
+  const selectedMode = $("#h3Mode")?.value || "text";
+  if ($("#h3ModelProfile")?.value === "erosMax") {
+    $("#h3PromptPreset").value = "h3_eros_max";
+  } else if (["image", "firstLast"].includes(selectedMode) && $("#h3PromptPreset").value === "h3_general") {
+    $("#h3PromptPreset").value = "h3_image_to_video";
+  } else if (selectedMode === "text" && $("#h3PromptPreset").value === "h3_image_to_video") {
+    $("#h3PromptPreset").value = "h3_general";
+  }
+  updateH3Fields();
+  updateReadiness();
+});
+$("#h3ModelProfile")?.addEventListener("change", () => {
+  const erosMax = $("#h3ModelProfile").value === "erosMax";
+  $("#h3PromptPreset").value = erosMax
+    ? "h3_eros_max"
+    : $("#h3Mode").value === "image" ? "h3_image_to_video" : "h3_general";
+  updateH3Fields();
+  updateReadiness();
+});
+$("#actionH3Mode").addEventListener("change", () => {
+  updateActionH3Fields();
+  updateReadiness();
+});
+$("#seedHunterH3Mode")?.addEventListener("change", () => {
+  updateSeedHunterH3Fields();
+  updateReadiness();
+});
+$("#ltx25Mode").addEventListener("change", () => {
+  updateLtx25Fields();
+  updateReadiness();
+});
+$("#ltx25Profile").addEventListener("change", () => {
+  updateLtx25Fields();
+  updateMode();
+});
+$("#ltx25LoraPreset").addEventListener("change", updateLtx25LoraPresetHint);
+$("#ltx25-apply-lora-preset").addEventListener("click", applyLtx25LoraPreset);
+for (const selector of ["#h3RefineMode", "#h3FirstMegapixels", "#h3SecondMegapixels", "#h3SeedvrResolution"]) {
+  $(selector).addEventListener("change", updateH3Fields);
+}
+$("#h3RunProfile").addEventListener("change", updateMode);
+$("#h3ScenePreset").addEventListener("change", updateH3ScenePresetHint);
+$("#h3ApplyScenePreset").addEventListener("click", applyH3ScenePreset);
+$("#actionH3RunProfile").addEventListener("change", updateMode);
+$("#actionH3Preset").addEventListener("change", updateActionH3PresetHint);
+$("#action-h3-apply-preset").addEventListener("click", applyActionH3Preset);
 $("#interactive-cast-workspace-nav").addEventListener("click", (event) => {
   const button = event.target.closest("[data-interactive-cast-view]");
   if (!button) return;
@@ -2018,10 +3380,12 @@ $("#dialogue-list").addEventListener("click", (event) => {
 });
 $("#video-add-lora").addEventListener("click", () => {
   syncLoras();
-  const first = state.config.videoStudio.ltxLoras[0];
-  if (!first) return showToast("Nessuna LoRA LTX 2.3 installata.");
-  state.loras.push({ name: first, strength: .8 });
+  const h3Active = ["minimaxH3", "actionH3", "seedHunterH3"].includes(mode());
+  const selected = $("#video-lora-picker")?.value;
+  if (!selected) return showToast(`Nessuna altra LoRA ${h3Active ? "MiniMax H3" : "LTX 2.3"} disponibile.`);
+  state.loras.push({ name: selected, strength: .8 });
   renderLoras();
+  showToast(`LoRA aggiunta: ${selected.split(/[\\/]/).pop()}`);
 });
 $("#video-loras").addEventListener("input", syncLoras);
 $("#video-loras").addEventListener("click", (event) => {
@@ -2032,6 +3396,32 @@ $("#video-loras").addEventListener("click", (event) => {
   renderLoras();
 });
 $("#video-studio-projects").addEventListener("click", (event) => {
+  const promote = event.target.closest("[data-h3-promote]");
+  if (promote) {
+    promoteH3Preview(promote);
+    return;
+  }
+  const native = event.target.closest("[data-h3-native]");
+  if (native) {
+    regenerateH3Native(native);
+    return;
+  }
+  const seedPromote = event.target.closest("[data-h3-seed-promote]");
+  if (seedPromote) {
+    seedPromote.dataset.h3Native = seedPromote.dataset.h3SeedPromote;
+    regenerateH3Native(seedPromote);
+    return;
+  }
+  const ltx2k = event.target.closest("[data-h3-ltx2k]");
+  if (ltx2k) {
+    promoteH3ToLtx2k(ltx2k);
+    return;
+  }
+  const derope = event.target.closest("[data-h3-derope]");
+  if (derope) {
+    repairH3TemporalMotion(derope);
+    return;
+  }
   const cancel = event.target.closest("[data-cancel-job]");
   if (cancel) {
     cancelProjectGeneration(cancel);
@@ -2058,7 +3448,7 @@ $("#interactive-cast-refresh-capabilities").addEventListener("click", (event) =>
 });
 $("#interactive-cast-add-event").addEventListener("click", () => {
   syncInteractiveCastEvents();
-  state.interactiveCastEvents.push({ speaker: "New Actor", start: 0, end: 2, dialogue: "", action: "", reaction: "none", mode: "" });
+  state.interactiveCastEvents.push({ speaker: "New Actor", start: 0, end: 2, dialogue: "", action: "", reaction: "none", mode: "", audioMode: "ltxNative" });
   renderInteractiveCastEvents();
 });
 $("#interactive-cast-events").addEventListener("input", syncInteractiveCastEvents);
@@ -2070,6 +3460,18 @@ $("#interactive-cast-events").addEventListener("click", (event) => {
   renderInteractiveCastEvents();
 });
 $("#interactive-cast-projects").addEventListener("click", (event) => {
+  const configGuide = event.target.closest("[data-interactive-cast-guide-config]");
+  if (configGuide) {
+    setInteractiveCastView("config", { updateHash: true, scroll: true });
+    return;
+  }
+  const targetGuide = event.target.closest("[data-interactive-cast-guide-target]");
+  if (targetGuide) {
+    const projectCard = targetGuide.closest("[data-interactive-cast-project]");
+    const segment = projectCard?.querySelector(`[data-interactive-cast-segment="${CSS.escape(targetGuide.dataset.interactiveCastGuideTarget)}"]`);
+    segment?.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
   const remove = event.target.closest("[data-interactive-cast-delete]");
   if (remove) {
     deleteInteractiveCastProject(remove);
@@ -2108,6 +3510,21 @@ $("#interactive-cast-projects").addEventListener("click", (event) => {
   const generate = event.target.closest("[data-interactive-cast-generate]");
   if (generate) {
     generateInteractiveCastSegment(generate);
+    return;
+  }
+  const approveAnchor = event.target.closest("[data-interactive-cast-approve-anchor]");
+  if (approveAnchor) {
+    approveInteractiveCastAnchor(approveAnchor);
+    return;
+  }
+  const externalAnchor = event.target.closest("[data-interactive-cast-external-anchor]");
+  if (externalAnchor) {
+    importInteractiveCastExternalAnchor(externalAnchor);
+    return;
+  }
+  const copyAnchorPrompt = event.target.closest("[data-interactive-cast-copy-anchor-prompt]");
+  if (copyAnchorPrompt) {
+    copyInteractiveCastAnchorPrompt(copyAnchorPrompt);
     return;
   }
   const composite = event.target.closest("[data-interactive-cast-composite]");

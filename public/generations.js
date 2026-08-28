@@ -1,3 +1,5 @@
+import { createAdaptivePoller } from "./runtime-cache.js";
+
 const state = {
   history: [],
   total: 0,
@@ -80,6 +82,16 @@ function formatBytes(bytes) {
   if (value >= 1024 ** 2) return `${(value / 1024 ** 2).toFixed(1)} MB`;
   if (value >= 1024) return `${Math.round(value / 1024)} KB`;
   return `${value} B`;
+}
+
+function displayImageEntries(item) {
+  const entries = (item.images || []).map((image, index) => ({ image, index }));
+  if (item.workflowId !== "studio:kreaTriple" && item.studioMode !== "kreaTriple") return entries;
+  const finals = entries.filter(({ image }) => {
+    const name = `${image.subfolder || ""}/${image.filename || ""}`.toLowerCase();
+    return /(?:^|[/\\_-])08[_-]finale|(?:^|[/\\_-])finale|(?:^|[/\\_-])final(?:[_\-.]|$)/.test(name);
+  });
+  return finals.length ? [finals.at(-1)] : entries.length ? [entries.at(-1)] : [];
 }
 
 function currentFilters() {
@@ -252,7 +264,7 @@ function formatSettings(item) {
   if (item.imageModelName) entries.push(["Modello", item.imageModelName]);
   if (item.videoModelName) entries.push(["Modello", item.videoModelName]);
   if (item.mediaType === "image") {
-    entries.push(["Immagini", item.batchSize || item.images?.length || 1]);
+    entries.push(["Immagini", displayImageEntries(item).length || 1]);
   } else {
     if (videoModeLabel(item.inputMode)) {
       entries.push(["Modalità", videoModeLabel(item.inputMode)]);
@@ -354,7 +366,8 @@ function mediaMarkup(item) {
       </div>
     `).join("");
   }
-  if (!item.images?.length) {
+  const displayImages = displayImageEntries(item);
+  if (!displayImages.length) {
     const progress = item.status === "running" ? ` · ${item.progress || 0}%` : "";
     return `
       <div class="generation-placeholder status-${escapeHtml(item.status)}">
@@ -363,13 +376,13 @@ function mediaMarkup(item) {
         ${item.error ? `<small>${escapeHtml(item.error)}</small>` : ""}
       </div>`;
   }
-  return `<div class="generation-images">${item.images.map((image, index) => `
+  return `<div class="generation-images">${displayImages.map(({ image, index }) => `
     <figure class="generation-image">
       <a href="/api/image/${item.id}/${index}" target="_blank" rel="noopener">
         <img loading="lazy" src="/api/image/${item.id}/${index}" alt="Risultato ${index + 1}">
       </a>
       <a class="download" href="/api/image/${item.id}/${index}?download=1" download>
-        Download${item.images.length > 1 ? ` ${index + 1}` : ""} ↓
+        Download ↓
       </a>
     </figure>
   `).join("")}</div>`;
@@ -730,7 +743,7 @@ async function start() {
   try {
     await Promise.all([checkHealth(), loadHistory()]);
     connectEvents();
-    setInterval(checkHealth, 15000);
+    createAdaptivePoller(checkHealth, { idleMs: 15_000, hiddenMs: 60_000 });
   } catch (error) {
     showToast(error.message);
   }

@@ -23,6 +23,7 @@ export function voiceEngineCapabilities({ root, toolDirectory } = {}) {
     primaryEngine: adapterReady ? "chatterbox-multilingual" : null,
     status: configured ? "READY" : adapterReady ? "FALLBACK" : "NOT CONFIGURED",
     synthesizeDialogue: configured,
+    requiresReference: true,
     script,
     python,
     engineDirectory,
@@ -30,7 +31,7 @@ export function voiceEngineCapabilities({ root, toolDirectory } = {}) {
     device: model?.device || null,
     model,
     reason: configured
-      ? "Chatterbox Multilingual adapter, isolated Python environment and model cache are ready."
+      ? "Chatterbox Multilingual adapter, isolated Python environment and model cache are ready; a voice reference is required."
       : adapterReady
         ? "Chatterbox adapter installed, but model prefetch has not completed."
         : "No local zero-shot voice engine has been installed in .tools/interactive-cast.",

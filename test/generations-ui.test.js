@@ -34,3 +34,11 @@ test("Generazioni chiama stima ed esecuzione cleanup", () => {
   assert.match(html, /deleteFilesKeepRecords/);
   assert.match(html, /deleteFilesAndRecords/);
 });
+
+test("Krea Triple mostra soltanto il master 08_finale mantenendo il suo indice API", () => {
+  assert.match(html, /generations\.js\?v=20260823-krea-final-only/);
+  assert.match(script, /function displayImageEntries/);
+  assert.match(script, /studio:kreaTriple/);
+  assert.match(script, /08\[_-\]finale/);
+  assert.match(script, /displayImages\.map\(\(\{ image, index \}\)/);
+});

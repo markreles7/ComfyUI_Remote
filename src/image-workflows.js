@@ -7,10 +7,26 @@ export const IMAGE_MODELS = {
     name: "Flux.1",
     family: "flux1",
     modelPrefix: "FLUX1D\\",
+    modelExcludes: ["KREA2"],
     defaultModelFile: "FLUX1D\\flux1-dev.safetensors",
     description: "Modelli Flux.1 compatibili, con img2img e Flux Redux reference.",
     modes: ["text", "image", "reference"],
     defaults: { steps: 28, guidance: 3.5 },
+  },
+  fluxKrea2: {
+    id: "fluxKrea2",
+    name: "Flux Krea 2",
+    family: "krea2",
+    modelPrefix: "FLUX1D\\",
+    modelIncludes: ["KREA2"],
+    defaultModelFile: "FLUX1D\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors",
+    description: "Checkpoint Krea 2 con encoder Qwen3-VL, VAE Qwen e sampling nativo Krea2.",
+    modes: ["text", "image"],
+    defaults: { steps: 8, guidance: 1 },
+    dependencies: {
+      clip: "qwen3vl_4b_fp8_scaled.safetensors",
+      vae: "qwen_image_vae.safetensors",
+    },
   },
   flux2: {
     id: "flux2",
@@ -31,6 +47,36 @@ export const IMAGE_MODELS = {
     description: "Modelli Z-Image compatibili per generazione e img2img.",
     modes: ["text", "image"],
     defaults: { steps: 8, guidance: 1 },
+  },
+  mageFlow: {
+    id: "mageFlow",
+    name: "Mage-Flow",
+    family: "mageflow",
+    modelPrefix: "",
+    modelIncludes: ["MAGE_FLOW_BF16"],
+    defaultModelFile: "mage_flow_bf16.safetensors",
+    description: "Microsoft Mage-Flow 4B RL-aligned BF16 per Text to Image nativo fino a 2048 px.",
+    modes: ["text"],
+    defaults: { steps: 20, guidance: 5 },
+    dependencies: {
+      clip: "qwen3vl_4b_bf16.safetensors",
+      vae: "mage_flow_vae_bf16.safetensors",
+    },
+  },
+  mageFlowEdit: {
+    id: "mageFlowEdit",
+    name: "Mage-Flow Edit",
+    family: "mageflowedit",
+    modelPrefix: "",
+    modelIncludes: ["MAGE_FLOW_EDIT_BF16"],
+    defaultModelFile: "mage_flow_edit_bf16.safetensors",
+    description: "Microsoft Mage-Flow Edit 4B RL-aligned BF16 per modifiche guidate da istruzioni e immagini reference.",
+    modes: ["image"],
+    defaults: { steps: 30, guidance: 5 },
+    dependencies: {
+      clip: "qwen3vl_4b_bf16.safetensors",
+      vae: "mage_flow_vae_bf16.safetensors",
+    },
   },
   qwenImage: {
     id: "qwenImage",
@@ -53,8 +99,8 @@ export const IMAGE_MODELS = {
     family: "qwenedit",
     modelPrefix: "QWEN\\",
     modelIncludes: ["QWEN_IMAGE_EDIT_2511", "QWENIMAGEEDIT2511", "QWEN_RAPID_AIO_NSFW", "QWEN-RAPID-AIO-NSFW", "BIGLOVEGWEN2"],
-    defaultModelFile: "QWEN\\BigLoveGwen2_mxfp8.safetensors",
-    description: "Qwen Image Edit 2511 e BigLove Gwen 2 per modifiche guidate, preservando scena e identità.",
+    defaultModelFile: "QWEN\\qwen_image_edit_2511_bf16.safetensors",
+    description: "Qwen Image Edit 2511 BF16 come motore primario; BigLove Gwen 2 e Qwen Rapid AIO restano varianti a selezione esplicita.",
     modes: ["image"],
     defaults: { steps: 40, guidance: 4 },
     dependencies: {
@@ -83,9 +129,24 @@ export const IMAGE_MODELS = {
   },
 };
 
+export const QWEN_EDIT_2511_LIGHTNING_8_LORA = Object.freeze({
+  name: "QWEN\\Qwen-Image-Edit-2511-Lightning-8steps-V1.0-bf16.safetensors",
+  strength: 1,
+});
+
+export function qwenEdit2511Lightning8Preset(modelFile = IMAGE_MODELS.qwenEdit.defaultModelFile) {
+  const official2511 = /qwen[_-]?image[_-]?edit[_-]?2511/i.test(String(modelFile || ""));
+  return official2511 ? {
+    steps: 8,
+    guidance: 1,
+    loras: [{ ...QWEN_EDIT_2511_LIGHTNING_8_LORA }],
+    samplingProfile: "lightning-8",
+  } : null;
+}
+
 const LEGACY_IMAGE_MODEL_IDS = {
   fluxDev: { familyId: "flux1", defaultModelFile: "FLUX1D\\flux1-dev.safetensors" },
-  fluxKrea: { familyId: "flux1", defaultModelFile: "FLUX1D\\flux1-krea-dev_fp8_scaled.safetensors" },
+  fluxKrea: { familyId: "fluxKrea2", defaultModelFile: "FLUX1D\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors" },
   fluxKlein9b: { familyId: "flux2", defaultModelFile: "FLUX2\\flux2Klein_9bBase.safetensors" },
 };
 
@@ -132,8 +193,12 @@ function friendlyModelName(filename) {
   const known = {
     "flux1-dev": "Flux.1 Dev",
     "flux1-krea-dev_fp8_scaled": "Flux.1 Krea Dev FP8",
+    "darkBeast30BF16INT8_darkBeastKREA2FP8": "DarkBeast Krea2 FP8",
+    "moodyKrea2Mix_v50": "Moody Krea2 Mix v5",
     "flux2Klein_9bBase": "Flux.2 Klein 9B Base",
     "z_image_turbo_bf16": "Z-Image Turbo BF16",
+    "mage_flow_bf16": "Mage-Flow 4B RL · BF16",
+    "mage_flow_edit_bf16": "Mage-Flow Edit 4B RL · BF16",
     "qwen_image_2512_fp8_e4m3fn": "Qwen Image 2512 FP8",
     "qwen_image_edit_2511_bf16": "Qwen Image Edit 2511 BF16",
     "Qwen-Rapid-AIO-NSFW-v23": "Qwen Rapid AIO NSFW v23",
@@ -141,6 +206,8 @@ function friendlyModelName(filename) {
     "BigLoveGwen2_nf4": "BigLove Gwen 2 · NF4 leggero",
     "BigLoveKlein4_bf16": "BigLove Klein 4 · BF16",
     "BigLoveKlein4_int8_convrot": "BigLove Klein 4 · INT8 ConvRot",
+    "pornmasterFlux2Klein_v4BaseBf16": "PornMaster Flux2 Klein v4 Base · BF16",
+    "pornmasterFlux2Klein_v4TurboFp8": "PornMaster Flux2 Klein v4 Turbo · FP8",
     "RealVisXL_V5.0": "RealVisXL V5.0",
     "RealVisXL_V5.0_fp16": "RealVisXL V5.0 fp16",
     "RealVisXL_V5.0_Lightning": "RealVisXL V5.0 Lightning",
@@ -153,6 +220,12 @@ function friendlyModelName(filename) {
 }
 
 function variantDefaults(definition, modelFile) {
+  if (definition.family === "flux2" && /pornmaster.*flux2.*klein.*v4.*turbo/i.test(modelFile)) {
+    return { steps: 4, guidance: 1 };
+  }
+  if (definition.family === "flux2" && /pornmaster.*flux2.*klein.*v4.*base.*bf16/i.test(modelFile)) {
+    return { steps: 12, guidance: 2 };
+  }
   if (definition.family === "qwenedit" && /BIGLOVEGWEN2/i.test(modelFile)) {
     return { steps: 6, guidance: 1 };
   }
@@ -172,6 +245,9 @@ function modelCompatible(definition, modelFile) {
   const value = String(modelFile || "");
   const normalized = value.toLocaleUpperCase();
   const basename = normalized.split(/[\\/]/).pop() || normalized;
+  if (definition.modelExcludes?.some((token) => basename.includes(String(token).toLocaleUpperCase()))) {
+    return false;
+  }
   const familyMatch = definition.modelIncludes?.length
     ? definition.modelIncludes.some((token) => basename.includes(token))
     : true;
@@ -183,6 +259,52 @@ function modelCompatible(definition, modelFile) {
   if (normalized.startsWith(prefix)) return true;
   const folderName = prefix.replace(/[\\/]+$/, "");
   return normalized.includes(`\\${folderName}\\`) || normalized.includes(`/${folderName}/`);
+}
+
+function buildKrea2(definition, options, upload) {
+  const workflow = {
+    "1": node({ unet_name: definition.modelFile, weight_dtype: "default" }, "UNETLoader", definition.name),
+    "2": node({
+      clip_name: "qwen3vl_4b_fp8_scaled.safetensors",
+      type: "krea2",
+      device: "default",
+    }, "CLIPLoader", "Text encoder Krea 2"),
+    "3": node({ vae_name: "qwen_image_vae.safetensors" }, "VAELoader", "VAE Krea 2"),
+    "5": node({ text: options.prompt, clip: ["2", 0] }, "CLIPTextEncode", "Prompt Krea 2"),
+    "6": node({ conditioning: ["5", 0] }, "ConditioningZeroOut", "Negativo Krea 2"),
+    "8": node({
+      seed: options.seed,
+      steps: options.steps,
+      cfg: options.guidance,
+      sampler_name: "euler",
+      scheduler: "simple",
+      denoise: options.mode === "image" ? options.denoise : 1,
+      model: ["1", 0],
+      positive: ["5", 0],
+      negative: ["6", 0],
+      latent_image: ["7", 0],
+    }, "KSampler", "Sampler Krea 2"),
+    "9": node({ samples: ["8", 0], vae: ["3", 0] }, "VAEDecode", "Decode Krea 2"),
+    "10": node({ images: ["9", 0], filename_prefix: `Remote_${definition.id}` }, "SaveImage", "Salva Krea 2"),
+  };
+  if (options.mode === "image") {
+    workflow["20"] = node({ image: inputPath(upload) }, "LoadImage", "Immagine iniziale Krea 2");
+    workflow["21"] = node({
+      image: ["20", 0],
+      upscale_method: "lanczos",
+      width: options.width,
+      height: options.height,
+      crop: "center",
+    }, "ImageScale", "Adatta immagine Krea 2");
+    workflow["7"] = node({ pixels: ["21", 0], vae: ["3", 0] }, "VAEEncode", "Latent img2img Krea 2");
+  } else {
+    workflow["7"] = node({
+      width: options.width,
+      height: options.height,
+      batch_size: options.batchSize,
+    }, "EmptyLatentImage", "Latent vuoto Krea 2");
+  }
+  return workflow;
 }
 
 export function imageModelSelection(modelId, requestedModelFile = "") {
@@ -344,11 +466,10 @@ function buildKlein(definition, options, upload, referenceUploads = []) {
       workflow[String(base)] = node({ image: inputPath(reference) }, "LoadImage", label);
       workflow[String(base + 1)] = node({
         image: [String(base), 0],
-        upscale_method: "lanczos",
-        width: options.width,
-        height: options.height,
-        crop: "center",
-      }, "ImageScale", `Adatta ${label.toLowerCase()}`);
+        upscale_method: "nearest-exact",
+        megapixels: index === 0 ? 1.5 : 1,
+        resolution_steps: 1,
+      }, "ImageScaleToTotalPixels", `Normalizza ${label.toLowerCase()} senza crop`);
       workflow[String(base + 2)] = node({
         pixels: [String(base + 1), 0],
         vae: ["3", 0],
@@ -457,6 +578,87 @@ function buildQwenText(definition, options) {
     "9": node({ samples: ["8", 0], vae: ["3", 0] }, "VAEDecode", "Decode"),
     "10": node({ images: ["9", 0], filename_prefix: "Remote_qwenImage2512" }, "SaveImage", "Save image"),
   };
+}
+
+function buildMageFlow(definition, options) {
+  return {
+    "1": node({ unet_name: definition.modelFile, weight_dtype: "default" }, "UNETLoader", definition.name),
+    "2": node({
+      clip_name: definition.dependencies.clip,
+      type: "mage",
+      device: "default",
+    }, "CLIPLoader", "Qwen3-VL 4B BF16 · Mage-Flow"),
+    "3": node({ vae_name: definition.dependencies.vae }, "VAELoader", "Mage VAE BF16"),
+    "5": node({
+      clip: ["2", 0],
+      prompt: options.prompt,
+      negative_prompt: options.negativePrompt || " ",
+      images: {},
+      vae: ["3", 0],
+      width: options.width,
+      height: options.height,
+      batch_size: options.batchSize,
+    }, "TextEncodeMageFlowEdit", "Prompt e latent Mage-Flow"),
+    "8": node({
+      model: ["1", 0],
+      seed: options.seed,
+      steps: options.steps,
+      cfg: options.guidance,
+      sampler_name: "euler",
+      scheduler: "simple",
+      positive: ["5", 0],
+      negative: ["5", 1],
+      latent_image: ["5", 2],
+      denoise: 1,
+    }, "KSampler", "Genera Mage-Flow"),
+    "9": node({ samples: ["8", 0], vae: ["3", 0] }, "VAEDecode", "Decode Mage VAE"),
+    "10": node({ images: ["9", 0], filename_prefix: "Remote_mageFlow" }, "SaveImage", "Salva Mage-Flow"),
+  };
+}
+
+function buildMageFlowEdit(definition, options, upload, referenceUploads = []) {
+  const workflow = {
+    "1": node({ unet_name: definition.modelFile, weight_dtype: "default" }, "UNETLoader", definition.name),
+    "2": node({
+      clip_name: definition.dependencies.clip,
+      type: "mage",
+      device: "default",
+    }, "CLIPLoader", "Qwen3-VL 4B BF16 · Mage-Flow Edit"),
+    "3": node({ vae_name: definition.dependencies.vae }, "VAELoader", "Mage VAE BF16"),
+    "20": node({ image: inputPath(upload) }, "LoadImage", "Immagine da modificare"),
+  };
+  const references = [upload, ...referenceUploads].filter((item) => item?.name).slice(0, 3);
+  const images = { image_1: ["20", 0] };
+  references.slice(1).forEach((reference, index) => {
+    const id = String(21 + index);
+    workflow[id] = node({ image: inputPath(reference) }, "LoadImage", `Reference Mage ${index + 2}`);
+    images[`image_${index + 2}`] = [id, 0];
+  });
+  workflow["5"] = node({
+    clip: ["2", 0],
+    prompt: options.prompt,
+    negative_prompt: options.negativePrompt || " ",
+    images,
+    vae: ["3", 0],
+    width: options.width,
+    height: options.height,
+    batch_size: 1,
+  }, "TextEncodeMageFlowEdit", "Istruzione, reference e latent Mage-Flow Edit");
+  workflow["8"] = node({
+    model: ["1", 0],
+    seed: options.seed,
+    steps: options.steps,
+    cfg: options.guidance,
+    sampler_name: "euler",
+    scheduler: "simple",
+    positive: ["5", 0],
+    negative: ["5", 1],
+    latent_image: ["5", 2],
+    denoise: 1,
+  }, "KSampler", "Modifica con Mage-Flow");
+  workflow["9"] = node({ samples: ["8", 0], vae: ["3", 0] }, "VAEDecode", "Decode Mage VAE");
+  workflow["10"] = node({ images: ["9", 0], filename_prefix: "Remote_mageFlowEdit" }, "SaveImage", "Salva Mage-Flow Edit");
+  return workflow;
 }
 
 function qwenDiffusionLoader(definition) {
@@ -908,6 +1110,8 @@ function applyHighresFix(workflow, definition, options, preparedImage = null) {
   const family = definition.family;
   const base = family === "flux1"
     ? { image: ["13", 0], save: "14", model: ["4", 0], vae: ["3", 0], guider: ["11", 0], sampler: ["10", 0] }
+    : family === "krea2"
+      ? { image: ["9", 0], save: "10", model: ["1", 0], vae: ["3", 0], positive: ["5", 0], negative: ["6", 0] }
     : family === "flux2"
       ? { image: ["15", 0], save: "16", model: ["1", 0], vae: ["3", 0], guider: ["13", 0], sampler: ["11", 0] }
       : family === "qwenedit"
@@ -919,6 +1123,8 @@ function applyHighresFix(workflow, definition, options, preparedImage = null) {
             positive: workflow["8"].inputs.positive,
             negative: workflow["8"].inputs.negative,
           }
+        : ["mageflow", "mageflowedit"].includes(family)
+          ? { image: ["9", 0], save: "10", model: ["1", 0], vae: ["3", 0], positive: ["5", 0], negative: ["5", 1] }
         : family === "sdxl"
           ? { image: ["9", 0], save: "10", model: ["1", 0], vae: ["1", 2], positive: ["5", 0], negative: ["6", 0] }
         : { image: ["9", 0], save: "10", model: ["4", 0], vae: ["3", 0], positive: ["5", 0], negative: ["6", 0] };
@@ -1209,15 +1415,24 @@ export function buildImageWorkflow(modelId, rawOptions, upload, rawLoras = undef
   if (definition.family === "qwenedit" && options.batchSize > 1) {
     throw new Error("Qwen Image Edit 2511 richiede Numero immagini = 1.");
   }
+  if (["mageflow", "mageflowedit"].includes(definition.family) && options.batchSize > 1) {
+    throw new Error("Mage-Flow BF16 richiede Numero immagini = 1 su questa configurazione.");
+  }
   if (options.faceEnhance && !options.faceModel) {
     throw new Error("Nessun modello di miglioramento volti disponibile.");
   }
   const workflow = definition.family === "flux1"
     ? buildFlux1(definition, options, upload)
+    : definition.family === "krea2"
+      ? buildKrea2(definition, options, upload)
     : definition.family === "flux2"
       ? buildKlein(definition, options, upload, rawOptions.referenceUploads)
       : definition.family === "qwen"
         ? buildQwenText(definition, options)
+        : definition.family === "mageflow"
+          ? buildMageFlow(definition, options)
+        : definition.family === "mageflowedit"
+          ? buildMageFlowEdit(definition, options, upload, rawOptions.referenceUploads)
         : definition.family === "qwenedit"
           ? buildQwenEdit(definition, options, upload, rawOptions.referenceUploads)
           : definition.family === "sdxl"
@@ -1230,6 +1445,8 @@ export function buildImageWorkflow(modelId, rawOptions, upload, rawLoras = undef
   if (definition.family === "qwenedit" && isBigLoveGwen2(definition.modelFile)) {
     insertModelLoras(workflow, loras, ["1", 0], ["8"]);
   } else if (definition.family === "sdxl") {
+    insertModelLoras(workflow, loras, ["1", 0], ["8"]);
+  } else if (["mageflow", "mageflowedit", "krea2"].includes(definition.family)) {
     insertModelLoras(workflow, loras, ["1", 0], ["8"]);
   } else if (definition.family === "flux1" || definition.family === "qwen" || definition.family === "qwenedit") {
     insertModelLoras(workflow, loras, ["1", 0], ["4"]);
@@ -1291,7 +1508,7 @@ export function buildImageWorkflow(modelId, rawOptions, upload, rawLoras = undef
       imageSettings: {
         steps: options.steps,
         guidance: options.guidance,
-        denoise: definition.family === "qwenedit" ? 1 : mode === "image" ? options.denoise : null,
+        denoise: ["qwenedit", "mageflowedit"].includes(definition.family) ? 1 : mode === "image" ? options.denoise : null,
         referenceStrength: mode === "reference" ? options.referenceStrength : null,
         highresEnabled: options.highresEnabled,
         highresScale: options.highresEnabled ? options.highresScale : null,
@@ -1333,9 +1550,14 @@ export function imageModelConfig(installedModelNames = [], installedComponents =
         defaults: variantDefaults(definition, file),
       }))
       .sort((a, b) => a.name.localeCompare(b.name, "it"));
-    const defaultModelFile = models.some((model) =>
+    const configuredDefaultAvailable = models.some((model) =>
       model.file.toLowerCase() === definition.defaultModelFile.toLowerCase()
-    ) ? definition.defaultModelFile : models[0]?.file || definition.defaultModelFile;
+    );
+    // Le varianti Qwen Edit (Gwen/AIO) non devono diventare automaticamente il
+    // motore primario quando il checkpoint ufficiale 2511 non è installato.
+    const defaultModelFile = configuredDefaultAvailable || definition.id === "qwenEdit"
+      ? definition.defaultModelFile
+      : models[0]?.file || definition.defaultModelFile;
     const missingRequirements = [];
     if (definition.dependencies?.clip && !installedClips.some((name) =>
       String(name).toLowerCase() === definition.dependencies.clip.toLowerCase()
@@ -1350,6 +1572,7 @@ export function imageModelConfig(installedModelNames = [], installedComponents =
       models,
       missingRequirements,
       available: models.length > 0 && missingRequirements.length === 0,
+      primaryAvailable: configuredDefaultAvailable && missingRequirements.length === 0,
     };
   });
 }

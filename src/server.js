@@ -11,6 +11,7 @@ import express from "express";
 import multer from "multer";
 import { ComfyClient, extractImages, extractVideos } from "./comfy-client.js";
 import { editWildcardConfig, pickEditWildcardPrompt } from "./edit-wildcards.js";
+import { poseLibraryConfig, selectPose } from "./pose-library.js";
 import { cancelGeneration } from "./generation-cancellation.js";
 import { setGenerationsArchived } from "./generation-archive.js";
 import {
@@ -33,8 +34,10 @@ import {
   buildImageWorkflow,
   imageModelConfig,
   imageModelSelection,
+  qwenEdit2511Lightning8Preset,
 } from "./image-workflows.js";
 import { parseLoras, validateLoras } from "./loras.js";
+import { loraTriggerMetadata } from "./lora-trigger-catalog.js";
 import {
   applyQwenStructureGuide,
   buildStudioContinuation,
@@ -53,10 +56,17 @@ import {
   SEEDVR2_VIDEO_UPSCALE_REQUIRED_NODES,
 } from "./seedvr2-video-upscale-workflows.js";
 import {
+  buildInteractiveCastUnionJob,
   buildVideoStudioInitialJob,
   buildVideoStudioLipdubJob,
   videoStudioConfig,
 } from "./video-studio-workflows.js";
+import {
+  buildH3PreviewFinishingWorkflow,
+  buildH3SceneRecipe,
+} from "./h3-preview-workflows.js";
+import { buildOrbitSheetWorkflow } from "./orbit-sheets-workflows.js";
+import { buildH3DeRopeWorkflow } from "./h3-derope-workflows.js";
 import {
   comfyQueuePromptIds,
   missingGenerationPatch,
@@ -68,7 +78,7 @@ import {
   buildWorkflow,
   videoModelConfig,
 } from "./workflows.js";
-import { WorkflowPreflight } from "./workflow-validator.js";
+import { validateWorkflow, WorkflowPreflight } from "./workflow-validator.js";
 import { sceneIntegrationSettings } from "./scene-integration/defaults.js";
 import { buildComfySceneAnalysisWorkflow } from "./scene-integration/comfy-analysis-workflows.js";
 import { buildSceneCorrectionWorkflow } from "./scene-integration/correction-workflow.js";
@@ -76,6 +86,54 @@ import { evaluateAndPlanCorrection, prepareSceneIntegratedWorkflow } from "./sce
 import { SceneIntegrationService } from "./scene-integration/service.js";
 import { planSubjectInsertion, subjectInsertionResult } from "./subject-insertion/index.js";
 import { CharacterStore } from "./characters.js";
+import {
+  blueprintDescription,
+  blueprintIdentityHints,
+  normalizeCharacterBlueprint,
+  normalizeGenesis,
+  normalizeSubjectKind,
+} from "./character-genesis.js";
+import {
+  buildCharacterReferenceJob,
+  missingReferenceItems,
+  normalizeReferencePlan,
+  patchReferencePlanItem,
+  referenceRoleCatalog,
+  selectReferenceWorkflow,
+} from "./character-reference-factory.js";
+import {
+  characterPhotoEngineCatalog,
+  characterPhotoGenerationMetadata,
+  normalizeSceneBlueprint,
+  routeCharacterPhotoWorkflow,
+  sceneBlueprintSummary,
+  selectCharacterPhotoReferences,
+  surpriseSceneSeed,
+} from "./character-photo.js";
+import {
+  createCharacterMasterPipeline,
+  finishCharacterMasterPipeline,
+  identityProtectionContract,
+  nextMasterPipelineStage,
+  seedVr2PresetForQuality,
+  updateMasterPipelineStage,
+} from "./character-master-pipeline.js";
+import {
+  characterVideoHistoryMetadata,
+  createCharacterVideoRouter,
+  motionPromptSections,
+  normalizeVideoBlueprint,
+  routeCharacterVideo,
+  videoRequirements,
+} from "./character-video.js";
+import {
+  characterVideoStage,
+  createCharacterVideoPipeline,
+  finishCharacterVideoPipeline,
+  updateCharacterVideoStage,
+} from "./character-video-pipeline.js";
+import { synthesizeDialogue, voiceEngineCapabilities } from "./interactive-cast/voice-engine.js";
+import { applyLipSync, lipsyncCapabilities } from "./interactive-cast/lipsync-engine.js";
 import {
   buildCharacterAnchorFrameRequest,
   resolveCharacterAdapter,
@@ -85,8 +143,6 @@ import {
 import {
   SequentialStoryService,
   SequentialStoryStore,
-  cosineSimilarity,
-  fingerprintFromPgm,
   validateSequentialStoryPlan,
 } from "./sequential-story.js";
 import {
@@ -94,7 +150,15 @@ import {
   InteractiveCastProjectStore,
   validateInteractiveCastAssistantPlan,
 } from "./interactive-cast/index.js";
+import {
+  planAnchorPlacement,
+  verifyAnchorCandidate,
+} from "./interactive-cast/anchor-verification.js";
 import { GpuResourceManager } from "./gpu-resource-manager.js";
+import {
+  IdentityEvaluationService,
+  InsightFaceBuffaloLProvider,
+} from "./identity-evaluation.js";
 
 dotenv.config();
 
@@ -118,6 +182,23 @@ const events = new Set();
 const store = new HistoryStore(path.join(root, ".data", "history.json"));
 const studioStore = new HistoryStore(path.join(root, ".data", "studio-projects.json"));
 const videoStudioStore = new HistoryStore(path.join(root, ".data", "video-studio-projects.json"));
+
+function reconcileOrphanStudioProjects() {
+  const patches = new Map();
+  const recoveredAt = new Date().toISOString();
+  for (const project of studioStore.list()) {
+    if (project.status !== "queued" || (project.generationIds || []).length) continue;
+    patches.set(project.id, {
+      status: "error",
+      error: "Creazione interrotta dal riavvio del server prima dell'invio a ComfyUI. Riprova la generazione.",
+      recoveredAt,
+      updatedAt: recoveredAt,
+    });
+  }
+  return studioStore.patchMany(patches);
+}
+
+reconcileOrphanStudioProjects();
 const interactiveCastStore = new InteractiveCastProjectStore({
   file: path.join(root, ".data", "interactive-cast-projects.json"),
   assetDirectory: path.join(root, ".data", "interactive-cast-assets"),
@@ -128,6 +209,9 @@ const sequentialStoryStore = new SequentialStoryStore({
 });
 const characterStore = new CharacterStore({
   dataDirectory: path.join(root, ".data"),
+});
+const identityEvaluation = new IdentityEvaluationService({
+  providers: [new InsightFaceBuffaloLProvider({ root, outputDirectory })],
 });
 const sceneIntegration = new SceneIntegrationService({
   root,
@@ -144,6 +228,38 @@ const gpuResourceManager = new GpuResourceManager({
   releaseComfyMemory: releaseComfyMemoryIfIdle,
 });
 let idlePurgeTimer = null;
+const appConfigCache = {
+  value: null,
+  updatedAt: 0,
+  refreshPromise: null,
+};
+const APP_CONFIG_TTL_MS = Math.max(15_000, Number(process.env.APP_CONFIG_TTL_SECONDS || 60) * 1000);
+const APP_CONFIG_BOOTSTRAP_WAIT_MS = Math.max(
+  250,
+  Number(process.env.APP_CONFIG_BOOTSTRAP_WAIT_MS || 1200),
+);
+const APP_CONFIG_CACHE_FILE = path.join(root, ".data", "app-config-cache.json");
+const interactiveCastCapabilitiesCache = {
+  value: null,
+  updatedAt: 0,
+  refreshPromise: null,
+};
+const sceneCapabilitiesCache = {
+  value: null,
+  updatedAt: 0,
+  refreshPromise: null,
+};
+
+try {
+  const snapshot = JSON.parse(fs.readFileSync(APP_CONFIG_CACHE_FILE, "utf8"));
+  if (snapshot?.version === 1 && snapshot.value) {
+    appConfigCache.value = snapshot.value;
+    interactiveCastCapabilitiesCache.value = snapshot.value.interactiveCast || null;
+    sceneCapabilitiesCache.value = snapshot.value.sceneIntegration || null;
+  }
+} catch {
+  // Il primo avvio o una cache incompleta non devono bloccare il bootstrap.
+}
 
 const promptAssistantInstructionsFile = process.env.LM_STUDIO_INSTRUCTIONS_FILE
   ? path.resolve(process.env.LM_STUDIO_INSTRUCTIONS_FILE)
@@ -156,7 +272,7 @@ const promptAssistant = new LmStudioClient({
   model: process.env.LM_STUDIO_MODEL || "",
   apiToken: process.env.LM_STUDIO_API_TOKEN || "",
   contextLength: Number(process.env.LM_STUDIO_CONTEXT_LENGTH || 8192),
-  maxTokens: Number(process.env.LM_STUDIO_MAX_TOKENS || 700),
+  maxTokens: Number(process.env.LM_STUDIO_MAX_TOKENS || 2048),
   temperature: Number(process.env.LM_STUDIO_TEMPERATURE || 0.35),
   startServer: String(process.env.LM_STUDIO_START_SERVER || "true").toLowerCase() !== "false",
   lmsCommand: process.env.LM_STUDIO_CLI || "lms",
@@ -245,7 +361,7 @@ const comfy = new ComfyClient({
         const startedAtMs = Date.parse(record.startedAt || "");
         const finishedAtMs = Date.parse(finishedAt);
 
-        store.update(record.id, {
+        const updated = store.update(record.id, {
           status: "error",
           error: event.data?.exception_message || "Errore durante la generazione.",
           finishedAt,
@@ -253,7 +369,10 @@ const comfy = new ComfyClient({
             ? Math.max(0, finishedAtMs - startedAtMs)
             : null,
         });
-        scheduleIdlePurge();
+        syncCharacterReferenceGeneration(updated);
+        continueCharacterMasterPipeline(updated);
+        continueCharacterVideoPipeline(updated);
+        if (!updated.pipelineRootGenerationId && !updated.characterMasterPipeline) scheduleIdlePurge();
       }
     }
     broadcast({ ...event, generationId: record?.id || null });
@@ -955,14 +1074,18 @@ function cleanupGenerationMedia(generations) {
   return media;
 }
 
-async function videoStudioRuntimeConfig() {
+async function videoStudioRuntimeConfig(infoOverride = null) {
   try {
-    const info = await comfy.objectInfo();
+    const info = infoOverride || await comfy.objectInfo();
     return videoStudioConfig({
       installedLoras: comboOptions(info?.LoraLoaderModelOnly?.input?.required?.lora_name),
       installedCheckpoints: comboOptions(info?.CheckpointLoaderSimple?.input?.required?.ckpt_name),
       installedTextEncoders: comboOptions(info?.LTXAVTextEncoderLoader?.input?.required?.text_encoder),
       installedLatentUpscalers: comboOptions(info?.LatentUpscaleModelLoader?.input?.required?.model_name),
+      installedModelPatches: comboOptions(info?.ModelPatchLoader?.input?.required?.name),
+      installedDiffusionModels: comboOptions(info?.UNETLoader?.input?.required?.unet_name),
+      installedClips: comboOptions(info?.CLIPLoader?.input?.required?.clip_name),
+      installedVaes: comboOptions(info?.VAELoader?.input?.required?.vae_name),
       availableNodes: Object.keys(info || {}),
     });
   } catch {
@@ -1105,6 +1228,16 @@ function uploadLocalImageForComfy(filePath) {
   return comfy.uploadImage({
     buffer,
     mimetype,
+    originalname: path.basename(filePath),
+    size: buffer.length,
+  });
+}
+
+function uploadLocalVideoForComfy(filePath) {
+  const buffer = fs.readFileSync(filePath);
+  return comfy.uploadInput({
+    buffer,
+    mimetype: "video/mp4",
     originalname: path.basename(filePath),
     size: buffer.length,
   });
@@ -1283,32 +1416,90 @@ async function uploadVideoStudioFiles(files) {
     keyframe2: files.find((file) => file.fieldname === "keyframe2") || null,
     keyframe3: files.find((file) => file.fieldname === "keyframe3") || null,
     keyframe4: files.find((file) => file.fieldname === "keyframe4") || null,
+    h3FirstFrame: files.find((file) => file.fieldname === "h3FirstFrame") || null,
+    h3LastFrame: files.find((file) => file.fieldname === "h3LastFrame") || null,
+    ltx25FirstFrame: files.find((file) => file.fieldname === "ltx25FirstFrame") || null,
+    ltx25LastFrame: files.find((file) => file.fieldname === "ltx25LastFrame") || null,
+    ltx25ReferenceSheet: files.find((file) => file.fieldname === "ltx25ReferenceSheet") || null,
+    ltx25SourceVideo: files.find((file) => file.fieldname === "ltx25SourceVideo") || null,
+    ltx25MaskVideo: files.find((file) => file.fieldname === "ltx25MaskVideo") || null,
+    ltx25Audio: files.find((file) => file.fieldname === "ltx25Audio") || null,
   };
   const uploaded = {};
   for (const [key, file] of Object.entries(roles)) {
     if (!file) continue;
     const isVideo = key.endsWith("Video");
+    const isAudio = key.endsWith("Audio");
     if (isVideo && !file.mimetype.startsWith("video/")) {
       throw new Error(`${key === "maskVideo" ? "La maschera" : "La scena"} deve essere un video.`);
     }
-    if (!isVideo && !file.mimetype.startsWith("image/")) {
+    if (isAudio && !file.mimetype.startsWith("audio/")) {
+      throw new Error("La reference audio LTX 2.5 deve essere un file audio.");
+    }
+    if (!isVideo && !isAudio && !file.mimetype.startsWith("image/")) {
       throw new Error("Le reference devono essere immagini PNG, JPG o WebP.");
     }
-    validateUploadSize(file, isVideo ? maxVideoUploadMb : maxUploadMb, isVideo ? "Il video" : "L’immagine");
-    uploaded[key] = isVideo ? await comfy.uploadInput(file) : await comfy.uploadImage(file);
+    validateUploadSize(file, isVideo || isAudio ? maxVideoUploadMb : maxUploadMb, isVideo ? "Il video" : isAudio ? "L’audio" : "L’immagine");
+    uploaded[key] = isVideo || isAudio ? await comfy.uploadInput(file) : await comfy.uploadImage(file);
+  }
+  const referenceGroups = {
+    h3ReferenceImages: files.filter((file) => file.fieldname === "h3ReferenceImages"),
+    h3ReferenceVideos: files.filter((file) => file.fieldname === "h3ReferenceVideos"),
+    h3ReferenceAudios: files.filter((file) => file.fieldname === "h3ReferenceAudios"),
+  };
+  if (referenceGroups.h3ReferenceImages.length > 9 || referenceGroups.h3ReferenceVideos.length > 3 || referenceGroups.h3ReferenceAudios.length > 3) {
+    throw new Error("MiniMax H3 accetta massimo 9 immagini, 3 video e 3 audio reference.");
+  }
+  for (const [key, group] of Object.entries(referenceGroups)) {
+    uploaded[key] = [];
+    for (const file of group) {
+      const isVideo = key === "h3ReferenceVideos";
+      const isAudio = key === "h3ReferenceAudios";
+      if (isVideo && !file.mimetype.startsWith("video/")) throw new Error("Le reference video MiniMax H3 devono essere video.");
+      if (isAudio && !file.mimetype.startsWith("audio/")) throw new Error("Le reference audio MiniMax H3 devono essere file audio.");
+      if (!isVideo && !isAudio && !file.mimetype.startsWith("image/")) throw new Error("Le reference immagine MiniMax H3 devono essere PNG, JPG o WebP.");
+      validateUploadSize(file, isVideo || isAudio ? maxVideoUploadMb : maxUploadMb, "Una reference MiniMax H3");
+      uploaded[key].push(isVideo || isAudio ? await comfy.uploadInput(file) : await comfy.uploadImage(file));
+    }
+  }
+  const ltx25Keyframes = files.filter((file) => file.fieldname === "ltx25Keyframes");
+  if (ltx25Keyframes.length > 6) throw new Error("LTX 2.5 AIO accetta massimo 6 keyframe intermedi.");
+  uploaded.ltx25Keyframes = [];
+  for (const file of ltx25Keyframes) {
+    if (!file.mimetype.startsWith("image/")) throw new Error("I keyframe LTX 2.5 devono essere immagini.");
+    validateUploadSize(file, maxUploadMb, "Un keyframe LTX 2.5");
+    uploaded.ltx25Keyframes.push(await comfy.uploadImage(file));
+  }
+  const ltx25MsrReferences = files.filter((file) => file.fieldname === "ltx25MsrReferences");
+  if (ltx25MsrReferences.length > 5) throw new Error("Multi-Reference MSR accetta massimo 5 immagini.");
+  uploaded.ltx25MsrReferences = [];
+  for (const file of ltx25MsrReferences) {
+    if (!file.mimetype.startsWith("image/")) throw new Error("Le reference MSR devono essere immagini PNG, JPG o WebP.");
+    validateUploadSize(file, maxUploadMb, "Una reference MSR");
+    uploaded.ltx25MsrReferences.push(await comfy.uploadImage(file));
   }
   return uploaded;
 }
 
-async function imageEnhancementCapabilities() {
-  const [upscale, seedDit, seedVae, seedUpscaler, seedNormalize, vramDebug] = await Promise.all([
-    objectDefinition("UpscaleModelLoader"),
-    objectDefinition("SeedVR2LoadDiTModel"),
-    objectDefinition("SeedVR2LoadVAEModel"),
-    objectDefinition("SeedVR2VideoUpscaler"),
-    objectDefinition("RemoteImageTensorNormalize"),
-    objectDefinition("VRAM_Debug"),
-  ]);
+async function imageEnhancementCapabilities(infoOverride = null) {
+  const definitions = infoOverride
+    ? [
+        infoOverride.UpscaleModelLoader,
+        infoOverride.SeedVR2LoadDiTModel,
+        infoOverride.SeedVR2LoadVAEModel,
+        infoOverride.SeedVR2VideoUpscaler,
+        infoOverride.RemoteImageTensorNormalize,
+        infoOverride.VRAM_Debug,
+      ]
+    : await Promise.all([
+        objectDefinition("UpscaleModelLoader"),
+        objectDefinition("SeedVR2LoadDiTModel"),
+        objectDefinition("SeedVR2LoadVAEModel"),
+        objectDefinition("SeedVR2VideoUpscaler"),
+        objectDefinition("RemoteImageTensorNormalize"),
+        objectDefinition("VRAM_Debug"),
+      ]);
+  const [upscale, seedDit, seedVae, seedUpscaler, seedNormalize, vramDebug] = definitions;
   const upscaleModels = comboOptions(upscale?.input?.required?.model_name);
   const seedModels = comboOptions(seedDit?.input?.required?.model);
   const seedvr2Profiles = Object.entries(SEEDVR2_PROFILES).map(([id, profile]) => ({
@@ -1329,7 +1520,7 @@ async function imageEnhancementCapabilities() {
   };
 }
 
-async function standaloneUpscaleCapabilities() {
+async function standaloneUpscaleCapabilities(infoOverride = null, statsOverride = undefined) {
   const nodeNames = [
     "UpscaleModelLoader",
     "UpscaleWithModelAdvanced",
@@ -1349,10 +1540,12 @@ async function standaloneUpscaleCapabilities() {
     "easy preDetailerFix",
     "easy detailerFix",
   ];
-  const [definitions, stats] = await Promise.all([
-    Promise.all(nodeNames.map((name) => objectDefinition(name))),
-    comfy.health().catch(() => null),
-  ]);
+  const [definitions, stats] = infoOverride
+    ? [nodeNames.map((name) => infoOverride[name] || null), statsOverride ?? null]
+    : await Promise.all([
+        Promise.all(nodeNames.map((name) => objectDefinition(name))),
+        comfy.health().catch(() => null),
+      ]);
   const definitionByName = new Map(nodeNames.map((name, index) => [name, definitions[index]]));
   const availableModels = comboOptions(
     definitionByName.get("UpscaleModelLoader")?.input?.required?.model_name,
@@ -1399,7 +1592,16 @@ app.use(express.json({ limit: "1mb" }));
 app.use(express.static(path.join(root, "public"), {
   extensions: ["html"],
   etag: true,
-  maxAge: 0,
+  maxAge: "5m",
+  setHeaders(response, filePath) {
+    if (filePath.endsWith(".html")) {
+      response.setHeader("cache-control", "no-cache");
+      return;
+    }
+    if (/\.(?:css|js|png|jpe?g|webp|svg|woff2?)$/i.test(filePath)) {
+      response.setHeader("cache-control", "public, max-age=60, stale-while-revalidate=300");
+    }
+  },
 }));
 
 const upload = multer({
@@ -1465,6 +1667,33 @@ async function uploadInteractiveCastActorReferences(project, limit = 2) {
   return uploads.slice(0, limit);
 }
 
+function interactiveCastActorReferencePaths(project, limit = 2) {
+  const references = [];
+  for (const actor of project.actors?.added || []) {
+    if (references.length >= limit) break;
+    if (actor.type === "characterPack") {
+      const characterId = String(actor.actorId || "").replace(/^character:/, "");
+      try {
+        const character = characterStore.getCharacter(characterId);
+        const adapter = resolveCharacterAdapter({ character, options: character.settings, generationType: "anchor-verification" });
+        for (const reference of adapter.references || []) {
+          const resolved = characterStore.assetPath(character.id, reference.id);
+          if (resolved?.path && fs.existsSync(resolved.path)) references.push(resolved.path);
+          if (references.length >= limit) break;
+        }
+      } catch {
+        // A missing Character Pack is reported later by the anchor gate.
+      }
+      continue;
+    }
+    const referencePath = actor.reference?.relativePath
+      ? interactiveCastStore.assetPath(project.id, actor.reference.relativePath)
+      : actor.reference?.path;
+    if (referencePath && fs.existsSync(referencePath)) references.push(referencePath);
+  }
+  return references.slice(0, limit);
+}
+
 function interactiveCastVideoResolution(project, requested = "") {
   if (["360p", "480p", "720p"].includes(requested)) return requested;
   const longest = Math.max(Number(project.analysis?.width || 0), Number(project.analysis?.height || 0));
@@ -1474,20 +1703,27 @@ function interactiveCastVideoResolution(project, requested = "") {
 }
 
 async function queueInteractiveCastLtxSegment({ project, task, anchorUpload, settings, sourceGenerationId }) {
-  const duration = Math.max(1, Math.min(30, Math.ceil(Number(task.duration || 1))));
-  const job = buildWorkflow("devfp8", {
+  const segment = (project.renderPackage?.segments || []).find((item) => item.id === task.segmentId);
+  if (!segment?.sourceClipPath || !fs.existsSync(segment.sourceClipPath)) {
+    throw new Error("Source clip Interactive Cast mancante: prepara nuovamente i segmenti.");
+  }
+  const duration = Math.max(1, Math.min(30, Number(task.duration || 1)));
+  const sourceVideoUpload = await uploadLocalVideoForComfy(segment.sourceClipPath);
+  const config = await videoStudioRuntimeConfig();
+  const job = buildInteractiveCastUnionJob({
     prompt: task.prompt,
-    negativePrompt: task.negativePrompt,
-    resolution: interactiveCastVideoResolution(project, settings.resolution),
-    orientation: Number(project.analysis?.width || 0) >= Number(project.analysis?.height || 0)
-      ? "landscape"
-      : "portrait",
+    negativePrompt: `${task.negativePrompt || ""}, subtitles, captions, on-screen text, changed camera, changed original actors`,
+    projectId: project.id,
+    segmentId: task.segmentId,
     duration,
     quality: settings.quality === "max" ? "max" : "preview",
     seed: settings.seed,
-    videoInputMode: "image",
-    videoModelId: "normal",
-  }, anchorUpload, [], []);
+    controlType: "edges",
+    controlStrength: settings.quality === "max" ? 1.05 : 1.15,
+  }, {
+    guideVideo: sourceVideoUpload,
+    referenceSheet: anchorUpload,
+  }, config);
   job.metadata = {
     ...job.metadata,
     projectId: project.id,
@@ -1496,7 +1732,7 @@ async function queueInteractiveCastLtxSegment({ project, task, anchorUpload, set
     interactiveCast: {
       projectId: project.id,
       segmentId: task.segmentId,
-      phase: "video",
+      phase: "video-union-control",
       anchorWorkflowId: settings.anchorWorkflowId,
       sourceGenerationId,
       settings,
@@ -1505,7 +1741,7 @@ async function queueInteractiveCastLtxSegment({ project, task, anchorUpload, set
   const generation = await queueStudioJob(job, project.id);
   interactiveCast.updateSegmentGeneration(project.id, task.segmentId, {
     status: "queued",
-    phase: "video",
+    phase: "video-union-control",
     generationId: generation.id,
     anchorGenerationId: sourceGenerationId,
     settings,
@@ -1513,7 +1749,15 @@ async function queueInteractiveCastLtxSegment({ project, task, anchorUpload, set
   return generation;
 }
 
-async function queueInteractiveCastAnchorRefine({ project, task, sourceUpload, settings, sourceGenerationId }) {
+async function queueInteractiveCastAnchorRefine({
+  project,
+  task,
+  sourceUpload,
+  settings,
+  sourceGenerationId,
+  protectedRegion,
+  referencePaths,
+}) {
   const studioMode = settings.anchorWorkflowId === "krea-triple" ? "kreaTriple" : "qwenKreaKlein";
   const jobs = buildStudioJobs(studioMode, {
     prompt: [
@@ -1540,6 +1784,8 @@ async function queueInteractiveCastAnchorRefine({ project, task, sourceUpload, s
       phase: "anchor-refine",
       anchorWorkflowId: settings.anchorWorkflowId,
       sourceGenerationId,
+      protectedRegion,
+      referencePaths,
       settings,
     },
   };
@@ -1552,6 +1798,238 @@ async function queueInteractiveCastAnchorRefine({ project, task, sourceUpload, s
     settings,
   });
   return generation;
+}
+
+const INTERACTIVE_CAST_QWEN_2511_MODEL = "QWEN\\qwen_image_edit_2511_bf16.safetensors";
+const INTERACTIVE_CAST_ANCHOR_MAX_ATTEMPTS = 3;
+
+function interactiveCastAnchorInstruction(project, task) {
+  const addedActorNames = new Set((project.actors?.added || [])
+    .flatMap((actor) => [actor.name, actor.actorId])
+    .filter(Boolean)
+    .map((value) => String(value).trim().toLowerCase()));
+  const events = (project.dialogueEvents || []).filter((event) =>
+    Number(event.end || 0) > Number(task.start || 0) && Number(event.start || 0) < Number(task.end || 0)
+    && addedActorNames.has(String(event.speaker || "").trim().toLowerCase())
+  );
+  return events.map((event) => event.action || "").join(" ");
+}
+
+function portableGraymapMask(region, width = 512, height = 512) {
+  const pixels = Buffer.alloc(width * height);
+  const left = Math.max(0, Math.floor(region.x * width));
+  const top = Math.max(0, Math.floor(region.y * height));
+  const right = Math.min(width, Math.ceil((region.x + region.width) * width));
+  const bottom = Math.min(height, Math.ceil((region.y + region.height) * height));
+  for (let y = top; y < bottom; y += 1) {
+    pixels.fill(255, y * width + left, y * width + right);
+  }
+  return Buffer.concat([Buffer.from(`P5\n${width} ${height}\n255\n`, "ascii"), pixels]);
+}
+
+async function uploadInteractiveCastAnchorMask(project, task, region) {
+  const maskWidth = 1024;
+  const maskHeight = Math.max(384, Math.round(maskWidth * Number(project.analysis?.height || 1) / Number(project.analysis?.width || 1)));
+  const buffer = portableGraymapMask(region, maskWidth, maskHeight);
+  const upload = await comfy.uploadImage({
+    buffer,
+    mimetype: "image/x-portable-graymap",
+    originalname: `interactive-cast-${project.id}-${task.segmentId}-${region.label}-mask.pgm`,
+    size: buffer.length,
+  });
+  return { upload, region };
+}
+
+function interactiveCastAnchorPrompt(task, region, attempt) {
+  const placement = region.overridden
+    ? `The requested ${region.requested} entrance overlaps an existing person, so place the added actor in the safe ${region.label} slot.`
+    : `Place the added actor inside the ${region.label} slot.`;
+  return [
+    task.anchorPrompt || task.anchorRequirement,
+    `ANCHOR INSERTION ATTEMPT ${attempt}.`,
+    placement,
+    `Insertion area in normalized source-frame coordinates: x ${Number(region.x).toFixed(3)}, y ${Number(region.y).toFixed(3)}, width ${Number(region.width).toFixed(3)}, height ${Number(region.height).toFixed(3)}.`,
+    "IMAGE 2 and later images are identity references only. Do not copy their backgrounds, framing, panels, borders or layouts into the source scene.",
+    "The final frame must contain exactly one more adult person than IMAGE 1.",
+    "The added person must be visibly distinct from every existing person and must match the identity reference face, hair, age and body proportions.",
+    "Pose the added actor at the beginning of the entrance: partially inside the frame but with the full face clearly visible, looking naturally into the scene.",
+    "Never transform, replace, redress, move or reuse an existing person as the added actor.",
+    "Keep the added actor's face clearly visible in a natural three-quarter or frontal orientation so identity can be verified before video generation.",
+  ].join(" ");
+}
+
+function comfyInputPath(upload) {
+  return upload?.subfolder ? `${upload.subfolder}/${upload.name}` : upload?.name;
+}
+
+function protectInteractiveCastAnchor(workflow, maskUpload, outputBase) {
+  if (!workflow?.["20"] || !workflow?.["7"] || !workflow?.["8"] || !workflow?.["9"] || !workflow?.["10"] || !maskUpload?.name) {
+    throw new Error("Il workflow Qwen Image Edit 2511 non espone i nodi richiesti per l'anchor protetto.");
+  }
+  workflow["970100"] = {
+    inputs: { image: ["20", 0] },
+    class_type: "GetImageSize",
+    _meta: { title: "Interactive Cast · dimensioni frame originale" },
+  };
+  workflow["970101"] = {
+    inputs: {
+      image: ["9", 0],
+      upscale_method: "lanczos",
+      width: ["970100", 0],
+      height: ["970100", 1],
+      crop: "disabled",
+    },
+    class_type: "ImageScale",
+    _meta: { title: "Interactive Cast · anchor alla risoluzione sorgente" },
+  };
+  workflow["970102"] = {
+    inputs: { image: comfyInputPath(maskUpload) },
+    class_type: "LoadImage",
+    _meta: { title: "Interactive Cast · maschera inserimento" },
+  };
+  workflow["970103"] = {
+    inputs: {
+      image: ["970102", 0],
+      upscale_method: "nearest-exact",
+      width: ["970100", 0],
+      height: ["970100", 1],
+      crop: "disabled",
+    },
+    class_type: "ImageScale",
+    _meta: { title: "Interactive Cast · maschera alla risoluzione sorgente" },
+  };
+  workflow["970104"] = {
+    inputs: { image: ["970103", 0], channel: "red" },
+    class_type: "ImageToMask",
+    _meta: { title: "Interactive Cast · maschera compositing sorgente" },
+  };
+  workflow["970109"] = {
+    inputs: { image: ["21", 0] },
+    class_type: "GetImageSize",
+    _meta: { title: "Interactive Cast · dimensioni latent Qwen" },
+  };
+  workflow["970110"] = {
+    inputs: {
+      image: ["970102", 0],
+      upscale_method: "nearest-exact",
+      width: ["970109", 0],
+      height: ["970109", 1],
+      crop: "disabled",
+    },
+    class_type: "ImageScale",
+    _meta: { title: "Interactive Cast · maschera alla risoluzione latent" },
+  };
+  workflow["970111"] = {
+    inputs: { image: ["970110", 0], channel: "red" },
+    class_type: "ImageToMask",
+    _meta: { title: "Interactive Cast · noise mask Qwen" },
+  };
+  workflow["970108"] = {
+    inputs: { samples: ["7", 0], mask: ["970111", 0] },
+    class_type: "SetLatentNoiseMask",
+    _meta: { title: "Interactive Cast · denoise limitato all'area inserimento" },
+  };
+  workflow["8"].inputs.latent_image = ["970108", 0];
+  workflow["970105"] = {
+    inputs: { mask: ["970104", 0], expand: 12, tapered_corners: true },
+    class_type: "GrowMask",
+    _meta: { title: "Interactive Cast · espansione controllata" },
+  };
+  workflow["970106"] = {
+    inputs: { mask: ["970105", 0], left: 24, top: 24, right: 24, bottom: 24 },
+    class_type: "FeatherMask",
+    _meta: { title: "Interactive Cast · bordo naturale" },
+  };
+  workflow["970107"] = {
+    inputs: {
+      destination: ["20", 0],
+      source: ["970101", 0],
+      x: 0,
+      y: 0,
+      resize_source: false,
+      mask: ["970106", 0],
+    },
+    class_type: "ImageCompositeMasked",
+    _meta: { title: "Interactive Cast · ricomposizione protetta sul frame originale" },
+  };
+  workflow["10"].inputs.images = ["970107", 0];
+  workflow["10"].inputs.filename_prefix = `${outputBase}/anchor_qwen2511_protetto`;
+}
+
+async function queueInteractiveCastAnchorBase({ project, task, settings, attempt = 1, previousAttempts = [] }) {
+  const sourceUpload = await uploadLocalImageForComfy(task.anchorFrame.path);
+  const actorReferenceUploads = await uploadInteractiveCastActorReferences(project, 2);
+  const referencePaths = interactiveCastActorReferencePaths(project, 2);
+  if (!actorReferenceUploads.length || !referencePaths.length) {
+    throw new Error("Interactive Cast richiede almeno una reference identità leggibile prima di creare l'anchor.");
+  }
+  const placement = await planAnchorPlacement({
+    root,
+    outputDirectory,
+    sourcePath: task.anchorFrame.path,
+    instruction: interactiveCastAnchorInstruction(project, task),
+    attempt,
+  });
+  if (placement.analysis.status !== "analyzed") {
+    throw new Error(`Analisi posizione anchor fallita: ${placement.analysis.error || "InsightFace non disponibile"}`);
+  }
+  const anchorMask = await uploadInteractiveCastAnchorMask(project, task, placement.region);
+  const referenceUploads = actorReferenceUploads;
+  const outputBase = `InteractiveCast/${project.id}/${task.segmentId}/anchor-base/attempt-${attempt}`;
+  const attemptSeed = (Number(settings.seed) + ((attempt - 1) * 104729)) % (2 ** 31);
+  const job = buildImageWorkflow("qwenEdit", {
+    imageMode: "image",
+    imageModelFile: INTERACTIVE_CAST_QWEN_2511_MODEL,
+    imageResolution: "custom",
+    imageWidth: Math.min(4096, Math.max(256, Number(project.analysis?.width || 1152))),
+    imageHeight: Math.min(4096, Math.max(256, Number(project.analysis?.height || 896))),
+    imageSteps: settings.quality === "max" ? 32 : 24,
+    imageGuidance: 1,
+    batchSize: 1,
+    prompt: interactiveCastAnchorPrompt(task, anchorMask.region, attempt),
+    negativePrompt: task.anchorNegativePrompt || task.negativePrompt,
+    seed: attemptSeed,
+    referenceUploads,
+    outputBase,
+    saveOriginal: false,
+    upscaleMode: "none",
+  }, sourceUpload, []);
+  protectInteractiveCastAnchor(job.workflow, anchorMask.upload, outputBase);
+  job.metadata = {
+    ...job.metadata,
+    projectId: project.id,
+    workflowId: "interactiveCast:anchor:qwen-image-edit",
+    workflowName: `Interactive Cast · anchor Qwen ${task.segmentId} · tentativo ${attempt}`,
+    interactiveCast: {
+      projectId: project.id,
+      segmentId: task.segmentId,
+      phase: "anchor-base",
+      anchorWorkflowId: settings.anchorWorkflowId,
+      referenceCount: actorReferenceUploads.length,
+      placementGuideIncluded: false,
+      placementMaskMode: "latent-noise-mask",
+      imageModelFile: INTERACTIVE_CAST_QWEN_2511_MODEL,
+      promptRole: "static-anchor-only",
+      protectedRegion: anchorMask.region,
+      protectedOutsideRegion: true,
+      anchorAttempt: attempt,
+      anchorMaxAttempts: INTERACTIVE_CAST_ANCHOR_MAX_ATTEMPTS,
+      referencePaths,
+      settings,
+    },
+  };
+  const generation = await queueStudioJob(job, project.id);
+  const updated = interactiveCast.updateSegmentGeneration(project.id, task.segmentId, {
+    status: "queued",
+    phase: "anchor-base",
+    generationId: generation.id,
+    anchorAttempt: attempt,
+    anchorMaxAttempts: INTERACTIVE_CAST_ANCHOR_MAX_ATTEMPTS,
+    anchorAttempts: previousAttempts,
+    anchorPlacement: anchorMask.region,
+    settings,
+  });
+  return { project: updated, generation };
 }
 
 async function startInteractiveCastSegmentGeneration(projectId, segmentId, raw = {}) {
@@ -1576,46 +2054,7 @@ async function startInteractiveCastSegmentGeneration(projectId, segmentId, raw =
       ? Number(raw.seed)
       : crypto.randomInt(0, 2 ** 31),
   };
-  const sourceUpload = await uploadLocalImageForComfy(task.anchorFrame.path);
-  const referenceUploads = await uploadInteractiveCastActorReferences(project, 2);
-  const job = buildImageWorkflow("qwenEdit", {
-    imageMode: "image",
-    imageResolution: "custom",
-    imageWidth: Math.min(4096, Math.max(256, Number(project.analysis?.width || 1152))),
-    imageHeight: Math.min(4096, Math.max(256, Number(project.analysis?.height || 896))),
-    imageSteps: settings.quality === "max" ? 16 : 8,
-    imageGuidance: 1,
-    batchSize: 1,
-    prompt: [task.anchorRequirement, task.prompt].filter(Boolean).join("\n"),
-    negativePrompt: task.negativePrompt,
-    seed: settings.seed,
-    referenceUploads,
-    outputBase: `InteractiveCast/${project.id}/${segmentId}/anchor-base`,
-    saveOriginal: false,
-    upscaleMode: "none",
-  }, sourceUpload, []);
-  job.metadata = {
-    ...job.metadata,
-    projectId,
-    workflowId: "interactiveCast:anchor:qwen-image-edit",
-    workflowName: `Interactive Cast · anchor Qwen ${segmentId}`,
-    interactiveCast: {
-      projectId,
-      segmentId,
-      phase: "anchor-base",
-      anchorWorkflowId: settings.anchorWorkflowId,
-      referenceCount: referenceUploads.length,
-      settings,
-    },
-  };
-  const generation = await queueStudioJob(job, projectId);
-  const updated = interactiveCast.updateSegmentGeneration(projectId, segmentId, {
-    status: "queued",
-    phase: "anchor-base",
-    generationId: generation.id,
-    settings,
-  });
-  return { project: updated, generation };
+  return queueInteractiveCastAnchorBase({ project, task, settings, attempt: 1 });
 }
 
 async function advanceInteractiveCastGeneration(generation) {
@@ -1635,7 +2074,7 @@ async function advanceInteractiveCastGeneration(generation) {
       }
       return;
     }
-    if (metadata.phase === "video") {
+    if (["video", "video-union-control"].includes(metadata.phase)) {
       if (!outputDirectory) throw new Error("OUTPUT_DIRECTORY non configurata per recuperare il segmento LTX.");
       const resolved = resolveMediaFile(outputDirectory, generation.videos?.at(-1));
       if (!resolved?.path) throw new Error("Video LTX Interactive Cast non trovato su disco.");
@@ -1649,6 +2088,66 @@ async function advanceInteractiveCastGeneration(generation) {
     }
     const image = generation.images?.at(-1);
     if (!image) throw new Error("Anchor Interactive Cast non prodotto.");
+    const resolvedAnchor = resolveMediaFile(outputDirectory, image);
+    if (!resolvedAnchor?.path) throw new Error("File anchor Interactive Cast non trovato su disco.");
+    const referencePaths = (metadata.referencePaths || interactiveCastActorReferencePaths(project, 2))
+      .filter((item) => item && fs.existsSync(item));
+    const anchorVerification = await verifyAnchorCandidate({
+      root,
+      outputDirectory,
+      sourcePath: task.anchorFrame.path,
+      candidatePath: resolvedAnchor.path,
+      referencePaths,
+      region: metadata.protectedRegion,
+    });
+    const latestProject = interactiveCast.get(project.id);
+    const latestTask = interactiveCastSegmentTask(latestProject, task.segmentId);
+    const attempt = Number(metadata.anchorAttempt || latestTask.generation?.anchorAttempt || 1);
+    const anchorCandidate = interactiveCastStore.writeAnchorCandidate(
+      project.id,
+      task.segmentId,
+      resolvedAnchor.path,
+      attempt,
+    );
+    const anchorAttempts = [
+      ...(latestTask.generation?.anchorAttempts || []),
+      {
+        attempt,
+        generationId: generation.id,
+        status: anchorVerification.status,
+        report: anchorVerification,
+        image,
+        candidate: anchorCandidate,
+      },
+    ];
+    interactiveCast.updateSegmentGeneration(project.id, task.segmentId, {
+      status: anchorVerification.status === "passed" ? "anchorValidated" : "anchorRejected",
+      phase: metadata.phase,
+      generationId: generation.id,
+      anchorAttempt: attempt,
+      anchorAttempts,
+      anchorVerification,
+      anchorImage: image,
+      anchorCandidate,
+      settings: metadata.settings,
+    });
+    if (anchorVerification.status !== "passed") {
+      if (metadata.phase === "anchor-base" && attempt < Number(metadata.anchorMaxAttempts || INTERACTIVE_CAST_ANCHOR_MAX_ATTEMPTS)) {
+        const retryProject = interactiveCast.get(project.id);
+        const retryTask = interactiveCastSegmentTask(retryProject, task.segmentId);
+        await queueInteractiveCastAnchorBase({
+          project: retryProject,
+          task: retryTask,
+          settings: metadata.settings,
+          attempt: attempt + 1,
+          previousAttempts: anchorAttempts,
+        });
+        return;
+      }
+      throw new Error(
+        `Anchor rifiutato prima di LTX: ${anchorVerification.failures?.join(", ") || anchorVerification.error || "identità non verificata"}.`
+      );
+    }
     const upload = await comfy.reuseOutputImage(image, `interactive-cast-${task.segmentId}-${metadata.phase}.png`);
     if (metadata.phase === "anchor-base" && metadata.anchorWorkflowId !== "qwen-image-edit") {
       await queueInteractiveCastAnchorRefine({
@@ -1657,6 +2156,20 @@ async function advanceInteractiveCastGeneration(generation) {
         sourceUpload: upload,
         settings: metadata.settings,
         sourceGenerationId: generation.id,
+        protectedRegion: metadata.protectedRegion,
+        referencePaths,
+      });
+      return;
+    }
+    if (metadata.settings?.autoApproveAnchor !== true) {
+      interactiveCast.updateSegmentGeneration(project.id, task.segmentId, {
+        status: "anchorReady",
+        phase: "anchor-review",
+        generationId: generation.id,
+        anchorVerification,
+        anchorCandidate,
+        anchorImage: image,
+        settings: metadata.settings,
       });
       return;
     }
@@ -1677,109 +2190,165 @@ async function advanceInteractiveCastGeneration(generation) {
   }
 }
 
-app.get("/api/config", async (_request, response) => {
-  let installedImageModels = [];
-  let installedImageCheckpoints = [];
-  let installedImageClips = [];
-  let installedImageVaes = [];
-  let installedLoras = [];
-  let installedModelPatches = [];
-  const studioPreprocessors = [];
-  const enhancements = await imageEnhancementCapabilities();
-  const upscaling = await standaloneUpscaleCapabilities();
-  const videoStudio = await videoStudioRuntimeConfig();
-  try {
-    const [modelInfo, checkpointInfo, clipInfo, vaeInfo, loraInfo, patchInfo, cannyInfo, depthInfo] = await Promise.all([
-      comfy.objectInfo("UNETLoader"),
-      comfy.objectInfo("CheckpointLoaderSimple"),
-      comfy.objectInfo("CLIPLoader"),
-      comfy.objectInfo("VAELoader"),
-      comfy.objectInfo("LoraLoaderModelOnly"),
-      comfy.objectInfo("ModelPatchLoader"),
-      comfy.objectInfo("Canny"),
-      comfy.objectInfo("DepthAnythingV2Preprocessor"),
-    ]);
-    installedImageModels = comboOptions(modelInfo?.UNETLoader?.input?.required?.unet_name);
-    installedImageCheckpoints = comboOptions(checkpointInfo?.CheckpointLoaderSimple?.input?.required?.ckpt_name);
-    installedImageClips = comboOptions(clipInfo?.CLIPLoader?.input?.required?.clip_name);
-    installedImageVaes = comboOptions(vaeInfo?.VAELoader?.input?.required?.vae_name);
-    installedLoras = comboOptions(loraInfo?.LoraLoaderModelOnly?.input?.required?.lora_name);
-    installedModelPatches = comboOptions(patchInfo?.ModelPatchLoader?.input?.required?.name);
-    if (cannyInfo?.Canny) studioPreprocessors.push("Canny");
-    if (depthInfo?.DepthAnythingV2Preprocessor) {
-      studioPreprocessors.push("DepthAnythingV2Preprocessor");
+async function approveInteractiveCastAnchor(projectId, segmentId) {
+  const project = interactiveCast.get(projectId);
+  const task = interactiveCastSegmentTask(project, segmentId);
+  if (task.generation?.status !== "anchorReady") {
+    const error = new Error("L'anchor non è in attesa di approvazione oppure il segmento è già stato accodato.");
+    error.statusCode = 409;
+    throw error;
+  }
+  const verification = task.generation?.anchorVerification;
+  const candidate = task.generation?.anchorCandidate;
+  if (verification?.status !== "passed") {
+    throw new Error("L'anchor non ha superato identity e preservation gate.");
+  }
+  if (!candidate?.path || !fs.existsSync(candidate.path)) {
+    throw new Error("File anchor approvabile non trovato.");
+  }
+  const anchorUpload = await uploadLocalImageForComfy(candidate.path);
+  const generation = await queueInteractiveCastLtxSegment({
+    project,
+    task,
+    anchorUpload,
+    settings: task.generation.settings,
+    sourceGenerationId: task.generation.generationId,
+  });
+  return { project: interactiveCast.get(projectId), generation };
+}
+
+async function importInteractiveCastAnchor(projectId, segmentId, file) {
+  const project = interactiveCast.get(projectId);
+  const task = interactiveCastSegmentTask(project, segmentId);
+  if (task.mode !== "generative") {
+    throw new Error("Un anchor esterno può essere usato soltanto per una finestra generativa.");
+  }
+  if (!task.anchorFrame?.path || !fs.existsSync(task.anchorFrame.path)) {
+    throw new Error("Frame sorgente dell'anchor mancante: prepara nuovamente i segmenti.");
+  }
+  const referencePaths = interactiveCastActorReferencePaths(project, 2)
+    .filter((item) => item && fs.existsSync(item));
+  if (!referencePaths.length) {
+    throw new Error("Manca una reference identità con cui verificare l'anchor esterno.");
+  }
+  let region = task.generation?.anchorPlacement;
+  if (!region) {
+    const placement = await planAnchorPlacement({
+      root,
+      outputDirectory,
+      sourcePath: task.anchorFrame.path,
+      instruction: interactiveCastAnchorInstruction(project, task),
+      attempt: 1,
+    });
+    if (placement.analysis.status !== "analyzed") {
+      throw new Error(`Analisi posizione anchor fallita: ${placement.analysis.error || "InsightFace non disponibile"}`);
     }
-  } catch {
-    // La configurazione resta utilizzabile anche se ComfyUI è momentaneamente offline.
+    region = placement.region;
   }
+  const uploaded = interactiveCastStore.writeUpload(projectId, file, `external-anchor-${segmentId}`);
+  const verification = await verifyAnchorCandidate({
+    root,
+    outputDirectory,
+    sourcePath: task.anchorFrame.path,
+    candidatePath: uploaded.path,
+    referencePaths,
+    region,
+  });
+  const blockingFailures = (verification.failures || []).filter((failure) => failure !== "outsideRegionPreserved");
+  const accepted = verification.status === "passed" || (
+    verification.status === "rejected" && blockingFailures.length === 0
+  );
+  const attempt = Number(task.generation?.anchorAttempt || 0) + 1;
+  const candidate = interactiveCastStore.writeAnchorCandidate(projectId, segmentId, uploaded.path, attempt);
+  const externalVerification = {
+    ...verification,
+    status: accepted ? "passed" : verification.status,
+    failures: blockingFailures,
+    warnings: verification.checks?.outsideRegionPreserved === false
+      ? ["outsideRegionReconstructedByExternalEditor"]
+      : [],
+    externalAnchor: true,
+  };
+  const settings = task.generation?.settings || {
+    anchorWorkflowId: "external-anchor",
+    quality: "preview",
+    resolution: interactiveCastVideoResolution(project),
+    seed: crypto.randomInt(0, 2 ** 31),
+  };
+  const updated = interactiveCast.updateSegmentGeneration(projectId, segmentId, {
+    status: accepted ? "anchorReady" : "anchorRejected",
+    phase: "anchor-external-review",
+    generationId: `external-anchor:${crypto.randomUUID()}`,
+    anchorAttempt: attempt,
+    anchorMaxAttempts: INTERACTIVE_CAST_ANCHOR_MAX_ATTEMPTS,
+    anchorPlacement: region,
+    anchorVerification: externalVerification,
+    anchorCandidate: candidate,
+    settings,
+    error: accepted
+      ? null
+      : `Anchor esterno rifiutato: ${blockingFailures.join(", ") || verification.error || "verifica non superata"}.`,
+  });
+  return { project: updated, verification: externalVerification };
+}
 
-  let ltxUpscale;
-  let seedvr2VideoUpscale;
-
-  try {
-    const nodeDefinitions = await Promise.all(
-      LTX_UPSCALE_REQUIRED_NODES.map((name) =>
-        objectDefinition(name),
-      ),
-    );
-
-    const availableNodes =
-      LTX_UPSCALE_REQUIRED_NODES.filter(
-        (_name, index) => Boolean(nodeDefinitions[index]),
-      );
-
-    ltxUpscale = ltxUpscaleConfig({
-      availableNodes,
-      installedCheckpoints: [
-        ...installedImageModels,
-        ...installedImageCheckpoints,
-      ],
-      installedLoras,
-      installedTextEncoders: installedImageClips,
-      installedVaes: installedImageVaes,
-    });
-  } catch {
-    ltxUpscale = ltxUpscaleConfig();
-  }
-
-  try {
-    const [
-      ditInfo,
-      vaeInfo,
-      ...nodeDefinitions
-    ] = await Promise.all([
-      comfy.objectInfo("SeedVR2LoadDiTModel"),
-      comfy.objectInfo("SeedVR2LoadVAEModel"),
-      ...SEEDVR2_VIDEO_UPSCALE_REQUIRED_NODES.map((name) =>
-        objectDefinition(name),
-      ),
-      objectDefinition("SeedVR2TorchCompileSettings"),
-    ]);
-
-    const requiredWithCompile = [
-      ...SEEDVR2_VIDEO_UPSCALE_REQUIRED_NODES,
-      "SeedVR2TorchCompileSettings",
-    ];
-    const availableNodes = requiredWithCompile.filter(
-      (_name, index) => Boolean(nodeDefinitions[index]),
-    );
-
-    seedvr2VideoUpscale = seedvr2VideoUpscaleConfig({
-      availableNodes,
-      installedSeedvr2Models: comboOptions(
-        ditInfo?.SeedVR2LoadDiTModel?.input?.required?.model,
-      ),
-      installedVaes: comboOptions(
-        vaeInfo?.SeedVR2LoadVAEModel?.input?.required?.model,
-      ),
-    });
-  } catch {
-    seedvr2VideoUpscale = seedvr2VideoUpscaleConfig();
-  }
-
-  response.json({
+async function buildAppConfig(infoOverride = null) {
+  // Un errore di connessione non equivale a un inventario ComfyUI vuoto.
+  // Lasciamo fallire il refresh così l'ultima snapshot verificata resta valida.
+  const info = infoOverride ?? await comfy.objectInfo();
+  const installedImageModels = comboOptions(info.UNETLoader?.input?.required?.unet_name);
+  const installedImageCheckpoints = comboOptions(info.CheckpointLoaderSimple?.input?.required?.ckpt_name);
+  const installedImageClips = comboOptions(info.CLIPLoader?.input?.required?.clip_name);
+  const installedImageVaes = comboOptions(info.VAELoader?.input?.required?.vae_name);
+  const installedLoras = comboOptions(info.LoraLoaderModelOnly?.input?.required?.lora_name);
+  const installedModelPatches = comboOptions(info.ModelPatchLoader?.input?.required?.name);
+  const configuredVideoModels = videoModelConfig(installedImageModels);
+  const studioPreprocessors = [
+    info.Canny ? "Canny" : null,
+    info.DepthAnythingV2Preprocessor ? "DepthAnythingV2Preprocessor" : null,
+  ].filter(Boolean);
+  const availableLtxUpscaleNodes = LTX_UPSCALE_REQUIRED_NODES.filter((name) => Boolean(info[name]));
+  const seedvrNodes = [...SEEDVR2_VIDEO_UPSCALE_REQUIRED_NODES, "SeedVR2TorchCompileSettings"];
+  const voiceCapabilities = voiceEngineCapabilities({ root });
+  const lipSyncCapabilities = lipsyncCapabilities({ root });
+  const seedvr2VideoConfig = seedvr2VideoUpscaleConfig({
+    availableNodes: seedvrNodes.filter((name) => Boolean(info[name])),
+    installedSeedvr2Models: comboOptions(info.SeedVR2LoadDiTModel?.input?.required?.model),
+    installedVaes: comboOptions(info.SeedVR2LoadVAEModel?.input?.required?.model),
+  });
+  const [enhancements, upscaling, videoStudio] = await Promise.all([
+    imageEnhancementCapabilities(info),
+    standaloneUpscaleCapabilities(info, null),
+    videoStudioRuntimeConfig(info),
+  ]);
+  return {
     workflows: Object.values(WORKFLOWS).map(({ file: _file, ...item }) => item),
-    videoModels: videoModelConfig(installedImageModels),
+    videoModels: configuredVideoModels,
+    characterVideoRouter: createCharacterVideoRouter({
+      videoModels: configuredVideoModels,
+      audioCapabilities: {
+        voiceTts: voiceCapabilities.synthesizeDialogue,
+        lipSync: lipSyncCapabilities.applyLipSync,
+      },
+      workflowAvailability: Object.fromEntries(["standard", "devfp8", "minimaxH3"].map((workflowId) => {
+        try {
+          const candidate = buildWorkflow(workflowId, {
+            prompt: "Capability validation for a stable character image-to-video shot.",
+            negativePrompt: "identity drift, flicker",
+            resolution: "360p",
+            orientation: "portrait",
+            duration: 5,
+            quality: "preview",
+            videoModelId: "normal",
+            videoInputMode: "image",
+            seed: 1,
+          }, { name: "character-video-capability.png", subfolder: "capability" }, [], []);
+          return [workflowId, validateWorkflow(candidate.workflow, info, { label: `Character Video · ${workflowId}` }).length === 0];
+        } catch {
+          return [workflowId, false];
+        }
+      })),
+    }),
     resolutions: RESOLUTIONS,
     imageModels: imageModelConfig(installedImageModels, {
       checkpoints: installedImageCheckpoints,
@@ -1788,31 +2357,80 @@ app.get("/api/config", async (_request, response) => {
     }),
     imageResolutions: IMAGE_RESOLUTIONS,
     loras: installedLoras,
+    loraMetadata: loraTriggerMetadata(installedLoras),
     fps: 24,
     outputDirectory,
     maxUploadMb,
     maxVideoUploadMb,
     imageEnhancements: enhancements,
     upscaling,
-    ltxUpscale,
-    seedvr2VideoUpscale,
+    ltxUpscale: ltxUpscaleConfig({
+      availableNodes: availableLtxUpscaleNodes,
+      installedCheckpoints: [...installedImageModels, ...installedImageCheckpoints],
+      installedLoras,
+      installedTextEncoders: installedImageClips,
+      installedVaes: installedImageVaes,
+    }),
+    seedvr2VideoUpscale: seedvr2VideoConfig,
+    characterVideoAudio: {
+      voice: voiceCapabilities,
+      lipSync: lipSyncCapabilities,
+      modes: [
+        { id: "none", name: "Nessun audio", available: true },
+        { id: "native", name: "Audio nativo del Video Engine", available: true },
+        { id: "externalTts", name: "TTS esterno · Chatterbox Multilingual", available: voiceCapabilities.synthesizeDialogue && lipSyncCapabilities.applyLipSync },
+        { id: "existing", name: "File audio esistente", available: lipSyncCapabilities.applyLipSync },
+      ],
+      refine: {
+        available: seedvr2VideoConfig.available,
+        presets: [
+          { id: "original", name: "Originale", available: true },
+          { id: "improved", name: "Migliorato", available: seedvr2VideoConfig.profiles.some((profile) => profile.id === "preview" && profile.available) },
+          { id: "quality", name: "Qualità", available: seedvr2VideoConfig.profiles.some((profile) => profile.id === "quality" && profile.available) },
+        ],
+      },
+    },
     studio: studioConfig({
       modelPatches: installedModelPatches,
       preprocessors: studioPreprocessors,
+      imageModels: installedImageModels,
     }),
     videoStudio,
-    interactiveCast: await interactiveCast.capabilities(),
+    interactiveCast: interactiveCastCapabilitiesCache.value
+      || appConfigCache.value?.interactiveCast
+      || { status: "loading", matrix: {}, statuses: {} },
     promptAssistant: { ...promptAssistant.publicConfig(), autoGenerate: promptAssistantAutoGenerate },
     sulphur: sulphurRuntimeConfig(),
     editWildcards: editWildcardConfig(root),
-    sceneIntegration: await sceneIntegration.capabilities(),
+    poseLibrary: poseLibraryConfig(root),
+    sceneIntegration: sceneCapabilitiesCache.value
+      || appConfigCache.value?.sceneIntegration
+      || { enabled: sceneIntegrationEnabled, available: false, status: "loading" },
     characters: {
       available: true,
-      conceptualName: "Virtual Actor",
+      conceptualName: "Character",
+      legacyConceptualName: "Virtual Actor",
+      genesis: {
+        guided: true,
+        sourceTypes: ["description", "photo"],
+        subjectKinds: ["auto", "human", "animal", "other"],
+        defaultCandidateCount: 4,
+        workflow: "KreaTriple_T2I_API.json",
+        modes: [{ id: "krea2", label: "Krea 2 · workflow disponibile", available: true }],
+        unavailableModes: ["Krea 2 Turbo", "Krea 2 RAW / Quality"],
+      },
+      referenceFactory: {
+        guided: true,
+        adaptive: true,
+        preferredWorkflow: "qwenEdit",
+        fallbackWorkflows: ["flux2", "mageFlowEdit"],
+        decisions: ["approve", "reject", "regenerate"],
+      },
       sheetWorkflows: Object.values(CHARACTER_SHEET_WORKFLOWS),
       availableCharacters: characterStore.listCharacters().map((character) => ({
         id: character.id,
         name: character.name,
+        subjectKind: character.subjectKind,
         heroUrl: character.heroUrl,
         packStatus: character.packStatus,
         referenceCount: character.references?.length || 0,
@@ -1820,11 +2438,728 @@ app.get("/api/config", async (_request, response) => {
       })),
       legacyImport: characterStore.legacySummary({ dataDirectory: path.join(root, ".data") }),
     },
-  });
+    cache: { generatedAt: new Date().toISOString(), ttlMs: APP_CONFIG_TTL_MS },
+  };
+}
+
+function persistAppConfigSnapshot() {
+  if (!appConfigCache.value) return Promise.resolve();
+  return fs.promises.mkdir(path.dirname(APP_CONFIG_CACHE_FILE), { recursive: true })
+    .then(() => fs.promises.writeFile(
+      APP_CONFIG_CACHE_FILE,
+      JSON.stringify({ version: 1, savedAt: new Date().toISOString(), value: appConfigCache.value }),
+      "utf8",
+    ));
+}
+
+function refreshAppConfig() {
+  if (appConfigCache.refreshPromise) return appConfigCache.refreshPromise;
+  appConfigCache.refreshPromise = buildAppConfig()
+    .then((value) => {
+      appConfigCache.value = value;
+      appConfigCache.updatedAt = Date.now();
+      void persistAppConfigSnapshot().catch(() => {});
+      return value;
+    })
+    .finally(() => {
+      appConfigCache.refreshPromise = null;
+    });
+  return appConfigCache.refreshPromise;
+}
+
+function invalidateAppConfig() {
+  if (!appConfigCache.value?.characters) {
+    appConfigCache.updatedAt = 0;
+    return;
+  }
+  appConfigCache.value.characters.availableCharacters = characterStore.listCharacters().map((character) => ({
+    id: character.id,
+    name: character.name,
+    subjectKind: character.subjectKind,
+    heroUrl: character.heroUrl,
+    packStatus: character.packStatus,
+    referenceCount: character.references?.length || 0,
+    settings: character.settings,
+  }));
+  appConfigCache.updatedAt = Date.now();
+  void persistAppConfigSnapshot().catch(() => {});
+}
+
+function refreshInteractiveCastCapabilities() {
+  if (interactiveCastCapabilitiesCache.refreshPromise) {
+    return interactiveCastCapabilitiesCache.refreshPromise;
+  }
+  interactiveCastCapabilitiesCache.refreshPromise = interactiveCast.capabilities()
+    .then((value) => {
+      interactiveCastCapabilitiesCache.value = value;
+      interactiveCastCapabilitiesCache.updatedAt = Date.now();
+      if (appConfigCache.value) appConfigCache.value.interactiveCast = value;
+      void persistAppConfigSnapshot().catch(() => {});
+      return value;
+    })
+    .finally(() => {
+      interactiveCastCapabilitiesCache.refreshPromise = null;
+    });
+  return interactiveCastCapabilitiesCache.refreshPromise;
+}
+
+function refreshSceneCapabilities() {
+  if (sceneCapabilitiesCache.refreshPromise) return sceneCapabilitiesCache.refreshPromise;
+  sceneCapabilitiesCache.refreshPromise = sceneIntegration.capabilities()
+    .then((value) => {
+      sceneCapabilitiesCache.value = value;
+      sceneCapabilitiesCache.updatedAt = Date.now();
+      if (appConfigCache.value) appConfigCache.value.sceneIntegration = value;
+      void persistAppConfigSnapshot().catch(() => {});
+      return value;
+    })
+    .finally(() => {
+      sceneCapabilitiesCache.refreshPromise = null;
+    });
+  return sceneCapabilitiesCache.refreshPromise;
+}
+
+app.get("/api/config", async (request, response, next) => {
+  try {
+    const age = Date.now() - appConfigCache.updatedAt;
+    const force = request.query.refresh === "1";
+    if (appConfigCache.value && !force) {
+      const stale = Boolean(appConfigCache.value.cache?.bootstrap) || age > APP_CONFIG_TTL_MS;
+      response.setHeader("x-config-cache", stale ? "stale" : "fresh");
+      response.setHeader("cache-control", "private, max-age=15, stale-while-revalidate=300");
+      if (stale) void refreshAppConfig().catch(() => {});
+      return response.json(stale
+        ? { ...appConfigCache.value, cache: { ...appConfigCache.value.cache, stale: true } }
+        : appConfigCache.value);
+    }
+    const refresh = refreshAppConfig();
+    let bootstrapTimer = null;
+    let result = await Promise.race([
+      refresh.then((value) => ({ value, source: "miss" })).catch(() => null),
+      new Promise((resolve) => {
+        bootstrapTimer = setTimeout(() => resolve(null), APP_CONFIG_BOOTSTRAP_WAIT_MS);
+      }),
+    ]);
+    clearTimeout(bootstrapTimer);
+    if (!result && appConfigCache.value) {
+      result = {
+        value: {
+          ...appConfigCache.value,
+          cache: { ...appConfigCache.value.cache, stale: true, comfyOffline: true },
+        },
+        source: "stale",
+      };
+    }
+    if (!result) result = { value: await buildAppConfig({}), source: "bootstrap" };
+    if (result.source === "bootstrap") {
+      result.value = {
+        ...result.value,
+        cache: { ...result.value.cache, bootstrap: true },
+      };
+      if (!appConfigCache.value) {
+        appConfigCache.value = result.value;
+        appConfigCache.updatedAt = Date.now();
+      }
+    }
+    response.setHeader("x-config-cache", result.source);
+    response.setHeader("cache-control", "private, max-age=15, stale-while-revalidate=300");
+    response.json(result.value);
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.get("/api/characters", (_request, response) => {
   response.json({ characters: characterStore.listCharacters() });
+});
+
+const CHARACTER_REFERENCE_ENGINES = new Set(["qwen2511", "pornmaster-v4-turbo"]);
+
+function characterReferenceEngineCatalog(imageModels = []) {
+  return characterPhotoEngineCatalog(imageModels).filter((engine) => CHARACTER_REFERENCE_ENGINES.has(engine.engineId));
+}
+
+async function characterReferenceWorkflow(preferredEngine = "auto") {
+  let config = appConfigCache.value;
+  if (!config?.imageModels?.length) {
+    config = await refreshAppConfig().catch(() => config);
+  }
+  const pickPreferred = (value) => {
+    const engines = characterReferenceEngineCatalog(value?.imageModels || []);
+    return preferredEngine === "auto" ? engines[0] : engines.find((engine) => engine.engineId === preferredEngine);
+  };
+  let preferred = pickPreferred(config);
+  if (!preferred) {
+    config = await refreshAppConfig().catch(() => config);
+    preferred = pickPreferred(config);
+  }
+  if (!preferred) {
+    throw new Error(preferredEngine === "auto"
+      ? "Nessun motore Reference compatibile disponibile: servono Qwen Image Edit 2511 o PornMaster Flux2 Klein v4Turbo."
+      : "Il motore Reference selezionato non è disponibile con tutti i componenti richiesti.");
+  }
+  const acceleration = qwenEdit2511Lightning8Preset(preferred.modelFile);
+  return {
+    id: preferred.id,
+    engineId: preferred.engineId,
+    name: preferred.name,
+    model: preferred.modelFile,
+    mode: "image",
+    steps: acceleration?.steps || preferred.defaults?.steps,
+    guidance: acceleration?.guidance ?? preferred.defaults?.guidance,
+    samplingProfile: acceleration?.samplingProfile || preferred.samplingProfile || "model-native",
+  };
+}
+
+app.get("/api/characters/:id/reference-config", async (request, response, next) => {
+  try {
+    characterStore.getCharacter(request.params.id);
+    await refreshAppConfig();
+    const engines = characterReferenceEngineCatalog(appConfigCache.value?.imageModels || []).map((engine) => {
+      const acceleration = qwenEdit2511Lightning8Preset(engine.modelFile);
+      return {
+        id: engine.engineId,
+        name: engine.name,
+        model: engine.modelFile,
+        steps: acceleration?.steps || engine.defaults?.steps,
+        guidance: acceleration?.guidance ?? engine.defaults?.guidance,
+        samplingProfile: acceleration?.samplingProfile || engine.samplingProfile || "model-native",
+      };
+    });
+    response.json({ engines, defaultEngine: engines[0]?.id || null });
+  } catch (error) {
+    next(error);
+  }
+});
+
+function characterHeroAsset(character) {
+  if (!character.heroImage) throw new Error("Il Character deve avere una Hero prima di creare le reference.");
+  const hero = characterStore.assetPath(character.id, character.heroImage);
+  if (!hero?.path) throw new Error("Il file Hero del Character non è disponibile.");
+  return hero;
+}
+
+function mergeApprovedReferenceRoles(plan, character) {
+  const approvedByRole = new Map((character.references || [])
+    .filter((reference) => reference.status !== "rejected" && reference.referenceRole)
+    .map((reference) => [reference.referenceRole, reference]));
+  return {
+    ...plan,
+    items: plan.items.map((item) => {
+      const approved = approvedByRole.get(item.referenceRole);
+      return approved ? {
+        ...item,
+        status: "approved",
+        approvedReferenceId: approved.id,
+      } : item;
+    }),
+  };
+}
+
+function referencePlanGenerations(plan) {
+  const ids = new Set((plan?.items || []).flatMap((item) => item.candidateGenerationIds || []));
+  return [...ids].map((id) => store.get(id)).filter(Boolean);
+}
+
+async function generationImageFile(generation, imageIndex = 0) {
+  const image = generation.images?.[Number(imageIndex) || 0] || generation.images?.[0];
+  if (!image) throw new Error("La generazione non contiene una candidate reference.");
+  const local = resolveMediaFile(outputDirectory, image);
+  if (local?.path) {
+    const extension = path.extname(local.path).toLowerCase();
+    return {
+      buffer: fs.readFileSync(local.path),
+      mimetype: extension === ".jpg" || extension === ".jpeg"
+        ? "image/jpeg"
+        : extension === ".webp" ? "image/webp" : "image/png",
+      originalname: image.filename,
+    };
+  }
+  const upstream = await fetch(comfy.mediaUrl(image), { signal: AbortSignal.timeout(600000) });
+  if (!upstream.ok) throw new Error(`Impossibile recuperare la reference da ComfyUI (${upstream.status}).`);
+  return {
+    buffer: Buffer.from(await upstream.arrayBuffer()),
+    mimetype: String(upstream.headers.get("content-type") || "image/png").split(";")[0].trim(),
+    originalname: image.filename,
+  };
+}
+
+async function queueCharacterReference(characterId, referenceRole, { force = false, preferredEngine = "auto" } = {}) {
+  const character = characterStore.getCharacter(characterId);
+  const plan = character.referencePlan;
+  if (!plan) throw new Error("Prepara prima l'Adaptive Reference Plan.");
+  const item = plan.items.find((entry) => entry.referenceRole === referenceRole);
+  if (!item) throw new Error("Ruolo reference non presente nel piano adattivo.");
+  const current = item.candidateGenerationId ? store.get(item.candidateGenerationId) : null;
+  if (force && current && ["queued", "running"].includes(current.status)) {
+    throw new Error(`Una rigenerazione di ${referenceRole} è già in corso.`);
+  }
+  if (!force && (item.approvedReferenceId || current && !["error", "interrupted"].includes(current.status))) {
+    return null;
+  }
+  if (!item.technicalPrompt) throw new Error(`Prompt tecnico mancante per ${referenceRole}. Ricrea il Reference Plan con LM Studio.`);
+  const hero = characterHeroAsset(character);
+  const source = await uploadCharacterAsset(hero);
+  // Il piano conserva il motore scelto dall'utente: ogni reference dello stesso
+  // set deve restare sulla medesima famiglia per evitare drift identitario.
+  const workflow = await characterReferenceWorkflow(preferredEngine !== "auto"
+    ? preferredEngine
+    : plan.workflow?.engineId || "auto");
+  const seed = crypto.randomInt(0, 2 ** 31);
+  const job = buildCharacterReferenceJob({
+    character: { ...character, subjectKind: plan.subjectKind || character.subjectKind },
+    item,
+    workflow,
+    source,
+    seed,
+  });
+  const generation = await queueStudioJob(job, character.id);
+  const updatedPlan = patchReferencePlanItem({
+    ...plan,
+    workflow,
+  }, item.referenceRole, {
+    status: item.approvedReferenceId ? "regenerating" : "queued",
+    candidateGenerationId: generation.id,
+    candidateGenerationIds: [...new Set([...(item.candidateGenerationIds || []), generation.id])],
+    lastSeed: seed,
+  });
+  characterStore.updateReferencePlan(character.id, updatedPlan);
+  invalidateAppConfig();
+  return generation;
+}
+
+function syncCharacterReferenceGeneration(generation) {
+  if (generation?.generationPurpose !== "character_reference" || !generation.characterId || !generation.referenceRole) return null;
+  try {
+    const character = characterStore.getCharacter(generation.characterId);
+    const item = character.referencePlan?.items?.find((entry) => entry.referenceRole === generation.referenceRole);
+    if (!item || item.candidateGenerationId !== generation.id) return null;
+    const status = generation.status === "completed"
+      ? "ready"
+      : ["error", "interrupted"].includes(generation.status)
+        ? "error"
+        : item.approvedReferenceId ? "regenerating" : generation.status;
+    const updated = characterStore.updateReferencePlan(character.id, patchReferencePlanItem(
+      character.referencePlan,
+      item.referenceRole,
+      { status },
+    ));
+    invalidateAppConfig();
+    broadcast({ type: "character_updated", characterId: updated.id, data: updated });
+    return updated;
+  } catch {
+    return null;
+  }
+}
+
+app.post("/api/characters/:id/reference-plan", async (request, response, next) => {
+  try {
+    if (!promptAssistant.publicConfig().enabled) {
+      return response.status(503).json({ error: "Adaptive Reference Factory richiede LM_STUDIO_MODEL configurato." });
+    }
+    const character = characterStore.getCharacter(request.params.id);
+    const hero = characterHeroAsset(character);
+    const workflow = await characterReferenceWorkflow(request.body?.engine || "auto");
+    const allowedRoles = character.subjectKind === "auto"
+      ? [...new Map(["human", "animal", "other"]
+          .flatMap((kind) => referenceRoleCatalog(kind))
+          .map((item) => [item.referenceRole, item])).values()]
+      : referenceRoleCatalog(character.subjectKind);
+    const planned = await promptAssistant.planCharacterReferences({
+      character,
+      workflow,
+      allowedRoles,
+      image: {
+        buffer: fs.readFileSync(hero.path),
+        mimetype: hero.mimeType || "image/png",
+      },
+    });
+    const previousApproved = (character.referencePlan?.items || [])
+      .filter((item) => item.approvedReferenceId);
+    const plannedSubjectKind = character.subjectKind === "auto"
+      ? normalizeSubjectKind(planned.subjectKind, "other")
+      : character.subjectKind;
+    let plan = normalizeReferencePlan({
+      items: [...planned.items, ...previousApproved],
+      heroReferenceId: character.heroImage,
+    }, {
+      subjectKind: plannedSubjectKind,
+      workflow,
+      existingPlan: character.referencePlan,
+    });
+    if (plan.items.length < 4 || plan.items.some((item) => !item.technicalPrompt)) {
+      throw new Error("LM Studio ha restituito un piano incompleto: servono almeno 4 ruoli ammessi, ciascuno con prompt tecnico.");
+    }
+    plan = mergeApprovedReferenceRoles(plan, character);
+    const updated = characterStore.updateReferencePlan(character.id, plan);
+    invalidateAppConfig();
+    response.json({
+      character: updated,
+      referencePlan: updated.referencePlan,
+      promptModel: planned.model,
+      cleanupWarning: planned.unloadError || null,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/characters/:id/reference-plan", (request, response, next) => {
+  try {
+    const character = characterStore.getCharacter(request.params.id);
+    response.json({
+      character,
+      referencePlan: character.referencePlan,
+      generations: referencePlanGenerations(character.referencePlan),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/characters/:id/reference-plan/generate-missing", async (request, response, next) => {
+  try {
+    const character = characterStore.getCharacter(request.params.id);
+    if (!character.referencePlan) throw new Error("Prepara prima l'Adaptive Reference Plan.");
+    const requestedEngine = String(request.body?.engine || character.referencePlan.workflow?.engineId || "auto");
+    const requestedWorkflow = await characterReferenceWorkflow(requestedEngine);
+    const engineChanged = Boolean(
+      character.referencePlan.workflow?.engineId
+      && character.referencePlan.workflow.engineId !== requestedWorkflow.engineId,
+    );
+    const generations = new Map(referencePlanGenerations(character.referencePlan).map((item) => [item.id, item]));
+    const requestedRoles = new Set(Array.isArray(request.body?.roles) ? request.body.roles : []);
+    const missing = (engineChanged
+      ? character.referencePlan.items.filter((item) => !item.approvedReferenceId)
+      : missingReferenceItems(character.referencePlan, generations))
+      .filter((item) => !requestedRoles.size || requestedRoles.has(item.referenceRole));
+    const queued = [];
+    for (const item of missing) {
+      const generation = await queueCharacterReference(character.id, item.referenceRole, {
+        force: engineChanged,
+        preferredEngine: requestedWorkflow.engineId,
+      });
+      if (generation) queued.push(generation);
+    }
+    const updated = characterStore.getCharacter(character.id);
+    response.status(202).json({
+      character: updated,
+      referencePlan: updated.referencePlan,
+      generations: queued,
+      engineChanged,
+      engine: requestedWorkflow.engineId,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/characters/:id/reference-plan/:role/regenerate", async (request, response, next) => {
+  try {
+    const generation = await queueCharacterReference(request.params.id, request.params.role, {
+      force: true,
+      preferredEngine: String(request.body?.engine || "auto"),
+    });
+    response.status(202).json({ character: characterStore.getCharacter(request.params.id), generation });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/characters/:id/reference-plan/:role/reject", (request, response, next) => {
+  try {
+    const character = characterStore.getCharacter(request.params.id);
+    const item = character.referencePlan?.items?.find((entry) => entry.referenceRole === request.params.role);
+    if (!item) throw new Error("Ruolo reference non presente nel piano adattivo.");
+    const generationId = String(request.body?.generationId || item.candidateGenerationId || "");
+    const generation = store.get(generationId);
+    if (!generation || generation.characterId !== character.id || generation.referenceRole !== item.referenceRole) {
+      throw new Error("Candidate reference non valida per questo ruolo.");
+    }
+    if (item.candidateGenerationId !== generation.id) {
+      throw new Error("Questa candidate non è più quella attiva per il ruolo.");
+    }
+    const updatedGeneration = store.update(generation.id, {
+      referenceDecision: "rejected",
+      referenceDecisionAt: new Date().toISOString(),
+    });
+    const referencePlan = patchReferencePlanItem(character.referencePlan, item.referenceRole, {
+      status: item.approvedReferenceId ? "approved" : "rejected",
+      candidateGenerationId: null,
+      rejectedGenerationIds: [...new Set([...(item.rejectedGenerationIds || []), generation.id])],
+    });
+    const updated = characterStore.updateReferencePlan(character.id, referencePlan);
+    invalidateAppConfig();
+    broadcast({ type: "generation_updated", generationId: generation.id, data: updatedGeneration });
+    response.json({ character: updated, referencePlan: updated.referencePlan, generation: updatedGeneration });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/characters/:id/reference-plan/:role/approve", async (request, response, next) => {
+  try {
+    const character = characterStore.getCharacter(request.params.id);
+    const item = character.referencePlan?.items?.find((entry) => entry.referenceRole === request.params.role);
+    if (!item) throw new Error("Ruolo reference non presente nel piano adattivo.");
+    const generationId = String(request.body?.generationId || item.candidateGenerationId || "");
+    const generation = store.get(generationId);
+    if (!generation || generation.characterId !== character.id || generation.referenceRole !== item.referenceRole
+      || generation.generationPurpose !== "character_reference") {
+      throw new Error("Candidate reference non valida per questo ruolo.");
+    }
+    const alreadyImported = (character.references || []).find((reference) =>
+      reference.provenance?.generationId === generation.id && reference.status !== "rejected"
+    );
+    if (alreadyImported) {
+      return response.json({ character, referencePlan: character.referencePlan, reference: alreadyImported, duplicate: true });
+    }
+    if (item.candidateGenerationId !== generation.id) {
+      throw new Error("Questa candidate non è più quella attiva per il ruolo.");
+    }
+    if (generation.status !== "completed" || !generation.images?.length) {
+      throw new Error("La candidate deve essere completata prima dell'approvazione.");
+    }
+    const file = await generationImageFile(generation, request.body?.imageIndex);
+    const result = characterStore.addReference(character.id, {
+      ...file,
+      size: file.buffer.length,
+    }, {
+      type: item.type,
+      status: "approved",
+      tags: `adaptive reference,${item.referenceRole},approved`,
+      referenceRole: item.referenceRole,
+      angle: item.angle,
+      pose: item.pose,
+      expression: item.expression,
+      sourceHero: character.heroImage,
+      subjectKind: character.referencePlan?.subjectKind || character.subjectKind,
+      technicalPrompt: generation.technicalPrompt,
+      seed: generation.seed,
+      provenance: {
+        sourceType: "reference-factory",
+        generationId: generation.id,
+        generator: generation.workflowId,
+        model: generation.model || generation.imageModelFile,
+        seed: generation.seed,
+        technicalPrompt: generation.technicalPrompt,
+      },
+    });
+    if (item.approvedReferenceId && item.approvedReferenceId !== result.reference.id) {
+      characterStore.updateReference(character.id, item.approvedReferenceId, { status: "rejected" });
+    }
+    const referencePlan = patchReferencePlanItem(
+      characterStore.getCharacter(character.id).referencePlan,
+      item.referenceRole,
+      {
+        status: "approved",
+        approvedReferenceId: result.reference.id,
+        candidateGenerationId: null,
+      },
+    );
+    const updated = characterStore.updateReferencePlan(character.id, referencePlan);
+    const updatedGeneration = store.update(generation.id, {
+      referenceDecision: "approved",
+      referenceDecisionAt: new Date().toISOString(),
+      characterReferenceId: result.reference.id,
+    });
+    invalidateAppConfig();
+    broadcast({ type: "generation_updated", generationId: generation.id, data: updatedGeneration });
+    broadcast({ type: "character_updated", characterId: updated.id, data: updated });
+    response.json({ character: updated, referencePlan: updated.referencePlan, reference: result.reference });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/characters/genesis", upload.single("photo"), async (request, response, next) => {
+  try {
+    if (!promptAssistant.publicConfig().enabled) {
+      return response.status(503).json({ error: "Character Genesis richiede LM_STUDIO_MODEL configurato." });
+    }
+    const photo = request.file || null;
+    const sourceType = photo ? "photo" : "description";
+    const sourceDescription = String(request.body?.description || "").trim();
+    if (!photo && !sourceDescription) throw new Error("Scrivi una breve descrizione del Character.");
+    if (photo) {
+      if (!photo.mimetype.startsWith("image/")) throw new Error("Carica una fotografia PNG, JPG o WebP.");
+      validateUploadSize(photo, maxUploadMb, "La fotografia");
+    }
+    const planned = await promptAssistant.createCharacterGenesis({
+      description: sourceDescription,
+      image: photo,
+    });
+    const characterBlueprint = normalizeCharacterBlueprint({
+      ...planned,
+      sourceDescription,
+    }, { sourceDescription });
+    const hints = blueprintIdentityHints(characterBlueprint);
+    const genesis = normalizeGenesis({
+      sourceType,
+      sourceDescription,
+      generator: photo ? "uploaded-photo" : "kreaTriple",
+      model: photo ? "original uploaded photograph" : "KreaTriple_T2I_API.json",
+      promptModel: planned.model,
+      technicalPrompt: planned.technicalPrompt,
+      technicalNegativePrompt: planned.technicalNegativePrompt,
+      createdAt: new Date().toISOString(),
+    });
+    let character = characterStore.createCharacter({
+      name: String(request.body?.name || (photo ? "Character da foto" : planned.name || "Nuovo Character")).trim(),
+      description: blueprintDescription(characterBlueprint),
+      subjectKind: characterBlueprint.subjectKind,
+      characterBlueprint,
+      identityHints: hints,
+      genesis,
+    });
+    if (photo) {
+      character = characterStore.addReference(character.id, photo, {
+        type: "hero",
+        tags: "character genesis,original photo,identity reference",
+        provenance: {
+          sourceType: "photo",
+          generator: "uploaded-photo",
+          model: "original uploaded photograph",
+          technicalPrompt: planned.technicalPrompt,
+        },
+      }).character;
+    }
+    invalidateAppConfig();
+    response.status(201).json({
+      character,
+      blueprint: characterBlueprint,
+      advanced: {
+        technicalPrompt: genesis.technicalPrompt,
+        technicalNegativePrompt: genesis.technicalNegativePrompt,
+        promptModel: genesis.promptModel,
+        generator: genesis.generator,
+        model: genesis.model,
+      },
+      cleanupWarning: planned.unloadError || null,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/characters/:id/genesis-candidates", async (request, response, next) => {
+  try {
+    const character = characterStore.getCharacter(request.params.id);
+    if (character.genesis?.sourceType !== "description") {
+      throw new Error("Le candidate Krea sono disponibili per Character creati da descrizione.");
+    }
+    const prompt = String(request.body?.technicalPrompt || character.genesis?.technicalPrompt || "").trim();
+    if (!prompt) throw new Error("Il prompt tecnico Character Genesis non è disponibile.");
+    const technicalNegativePrompt = String(
+      request.body?.technicalNegativePrompt ?? character.genesis?.technicalNegativePrompt ?? "",
+    ).trim();
+    const count = Math.max(1, Math.min(4, Number(request.body?.count) || 4));
+    const seeds = new Set();
+    while (seeds.size < count) seeds.add(crypto.randomInt(0, 2 ** 31));
+    const candidates = [];
+    let imageModel = "KreaTriple_T2I_API.json";
+    for (const seed of seeds) {
+      const job = buildStudioJobs("kreaTriple", {
+        studioMode: "kreaTriple",
+        kreaTripleOperation: "text",
+        prompt,
+        negativePrompt: technicalNegativePrompt,
+        seed,
+        imageWidth: request.body?.imageWidth || 1024,
+        imageHeight: request.body?.imageHeight || 1024,
+      }, { source: null, references: [], mask: null, guide: null }, [])[0];
+      imageModel = String(job.workflow?.["1"]?.inputs?.unet_name || job.metadata?.imageModelName || imageModel);
+      job.metadata = {
+        ...job.metadata,
+        workflowId: "character:genesis:kreaTriple",
+        workflowName: "Character Genesis · Krea 2",
+        generationType: "characterGenesisCandidate",
+        characterId: character.id,
+        characterName: character.name,
+        prompt,
+        negativePrompt: technicalNegativePrompt,
+        seed,
+        genesisSourceType: "description",
+      };
+      candidates.push(await queueStudioJob(job, character.id));
+    }
+    const genesis = normalizeGenesis({
+      ...character.genesis,
+      generator: "kreaTriple",
+      model: imageModel,
+      technicalPrompt: prompt,
+      technicalNegativePrompt,
+      candidateGenerationIds: candidates.map((item) => item.id),
+    });
+    const updated = characterStore.updateCharacter(character.id, { genesis });
+    invalidateAppConfig();
+    response.status(202).json({ character: updated, candidates });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/characters/:id/select-hero", async (request, response, next) => {
+  try {
+    const generationId = String(request.body?.generationId || "").trim();
+    const generation = store.get(generationId);
+    if (!generation || generation.characterId !== request.params.id
+      || generation.generationType !== "characterGenesisCandidate") {
+      return response.status(404).json({ error: "Candidate Hero non trovata per questo Character." });
+    }
+    if (generation.status !== "completed" || !generation.images?.length) {
+      throw new Error("La candidate deve essere completata prima di usarla come Hero.");
+    }
+    const rawCharacter = characterStore.readRaw(request.params.id);
+    const existing = (rawCharacter.references || []).find((item) =>
+      item.provenance?.generationId === generationId
+    );
+    if (existing) {
+      return response.json({ character: characterStore.getCharacter(request.params.id), reference: existing, duplicate: true });
+    }
+    const image = generation.images[Number(request.body?.imageIndex) || 0] || generation.images[0];
+    let buffer;
+    let mimetype = "image/png";
+    const local = resolveMediaFile(outputDirectory, image);
+    if (local?.path) {
+      buffer = fs.readFileSync(local.path);
+      const extension = path.extname(local.path).toLowerCase();
+      mimetype = extension === ".jpg" || extension === ".jpeg" ? "image/jpeg" : extension === ".webp" ? "image/webp" : "image/png";
+    } else {
+      const upstream = await fetch(comfy.mediaUrl(image), { signal: AbortSignal.timeout(600000) });
+      if (!upstream.ok) throw new Error(`Impossibile recuperare la candidate da ComfyUI (${upstream.status}).`);
+      buffer = Buffer.from(await upstream.arrayBuffer());
+      mimetype = String(upstream.headers.get("content-type") || mimetype).split(";")[0].trim();
+    }
+    const result = characterStore.addReference(request.params.id, {
+      buffer,
+      mimetype,
+      originalname: image.filename || `character-hero-${generation.seed}.png`,
+      size: buffer.length,
+    }, {
+      type: "hero",
+      tags: "character genesis,krea candidate,selected hero",
+      provenance: {
+        sourceType: "description",
+        generationId,
+        generator: "kreaTriple",
+        model: rawCharacter.genesis?.model || generation.imageModelName,
+        seed: generation.seed,
+        technicalPrompt: generation.prompt,
+      },
+    });
+    const genesis = normalizeGenesis({
+      ...(rawCharacter.genesis || {}),
+      seed: generation.seed,
+      technicalPrompt: generation.prompt,
+      selectedGenerationId: generationId,
+    });
+    const character = characterStore.updateCharacter(request.params.id, { genesis });
+    invalidateAppConfig();
+    response.json({ character, reference: result.reference, duplicate: false });
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.post("/api/characters/import-legacy", (_request, response) => {
@@ -1838,7 +3173,17 @@ app.post("/api/characters/import-legacy", (_request, response) => {
 
 app.post("/api/characters", (request, response, next) => {
   try {
-    response.status(201).json({ character: characterStore.createCharacter(request.body || {}) });
+    const character = characterStore.createCharacter(request.body || {});
+    invalidateAppConfig();
+    response.status(201).json({ character });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/characters/identity-providers", async (_request, response, next) => {
+  try {
+    response.json({ providers: await identityEvaluation.capabilities() });
   } catch (error) {
     next(error);
   }
@@ -1847,6 +3192,71 @@ app.post("/api/characters", (request, response, next) => {
 app.get("/api/characters/:id", (request, response, next) => {
   try {
     response.json({ character: characterStore.getCharacter(request.params.id) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/characters/:id/media", (request, response, next) => {
+  try {
+    const character = characterStore.getCharacter(request.params.id);
+    const approvedGenerationIds = new Set((character.references || [])
+      .map((reference) => reference.provenance?.generationId)
+      .filter(Boolean));
+    const records = store.list().filter((item) => item.characterId === request.params.id && item.status === "completed" && !item.archived);
+    const photos = records.filter((item) => item.images?.length && !item.pipelineIntermediate).map((item) => ({
+      id: item.id, label: item.workflowName || "Foto", createdAt: item.createdAt,
+      imageUrl: `/api/image/${encodeURIComponent(item.id)}/0`,
+      generationPurpose: item.generationPurpose,
+      approvedAsReference: approvedGenerationIds.has(item.id),
+    }));
+    const videos = records.filter((item) => item.videos?.length).map((item) => ({
+      id: item.id, label: item.masterOutputKind || item.workflowName || "Video", createdAt: item.createdAt,
+      videoUrl: `/api/media/${encodeURIComponent(item.id)}/0`,
+    }));
+    response.json({ photos, videos });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/characters/:id/photos/:generationId/approve-reference", (request, response, next) => {
+  try {
+    const character = characterStore.getCharacter(request.params.id);
+    const generation = store.get(request.params.generationId);
+    if (!generation || generation.characterId !== character.id || generation.status !== "completed" || !generation.images?.length) {
+      throw new Error("La foto selezionata non è una generazione completata di questo Character.");
+    }
+    const existing = (character.references || []).find((reference) =>
+      reference.provenance?.generationId === generation.id && reference.status !== "rejected");
+    if (existing) return response.json({ character, reference: existing, alreadyApproved: true });
+    const image = resolveMediaFile(outputDirectory, generation.images[0]);
+    if (!image?.path) throw new Error("Il file finale della foto non è disponibile localmente.");
+    const result = characterStore.addReferenceFromPath(character.id, image.path, {
+      type: "generic",
+      status: "approved",
+      tags: `photo set,approved,${generation.photoSetPreset || "character photo"}`,
+      referenceRole: generation.photoSetPreset ? `photo_set_${generation.photoSetPreset}` : "generated_photo",
+      technicalPrompt: generation.technicalPrompt || generation.prompt || "",
+      seed: generation.seed,
+      provenance: {
+        sourceType: "character_photo",
+        generationId: generation.id,
+        generator: generation.workflowName,
+        model: generation.model,
+        seed: generation.seed,
+        photoSetId: generation.photoSetId || null,
+      },
+      manualReview: {
+        status: "APPROVED",
+        reviewedAt: new Date().toISOString(),
+        reviewedBy: "user",
+        notes: "Approvata dal Photo Set come reference riutilizzabile.",
+      },
+    });
+    invalidateAppConfig();
+    broadcast({ type: "character_updated", characterId: result.character.id, data: result.character });
+    response.json(result);
   } catch (error) {
     next(error);
   }
@@ -1862,7 +3272,19 @@ app.get("/api/characters/:id/check-assets", (request, response, next) => {
 
 app.put("/api/characters/:id", (request, response, next) => {
   try {
-    response.json({ character: characterStore.updateCharacter(request.params.id, request.body || {}) });
+    const character = characterStore.updateCharacter(request.params.id, request.body || {});
+    invalidateAppConfig();
+    response.json({ character });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/characters/:id/voice-reference", upload.single("voiceReference"), (request, response, next) => {
+  try {
+    if (!request.file) throw new Error("Carica una reference voce WAV, MP3 o M4A.");
+    validateUploadSize(request.file, maxUploadMb, "La reference voce");
+    response.json({ character: characterStore.setVoiceReference(request.params.id, request.file) });
   } catch (error) {
     next(error);
   }
@@ -1870,7 +3292,9 @@ app.put("/api/characters/:id", (request, response, next) => {
 
 app.delete("/api/characters/:id", (request, response, next) => {
   try {
-    response.json(characterStore.deleteCharacter(request.params.id));
+    const result = characterStore.deleteCharacter(request.params.id);
+    invalidateAppConfig();
+    response.json(result);
   } catch (error) {
     next(error);
   }
@@ -1892,6 +3316,7 @@ app.post(
         character = result.character;
         created.push(result.reference);
       }
+      invalidateAppConfig();
       response.status(201).json({ character, references: created });
     } catch (error) {
       next(error);
@@ -1901,7 +3326,619 @@ app.post(
 
 app.put("/api/characters/:id/references/:referenceId", (request, response, next) => {
   try {
-    response.json({ character: characterStore.updateReference(request.params.id, request.params.referenceId, request.body || {}) });
+    const character = characterStore.updateReference(request.params.id, request.params.referenceId, request.body || {});
+    invalidateAppConfig();
+    response.json({ character });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.put("/api/characters/:id/references/:referenceId/identity-review", (request, response, next) => {
+  try {
+    const character = characterStore.getCharacter(request.params.id);
+    const reference = (character.references || []).find((item) => item.id === request.params.referenceId);
+    if (!reference) throw new Error("Reference personaggio non trovata.");
+    if (reference.id === character.heroImage) throw new Error("La Hero è l'ancora identitaria e non può essere rifiutata da questa revisione.");
+    const decision = String(request.body?.decision || "").toLowerCase();
+    if (!['approve', 'reject'].includes(decision)) throw new Error("Decisione manuale non valida.");
+    const reviewedAt = new Date().toISOString();
+    let updated = characterStore.updateReference(character.id, reference.id, {
+      status: decision === "reject" ? "rejected" : "approved",
+      manualReview: {
+        status: decision === "reject" ? "REJECTED" : "APPROVED",
+        reviewedAt,
+        reviewedBy: "user",
+        notes: request.body?.notes || "",
+      },
+    });
+    const planItem = updated.referencePlan?.items?.find((item) =>
+      item.referenceRole === reference.referenceRole || item.approvedReferenceId === reference.id
+    );
+    if (planItem) {
+      if (decision === "approve" && planItem.approvedReferenceId && planItem.approvedReferenceId !== reference.id) {
+        characterStore.updateReference(character.id, planItem.approvedReferenceId, { status: "rejected" });
+      }
+      const referencePlan = patchReferencePlanItem(updated.referencePlan, planItem.referenceRole, decision === "approve"
+        ? { status: "approved", approvedReferenceId: reference.id }
+        : { status: "rejected", approvedReferenceId: null });
+      updated = characterStore.updateReferencePlan(character.id, referencePlan);
+    }
+    invalidateAppConfig();
+    broadcast({ type: "character_updated", characterId: updated.id, data: updated });
+    response.json({ character: updated, reference: updated.references.find((item) => item.id === reference.id) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+function cachedCharacterPhotoWorkflow(preferredEngine = "auto") {
+  return routeCharacterPhotoWorkflow(appConfigCache.value?.imageModels || [], preferredEngine);
+}
+
+async function characterPhotoWorkflow(preferredEngine = "auto") {
+  await refreshAppConfig();
+  const workflow = cachedCharacterPhotoWorkflow(preferredEngine);
+  if (!workflow) throw new Error(preferredEngine === "auto"
+    ? "Nessun workflow Image Edit compatibile risulta realmente disponibile."
+    : "Il motore fotografico selezionato non è disponibile con tutti i componenti richiesti.");
+  return workflow;
+}
+
+app.get("/api/characters/:id/photo-config", async (request, response, next) => {
+  try {
+    characterStore.getCharacter(request.params.id);
+    await refreshAppConfig();
+    const engines = characterPhotoEngineCatalog(appConfigCache.value?.imageModels || []).map((engine) => ({
+      ...(() => {
+        const acceleration = qwenEdit2511Lightning8Preset(engine.modelFile);
+        return {
+          steps: acceleration?.steps || engine.defaults?.steps,
+          guidance: acceleration?.guidance ?? engine.defaults?.guidance,
+          samplingProfile: acceleration?.samplingProfile || engine.samplingProfile || "model-native",
+        };
+      })(),
+      id: engine.engineId,
+      name: engine.name,
+      model: engine.modelFile,
+      maxReferences: engine.maxReferences,
+    }));
+    response.json({ engines, defaultEngine: engines[0]?.id || null });
+  } catch (error) {
+    next(error);
+  }
+});
+
+function characterMasterRuntime() {
+  const imageModels = appConfigCache.value?.imageModels || [];
+  const flux1 = imageModels.find((item) => item.id === "flux1" && item.available);
+  const flux2 = imageModels.find((item) => item.id === "flux2" && item.available);
+  const kreaModel = flux1?.models?.find((model) => /moodykrea2mix_v50/i.test(model.file))
+    || flux1?.models?.find((model) => /krea/i.test(model.file));
+  const kleinModel = flux2?.models?.find((model) => /flux2klein_9bbase/i.test(model.file))
+    || flux2?.models?.find((model) => !/turbo/i.test(model.file))
+    || flux2?.models?.[0];
+  const seedProfile = appConfigCache.value?.imageEnhancements?.seedvr2Profiles
+    ?.find((profile) => profile.id === "balanced" && profile.available);
+  const seedEngine = appConfigCache.value?.upscaling?.engines
+    ?.find((engine) => engine.id === "seedvr2" && engine.available);
+  return {
+    capabilities: {
+      scene: true,
+      krea: Boolean(kreaModel),
+      klein: Boolean(kleinModel),
+      seedvr2: Boolean(seedProfile && seedEngine),
+    },
+    models: {
+      scene: cachedCharacterPhotoWorkflow()?.modelFile || null,
+      krea: kreaModel?.file || null,
+      klein: kleinModel?.file || null,
+      seedvr2: seedProfile ? SEEDVR2_PROFILES.balanced.model : null,
+    },
+  };
+}
+
+function masterStageOverrides(raw) {
+  const source = raw && typeof raw === "object" ? raw : {};
+  return Object.fromEntries(["krea", "klein", "seedvr2"]
+    .filter((key) => typeof source[key] === "boolean")
+    .map((key) => [key, source[key]]));
+}
+
+async function characterMasterPromptImage(file) {
+  const local = resolveMediaFile(outputDirectory, file);
+  if (local?.path) {
+    const extension = path.extname(local.path).toLowerCase();
+    return {
+      buffer: fs.readFileSync(local.path),
+      mimetype: extension === ".jpg" || extension === ".jpeg" ? "image/jpeg" : extension === ".webp" ? "image/webp" : "image/png",
+    };
+  }
+  const result = await fetch(comfy.mediaUrl(file), { signal: AbortSignal.timeout(600000) });
+  if (!result.ok) throw new Error(`Impossibile leggere il risultato dello stage precedente (${result.status}).`);
+  return {
+    buffer: Buffer.from(await result.arrayBuffer()),
+    mimetype: String(result.headers.get("content-type") || "image/png").split(";")[0],
+  };
+}
+
+async function characterMasterIdentityValidation(rootGeneration, masterGeneration) {
+  const character = characterStore.getCharacter(rootGeneration.characterId);
+  const hero = characterHeroAsset(character);
+  const output = masterGeneration.images?.at(-1);
+  const master = output ? resolveMediaFile(outputDirectory, output) : null;
+  if (!master?.path) {
+    return {
+      enabled: false,
+      engine: null,
+      subjectKindsSupported: [],
+      thresholds: null,
+      evaluations: [],
+      status: "NOT_EVALUATED",
+      evaluatedAt: new Date().toISOString(),
+      warnings: ["Master non disponibile localmente per la validation finale."],
+      providers: [],
+    };
+  }
+  return identityEvaluation.evaluate({
+    subjectKind: character.referencePlan?.subjectKind || character.subjectKind,
+    hero: { id: character.heroImage, path: hero.path },
+    references: [{ id: "master", path: master.path }],
+  });
+}
+
+async function finalizeCharacterMasterPipeline(rootGeneration, pipeline) {
+  const masterGeneration = store.get(pipeline.lastValidGenerationId || rootGeneration.id) || rootGeneration;
+  let identityValidation;
+  try {
+    identityValidation = await characterMasterIdentityValidation(rootGeneration, masterGeneration);
+  } catch (error) {
+    identityValidation = {
+      enabled: false,
+      engine: null,
+      subjectKindsSupported: [],
+      thresholds: null,
+      evaluations: [],
+      status: "ENGINE_UNAVAILABLE",
+      evaluatedAt: new Date().toISOString(),
+      warnings: [error.message],
+      providers: [],
+    };
+  }
+  const finished = finishCharacterMasterPipeline(pipeline, {
+    masterGenerationId: masterGeneration.id,
+    identityValidation,
+  });
+  const updated = store.update(rootGeneration.id, {
+    workflowName: `Character Master Image · ${finished.presetLabel}`,
+    characterMasterPipeline: finished,
+    masterGenerationId: masterGeneration.id,
+    masterOutputKind: "Master",
+    images: masterGeneration.images || [],
+    output: masterGeneration.images || [],
+  });
+  broadcast({ type: "generation_updated", generationId: updated.id, data: updated });
+  scheduleIdlePurge();
+  return updated;
+}
+
+async function prepareCharacterMasterStage(rootGeneration, pipeline, stage, sourceGeneration) {
+  const character = characterStore.getCharacter(rootGeneration.characterId);
+  const sourceFile = sourceGeneration.images?.at(-1);
+  if (!sourceFile) throw new Error(`${stage.label}: lo stage precedente non contiene un'immagine valida.`);
+  const sourceUpload = await comfy.reuseOutputImage(sourceFile, `character-master-${rootGeneration.id}-${stage.id}.png`);
+  const stageSeed = crypto.randomInt(0, 2 ** 31);
+  if (stage.id === "seedvr2") {
+    const job = buildUpscaleWorkflow({
+      upscaleEngine: "seedvr2",
+      upscalePreset: seedVr2PresetForQuality(pipeline.preset),
+      upscaleAutoPurge: false,
+      seed: stageSeed,
+      upscaleSourceWidth: sourceGeneration.outputWidth,
+      upscaleSourceHeight: sourceGeneration.outputHeight,
+    }, sourceUpload, []);
+    return {
+      job,
+      prompt: "SeedVR2 3B restoration and final upscale; this model does not consume a text prompt.",
+      negativePrompt: "",
+      model: SEEDVR2_PROFILES.balanced.model,
+      seed: stageSeed,
+    };
+  }
+  const selectedReferences = (character.references || [])
+    .filter((reference) => rootGeneration.selectedReferenceIds?.includes(reference.id));
+  const promptImage = await characterMasterPromptImage(sourceFile);
+  const targetModel = {
+    id: stage.id,
+    name: stage.id === "krea" ? "Krea conservative refine" : "Flux.2 Klein conservative fine refine",
+    modelFile: stage.model,
+  };
+  const promptResult = await promptAssistant.planCharacterPhotoStage({
+    character,
+    sceneBlueprint: rootGeneration.sceneBlueprint,
+    selectedReferences,
+    previousStage: {
+      id: sourceGeneration.pipelineStage || "scene",
+      generationId: sourceGeneration.id,
+      outputWidth: sourceGeneration.outputWidth || null,
+      outputHeight: sourceGeneration.outputHeight || null,
+    },
+    targetModel,
+    stage: stage.id,
+    objective: stage.objective,
+    identityProtection: identityProtectionContract(
+      character.referencePlan?.subjectKind || character.subjectKind,
+      character.characterBlueprint,
+    ),
+    image: promptImage,
+  });
+  if (stage.id === "krea") {
+    const job = buildImageWorkflow("flux1", {
+      imageMode: "image",
+      imageModelFile: stage.model,
+      prompt: promptResult.prompt,
+      negativePrompt: promptResult.negativePrompt,
+      seed: stageSeed,
+      imageResolution: "custom",
+      imageWidth: sourceGeneration.outputWidth || rootGeneration.width || 896,
+      imageHeight: sourceGeneration.outputHeight || rootGeneration.height || 1152,
+      imageSteps: pipeline.preset === "max" ? 24 : 20,
+      imageGuidance: 3,
+      denoise: pipeline.preset === "max" ? 0.16 : 0.2,
+      batchSize: 1,
+      outputBase: `Characters/${character.id}/master/krea`,
+      saveOriginal: false,
+      upscaleMode: "none",
+      autoPurge: true,
+    }, sourceUpload, []);
+    return { job, prompt: promptResult.prompt, negativePrompt: promptResult.negativePrompt, model: stage.model, seed: stageSeed };
+  }
+  const identityUploads = [];
+  for (const reference of selectedReferences.slice(0, 3)) {
+    const asset = characterStore.assetPath(character.id, reference.id);
+    if (asset?.path) identityUploads.push(await uploadCharacterAsset(asset));
+  }
+  const job = buildImageWorkflow("flux2", {
+    imageMode: "image",
+    imageModelFile: stage.model,
+    prompt: promptResult.prompt,
+    negativePrompt: promptResult.negativePrompt,
+    seed: stageSeed,
+    imageResolution: "custom",
+    imageWidth: sourceGeneration.outputWidth || rootGeneration.width || 896,
+    imageHeight: sourceGeneration.outputHeight || rootGeneration.height || 1152,
+    imageSteps: pipeline.preset === "max" ? 20 : 16,
+    imageGuidance: pipeline.preset === "max" ? 4 : 3,
+    denoise: 1,
+    batchSize: 1,
+    referenceUploads: identityUploads,
+    outputBase: `Characters/${character.id}/master/klein`,
+    saveOriginal: false,
+    upscaleMode: "none",
+  }, sourceUpload, []);
+  return { job, prompt: promptResult.prompt, negativePrompt: promptResult.negativePrompt, model: stage.model, seed: stageSeed };
+}
+
+async function queueNextCharacterMasterStage(rootGeneration, pipeline) {
+  let current = pipeline;
+  let stage = nextMasterPipelineStage(current);
+  while (stage) {
+    const sourceGeneration = store.get(current.lastValidGenerationId || rootGeneration.id) || rootGeneration;
+    try {
+      cancelIdlePurge();
+      const prepared = await gpuResourceManager.run(`character-master-${stage.id}`, () =>
+        prepareCharacterMasterStage(rootGeneration, current, stage, sourceGeneration));
+      const job = prepared.value.job;
+      job.metadata = {
+        ...job.metadata,
+        generationType: "characterMasterStage",
+        generationPurpose: "character_master_stage",
+        pipelineRootGenerationId: rootGeneration.id,
+        pipelineStage: stage.id,
+        pipelineOutputKind: stage.label,
+        pipelineIntermediate: true,
+        parentGenerationId: sourceGeneration.id,
+        characterId: rootGeneration.characterId,
+        characterName: rootGeneration.characterName,
+        sceneBlueprint: rootGeneration.sceneBlueprint,
+        selectedReferenceIds: rootGeneration.selectedReferenceIds,
+        referenceSelectionReason: rootGeneration.referenceSelectionReason,
+        technicalPrompt: prepared.value.prompt,
+        technicalNegativePrompt: prepared.value.negativePrompt,
+        model: prepared.value.model,
+        seed: prepared.value.seed,
+        archived: true,
+      };
+      const child = await queueStudioJob(job, rootGeneration.id);
+      current = updateMasterPipelineStage(current, stage.id, {
+        status: "running",
+        generationId: child.id,
+        sourceGenerationId: sourceGeneration.id,
+        prompt: prepared.value.prompt,
+        model: prepared.value.model,
+        startedAt: new Date().toISOString(),
+      });
+      const updatedRoot = store.update(rootGeneration.id, { characterMasterPipeline: current });
+      broadcast({ type: "generation_updated", generationId: updatedRoot.id, data: updatedRoot });
+      return child;
+    } catch (error) {
+      current = updateMasterPipelineStage(current, stage.id, {
+        status: "failed",
+        error: error.message,
+        finishedAt: new Date().toISOString(),
+      });
+      const updatedRoot = store.update(rootGeneration.id, { characterMasterPipeline: current });
+      broadcast({ type: "generation_updated", generationId: updatedRoot.id, data: updatedRoot });
+      stage = nextMasterPipelineStage(current);
+    }
+  }
+  return finalizeCharacterMasterPipeline(rootGeneration, current);
+}
+
+async function advanceCharacterMasterPipeline(generation) {
+  const rootId = generation.pipelineRootGenerationId
+    || (generation.generationPurpose === "character_photo" ? generation.id : null);
+  if (!rootId) return null;
+  const rootGeneration = store.get(rootId);
+  let pipeline = rootGeneration?.characterMasterPipeline;
+  if (!rootGeneration || !pipeline || pipeline.status !== "running") return null;
+  const stageId = generation.pipelineStage || "scene";
+  const stage = pipeline.stages.find((item) => item.id === stageId);
+  if (!stage || !["running", "requested"].includes(stage.status)) return null;
+  if (generation.status === "completed" && generation.images?.length) {
+    pipeline = updateMasterPipelineStage(pipeline, stageId, {
+      status: "completed",
+      generationId: generation.id,
+      output: generation.images,
+      finishedAt: generation.finishedAt || new Date().toISOString(),
+    });
+    pipeline = {
+      ...pipeline,
+      lastValidGenerationId: generation.id,
+      updatedAt: new Date().toISOString(),
+    };
+  } else {
+    pipeline = updateMasterPipelineStage(pipeline, stageId, {
+      status: "failed",
+      generationId: generation.id,
+      error: generation.error || `${stage.label} non completato.`,
+      finishedAt: generation.finishedAt || new Date().toISOString(),
+    });
+  }
+  if (generation.id !== rootId) store.update(generation.id, { archived: true });
+  const updatedRoot = store.update(rootId, { characterMasterPipeline: pipeline });
+  broadcast({ type: "generation_updated", generationId: updatedRoot.id, data: updatedRoot });
+  return queueNextCharacterMasterStage(updatedRoot, pipeline);
+}
+
+function continueCharacterMasterPipeline(generation) {
+  void advanceCharacterMasterPipeline(generation).catch((error) => {
+    const rootId = generation.pipelineRootGenerationId || generation.id;
+    const root = store.get(rootId);
+    if (!root?.characterMasterPipeline) return;
+    const updated = store.update(rootId, {
+      characterMasterPipeline: {
+        ...root.characterMasterPipeline,
+        status: "completed_with_warnings",
+        orchestrationError: error.message,
+        updatedAt: new Date().toISOString(),
+      },
+    });
+    broadcast({ type: "generation_updated", generationId: updated.id, data: updated });
+    scheduleIdlePurge();
+  });
+}
+
+async function resumeCharacterMasterPipelines() {
+  for (const root of store.list().filter((item) =>
+    item.generationPurpose === "character_photo" && item.characterMasterPipeline?.status === "running")) {
+    const pipeline = root.characterMasterPipeline;
+    const runningStage = pipeline.stages.find((stage) => stage.status === "running");
+    if (runningStage?.generationId) {
+      const generation = store.get(runningStage.generationId);
+      if (generation && ["completed", "error", "interrupted", "cancelled"].includes(generation.status)) {
+        continueCharacterMasterPipeline(generation);
+      }
+      continue;
+    }
+    if (nextMasterPipelineStage(pipeline)) {
+      void queueNextCharacterMasterStage(root, pipeline).catch((error) => {
+        const updated = store.update(root.id, {
+          characterMasterPipeline: {
+            ...pipeline,
+            status: "completed_with_warnings",
+            orchestrationError: error.message,
+            updatedAt: new Date().toISOString(),
+          },
+        });
+        broadcast({ type: "generation_updated", generationId: updated.id, data: updated });
+      });
+    }
+  }
+}
+
+function characterPhotoChoices(raw = {}) {
+  return {
+    location: String(raw.location || "automatic").trim().slice(0, 240),
+    action: String(raw.action || "automatic").trim().slice(0, 240),
+    mood: String(raw.mood || "automatic").trim().slice(0, 160),
+    outfitMode: ["keep", "change", "choose"].includes(raw.outfitMode) ? raw.outfitMode : "keep",
+    outfit: String(raw.outfit || "").trim().slice(0, 240),
+    engine: String(raw.engine || "auto").trim().slice(0, 80),
+  };
+}
+
+app.post("/api/characters/:id/photo-plan", async (request, response, next) => {
+  try {
+    if (!promptAssistant.publicConfig().enabled) {
+      return response.status(503).json({ error: "Create Photo richiede LM_STUDIO_MODEL configurato." });
+    }
+    const character = characterStore.getCharacter(request.params.id);
+    characterHeroAsset(character);
+    const choices = characterPhotoChoices(request.body || {});
+    const subjectKind = character.referencePlan?.subjectKind || character.subjectKind;
+    if (subjectKind !== "human") {
+      choices.outfitMode = "keep";
+      choices.outfit = "";
+    }
+    const userIntent = String(request.body?.userIntent || "").trim().slice(0, 1000);
+    const surprise = Boolean(request.body?.surprise) || choices.location.toLowerCase() === "surprise";
+    const sceneSeed = surprise
+      ? surpriseSceneSeed({ subjectKind })
+      : {
+          location: choices.location,
+          action: choices.action,
+          mood: choices.mood,
+          outfit: choices.outfit,
+          userIntent,
+        };
+    const workflow = cachedCharacterPhotoWorkflow(choices.engine);
+    if (!workflow) {
+      const error = new Error("Le capability Image Edit non sono ancora disponibili. Aggiorna la pagina e riprova.");
+      error.statusCode = 503;
+      throw error;
+    }
+    const initialBlueprint = normalizeSceneBlueprint(sceneSeed, {
+      userIntent,
+      subjectKind,
+      outfitMode: choices.outfitMode,
+    });
+    const selection = selectCharacterPhotoReferences(character, initialBlueprint, {
+      maxReferences: workflow.maxReferences,
+    });
+    const planned = await promptAssistant.planCharacterPhoto({
+      character,
+      userIntent,
+      choices,
+      sceneSeed,
+      selectedReferences: selection.references,
+      workflow,
+    });
+    const sceneBlueprint = normalizeSceneBlueprint(planned.sceneBlueprint, {
+      userIntent,
+      subjectKind,
+      outfitMode: choices.outfitMode,
+    });
+    const finalSelection = selectCharacterPhotoReferences(character, sceneBlueprint, {
+      maxReferences: workflow.maxReferences,
+    });
+    const referenceContract = finalSelection.references
+      .map((reference, index) => `Image ${index + 1}: ${index === 0 ? "primary Hero identity" : reference.referenceRole || reference.type || "supporting identity reference"}.`)
+      .join(" ");
+    response.json({
+      plan: {
+        sceneBlueprint,
+        summary: sceneBlueprintSummary(sceneBlueprint, character.name),
+        selectedReferenceIds: finalSelection.selectedReferenceIds,
+        referenceSelectionReason: finalSelection.referenceSelectionReason,
+        technicalPrompt: `${String(planned.technicalPrompt || "").trim()} ${referenceContract}`.trim(),
+        technicalNegativePrompt: String(planned.technicalNegativePrompt || "").trim(),
+        promptModel: planned.model,
+        workflow: { id: workflow.id, engineId: workflow.engineId, name: workflow.name, model: workflow.modelFile },
+        surprise,
+      },
+      cleanupWarning: planned.unloadError || null,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/characters/:id/create-photo", async (request, response, next) => {
+  try {
+    const character = characterStore.getCharacter(request.params.id);
+    const rawPlan = request.body?.plan || {};
+    const sceneBlueprint = normalizeSceneBlueprint(rawPlan.sceneBlueprint, {
+      userIntent: rawPlan.sceneBlueprint?.userIntent,
+      subjectKind: character.referencePlan?.subjectKind || character.subjectKind,
+      outfitMode: request.body?.outfitMode,
+    });
+    const technicalPrompt = String(rawPlan.technicalPrompt || "").trim().slice(0, 12_000);
+    if (!technicalPrompt) throw new Error("Prepara e conferma prima il piano fotografico LM Studio.");
+    const workflow = await characterPhotoWorkflow(rawPlan.workflow?.engineId || request.body?.engine || "auto");
+    if ((rawPlan.workflow?.id && rawPlan.workflow.id !== workflow.id)
+      || (rawPlan.workflow?.model && rawPlan.workflow.model !== workflow.modelFile)) {
+      throw new Error("Le capability dei modelli sono cambiate dopo l'anteprima. Usa Cambia idea per preparare di nuovo il piano.");
+    }
+    const selection = selectCharacterPhotoReferences(character, sceneBlueprint, {
+      maxReferences: workflow.maxReferences,
+    });
+    const qualityPreset = ["fast", "balanced", "max"].includes(request.body?.qualityPreset)
+      ? request.body.qualityPreset
+      : "balanced";
+    const runtime = characterMasterRuntime();
+    let masterPipeline = createCharacterMasterPipeline({
+      preset: qualityPreset,
+      advancedStages: masterStageOverrides(request.body?.advancedStages),
+      capabilities: runtime.capabilities,
+      models: runtime.models,
+    });
+    const uploads = [];
+    for (const reference of selection.references) {
+      const asset = characterStore.assetPath(character.id, reference.id);
+      if (!asset?.path) continue;
+      uploads.push(await uploadCharacterAsset(asset));
+    }
+    if (!uploads.length) throw new Error("La Hero selezionata non è disponibile per la generazione.");
+    const rawSeed = String(request.body?.seed ?? "").trim();
+    const parsedSeed = rawSeed ? Number(rawSeed) : Number.NaN;
+    const seed = Number.isSafeInteger(parsedSeed) && parsedSeed >= 0 ? parsedSeed : crypto.randomInt(0, 2 ** 31);
+    const acceleration = qwenEdit2511Lightning8Preset(workflow.modelFile);
+    const job = buildImageWorkflow(workflow.id, {
+      imageMode: "image",
+      imageModelFile: workflow.modelFile,
+      prompt: technicalPrompt,
+      negativePrompt: String(rawPlan.technicalNegativePrompt || "").trim(),
+      seed,
+      imageResolution: request.body?.imageResolution || "portrait",
+      imageSteps: acceleration?.steps || workflow.defaults?.steps || 4,
+      imageGuidance: acceleration?.guidance ?? workflow.defaults?.guidance ?? 1,
+      denoise: 1,
+      batchSize: 1,
+      referenceUploads: uploads.slice(1),
+      outputBase: `Characters/${character.id}/photos`,
+      saveOriginal: false,
+      upscaleMode: "none",
+    }, uploads[0], acceleration?.loras || []);
+    job.metadata = {
+      ...job.metadata,
+      ...characterPhotoGenerationMetadata({
+        character,
+        sceneBlueprint,
+        selection,
+        workflow,
+        technicalPrompt,
+        technicalNegativePrompt: String(rawPlan.technicalNegativePrompt || "").trim(),
+        seed,
+      }),
+      workflowName: `Character Master Image · ${masterPipeline.presetLabel}`,
+      pipelineStage: "scene",
+      pipelineOutputKind: "Scene Draft",
+      qualityPreset,
+      characterMasterPipeline: masterPipeline,
+      photoSetId: String(request.body?.photoSetId || "").trim().slice(0, 120) || null,
+      photoSetPreset: String(request.body?.photoSetPreset || "").trim().slice(0, 80) || null,
+      photoSetIndex: Number.isInteger(Number(request.body?.photoSetIndex)) ? Number(request.body.photoSetIndex) : null,
+    };
+    const generation = await queueStudioJob(job, character.id);
+    masterPipeline = updateMasterPipelineStage(masterPipeline, "scene", {
+      status: "running",
+      generationId: generation.id,
+      model: workflow.modelFile,
+      prompt: technicalPrompt,
+      startedAt: new Date().toISOString(),
+    });
+    masterPipeline = { ...masterPipeline, rootGenerationId: generation.id, updatedAt: new Date().toISOString() };
+    const updatedGeneration = store.update(generation.id, {
+      pipelineRootGenerationId: generation.id,
+      characterMasterPipeline: masterPipeline,
+    });
+    response.status(202).json({
+      generation: updatedGeneration,
+      pipeline: masterPipeline,
+      plan: { ...rawPlan, sceneBlueprint },
+      workflow: { id: workflow.id, name: workflow.name },
+    });
   } catch (error) {
     next(error);
   }
@@ -1909,7 +3946,9 @@ app.put("/api/characters/:id/references/:referenceId", (request, response, next)
 
 app.delete("/api/characters/:id/references/:referenceId", (request, response, next) => {
   try {
-    response.json({ character: characterStore.removeReference(request.params.id, request.params.referenceId) });
+    const character = characterStore.removeReference(request.params.id, request.params.referenceId);
+    invalidateAppConfig();
+    response.json({ character });
   } catch (error) {
     next(error);
   }
@@ -2024,20 +4063,21 @@ async function queueCharacterSheetJob(characterId, raw = {}) {
   };
   let job;
   if (workflowId === "qwenEdit") {
+    const acceleration = qwenEdit2511Lightning8Preset(raw.imageModelFile || undefined);
     job = buildImageWorkflow("qwenEdit", {
       ...base,
       imageMode: "image",
       imageModelFile: raw.imageModelFile || "",
       imageResolution: "custom",
-      imageSteps: raw.imageSteps || 16,
-      imageGuidance: raw.imageGuidance || 1,
+      imageSteps: acceleration?.steps || raw.imageSteps || 16,
+      imageGuidance: acceleration?.guidance || raw.imageGuidance || 1,
       denoise: raw.denoise || 0.55,
       batchSize: 1,
       referenceUploads: references,
       outputBase: `Characters/${character.id}/sheet`,
       saveOriginal: false,
       upscaleMode: "none",
-    }, source, []);
+    }, source, acceleration?.loras || []);
   } else {
     const studioMode = workflowId === "kreaTriple" ? "kreaTriple" : "qwenKreaKlein";
     job = buildStudioJobs(studioMode, {
@@ -2067,90 +4107,51 @@ async function queueCharacterSheetJob(characterId, raw = {}) {
   return queueStudioJob(job, character.id);
 }
 
-async function imageFingerprint(filePath, workingDirectory) {
-  const pgmPath = path.join(workingDirectory, `${crypto.randomUUID()}.pgm`);
-  await execFile("ffmpeg", [
-    "-y",
-    "-i", filePath,
-    "-frames:v", "1",
-    "-vf", "scale=96:96,format=gray",
-    pgmPath,
-  ], { windowsHide: true, timeout: 30_000 });
-  return fingerprintFromPgm(pgmPath, 16);
-}
-
 async function runCharacterIdentityCheck(characterId) {
   const character = characterStore.getCharacter(characterId);
-  const matches = (character.references || [])
-    .filter((reference) => reference.status !== "rejected" && reference.assetAvailable)
+  const hero = characterHeroAsset(character);
+  const references = (character.references || [])
+    .filter((reference) => reference.id !== character.heroImage && reference.status !== "rejected" && reference.assetAvailable)
     .map((reference) => ({ reference, match: characterStore.assetPath(characterId, reference.id) }))
-    .filter((item) => item.match?.path);
-  if (matches.length < 2) {
-    const report = {
-      enabled: true,
-      engine: "perceptual-ffmpeg-pgm",
-      status: "insufficient-reference",
-      threshold: 0.62,
-      referenceCount: matches.length,
-      warning: "Servono almeno 2 reference valide per confrontare l'identità.",
-    };
-    return { character: characterStore.updateIdentityEvaluation(characterId, report), report };
-  }
-  const tempDirectory = fs.mkdtempSync(path.join(root, ".data", "character-identity-"));
-  try {
-    const fingerprints = [];
-    for (const item of matches) {
-      fingerprints.push({
-        id: item.reference.id,
-        type: item.reference.type,
-        originalName: item.reference.originalName,
-        fingerprint: await imageFingerprint(item.match.path, tempDirectory),
-      });
-    }
-    const anchor = fingerprints.find((item) => item.type === "hero") || fingerprints[0];
-    const comparisons = fingerprints
-      .filter((item) => item.id !== anchor.id)
-      .map((item) => ({
-        referenceId: item.id,
-        type: item.type,
-        originalName: item.originalName,
-        similarity: Number(cosineSimilarity(anchor.fingerprint, item.fingerprint).toFixed(4)),
-      }));
-    const averageSimilarity = comparisons.reduce((sum, item) => sum + item.similarity, 0) / comparisons.length;
-    const minSimilarity = Math.min(...comparisons.map((item) => item.similarity));
-    const threshold = 0.62;
-    const report = {
-      enabled: true,
-      engine: "perceptual-ffmpeg-pgm",
-      status: minSimilarity >= threshold ? "passed" : "review-needed",
-      threshold,
-      anchorReferenceId: anchor.id,
-      referenceCount: matches.length,
-      averageSimilarity: Number(averageSimilarity.toFixed(4)),
-      minSimilarity: Number(minSimilarity.toFixed(4)),
-      comparisons,
-      warning: minSimilarity >= threshold
-        ? null
-        : "Una o più reference sembrano visivamente lontane dalla hero: controlla tag, qualità o persona.",
-    };
-    return { character: characterStore.updateIdentityEvaluation(characterId, report), report };
-  } catch (error) {
-    const report = {
-      enabled: true,
-      engine: "perceptual-ffmpeg-pgm",
-      status: "failed",
-      error: error.message,
-      warning: "Identity Check locale fallito: verifica FFmpeg o i file reference.",
-    };
-    return { character: characterStore.updateIdentityEvaluation(characterId, report), report };
-  } finally {
-    fs.rmSync(tempDirectory, { recursive: true, force: true });
-  }
+    .filter((item) => item.match?.path)
+    .map((item) => ({
+      id: item.reference.id,
+      type: item.reference.type,
+      path: item.match.path,
+    }));
+  const report = await identityEvaluation.evaluate({
+    subjectKind: character.referencePlan?.subjectKind || character.subjectKind,
+    hero: { id: character.heroImage, path: hero.path },
+    references,
+  });
+  return { character: characterStore.updateIdentityEvaluation(characterId, report), report };
 }
 
 app.post("/api/characters/:id/build-pack", (request, response, next) => {
   try {
-    response.json(characterStore.buildPack(request.params.id));
+    const result = characterStore.buildPack(request.params.id);
+    invalidateAppConfig();
+    response.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/characters/:id/orbit-sheet", async (request, response, next) => {
+  try {
+    cancelIdlePurge();
+    await comfy.health();
+    const { character, source } = await characterReferenceUploads(request.params.id, 1);
+    const config = await videoStudioRuntimeConfig();
+    if (!config.h3.orbitSheets.available) throw new Error("OrbitSheets non è disponibile: riavvia ComfyUI per caricare il plugin installato.");
+    const job = buildOrbitSheetWorkflow({
+      kind: request.body?.kind,
+      description: request.body?.description || [character.name, character.identityHints?.face, character.identityHints?.hair, character.identityHints?.body].filter(Boolean).join(". "),
+      seed: request.body?.seed,
+    }, source, config);
+    job.metadata = { ...job.metadata, characterId: character.id, characterName: character.name };
+    const generation = await queueStudioJob(job, character.id);
+    response.status(202).json({ character, generation });
   } catch (error) {
     next(error);
   }
@@ -2176,21 +4177,645 @@ app.post("/api/characters/:id/analyze", (request, response) => {
 
 app.post("/api/characters/:id/check-identity", async (request, response, next) => {
   try {
-    response.json(await runCharacterIdentityCheck(request.params.id));
+    const result = await runCharacterIdentityCheck(request.params.id);
+    invalidateAppConfig();
+    response.json(result);
   } catch (error) {
     next(error);
   }
 });
 
-app.post("/api/characters/:id/anchor-frame", (request, response) => {
-  response.status(501).json(buildCharacterAnchorFrameRequest({
-    characterId: request.params.id,
-    scenePrompt: request.body?.scenePrompt || request.body?.prompt || "",
-    previousFrame: request.body?.previousFrame || null,
-    outfit: request.body?.outfit || "",
-    identityStrength: request.body?.identityStrength || "medium",
-  }));
+function characterVideoGeneratedPhotos(characterId) {
+  return store.list()
+    .filter((item) => item.characterId === characterId
+      && item.status === "completed"
+      && item.images?.length
+      && ["character_photo", "character_video_anchor"].includes(item.generationPurpose)
+      && !item.pipelineIntermediate)
+    .sort((left, right) => Date.parse(right.createdAt || 0) - Date.parse(left.createdAt || 0))
+    .slice(0, 24)
+    .map((item) => ({
+      id: item.id,
+      label: item.masterOutputKind || item.pipelineOutputKind || item.workflowName || "Foto Character",
+      createdAt: item.createdAt,
+      imageUrl: `/api/image/${encodeURIComponent(item.id)}/0`,
+    }));
+}
+
+async function characterVideoRouterRuntime() {
+  await refreshAppConfig();
+  return appConfigCache.value?.characterVideoRouter || createCharacterVideoRouter();
+}
+
+function characterVideoRoute(router, raw = {}) {
+  const dialogue = String(raw.dialogue || "").trim();
+  const audioMode = dialogue ? String(raw.audioMode || "native") : "none";
+  return routeCharacterVideo({
+    router,
+    requestedEngine: raw.videoEngine || "auto",
+    quality: raw.quality || "balanced",
+    requirements: videoRequirements({ sourceMode: "image", dialogue, audioMode }),
+  });
+}
+
+app.get("/api/characters/:id/video-config", async (request, response, next) => {
+  try {
+    const character = characterStore.getCharacter(request.params.id);
+    const router = await characterVideoRouterRuntime();
+    const anchorWorkflow = cachedCharacterPhotoWorkflow();
+    const characterVideoAudio = appConfigCache.value?.characterVideoAudio || { modes: [], refine: { available: false, presets: [] } };
+    response.json({
+      character: { id: character.id, name: character.name, heroUrl: character.heroUrl },
+      router,
+      generatedPhotos: characterVideoGeneratedPhotos(character.id),
+      anchorGeneration: {
+        available: Boolean(anchorWorkflow),
+        workflow: anchorWorkflow ? { id: anchorWorkflow.id, name: anchorWorkflow.name, model: anchorWorkflow.modelFile } : null,
+        reason: anchorWorkflow ? null : "Nessun workflow Image Edit conservativo realmente disponibile.",
+      },
+      audioModes: characterVideoAudio.modes.filter((mode) => mode.available && (mode.id !== "externalTts" || character.voiceReferenceAvailable)),
+      audioCapabilities: {
+        voice: characterVideoAudio.voice,
+        lipSync: characterVideoAudio.lipSync,
+      },
+      refine: characterVideoAudio.refine,
+      preferences: {
+        imagePreset: character.preferredImagePreset || "balanced",
+        videoPreset: character.preferredVideoPreset || "improved",
+        videoEngine: character.preferredVideoEngine || "auto",
+        voiceProfile: character.voiceProfile || { language: "auto", speaker: "", notes: "" },
+      },
+      talkingAudio: {
+        prepared: true,
+        complete: Boolean(characterVideoAudio.voice?.synthesizeDialogue && characterVideoAudio.lipSync?.applyLipSync),
+        message: "Audio LTX nativo, Chatterbox Multilingual, audio caricato e MuseTalk vengono mostrati solo quando realmente disponibili.",
+        voiceReferenceRequired: true,
+        voiceReferenceAvailable: character.voiceReferenceAvailable,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
 });
+
+app.post("/api/characters/:id/video-plan", async (request, response, next) => {
+  try {
+    if (!promptAssistant.publicConfig().enabled) {
+      return response.status(503).json({ error: "Create Video richiede LM_STUDIO_MODEL configurato." });
+    }
+    const character = characterStore.getCharacter(request.params.id);
+    const raw = request.body || {};
+    const router = await characterVideoRouterRuntime();
+    const dialogue = raw.dialogueEnabled === true ? String(raw.dialogue || "").trim() : "";
+    const audioMode = dialogue && ["native", "externalTts", "existing"].includes(raw.audioMode) ? raw.audioMode : "none";
+    const route = characterVideoRoute(router, { ...raw, dialogue, audioMode });
+    const provisional = normalizeVideoBlueprint({
+      scene: raw.videoIntent,
+      subjectMotion: raw.videoIntent,
+      cameraMotion: raw.filmingStyle,
+      framing: raw.filmingStyle,
+      environmentMotion: "natural",
+      facialPerformance: dialogue ? "natural synchronized speech" : "natural subtle expression",
+      duration: raw.duration,
+      dialogue,
+      emotion: raw.emotion || "natural",
+      audioMode,
+    });
+    const identityProtection = identityProtectionContract(
+      character.referencePlan?.subjectKind || character.subjectKind,
+      character.characterBlueprint,
+    );
+    const planned = await gpuResourceManager.run("character-video-plan", () => promptAssistant.planCharacterVideo({
+      character,
+      videoIntent: raw.videoIntent,
+      filmingStyle: raw.filmingStyle,
+      duration: provisional.duration,
+      dialogue,
+      emotion: provisional.emotion,
+      audioMode,
+      outfit: raw.outfit,
+      aspectRatio: raw.aspectRatio,
+      engine: route.engine,
+      motionContract: motionPromptSections(provisional, identityProtection),
+    }));
+    const videoBlueprint = normalizeVideoBlueprint(planned.value.videoBlueprint, provisional);
+    videoBlueprint.duration = provisional.duration;
+    if (!dialogue) {
+      videoBlueprint.dialogue = "";
+      videoBlueprint.audioMode = "none";
+    } else {
+      videoBlueprint.dialogue = dialogue;
+      videoBlueprint.audioMode = audioMode;
+    }
+    response.json({
+      videoBlueprint,
+      scenePrompt: String(planned.value.scenePrompt || "").trim().slice(0, 12_000),
+      motionPrompt: String(planned.value.motionPrompt || "").trim().slice(0, 12_000),
+      audioPrompt: String(planned.value.audioPrompt || "").trim().slice(0, 12_000),
+      dialogueInstructions: String(planned.value.dialogueInstructions || "").trim().slice(0, 4000),
+      emotionInstructions: String(planned.value.emotionInstructions || "").trim().slice(0, 4000),
+      route: {
+        engine: route.engine.id,
+        engineName: route.engine.name,
+        workflowId: route.workflowId,
+        quality: route.quality,
+        capabilities: route.engine.capabilities,
+      },
+      promptModel: planned.value.model,
+      cleanupWarning: planned.value.unloadError || null,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/characters/:id/anchor-frame", async (request, response, next) => {
+  try {
+    const character = characterStore.getCharacter(request.params.id);
+    const raw = request.body || {};
+    const videoBlueprint = normalizeVideoBlueprint(raw.videoBlueprint || {});
+    const router = await characterVideoRouterRuntime();
+    const route = characterVideoRoute(router, {
+      ...raw,
+      dialogue: videoBlueprint.dialogue,
+      audioMode: videoBlueprint.audioMode,
+    });
+    const anchorRequest = buildCharacterAnchorFrameRequest({
+      characterId: character.id,
+      sceneBlueprint: videoBlueprint,
+      videoIntent: raw.videoIntent || videoBlueprint.subjectMotion,
+      outfit: raw.outfit,
+      aspectRatio: raw.aspectRatio,
+      videoEngine: route.engine.id,
+      identityStrength: raw.identityStrength || character.settings?.identityStrength || "medium",
+    });
+    const workflow = await characterPhotoWorkflow();
+    const photoBlueprint = normalizeSceneBlueprint({
+      location: videoBlueprint.scene,
+      action: videoBlueprint.subjectMotion,
+      camera: videoBlueprint.cameraMotion,
+      framing: videoBlueprint.framing,
+      mood: videoBlueprint.emotion,
+      outfit: anchorRequest.outfit,
+      subjectInteraction: "stable physically plausible starting pose",
+      userIntent: raw.videoIntent,
+    }, { subjectKind: character.referencePlan?.subjectKind || character.subjectKind });
+    const selection = selectCharacterPhotoReferences(character, photoBlueprint, { maxReferences: workflow.maxReferences });
+    const dimensions = anchorRequest.aspectRatio === "16:9"
+      ? [1344, 768]
+      : anchorRequest.aspectRatio === "1:1" ? [1024, 1024] : [768, 1344];
+    const prepared = await gpuResourceManager.run("character-video-anchor", async () => {
+      const uploads = [];
+      for (const reference of selection.references) {
+        const asset = characterStore.assetPath(character.id, reference.id);
+        if (asset?.path) uploads.push(await uploadCharacterAsset(asset));
+      }
+      if (!uploads.length) throw new Error("La Hero del Character non è disponibile per creare il Video Anchor.");
+      const seed = crypto.randomInt(0, 2 ** 31);
+      const prompt = `${anchorRequest.prompt} ${identityProtectionContract(
+        character.referencePlan?.subjectKind || character.subjectKind,
+        character.characterBlueprint,
+      )}`;
+      const acceleration = qwenEdit2511Lightning8Preset(workflow.modelFile);
+      const job = buildImageWorkflow(workflow.id, {
+        imageMode: "image",
+        imageModelFile: workflow.modelFile,
+        prompt,
+        negativePrompt: anchorRequest.negativePrompt,
+        seed,
+        imageResolution: "custom",
+        imageWidth: dimensions[0],
+        imageHeight: dimensions[1],
+        imageSteps: acceleration?.steps || workflow.defaults?.steps,
+        imageGuidance: acceleration?.guidance || workflow.defaults?.guidance,
+        denoise: anchorRequest.denoise,
+        batchSize: 1,
+        referenceUploads: uploads.slice(1),
+        outputBase: `Characters/${character.id}/video-anchors`,
+        saveOriginal: false,
+        upscaleMode: "none",
+      }, uploads[0], acceleration?.loras || []);
+      job.metadata = {
+        ...job.metadata,
+        generationPurpose: "character_video_anchor",
+        workflowName: `Video Anchor · ${workflow.name}`,
+        characterId: character.id,
+        characterName: character.name,
+        videoBlueprint,
+        videoIntent: anchorRequest.videoIntent,
+        videoEngine: route.engine.id,
+        anchorRequest,
+        selectedReferenceIds: selection.references.map((reference) => reference.id),
+        referenceSelectionReason: selection.referenceSelectionReason,
+        output: [],
+      };
+      return job;
+    });
+    const generation = await queueStudioJob(prepared.value, character.id);
+    response.status(202).json({ generation, anchorRequest, route: { engine: route.engine.id, workflowId: route.workflowId } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+function characterVideoAssetDirectory(pipelineId) {
+  if (!/^[a-f0-9-]{20,80}$/i.test(String(pipelineId || ""))) throw new Error("Video Pipeline ID non valido.");
+  const base = path.resolve(root, ".data", "character-video-assets");
+  const directory = path.resolve(base, pipelineId);
+  if (!directory.startsWith(`${base}${path.sep}`)) throw new Error("Character Video asset path non valido.");
+  fs.mkdirSync(directory, { recursive: true });
+  return directory;
+}
+
+function writeCharacterVideoAudio(pipelineId, file) {
+  if (!file?.buffer) throw new Error("File audio esistente mancante.");
+  const extension = path.extname(file.originalname || "") || ".bin";
+  const filename = `dialogue-${crypto.randomUUID()}${extension}`;
+  const target = path.join(characterVideoAssetDirectory(pipelineId), filename);
+  fs.writeFileSync(target, file.buffer);
+  return { path: target, filename, originalName: file.originalname || filename, mimeType: file.mimetype, size: file.size || file.buffer.length, source: "existing" };
+}
+
+function publishCharacterVideoFile(sourcePath, pipelineId, label = "master") {
+  if (!outputDirectory || !sourcePath || !fs.existsSync(sourcePath)) throw new Error("Output locale Character Video non disponibile.");
+  const subfolder = path.join("video", "Characters", pipelineId);
+  const directory = path.join(outputDirectory, subfolder);
+  fs.mkdirSync(directory, { recursive: true });
+  const filename = `${label}-${crypto.randomUUID()}.mp4`;
+  fs.copyFileSync(sourcePath, path.join(directory, filename));
+  return { filename, subfolder: subfolder.replaceAll(path.sep, "/"), type: "output" };
+}
+
+async function prepareCharacterVideoAudio(rootGeneration, character, dialogueAudioFile) {
+  let pipeline = rootGeneration.characterVideoPipeline;
+  const stage = characterVideoStage(pipeline, "audio");
+  if (!stage || ["completed", "skipped"].includes(stage.status)) return rootGeneration;
+  pipeline = updateCharacterVideoStage(pipeline, "audio", { status: "running", startedAt: new Date().toISOString() });
+  let rootRecord = store.update(rootGeneration.id, { characterVideoPipeline: pipeline });
+  try {
+    let audioAsset;
+    if (pipeline.audioMode === "existing") {
+      if (!dialogueAudioFile || !["audio/wav", "audio/mpeg", "audio/mp4", "audio/x-m4a"].includes(dialogueAudioFile.mimetype)) {
+        throw new Error("Carica un file WAV, MP3 o M4A per la battuta esistente.");
+      }
+      validateUploadSize(dialogueAudioFile, maxUploadMb, "Il file audio");
+      audioAsset = writeCharacterVideoAudio(rootGeneration.id, dialogueAudioFile);
+    } else {
+      const outputDir = path.join(characterVideoAssetDirectory(rootGeneration.id), "tts");
+      const language = character.voiceProfile?.language && character.voiceProfile.language !== "auto" ? character.voiceProfile.language : "it";
+      const referencePath = characterStore.voiceReferencePath(character.id);
+      if (!referencePath) throw new Error("Aggiungi una reference voce al profilo Character prima di usare Chatterbox.");
+      const generated = await gpuResourceManager.run("character-video-tts", () => synthesizeDialogue({
+        root,
+        referenceAudio: { path: referencePath },
+        text: rootGeneration.videoBlueprint.dialogue,
+        language,
+        outputDirectory: outputDir,
+        speaker: character.voiceProfile?.speaker || character.name,
+        eventId: "character-dialogue",
+        options: { requireReference: true },
+      }));
+      const stats = fs.statSync(generated.value.path);
+      audioAsset = {
+        path: generated.value.path,
+        filename: path.basename(generated.value.path),
+        mimeType: generated.value.mimeType,
+        size: stats.size,
+        source: "externalTts",
+        engine: generated.value.engine,
+        metadata: generated.value.metadata,
+      };
+    }
+    pipeline = updateCharacterVideoStage(pipeline, "audio", { status: "completed", output: [{ filename: audioAsset.filename, mimeType: audioAsset.mimeType }], finishedAt: new Date().toISOString() });
+    pipeline = { ...pipeline, audioAsset, updatedAt: new Date().toISOString() };
+    rootRecord = store.update(rootGeneration.id, { characterVideoPipeline: pipeline, audio: audioAsset });
+    broadcast({ type: "generation_updated", generationId: rootRecord.id, data: rootRecord });
+    return rootRecord;
+  } catch (error) {
+    pipeline = updateCharacterVideoStage(pipeline, "audio", { status: "failed", error: error.message, finishedAt: new Date().toISOString() });
+    pipeline = { ...pipeline, status: "failed", updatedAt: new Date().toISOString() };
+    rootRecord = store.update(rootGeneration.id, { status: "error", error: error.message, characterVideoPipeline: pipeline, finishedAt: new Date().toISOString() });
+    broadcast({ type: "generation_updated", generationId: rootRecord.id, data: rootRecord });
+    return rootRecord;
+  }
+}
+
+app.post("/api/characters/:id/create-video", upload.fields([{ name: "videoSource", maxCount: 1 }, { name: "dialogueAudio", maxCount: 1 }]), async (request, response, next) => {
+  try {
+    const character = characterStore.getCharacter(request.params.id);
+    const raw = request.body || {};
+    let videoBlueprint;
+    try {
+      videoBlueprint = normalizeVideoBlueprint(typeof raw.videoBlueprint === "string" ? JSON.parse(raw.videoBlueprint) : raw.videoBlueprint || {});
+    } catch {
+      throw new Error("Video Blueprint non valido.");
+    }
+    const motionPrompt = String(raw.motionPrompt || "").trim().slice(0, 12_000);
+    if (!motionPrompt) throw new Error("Prepara prima il Motion Prompt con LM Studio.");
+    const router = await characterVideoRouterRuntime();
+    const route = characterVideoRoute(router, {
+      ...raw,
+      dialogue: videoBlueprint.dialogue,
+      audioMode: videoBlueprint.audioMode,
+    });
+    const sourceMode = ["auto", "hero", "generated", "upload"].includes(raw.sourceMode) ? raw.sourceMode : "auto";
+    const sourceFileUpload = request.files?.videoSource?.[0];
+    const dialogueAudioFile = request.files?.dialogueAudio?.[0];
+    let sourceUpload;
+    let anchorGenerationId = null;
+    let anchorImage = null;
+    if (sourceMode === "auto" || sourceMode === "generated") {
+      const sourceId = sourceMode === "auto" ? raw.anchorGenerationId : raw.sourceGenerationId;
+      const sourceGeneration = store.get(sourceId);
+      if (!sourceGeneration || sourceGeneration.characterId !== character.id || sourceGeneration.status !== "completed" || !sourceGeneration.images?.length) {
+        throw new Error(sourceMode === "auto" ? "Il Video Anchor non è ancora pronto." : "La foto generata selezionata non è disponibile.");
+      }
+      const sourceFile = sourceGeneration.images[0];
+      sourceUpload = await comfy.reuseOutputImage(sourceFile, `character-video-${character.id}-${sourceGeneration.id}.png`);
+      anchorGenerationId = sourceGeneration.id;
+      anchorImage = sourceFile;
+    } else if (sourceMode === "hero") {
+      const hero = characterHeroAsset(character);
+      sourceUpload = await uploadCharacterAsset(hero);
+      anchorImage = { referenceId: character.heroImage, type: "hero" };
+    } else {
+      if (!["image/png", "image/jpeg", "image/webp"].includes(sourceFileUpload?.mimetype)) throw new Error("Carica un'immagine PNG, JPG o WebP per il Video Anchor.");
+      validateUploadSize(sourceFileUpload, maxUploadMb, "L'immagine Video Anchor");
+      sourceUpload = await comfy.uploadImage(sourceFileUpload);
+      anchorImage = { type: "upload", originalName: sourceFileUpload.originalname };
+    }
+    const orientation = String(raw.aspectRatio) === "16:9" ? "landscape" : "portrait";
+    const resolution = route.quality === "fast" ? "360p" : route.quality === "max" ? "720p" : "480p";
+    const rawSeed = String(raw.seed || "").trim();
+    const parsedSeed = Number(rawSeed);
+    const seed = rawSeed && Number.isSafeInteger(parsedSeed) && parsedSeed >= 0 ? parsedSeed : crypto.randomInt(0, 2 ** 31);
+    const refinePreset = ["original", "improved", "quality"].includes(raw.refinePreset) ? raw.refinePreset : "improved";
+    const runtimeAudio = appConfigCache.value?.characterVideoAudio || {};
+    let videoPipeline = createCharacterVideoPipeline({
+      anchorGenerationId,
+      anchorImage,
+      audioMode: videoBlueprint.audioMode,
+      refinePreset,
+      capabilities: {
+        lipSync: Boolean(runtimeAudio.lipSync?.applyLipSync),
+        videoRefine: Boolean(runtimeAudio.refine?.available),
+      },
+    });
+    const pipelineId = crypto.randomUUID();
+    let rootGeneration = store.add({
+      id: pipelineId,
+      promptId: null,
+      projectId: character.id,
+      status: "orchestrating",
+      progress: 0,
+      videos: [],
+      images: [],
+      createdAt: new Date().toISOString(),
+      finishedAt: null,
+      ...characterVideoHistoryMetadata({ character, videoBlueprint, anchorGenerationId, anchorImage, route, motionPrompt, sourceMode }),
+      generationType: "characterVideoPipeline",
+      workflowName: `Character Video Master · ${route.engine.name}`,
+      characterVideoPipeline: videoPipeline,
+      scenePrompt: String(raw.scenePrompt || "").trim().slice(0, 12_000),
+      audioPrompt: String(raw.audioPrompt || "").trim().slice(0, 12_000),
+      dialogueInstructions: String(raw.dialogueInstructions || "").trim().slice(0, 4000),
+      emotionInstructions: String(raw.emotionInstructions || "").trim().slice(0, 4000),
+      refinePreset,
+      seed,
+    });
+    broadcast({ type: "generation_created", generationId: rootGeneration.id, projectId: character.id, data: rootGeneration });
+    rootGeneration = await prepareCharacterVideoAudio(rootGeneration, character, dialogueAudioFile);
+    if (rootGeneration.status === "error") return response.status(202).json({ generation: rootGeneration, pipeline: rootGeneration.characterVideoPipeline, route: { engine: route.engine.id, workflowId: route.workflowId, quality: route.quality } });
+    videoPipeline = rootGeneration.characterVideoPipeline;
+    const rawPrompt = videoBlueprint.audioMode === "native"
+      ? `${motionPrompt} ${String(raw.audioPrompt || "").trim()}`.trim()
+      : `${motionPrompt} The character performs the requested speech naturally with stable facial identity; final dialogue audio and mouth synchronization are applied by the external talking stage.`;
+    const job = buildWorkflow(route.workflowId, {
+      prompt: rawPrompt,
+      negativePrompt: "identity drift, face drift, morphology drift, flicker, temporal inconsistency, malformed motion, extra subjects, captions, subtitles, watermark",
+      resolution,
+      orientation,
+      duration: videoBlueprint.duration,
+      quality: route.quality === "fast" ? "preview" : "max",
+      videoModelId: "normal",
+      videoInputMode: "image",
+      seed,
+    }, sourceUpload, [], []);
+    job.metadata = {
+      ...job.metadata,
+      generationPurpose: "character_video_raw",
+      generationType: "video",
+      mediaType: "video",
+      workflowName: `Raw Character Video · ${route.engine.name} · ${route.quality}`,
+      pipelineRootGenerationId: rootGeneration.id,
+      pipelineStage: "video",
+      characterId: character.id,
+      characterName: character.name,
+      videoBlueprint,
+      anchorGenerationId,
+      anchorImage,
+      videoEngine: route.engine.id,
+      motionPrompt,
+      audioMode: videoBlueprint.audioMode,
+      archived: true,
+      seed,
+    };
+    try {
+      const rawGeneration = await queueStudioJob(job, character.id);
+      videoPipeline = updateCharacterVideoStage(videoPipeline, "video", { status: "running", generationId: rawGeneration.id, startedAt: new Date().toISOString() });
+      rootGeneration = store.update(rootGeneration.id, { characterVideoPipeline: videoPipeline, rawVideoGenerationId: rawGeneration.id });
+      broadcast({ type: "generation_updated", generationId: rootGeneration.id, data: rootGeneration });
+      response.status(202).json({ generation: rootGeneration, rawGeneration, pipeline: videoPipeline, route: { engine: route.engine.id, workflowId: route.workflowId, quality: route.quality } });
+    } catch (error) {
+      videoPipeline = updateCharacterVideoStage(videoPipeline, "video", { status: "failed", error: error.message, finishedAt: new Date().toISOString() });
+      videoPipeline = { ...videoPipeline, status: "failed" };
+      rootGeneration = store.update(rootGeneration.id, { status: "error", error: error.message, characterVideoPipeline: videoPipeline, finishedAt: new Date().toISOString() });
+      broadcast({ type: "generation_updated", generationId: rootGeneration.id, data: rootGeneration });
+      response.status(202).json({ generation: rootGeneration, pipeline: videoPipeline, route: { engine: route.engine.id, workflowId: route.workflowId, quality: route.quality } });
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+function characterVideoLocalPath(generation) {
+  const file = generation?.videos?.at(-1);
+  if (!file) return null;
+  return resolveMediaFile(outputDirectory, file)?.path || null;
+}
+
+function completeCharacterVideoPipeline(rootGeneration, pipeline) {
+  const masterGeneration = store.get(pipeline.lastValidVideoGenerationId);
+  if (!masterGeneration?.videos?.length) {
+    const failed = updateCharacterVideoStage(pipeline, "master", {
+      status: "failed",
+      error: "Nessun video valido disponibile per il Master.",
+      finishedAt: new Date().toISOString(),
+    });
+    const updated = store.update(rootGeneration.id, {
+      status: "error",
+      error: "Character Video Pipeline terminata senza un video valido.",
+      characterVideoPipeline: { ...failed, status: "failed" },
+      finishedAt: new Date().toISOString(),
+    });
+    broadcast({ type: "generation_updated", generationId: updated.id, data: updated });
+    scheduleIdlePurge();
+    return updated;
+  }
+  let finished = updateCharacterVideoStage(pipeline, "master", {
+    status: "completed",
+    generationId: masterGeneration.id,
+    output: masterGeneration.videos,
+    finishedAt: new Date().toISOString(),
+  });
+  finished = finishCharacterVideoPipeline({ ...finished, lastValidVideoGenerationId: masterGeneration.id }, masterGeneration.id);
+  const updated = store.update(rootGeneration.id, {
+    status: "completed",
+    progress: 100,
+    videos: masterGeneration.videos,
+    output: masterGeneration.videos,
+    masterGenerationId: masterGeneration.id,
+    masterOutputKind: "Master Video",
+    characterVideoPipeline: finished,
+    finishedAt: new Date().toISOString(),
+  });
+  broadcast({ type: "generation_updated", generationId: updated.id, data: updated });
+  scheduleIdlePurge();
+  return updated;
+}
+
+async function queueCharacterVideoRefine(rootGeneration, pipeline, sourceGeneration) {
+  const stage = characterVideoStage(pipeline, "refine");
+  if (!stage || stage.status !== "requested") return completeCharacterVideoPipeline(rootGeneration, pipeline);
+  let current = updateCharacterVideoStage(pipeline, "refine", { status: "running", startedAt: new Date().toISOString() });
+  let updatedRoot = store.update(rootGeneration.id, { characterVideoPipeline: current });
+  broadcast({ type: "generation_updated", generationId: updatedRoot.id, data: updatedRoot });
+  try {
+    const sourcePath = characterVideoLocalPath(sourceGeneration);
+    if (!sourcePath) throw new Error("Il video sorgente del refine non è disponibile localmente.");
+    const sourceUpload = await uploadLocalVideoForComfy(sourcePath);
+    const profile = current.refinePreset === "quality" ? "quality" : "preview";
+    const duration = Math.max(1, Number(rootGeneration.videoBlueprint?.duration || sourceGeneration.duration || 5));
+    const job = buildSeedvr2VideoUpscaleWorkflow({
+      seedvr2VideoPreset: profile,
+      seedvr2VideoKeepAudio: true,
+      seedvr2VideoSourceDuration: duration,
+      seedvr2VideoFrameLoadCap: Math.min(2000, Math.ceil(duration * 24) + 1),
+      seedvr2VideoFps: 24,
+      seed: rootGeneration.seed,
+    }, sourceUpload);
+    job.metadata = {
+      ...job.metadata,
+      generationPurpose: "character_video_refine",
+      pipelineRootGenerationId: rootGeneration.id,
+      pipelineStage: "refine",
+      parentGenerationId: sourceGeneration.id,
+      characterId: rootGeneration.characterId,
+      characterName: rootGeneration.characterName,
+      archived: true,
+    };
+    const child = await queueStudioJob(job, rootGeneration.characterId);
+    current = updateCharacterVideoStage(current, "refine", { generationId: child.id });
+    updatedRoot = store.update(rootGeneration.id, { characterVideoPipeline: current, refineGenerationId: child.id });
+    broadcast({ type: "generation_updated", generationId: updatedRoot.id, data: updatedRoot });
+    return child;
+  } catch (error) {
+    current = updateCharacterVideoStage(current, "refine", { status: "failed", error: error.message, finishedAt: new Date().toISOString() });
+    updatedRoot = store.update(rootGeneration.id, { characterVideoPipeline: current });
+    broadcast({ type: "generation_updated", generationId: updatedRoot.id, data: updatedRoot });
+    return completeCharacterVideoPipeline(updatedRoot, current);
+  }
+}
+
+async function runCharacterVideoLipSync(rootGeneration, pipeline, sourceGeneration) {
+  const stage = characterVideoStage(pipeline, "lipSync");
+  if (!stage || stage.status !== "requested") return queueCharacterVideoRefine(rootGeneration, pipeline, sourceGeneration);
+  let current = updateCharacterVideoStage(pipeline, "lipSync", { status: "running", startedAt: new Date().toISOString() });
+  let updatedRoot = store.update(rootGeneration.id, { characterVideoPipeline: current });
+  broadcast({ type: "generation_updated", generationId: updatedRoot.id, data: updatedRoot });
+  try {
+    const sourcePath = characterVideoLocalPath(sourceGeneration);
+    if (!sourcePath) throw new Error("Il Raw Video non è disponibile localmente per il lip-sync.");
+    const audioAsset = current.audioAsset || rootGeneration.audio;
+    const generated = await gpuResourceManager.run("character-video-lipsync", () => applyLipSync({
+      root,
+      video: { path: sourcePath },
+      audio: audioAsset,
+      outputDirectory: path.join(characterVideoAssetDirectory(rootGeneration.id), "lipsync"),
+      segmentId: rootGeneration.id,
+      start: 0,
+      end: Number(rootGeneration.videoBlueprint?.duration || 0),
+    }));
+    const file = publishCharacterVideoFile(generated.value.path, rootGeneration.id, "lipsync");
+    const child = store.add({
+      id: crypto.randomUUID(), promptId: null, projectId: rootGeneration.characterId,
+      status: "completed", progress: 100, videos: [file], images: [],
+      createdAt: new Date().toISOString(), finishedAt: new Date().toISOString(),
+      generationType: "characterVideoStage", generationPurpose: "character_video_lipsync",
+      workflowName: "Talking Performance · MuseTalk 1.5", pipelineRootGenerationId: rootGeneration.id,
+      pipelineStage: "lipSync", parentGenerationId: sourceGeneration.id,
+      characterId: rootGeneration.characterId, characterName: rootGeneration.characterName,
+      lipSyncEngine: generated.value.engine, archived: true,
+    });
+    broadcast({ type: "generation_created", generationId: child.id, projectId: rootGeneration.characterId, data: child });
+    current = updateCharacterVideoStage(current, "lipSync", { status: "completed", generationId: child.id, output: child.videos, finishedAt: new Date().toISOString() });
+    current = { ...current, lastValidVideoGenerationId: child.id };
+    updatedRoot = store.update(rootGeneration.id, { characterVideoPipeline: current, lipSyncGenerationId: child.id });
+    broadcast({ type: "generation_updated", generationId: updatedRoot.id, data: updatedRoot });
+    return queueCharacterVideoRefine(updatedRoot, current, child);
+  } catch (error) {
+    current = updateCharacterVideoStage(current, "lipSync", { status: "failed", error: error.message, finishedAt: new Date().toISOString() });
+    updatedRoot = store.update(rootGeneration.id, { characterVideoPipeline: current });
+    broadcast({ type: "generation_updated", generationId: updatedRoot.id, data: updatedRoot });
+    return queueCharacterVideoRefine(updatedRoot, current, sourceGeneration);
+  }
+}
+
+async function advanceCharacterVideoPipeline(generation) {
+  const rootId = generation.pipelineRootGenerationId;
+  if (!rootId || !["video", "refine"].includes(generation.pipelineStage)) return null;
+  const rootGeneration = store.get(rootId);
+  let pipeline = rootGeneration?.characterVideoPipeline;
+  if (!rootGeneration || !pipeline || pipeline.status !== "running") return null;
+  const stageId = generation.pipelineStage;
+  const stage = characterVideoStage(pipeline, stageId);
+  if (!stage || !["running", "requested"].includes(stage.status)) return null;
+  if (generation.status === "completed" && generation.videos?.length) {
+    pipeline = updateCharacterVideoStage(pipeline, stageId, { status: "completed", generationId: generation.id, output: generation.videos, finishedAt: generation.finishedAt || new Date().toISOString() });
+    pipeline = { ...pipeline, lastValidVideoGenerationId: generation.id };
+  } else {
+    pipeline = updateCharacterVideoStage(pipeline, stageId, { status: "failed", generationId: generation.id, error: generation.error || `${stage.label} non completato.`, finishedAt: generation.finishedAt || new Date().toISOString() });
+  }
+  store.update(generation.id, { archived: true });
+  const updatedRoot = store.update(rootId, { characterVideoPipeline: pipeline });
+  broadcast({ type: "generation_updated", generationId: updatedRoot.id, data: updatedRoot });
+  if (stageId === "video") {
+    if (!pipeline.lastValidVideoGenerationId) return completeCharacterVideoPipeline(updatedRoot, pipeline);
+    return runCharacterVideoLipSync(updatedRoot, pipeline, generation);
+  }
+  return completeCharacterVideoPipeline(updatedRoot, pipeline);
+}
+
+function continueCharacterVideoPipeline(generation) {
+  void advanceCharacterVideoPipeline(generation).catch((error) => {
+    const root = store.get(generation.pipelineRootGenerationId);
+    if (!root?.characterVideoPipeline) return;
+    const updated = store.update(root.id, {
+      characterVideoPipeline: { ...root.characterVideoPipeline, status: "completed_with_warnings", orchestrationError: error.message },
+      error: error.message,
+    });
+    broadcast({ type: "generation_updated", generationId: updated.id, data: updated });
+  });
+}
+
+async function resumeCharacterVideoPipelines() {
+  for (const rootGeneration of store.list().filter((item) => item.characterVideoPipeline?.status === "running")) {
+    const running = rootGeneration.characterVideoPipeline.stages.find((stage) => stage.status === "running" && stage.generationId);
+    if (!running) continue;
+    const generation = store.get(running.generationId);
+    if (generation && ["completed", "error", "interrupted", "cancelled"].includes(generation.status)) continueCharacterVideoPipeline(generation);
+  }
+}
 
 app.get("/api/characters/:id/assets/:referenceId", (request, response, next) => {
   try {
@@ -2204,8 +4829,18 @@ app.get("/api/characters/:id/assets/:referenceId", (request, response, next) => 
     next(error);
   }
 });
-app.get("/api/scene-integration/config", async (_request, response) => {
-  response.json(await sceneIntegration.capabilities());
+app.get("/api/scene-integration/config", async (_request, response, next) => {
+  try {
+    const age = Date.now() - sceneCapabilitiesCache.updatedAt;
+    if (sceneCapabilitiesCache.value) {
+      response.setHeader("x-capability-cache", age <= APP_CONFIG_TTL_MS ? "fresh" : "stale");
+      if (age > APP_CONFIG_TTL_MS) void refreshSceneCapabilities().catch(() => {});
+      return response.json(sceneCapabilitiesCache.value);
+    }
+    response.json(await refreshSceneCapabilities());
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.post("/api/scene-integration/analyze", upload.single("sceneSource"), async (request, response, next) => {
@@ -2332,6 +4967,28 @@ app.post("/api/edit-wildcards/random", (request, response, next) => {
   }
 });
 
+app.post("/api/pose-library/select", (request, response, next) => {
+  try {
+    response.json(selectPose(root, request.body || {}));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/pose-library/assets/*path", (request, response, next) => {
+  try {
+    const relative = Array.isArray(request.params.path) ? request.params.path.join("/") : String(request.params.path || "");
+    const libraryRoot = path.resolve(root, "data", "pose-library");
+    const asset = path.resolve(libraryRoot, relative);
+    if (!asset.startsWith(`${libraryRoot}${path.sep}`) || !fs.existsSync(asset)) {
+      return response.status(404).json({ error: "Pose asset non trovato." });
+    }
+    response.sendFile(asset);
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/generations", (request, response) => {
   if (request.query.paged !== "1") return response.json(store.list());
   response.json(queryGenerations(store.list(), request.query));
@@ -2412,7 +5069,8 @@ app.post("/api/generations/cleanup/run", (request, response) => {
 });
 
 app.get("/api/studio/projects", (_request, response) => {
-  response.json(studioStore.list().map(studioProjectView));
+  const limit = Math.max(1, Math.min(100, Number(_request.query.limit || 30)));
+  response.json(studioStore.list().slice(0, limit).map(studioProjectView));
 });
 
 app.get("/api/studio/projects/:id", (request, response) => {
@@ -2421,10 +5079,50 @@ app.get("/api/studio/projects/:id", (request, response) => {
   response.json(studioProjectView(project));
 });
 
+app.post("/api/studio/projects/:id/retry", async (request, response, next) => {
+  try {
+    cancelIdlePurge();
+    await comfy.health();
+    const project = studioStore.get(request.params.id);
+    if (!project) return response.status(404).json({ error: "Progetto Studio non trovato." });
+    if ((project.generationIds || []).length) {
+      const error = new Error("Il progetto possiede già una generazione e non può essere accodato due volte.");
+      error.statusCode = 409;
+      throw error;
+    }
+    let jobs = buildStudioJobs(
+      project.studioMode,
+      project.settings || {},
+      project.uploads || {},
+      project.loras || [],
+    );
+    jobs = await Promise.all(jobs.map((job) => integrateSceneJob(job, project.settings || {}, {
+      maskUpload: project.uploads?.mask || null,
+      structureGuideAvailable: Boolean(project.uploads?.guide),
+    })));
+    await validateStudioModels(jobs);
+    const created = [];
+    for (const job of jobs) created.push(await queueStudioJob(job, project.id));
+    const updated = studioStore.update(project.id, {
+      status: "queued",
+      error: null,
+      generationIds: created.map((item) => item.id),
+      retriedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    broadcast({ type: "studio_project_retried", projectId: project.id, data: studioProjectView(updated) });
+    response.status(202).json(studioProjectView(updated));
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/video-studio/projects", (request, response) => {
   const archived = String(request.query.archived || "false");
+  const limit = Math.max(1, Math.min(100, Number(request.query.limit || 30)));
   response.json(videoStudioStore.list()
     .filter((project) => archived === "all" || (archived === "true" ? project.archived : !project.archived))
+    .slice(0, limit)
     .map(videoStudioProjectView));
 });
 
@@ -2436,14 +5134,21 @@ app.get("/api/video-studio/projects/:id", (request, response) => {
 
 app.get("/api/interactive-cast/capabilities", async (_request, response, next) => {
   try {
-    response.json(await interactiveCast.capabilities());
+    const age = Date.now() - interactiveCastCapabilitiesCache.updatedAt;
+    if (interactiveCastCapabilitiesCache.value) {
+      response.setHeader("x-capability-cache", age <= APP_CONFIG_TTL_MS ? "fresh" : "stale");
+      if (age > APP_CONFIG_TTL_MS) void refreshInteractiveCastCapabilities().catch(() => {});
+      return response.json(interactiveCastCapabilitiesCache.value);
+    }
+    response.json(await refreshInteractiveCastCapabilities());
   } catch (error) {
     next(error);
   }
 });
 
-app.get("/api/interactive-cast/projects", (_request, response) => {
-  response.json({ projects: interactiveCast.list() });
+app.get("/api/interactive-cast/projects", (request, response) => {
+  const limit = Math.max(1, Math.min(100, Number(request.query.limit || 20)));
+  response.json({ projects: interactiveCast.list().slice(0, limit) });
 });
 
 app.get("/api/interactive-cast/projects/:id", (request, response, next) => {
@@ -2610,6 +5315,30 @@ app.post("/api/interactive-cast/projects/:id/segments/:segmentId/generate", asyn
   }
 });
 
+app.post("/api/interactive-cast/projects/:id/segments/:segmentId/approve-anchor", async (request, response, next) => {
+  try {
+    const result = await approveInteractiveCastAnchor(request.params.id, request.params.segmentId);
+    response.status(202).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/interactive-cast/projects/:id/segments/:segmentId/external-anchor", upload.single("anchorImage"), async (request, response, next) => {
+  try {
+    if (!request.file) throw new Error("Carica l'immagine anchor creata esternamente.");
+    validateUploadSize(request.file, maxImageUploadMb, "L'anchor esterno");
+    const result = await importInteractiveCastAnchor(
+      request.params.id,
+      request.params.segmentId,
+      request.file,
+    );
+    response.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post("/api/interactive-cast/projects/:id/dialogue/:eventId/audio", upload.single("dialogueAudio"), async (request, response, next) => {
   try {
     if (!request.file) throw new Error("Carica una battuta audio sintetizzata.");
@@ -2756,8 +5485,9 @@ function sequentialStoryCharacterContext(raw = {}) {
   return { character, promptPrefix: adapter.promptPrefix, warnings: adapter.warnings };
 }
 
-app.get("/api/video-studio/sequential-story", (_request, response) => {
-  response.json({ projects: sequentialStoryStore.list() });
+app.get("/api/video-studio/sequential-story", (request, response) => {
+  const limit = Math.max(1, Math.min(100, Number(request.query.limit || 20)));
+  response.json({ projects: sequentialStoryStore.list().slice(0, limit) });
 });
 
 app.post("/api/video-studio/sequential-story/plan", async (request, response, next) => {
@@ -2932,7 +5662,8 @@ app.post("/api/video-studio/projects", upload.any(), async (request, response, n
     await comfy.health();
     const config = await videoStudioRuntimeConfig();
     const selectedLoras = parseLoras(request.body.loras);
-    if (selectedLoras.length) validateLoras(selectedLoras, config.ltxLoras);
+    const allowedLoras = ["minimaxH3", "actionH3", "seedHunterH3"].includes(request.body.videoStudioMode) ? config.h3Loras : config.ltxLoras;
+    if (selectedLoras.length) validateLoras(selectedLoras, allowedLoras);
     const uploaded = await uploadVideoStudioFiles(request.files || []);
     const characterSelection = await uploadCharacterSelection(
       request.body,
@@ -2942,33 +5673,48 @@ app.post("/api/video-studio/projects", upload.any(), async (request, response, n
       },
       2,
     );
-    if (characterSelection) request.body = withCharacterPrompt(request.body, characterSelection.adapter);
+    if (characterSelection && String(request.body.characterPromptEnhanced || "") !== characterSelection.character.id) {
+      request.body = withCharacterPrompt(request.body, characterSelection.adapter);
+    }
     if (characterSelection?.uploads[0]) {
       if (!uploaded.identityImage) uploaded.identityImage = characterSelection.uploads[0];
       if (!uploaded.referenceSheet) uploaded.referenceSheet = characterSelection.uploads[1] || characterSelection.uploads[0];
     }
     let job = buildVideoStudioInitialJob(
       request.body.videoStudioMode,
-      request.body,
+      request.body.videoStudioMode === "seedHunterH3" ? { ...request.body, h3CandidateIndex: 1 } : request.body,
       uploaded,
       selectedLoras,
       config,
     );
-    if (characterSelection) {
-      job.metadata = {
-        ...job.metadata,
-        character: {
-          id: characterSelection.character.id,
-          name: characterSelection.character.name,
-          capability: characterSelection.adapter.capability,
-          referenceIds: characterSelection.adapter.references.map((item) => item.id),
-          warnings: characterSelection.adapter.warnings,
-        },
-      };
+    const jobs = request.body.videoStudioMode === "seedHunterH3"
+      ? [job, ...[1, 2].map((offset) => buildVideoStudioInitialJob(
+        "seedHunterH3",
+        { ...request.body, seed: job.metadata.seed + offset, h3CandidateIndex: offset + 1 },
+        uploaded,
+        selectedLoras,
+        config,
+      ))]
+      : [job];
+    for (let index = 0; index < jobs.length; index += 1) {
+      if (characterSelection) {
+        jobs[index].metadata = {
+          ...jobs[index].metadata,
+          character: {
+            id: characterSelection.character.id,
+            name: characterSelection.character.name,
+            capability: characterSelection.adapter.capability,
+            referenceIds: characterSelection.adapter.references.map((item) => item.id),
+            warnings: characterSelection.adapter.warnings,
+          },
+        };
+      }
+      jobs[index] = await integrateSceneJob(jobs[index], request.body, {
+        trackedMask: request.body.videoStudioMode === "actorReplacement",
+      });
     }
-    job = await integrateSceneJob(job, request.body, {
-      trackedMask: request.body.videoStudioMode === "actorReplacement",
-    });
+    [job] = jobs;
+    const sceneRecipe = buildH3SceneRecipe(job, request.body, uploaded, selectedLoras);
     const project = videoStudioStore.add({
       id: crypto.randomUUID(),
       videoStudioMode: request.body.videoStudioMode,
@@ -2977,20 +5723,141 @@ app.post("/api/video-studio/projects", upload.any(), async (request, response, n
       settings: { ...request.body, loras: undefined },
       uploads: uploaded,
       loras: selectedLoras,
+      sceneRecipe: sceneRecipe ? { ...sceneRecipe, createdAt: new Date().toISOString() } : null,
       status: "queued",
       generationIds: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
-    const generation = await queueStudioJob(job, project.id);
-    const updated = videoStudioStore.update(project.id, {
-      generationIds: [generation.id],
-      updatedAt: new Date().toISOString(),
-    });
+    const generations = [];
+    let updated = project;
+    for (const candidateJob of jobs) {
+      const generation = await queueStudioJob(candidateJob, project.id);
+      generations.push(generation);
+      updated = videoStudioStore.update(project.id, {
+        generationIds: generations.map((item) => item.id),
+        updatedAt: new Date().toISOString(),
+      });
+    }
     broadcast({
       type: "video_studio_project_created",
       projectId: project.id,
       data: videoStudioProjectView(updated),
+    });
+    response.status(202).json(videoStudioProjectView(updated));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/video-studio/projects/:id/promote-preview", async (request, response, next) => {
+  try {
+    cancelIdlePurge();
+    const project = videoStudioStore.get(request.params.id);
+    if (!project) return response.status(404).json({ error: "Progetto Video Studio non trovato." });
+    if (!["minimaxH3", "actionH3"].includes(project.videoStudioMode) || !project.sceneRecipe) {
+      return response.status(409).json({ error: "La promozione è disponibile soltanto per un progetto MiniMax H3 o ACTION H3 con ricetta salvata." });
+    }
+    if (videoStudioProjectIsActive(project)) {
+      return response.status(409).json({ error: "Attendi o annulla la generazione attiva prima di promuovere l’anteprima." });
+    }
+    const requested = request.body?.generationId ? store.get(String(request.body.generationId)) : null;
+    const generations = videoStudioProjectGenerations(project);
+    const generation = requested || [...generations].reverse().find((item) =>
+      item.status === "completed" && item.h3Stage === "preview" && item.videos?.length
+    );
+    if (!generation || generation.projectId !== project.id || generation.h3Stage !== "preview" || !generation.videos?.length) {
+      return response.status(409).json({ error: "Completa prima un’anteprima MiniMax H3 del progetto." });
+    }
+    const config = await videoStudioRuntimeConfig();
+    if (!config.h3.previewFinishing.available) {
+      throw new Error(`Finishing anteprima non disponibile. Nodi mancanti: ${config.h3.previewFinishing.missingNodes.join(", ")}`);
+    }
+    const selectedUpload = await comfy.reuseOutputFile(
+      generation.videos.at(-1),
+      `h3-preview-${project.id}.mp4`,
+      "video/mp4",
+    );
+    const job = buildH3PreviewFinishingWorkflow(selectedUpload, {
+      ...(request.body || {}),
+      videoStudioMode: project.videoStudioMode,
+      aspectRatio: project.sceneRecipe.aspectRatio,
+    });
+    job.metadata = {
+      ...job.metadata,
+      sourcePreviewGenerationId: generation.id,
+      sceneRecipeSeed: project.sceneRecipe.seed,
+      h3Mode: project.sceneRecipe.h3Mode,
+    };
+    const created = await queueStudioJob(job, project.id);
+    const updated = videoStudioStore.update(project.id, {
+      generationIds: [...(project.generationIds || []), created.id],
+      updatedAt: new Date().toISOString(),
+    });
+    response.status(202).json(videoStudioProjectView(updated));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/video-studio/projects/:id/regenerate-native", async (request, response, next) => {
+  try {
+    cancelIdlePurge();
+    await comfy.health();
+    const project = videoStudioStore.get(request.params.id);
+    if (!project) return response.status(404).json({ error: "Progetto Video Studio non trovato." });
+    if (!["minimaxH3", "actionH3", "seedHunterH3"].includes(project.videoStudioMode) || !project.sceneRecipe) {
+      return response.status(409).json({ error: "La rigenerazione nativa richiede un progetto MiniMax H3, ACTION H3 o Seed Hunter H3 con ricetta salvata." });
+    }
+    if (videoStudioProjectIsActive(project)) {
+      return response.status(409).json({ error: "Attendi o annulla la generazione attiva prima della rigenerazione nativa." });
+    }
+    const requested = request.body?.generationId ? store.get(String(request.body.generationId)) : null;
+    const generations = videoStudioProjectGenerations(project);
+    const preview = requested || [...generations].reverse().find((item) =>
+      item.status === "completed" && ["preview", "seedCandidate"].includes(item.h3Stage) && item.videos?.length
+    );
+    if (!preview || preview.projectId !== project.id || !["preview", "seedCandidate"].includes(preview.h3Stage)) {
+      return response.status(409).json({ error: "Completa prima un’anteprima o un Seed Hunter MiniMax H3 del progetto." });
+    }
+    const config = await videoStudioRuntimeConfig();
+    const seedHunterSelection = project.videoStudioMode === "seedHunterH3" && preview.h3Stage === "seedCandidate";
+    const raw = {
+      ...project.settings,
+      ...project.sceneRecipe.nativeSettings,
+      prompt: project.sceneRecipe.userPrompt,
+      seed: seedHunterSelection ? preview.seed : request.body?.seed ?? project.sceneRecipe.seed,
+      h3RunProfile: "nativeFinal",
+      actionH3RunProfile: "nativeFinal",
+      ...(seedHunterSelection ? {
+        h3Mode: project.settings.seedHunterH3Mode || project.sceneRecipe.h3Mode,
+        h3AspectRatio: project.settings.seedHunterH3AspectRatio || project.sceneRecipe.aspectRatio,
+        h3LookPreset: project.settings.seedHunterH3LookPreset || project.sceneRecipe.lookPreset,
+        h3AttentionBackend: project.settings.seedHunterH3AttentionBackend || "memoryEfficient",
+        h3RefineMode: project.settings.seedHunterH3FinalRefine || "h3Balanced",
+        h3FirstMegapixels: 0.25,
+        h3SecondMegapixels: 0.9,
+        h3SecondPass: true,
+        h3UseTurbo: true,
+      } : {}),
+    };
+    const job = buildVideoStudioInitialJob(
+      seedHunterSelection ? "minimaxH3" : project.videoStudioMode,
+      raw,
+      project.uploads || {},
+      project.loras || [],
+      config,
+    );
+    job.metadata = {
+      ...job.metadata,
+      videoStudioLabel: seedHunterSelection ? `Seed Hunter → finale H3 · seed ${raw.seed}` : `Finale nativo stesso seed · ${job.metadata.videoStudioLabel}`,
+      sourcePreviewGenerationId: preview.id,
+      sceneRecipeSeed: project.sceneRecipe.seed,
+    };
+    const created = await queueStudioJob(job, project.id);
+    const updated = videoStudioStore.update(project.id, {
+      generationIds: [...(project.generationIds || []), created.id],
+      updatedAt: new Date().toISOString(),
     });
     response.status(202).json(videoStudioProjectView(updated));
   } catch (error) {
@@ -3034,7 +5901,72 @@ app.post("/api/video-studio/projects/:id/lipdub", async (request, response, next
   }
 });
 
+app.post("/api/video-studio/projects/:id/h3-ltx2k", async (request, response, next) => {
+  try {
+    cancelIdlePurge();
+    await comfy.health();
+    const project = videoStudioStore.get(request.params.id);
+    if (!project || !["minimaxH3", "actionH3"].includes(project.videoStudioMode)) {
+      return response.status(404).json({ error: "Progetto MiniMax H3 non trovato." });
+    }
+    if (videoStudioProjectIsActive(project)) throw new Error("Attendi o annulla la generazione attiva.");
+    const generations = videoStudioProjectGenerations(project);
+    const sourceGeneration = request.body?.generationId
+      ? store.get(String(request.body.generationId))
+      : [...generations].reverse().find((item) => item.status === "completed" && item.videos?.length);
+    if (!sourceGeneration?.videos?.length || sourceGeneration.projectId !== project.id) throw new Error("Completa prima un video H3.");
+    const source = await comfy.reuseOutputFile(sourceGeneration.videos.at(-1), `h3-ltx2k-${project.id}.mp4`, "video/mp4");
+    const config = await videoStudioRuntimeConfig();
+    if (!config.ltx25.modes.h3Ltx2k.available) throw new Error(config.ltx25.modes.h3Ltx2k.reason);
+    const aspect = String(project.sceneRecipe?.aspectRatio || project.settings?.h3AspectRatio || "16:9").startsWith("9:16") ? "9:16" : "16:9";
+    const job = buildVideoStudioInitialJob("ltx25Aio", {
+      ltx25Mode: "h3Ltx2k",
+      ltx25Profile: "maximum",
+      ltx25Aspect: aspect,
+      ltx25Fps: 24,
+      duration: project.sceneRecipe?.duration || project.settings?.duration || 5,
+      seed: request.body?.seed || project.sceneRecipe?.seed || project.settings?.seed,
+      prompt: project.sceneRecipe?.userPrompt || project.prompt,
+      negativePrompt: "identity drift, face morphing, temporal flicker, deformed anatomy, duplicated limbs, changing outfit, oversharpening, plastic skin, text, watermark",
+      ltx25Decoder: "conv",
+    }, { ltx25SourceVideo: source }, [], config);
+    job.metadata = { ...job.metadata, workflowId: "videoStudio:h3Ltx2k", videoStudioMode: project.videoStudioMode, videoStudioLabel: "H3 → LTX 2.5 IC 2K", sourceGenerationId: sourceGeneration.id };
+    const created = await queueStudioJob(job, project.id);
+    const updated = videoStudioStore.update(project.id, { generationIds: [...(project.generationIds || []), created.id], updatedAt: new Date().toISOString() });
+    response.status(202).json(videoStudioProjectView(updated));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/video-studio/projects/:id/temporal-derope", async (request, response, next) => {
+  try {
+    cancelIdlePurge();
+    await comfy.health();
+    const project = videoStudioStore.get(request.params.id);
+    if (!project || !["minimaxH3", "actionH3"].includes(project.videoStudioMode)) return response.status(404).json({ error: "Progetto H3 non trovato." });
+    if (videoStudioProjectIsActive(project)) throw new Error("Attendi o annulla la generazione attiva.");
+    const generations = videoStudioProjectGenerations(project);
+    const sourceGeneration = request.body?.generationId ? store.get(String(request.body.generationId)) : [...generations].reverse().find((item) => item.status === "completed" && item.videos?.length);
+    if (!sourceGeneration?.videos?.length || sourceGeneration.projectId !== project.id) throw new Error("Completa prima un video H3.");
+    const source = await comfy.reuseOutputFile(sourceGeneration.videos.at(-1), `h3-derope-${project.id}.mp4`, "video/mp4");
+    const config = await videoStudioRuntimeConfig();
+    const job = buildH3DeRopeWorkflow({
+      profile: request.body?.profile || "balanced",
+      seed: request.body?.seed || project.sceneRecipe?.seed || project.settings?.seed,
+      prompt: project.sceneRecipe?.userPrompt || project.prompt,
+    }, source, config);
+    job.metadata = { ...job.metadata, videoStudioMode: project.videoStudioMode, sourceGenerationId: sourceGeneration.id };
+    const created = await queueStudioJob(job, project.id);
+    const updated = videoStudioStore.update(project.id, { generationIds: [...(project.generationIds || []), created.id], updatedAt: new Date().toISOString() });
+    response.status(202).json(videoStudioProjectView(updated));
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post("/api/studio/projects", upload.any(), async (request, response, next) => {
+  let project = null;
   try {
     cancelIdlePurge();
     await comfy.health();
@@ -3057,7 +5989,7 @@ app.post("/api/studio/projects", upload.any(), async (request, response, next) =
     );
     if (characterSelection) request.body = withCharacterPrompt(request.body, characterSelection.adapter);
     if (characterSelection?.uploads.length) {
-      if (!uploaded.source?.name && ["bible", "qwenKreaKlein", "kreaTriple"].includes(request.body.studioMode)) {
+      if (!uploaded.source?.name && ["bible", "qwenKreaKlein", "animeToReal", "kreaTriple"].includes(request.body.studioMode)) {
         uploaded.source = characterSelection.uploads[0];
         uploaded.references = [...characterSelection.uploads.slice(1), ...(uploaded.references || [])].slice(0, 3);
       } else {
@@ -3137,7 +6069,7 @@ app.post("/api/studio/projects", upload.any(), async (request, response, next) =
       subjectType: job.metadata?.subjectInsertion?.subjectType || null,
     })));
     await validateStudioModels(jobs);
-    const project = studioStore.add({
+    project = studioStore.add({
       id: crypto.randomUUID(),
       studioMode: request.body.studioMode,
       name: String(request.body.projectName || jobs[0]?.metadata?.workflowName || "Progetto Studio").trim(),
@@ -3164,6 +6096,13 @@ app.post("/api/studio/projects", upload.any(), async (request, response, next) =
     broadcast({ type: "studio_project_created", projectId: project.id, data: studioProjectView(updated) });
     response.status(202).json(studioProjectView(updated));
   } catch (error) {
+    if (project && !(project.generationIds || []).length) {
+      studioStore.update(project.id, {
+        status: "error",
+        error: error.message || "Creazione del workflow non completata.",
+        updatedAt: new Date().toISOString(),
+      });
+    }
     next(error);
   }
 });
@@ -3725,34 +6664,74 @@ app.post("/api/system/:action", async (request, response, next) => {
   }
 });
 
-app.post("/api/prompt-assistant/enhance", upload.single("sourceImage"), async (request, response, next) => {
+app.post("/api/prompt-assistant/enhance", upload.fields([
+  { name: "sourceImage", maxCount: 1 },
+  { name: "sourceImages", maxCount: 9 },
+]), async (request, response, next) => {
   try {
     if (!promptAssistant.publicConfig().enabled) {
       return response.status(503).json({ error: "Il Prompt Assistant non è configurato. Imposta LM_STUDIO_MODEL." });
     }
     const allowedTargets = new Set([
-      "flux1", "flux2", "qwen", "qwenedit", "zimage", "ltx", "ltx_architect", "ltx_scenes", "ltxedit", "studio", "videostudio",
+      "flux1", "flux2", "krea2", "krea2_moody", "qwen", "qwenedit", "zimage", "mageflow", "mageflowedit", "ltx", "ltx_architect", "ltx_scenes", "ltxedit", "studio", "videostudio",
       "sulphur_ltx", "sulphur_ltx_architect", "sulphur_ltx_scenes", "sulphur_ltxedit", "sulphur_videostudio", "sulphur_prompt",
       "qwen_image_edit_architect", "flux2_klein_architect",
       "reverse_qwen", "reverse_klein",
+      "minimax_h3",
+      "minimax_h3_action",
+      "minimax_h3_fantasy_verite",
     ]);
     const body = request.body || {};
     const target = String(body.target || "").toLowerCase();
     if (!allowedTargets.has(target)) return response.status(400).json({ error: "Workflow di destinazione non valido." });
-    if (request.file) {
-      if (!request.file.mimetype.startsWith("image/")) {
+    const sourceImages = [
+      ...(request.files?.sourceImage || []),
+      ...(request.files?.sourceImages || []),
+    ].slice(0, 9);
+    for (const sourceImage of sourceImages) {
+      if (!sourceImage.mimetype.startsWith("image/")) {
         return response.status(400).json({ error: "Il Prompt Assistant vision accetta PNG, JPG o WebP." });
       }
-      validateUploadSize(request.file, maxUploadMb, "L'immagine");
+      validateUploadSize(sourceImage, maxUploadMb, "L’immagine");
+    }
+
+    let characterContext = null;
+    let enhancementText = String(body.text || "").trim();
+    const characterId = String(body.characterId || "").trim();
+    if (characterId) {
+      const character = characterStore.getCharacter(characterId);
+      const adapter = resolveCharacterAdapter({
+        generationType: "promptAssistant",
+        videoStudioMode: String(body.videoStudioMode || ""),
+        character,
+        options: {
+          identityStrength: body.identityStrength,
+          lockFace: body.lockFace,
+          lockHair: body.lockHair,
+          lockBody: body.lockBody,
+          lockOutfit: body.lockOutfit,
+          includeDescription: false,
+        },
+      });
+      characterContext = { id: character.id, name: character.name };
+      enhancementText = [
+        "CHARACTER IDENTITY CONTEXT: The named adult character below is the subject of the requested scene. Preserve these identity traits in the rewritten prompt, integrate them naturally once, and do not treat them as additional actions or dialogue.",
+        adapter.promptPrefix,
+        "SCENE REQUEST TO REWRITE:",
+        enhancementText,
+      ].join("\n");
     }
 
     const before = await releaseComfyMemoryIfIdle();
     const result = await promptAssistant.enhance({
-      text: body.text,
+      text: enhancementText,
       target,
+      promptPreset: String(body.promptPreset || ""),
+      duration: Number(body.duration) || 0,
       mode: String(body.mode || "text"),
       workflowName: String(body.workflowName || ""),
-      image: request.file || null,
+      image: sourceImages[0] || null,
+      images: sourceImages,
       model: (target.startsWith("sulphur_") || target === "sulphur_prompt") ? sulphurPromptAssistantModel : "",
       includeNegative: String(body.includeNegative || "").toLowerCase() === "true",
     });
@@ -3762,6 +6741,7 @@ app.post("/api/prompt-assistant/enhance", upload.single("sourceImage"), async (r
     }
     response.json({
       ...result,
+      character: characterContext,
       cleanup: {
         lmStudioModelUnloaded: true,
         comfyMemoryReleased: after.released,
@@ -3917,7 +6897,12 @@ setInterval(async () => {
           if (patch) {
             const updated = store.update(item.id, patch);
             broadcast({ type: "generation_updated", generationId: item.id, data: updated });
-            if (patch.finishedAt) scheduleIdlePurge();
+            syncCharacterReferenceGeneration(updated);
+            if (patch.finishedAt) {
+              continueCharacterMasterPipeline(updated);
+              continueCharacterVideoPipeline(updated);
+            }
+            if (patch.finishedAt && !updated.pipelineRootGenerationId) scheduleIdlePurge();
           }
           continue;
         }
@@ -3956,8 +6941,11 @@ setInterval(async () => {
                 : null,
             });
             broadcast({ type: "generation_updated", generationId: item.id, data: updated });
+            syncCharacterReferenceGeneration(updated);
             await advanceInteractiveCastGeneration(updated);
-            scheduleIdlePurge();
+            continueCharacterMasterPipeline(updated);
+            continueCharacterVideoPipeline(updated);
+            if (!updated.pipelineRootGenerationId) scheduleIdlePurge();
             continue;
           }
           const primaryImage = inspectedImages.find((imageInfo) => imageInfo.width && imageInfo.height);
@@ -3997,13 +6985,19 @@ setInterval(async () => {
                   debugArtifacts: item.sceneIntegration?.evaluationArtifacts || {},
                 })
               : null,
+            ...(["character_photo", "character_video_anchor"].includes(item.generationPurpose) ? { output: images }
+              : item.generationPurpose === "character_video" ? { output: videos.length ? videos : images }
+                : {}),
             finishedAt,
             durationMs: Number.isFinite(startedAtMs)
               ? Math.max(0, Date.parse(finishedAt) - startedAtMs)
               : null,
           });
           broadcast({ type: "generation_updated", generationId: item.id, data: updated });
+          syncCharacterReferenceGeneration(updated);
           await advanceInteractiveCastGeneration(updated);
+          continueCharacterMasterPipeline(updated);
+          continueCharacterVideoPipeline(updated);
           const characterSheet = maybeRegisterCharacterSheet(updated, primaryImage);
           if (characterSheet) {
             const imported = store.update(updated.id, {
@@ -4026,7 +7020,7 @@ setInterval(async () => {
             // non deve bloccare il polling globale né l'aggiornamento della pagina.
             void finalizeSceneIntegration(updated, mediaFile, localPath);
           }
-          scheduleIdlePurge();
+          if (!updated.pipelineRootGenerationId) scheduleIdlePurge();
         } else if (completed) {
           const finishedAt = new Date().toISOString();
           const startedAtMs = Date.parse(item.startedAt || "");
@@ -4039,8 +7033,11 @@ setInterval(async () => {
               : null,
           });
           broadcast({ type: "generation_updated", generationId: item.id, data: updated });
+          syncCharacterReferenceGeneration(updated);
           await advanceInteractiveCastGeneration(updated);
-          scheduleIdlePurge();
+          continueCharacterMasterPipeline(updated);
+          continueCharacterVideoPipeline(updated);
+          if (!updated.pipelineRootGenerationId) scheduleIdlePurge();
         } else if (statusText === "error") {
           const finishedAt = new Date().toISOString();
           const startedAtMs = Date.parse(item.startedAt || "");
@@ -4053,8 +7050,11 @@ setInterval(async () => {
               : null,
           });
           broadcast({ type: "generation_updated", generationId: item.id, data: updated });
+          syncCharacterReferenceGeneration(updated);
           await advanceInteractiveCastGeneration(updated);
-          scheduleIdlePurge();
+          continueCharacterMasterPipeline(updated);
+          continueCharacterVideoPipeline(updated);
+          if (!updated.pipelineRootGenerationId) scheduleIdlePurge();
         }
       } catch {
         // ComfyUI può essere temporaneamente occupato o non raggiungibile.
@@ -4068,6 +7068,12 @@ setInterval(async () => {
 const server = app.listen(port, host, () => {
   console.log(`LTX Remote Studio: http://${host}:${port}`);
   console.log(`ComfyUI: ${process.env.COMFY_URL || "http://127.0.0.1:8188"}`);
+  void refreshAppConfig().then(async () => {
+    await resumeCharacterMasterPipelines();
+    await resumeCharacterVideoPipelines();
+  }).catch(() => {});
+  void refreshInteractiveCastCapabilities().catch(() => {});
+  void refreshSceneCapabilities().catch(() => {});
 });
 
 function shutdown() {

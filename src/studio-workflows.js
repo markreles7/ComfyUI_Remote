@@ -97,6 +97,13 @@ export const STUDIO_MODES = {
     input: "source",
     staticWorkflow: true,
   },
+  animeToReal: {
+    id: "animeToReal",
+    name: "The Best Anime to Real",
+    description: "Trasforma anime, illustrazioni e personaggi RPG in fotografie ultra realistiche con Qwen Edit, refine Z-Image e SeedVR2.",
+    input: "source",
+    staticWorkflow: true,
+  },
   kreaTriple: {
     id: "kreaTriple",
     name: "Krea Triple Studio",
@@ -109,12 +116,19 @@ export const STUDIO_MODES = {
 
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
 const QWEN_KREA_KLEIN_API_FILE = path.resolve(moduleDirectory, "..", "workflows", "Qwen_Krea_Klein_API.json");
+const ANIME_TO_REAL_API_FILE = path.resolve(
+  moduleDirectory,
+  "..",
+  "workflows",
+  "THE BEST ANIME TO REAL _ ANYTHING TO REAL WORKFLOW_api.json",
+);
 const KREA_TRIPLE_API_FILES = {
   text: path.resolve(moduleDirectory, "..", "workflows", "KreaTriple_T2I_API.json"),
   img2img: path.resolve(moduleDirectory, "..", "workflows", "KreaTriple_I2I_API.json"),
   selective: path.resolve(moduleDirectory, "..", "workflows", "KreaTriple_Masked_API.json"),
 };
 const KREA_TRIPLE_NODES = {
+  kreaModel: "2",
   kreaPrompt: "5",
   kreaLatent: "8",
   zPrompt: "15",
@@ -127,6 +141,20 @@ const KREA_TRIPLE_NODES = {
   finalImage: "45",
   finalSave: "49",
 };
+const KREA_TRIPLE_MODELS = Object.freeze([
+  {
+    id: "darkBeast",
+    name: "DarkBeast Krea2 FP8 · bilanciato",
+    file: "FLUX1D\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors",
+    moodyPromptAnchor: false,
+  },
+  {
+    id: "moodyKrea",
+    name: "Moody Krea2 Mix v5 · estetica social/asiatica",
+    file: "FLUX1D\\moodyKrea2Mix_v50.safetensors",
+    moodyPromptAnchor: true,
+  },
+]);
 const FLUX2_BASE = "FLUX2\\flux2Klein_9bBase.safetensors";
 const FLUX2_TURBO = "FLUX2\\pornmasterFlux2Klein_v4TurboFp8.safetensors";
 const ZIMAGE_TURBO = "Z-IMG\\z_image_turbo_bf16.safetensors";
@@ -258,14 +286,151 @@ function buildQwenKreaKleinJob(raw, source) {
   };
 }
 
+function configurePurgeNode(node) {
+  node.class_type = "DisTorchPurgeVRAMV2";
+  node.inputs = {
+    ...node.inputs,
+    purge_seedvr2_models: false,
+    purge_qwen3vl_models: true,
+    purge_nunchaku_models: true,
+    HSWQ: false,
+    Ollama: false,
+  };
+}
+
+function buildAnimeToRealJob(raw, source) {
+  if (!source?.name) throw new Error("Carica l'immagine anime da trasformare.");
+  const prompt = String(raw.prompt || "").trim();
+  if (!prompt) throw new Error("Inserisci il prompt enhanced generato con LM Studio.");
+  const negativePrompt = String(raw.negativePrompt || "").trim();
+  const workflow = cloneStaticWorkflow(ANIME_TO_REAL_API_FILE);
+  const seed = seedAt(raw);
+  const sourcePath = inputPath(source);
+
+  // Qwen-VL e i suoi nodi di testo intermedi sono volutamente esclusi: il prompt
+  // enhanced di LM Studio alimenta direttamente sia Qwen Edit sia Z-Image.
+  for (const id of ["27", "271", "272", "273", "290", "292", "304", "305", "306", "309", "328", "339"]) {
+    delete workflow[id];
+  }
+
+  workflow["22"].inputs.image = sourcePath;
+  workflow["92"].inputs.clip_name = "qwen_2.5_vl_7b_fp8_scaled.safetensors";
+  workflow["98"].inputs.unet_name = "QWEN\\qwen_image_edit_2511_bf16.safetensors";
+  workflow["108"].inputs.lora_name = "QWEN\\Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors";
+  workflow["158"].inputs.lora_name = "QWEN\\Anime2Real_v4-22.safetensors";
+  workflow["228"].inputs.lora_name = "QWEN\\anything2real_2601_A_final.safetensors";
+  workflow["240"].inputs.lora_name = "QWEN\\iphone style.safetensors";
+  workflow["241"].inputs.lora_name = "QWEN\\Qwen-Image_SmartphoneSnapshotPhotoReality.safetensors";
+  workflow["247"].inputs.lora_name = "QWEN\\NSFW-Qwen_Snofs_1_3.safetensors";
+  workflow["313"].inputs.lora_name = "QWEN\\Famegrid_Qwen_Lora_Standard_V1.5_RealSkinFix.safetensors";
+  workflow["147"].inputs.prompt = prompt;
+
+  workflow["122"] = {
+    inputs: {
+      seed,
+      steps: 4,
+      cfg: 1,
+      sampler_name: "euler",
+      scheduler: "beta",
+      denoise: 1,
+      model: ["313", 0],
+      positive: ["147", 0],
+      negative: ["137", 0],
+      latent_image: ["157", 0],
+    },
+    class_type: "KSampler",
+    _meta: { title: "Qwen Edit · 4 step Lightning" },
+  };
+  workflow["940100"] = {
+    inputs: { samples: ["122", 0], vae: ["95", 0] },
+    class_type: "VAEDecode",
+    _meta: { title: "Qwen Edit · decoded image" },
+  };
+  workflow["287"].inputs.anything = ["940100", 0];
+
+  workflow["284"].inputs.unet_name = "Z-IMG\\moodyProMix_zitV13.safetensors";
+  workflow["261"].inputs.vae_name = "ae.safetensors";
+  delete workflow["283"];
+  delete workflow["285"];
+  workflow["286"].inputs.model = ["284", 0];
+  workflow["269"].inputs.text = prompt;
+  workflow["268"] = {
+    inputs: { model: ["286", 0], scheduler: "beta", steps: 12, denoise: 0.5 },
+    class_type: "BasicScheduler",
+    _meta: { title: "Z-Image refine · second half schedule" },
+  };
+  workflow["265"].inputs.noise_seed = seed + 1;
+
+  for (const node of Object.values(workflow)) {
+    if (node?.class_type === "LayerUtility: PurgeVRAM V2") configurePurgeNode(node);
+  }
+  workflow["294"].inputs.seed = seed + 2;
+  workflow["294"].inputs.batch_size = 1;
+  workflow["296"].inputs.blocks_to_swap = 18;
+  workflow["296"].inputs.swap_io_components = true;
+  workflow["296"].inputs.offload_device = "cpu";
+  workflow["296"].inputs.attention_mode = "sdpa";
+  workflow["256"].inputs.filename_prefix = "Studio/anime_to_real/08_finale";
+  workflow["940200"] = {
+    inputs: { image: workflow["256"].inputs.images },
+    class_type: "RemoteImageTensorNormalize",
+    _meta: { title: "Normalizza output SeedVR2 per SaveImage" },
+  };
+  workflow["256"].inputs.images = ["940200", 0];
+
+  return {
+    workflow,
+    metadata: {
+      mediaType: "image",
+      generationType: "image",
+      workflowId: "studio:animeToReal",
+      workflowName: "The Best Anime to Real · Qwen + Z-Image + SeedVR2",
+      studioMode: "animeToReal",
+      studioStage: "final",
+      studioLabel: "Anime/Anything to ultra realistic photo",
+      prompt,
+      negativePrompt,
+      width: numberValue(raw.imageWidth, 1024, 256, 8192, true),
+      height: numberValue(raw.imageHeight, 1024, 256, 8192, true),
+      seed,
+      sourceImage: sourcePath,
+      imageModelFile: "QWEN\\qwen_image_edit_2511_bf16.safetensors",
+      imageModelName: "Qwen Edit 2511 + MoodyProMix Z-Image + SeedVR2 7B",
+      imageModelFamily: "qwenEdit",
+      imageSettings: {
+        staticWorkflow: path.basename(ANIME_TO_REAL_API_FILE),
+        promptSource: "lmStudioEnhanced",
+        qwenVlRemoved: true,
+        qwenEditNode: "147",
+        zImageRefineNode: "265",
+        seedvr2Node: "294",
+        outputNormalizeNode: "940200",
+      },
+      loras: [
+        "QWEN\\Anime2Real_v4-22.safetensors",
+        "QWEN\\anything2real_2601_A_final.safetensors",
+        "QWEN\\Famegrid_Qwen_Lora_Standard_V1.5_RealSkinFix.safetensors",
+      ],
+    },
+  };
+}
+
 function kreaTripleOperation(raw) {
   const operation = String(raw.kreaTripleOperation || "text");
   if (operation === "image") return "img2img";
   return ["text", "img2img", "selective"].includes(operation) ? operation : "text";
 }
 
-function configureKreaTripleCommon(workflow, raw, { operation, prompt, negativePrompt, seed, width, height }) {
+function kreaTripleModelSelection(raw) {
+  const requested = String(raw.kreaTripleModel || KREA_TRIPLE_MODELS[0].file).replaceAll("/", "\\");
+  const selected = KREA_TRIPLE_MODELS.find((model) => model.file.toLowerCase() === requested.toLowerCase());
+  if (!selected) throw new Error("Modello Krea Triple non riconosciuto.");
+  return selected;
+}
+
+function configureKreaTripleCommon(workflow, raw, { operation, model, prompt, negativePrompt, seed, width, height }) {
   const nodes = KREA_TRIPLE_NODES;
+  workflow[nodes.kreaModel].inputs.unet_name = model.file;
   workflow[nodes.kreaPrompt].inputs.text = prompt;
   workflow[nodes.zPrompt].inputs.text = prompt;
   workflow[nodes.kleinPrompt].inputs.text = prompt;
@@ -398,10 +563,11 @@ function buildKreaTripleJob(raw, { source, mask }) {
   if (operation !== "text" && !source?.name) throw new Error("Krea Triple Image to Image richiede una fotografia sorgente.");
   if (operation === "selective" && !mask?.name) throw new Error("Krea Triple Selective richiede una maschera manuale.");
   const workflow = cloneStaticWorkflow(KREA_TRIPLE_API_FILES[operation]);
+  const model = kreaTripleModelSelection(raw);
   const [width, height] = dimensions(raw);
   const seed = seedAt(raw);
   const negativePrompt = String(raw.negativePrompt || "").trim();
-  configureKreaTripleCommon(workflow, raw, { operation, prompt, negativePrompt, seed, width, height });
+  configureKreaTripleCommon(workflow, raw, { operation, model, prompt, negativePrompt, seed, width, height });
   if (operation !== "text") addKreaTripleSourceLatent(workflow, source, raw, width, height);
   if (operation === "selective") addKreaTripleMaskComposite(workflow, source, mask, raw);
   return {
@@ -421,10 +587,13 @@ function buildKreaTripleJob(raw, { source, mask }) {
       seed,
       sourceImage: source?.name ? inputPath(source) : null,
       maskImage: mask?.name ? inputPath(mask) : null,
-      imageModelName: "Krea + Z-Image + Flux2 Klein + SeedVR2",
+      imageModelName: `${model.name} + Z-Image + Flux2 Klein + SeedVR2`,
       imageModelFamily: "kreaTriple",
       imageSettings: {
         operation,
+        kreaModel: model.file,
+        kreaModelId: model.id,
+        moodyPromptAnchor: model.moodyPromptAnchor,
         denoise: operation === "text" ? 1 : numberValue(raw.kreaTripleDenoise ?? raw.denoise, 0.35, 0.1, 0.8),
         staticWorkflow: path.basename(KREA_TRIPLE_API_FILES[operation]),
         nodes: KREA_TRIPLE_NODES,
@@ -962,7 +1131,7 @@ function guidedModelSelection(raw, preset, loras = []) {
       imageRecipe: "klein4b",
     };
   }
-  const modelFile = String(raw.qwenEditModel || QWEN_EDIT);
+  const modelFile = String(raw.qwenEditModel || QWEN_EDIT_2511);
   const bigLove = /biglovegwen2/i.test(modelFile);
   const official2511 = /qwen[_-]?image[_-]?edit[_-]?2511/i.test(modelFile);
   const loraNames = (Array.isArray(loras) ? loras : []).map((item) => String(item?.name || item));
@@ -1168,7 +1337,7 @@ export function applyQwenStructureGuide(workflow, family, raw, source, guideUplo
   };
 }
 
-export function studioConfig({ modelPatches = [], preprocessors = [] } = {}) {
+export function studioConfig({ modelPatches = [], preprocessors = [], imageModels = [] } = {}) {
   const patchAvailable = (name) => modelPatches.some((item) =>
     String(item).toLowerCase() === name.toLowerCase()
   );
@@ -1176,6 +1345,10 @@ export function studioConfig({ modelPatches = [], preprocessors = [] } = {}) {
     modes: Object.values(STUDIO_MODES).filter((mode) => !mode.legacy),
     presets: Object.entries(PRESETS).map(([id, item]) => ({ id, name: item.label })),
     limits: { alternatives: [2, 4], references: 4, storyboardShots: [2, 4] },
+    kreaTripleModels: KREA_TRIPLE_MODELS.map((model) => ({
+      ...model,
+      available: imageModels.some((file) => String(file).replaceAll("/", "\\").toLowerCase() === model.file.toLowerCase()),
+    })),
     structureGuides: [
       { id: "automatic", name: "Automatico · consigliato", available: true },
       {
@@ -1203,7 +1376,7 @@ export function studioConfig({ modelPatches = [], preprocessors = [] } = {}) {
       flux2Turbo: FLUX2_TURBO,
       zImageTurbo: ZIMAGE_TURBO,
       flux1Realistic: FLUX1_REALISTIC,
-      qwenEdit: QWEN_EDIT,
+      qwenEdit: QWEN_EDIT_2511,
       guidedKlein: STORYBOARD_MODELS.klein.quality,
     },
     storyboardModels: Object.values(STORYBOARD_MODELS),
@@ -1224,6 +1397,9 @@ export function buildStudioJobs(studioMode, raw, uploads, loras = undefined) {
   }
   if (studioMode === "qwenKreaKlein") {
     return [buildQwenKreaKleinJob(raw, source)];
+  }
+  if (studioMode === "animeToReal") {
+    return [buildAnimeToRealJob(raw, source)];
   }
   if (studioMode === "kreaTriple") {
     return [buildKreaTripleJob(raw, { source, mask })];

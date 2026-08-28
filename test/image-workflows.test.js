@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { extractImages, extractVideos } from "../src/comfy-client.js";
-import { buildImageWorkflow, imageModelConfig } from "../src/image-workflows.js";
+import {
+  buildImageWorkflow,
+  imageModelConfig,
+  qwenEdit2511Lightning8Preset,
+} from "../src/image-workflows.js";
 
 const base = {
   imageMode: "text",
@@ -121,6 +125,19 @@ test("costruisce Qwen Image Edit 2511 con editing nativo e reference opzionali",
   assert.equal(workflow["13"].inputs.reference_latents_method, "index_timestep_zero");
   assert.equal(workflow["8"].inputs.denoise, 1);
   assert.equal(metadata.imageSettings.denoise, 1);
+});
+
+test("preset Character accelera solo Qwen Image Edit 2511 con Lightning 8-step e CFG 1", () => {
+  const preset = qwenEdit2511Lightning8Preset("QWEN\\qwen_image_edit_2511_bf16.safetensors");
+  assert.equal(preset.steps, 8);
+  assert.equal(preset.guidance, 1);
+  assert.equal(preset.samplingProfile, "lightning-8");
+  assert.deepEqual(preset.loras, [{
+    name: "QWEN\\Qwen-Image-Edit-2511-Lightning-8steps-V1.0-bf16.safetensors",
+    strength: 1,
+  }]);
+  assert.equal(qwenEdit2511Lightning8Preset("QWEN\\BigLoveGwen2_mxfp8.safetensors"), null);
+  assert.equal(qwenEdit2511Lightning8Preset("QWEN\\Qwen-Rapid-AIO-NSFW-v23.safetensors"), null);
 });
 
 test("usa il loader corretto per le due varianti BigLove Gwen 2", () => {
@@ -275,6 +292,39 @@ test("segnala i modelli immagine non installati", () => {
   assert.equal(config.find((item) => item.id === "zImage").available, false);
 });
 
+test("separa i checkpoint Krea2 da Flux.1 e usa il workflow Krea2 nativo", () => {
+  const darkBeast = "FLUX1D\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors";
+  const moody = "FLUX1D\\moodyKrea2Mix_v50.safetensors";
+  const config = imageModelConfig([
+    "FLUX1D\\flux1-dev.safetensors",
+    darkBeast,
+    moody,
+  ], {
+    clips: ["qwen3vl_4b_fp8_scaled.safetensors"],
+    vaes: ["qwen_image_vae.safetensors"],
+  });
+  const flux1 = config.find((item) => item.id === "flux1");
+  const krea2 = config.find((item) => item.id === "fluxKrea2");
+  assert.deepEqual(flux1.models.map((item) => item.file), ["FLUX1D\\flux1-dev.safetensors"]);
+  assert.equal(krea2.available, true);
+  assert.deepEqual(new Set(krea2.models.map((item) => item.file)), new Set([darkBeast, moody]));
+  assert.equal(krea2.defaultModelFile, darkBeast);
+
+  const { workflow, metadata } = buildImageWorkflow("fluxKrea2", {
+    ...base,
+    imageModelFile: darkBeast,
+    imageSteps: "8",
+    imageGuidance: "1",
+  }, null);
+  assert.equal(workflow["1"].inputs.unet_name, darkBeast);
+  assert.equal(workflow["2"].class_type, "CLIPLoader");
+  assert.equal(workflow["2"].inputs.type, "krea2");
+  assert.equal(workflow["3"].inputs.vae_name, "qwen_image_vae.safetensors");
+  assert.equal(workflow["7"].class_type, "EmptyLatentImage");
+  assert.equal(workflow["8"].class_type, "KSampler");
+  assert.equal(metadata.imageModelFamily, "fluxKrea2");
+});
+
 test("rileva separatamente checkpoint e dipendenze Qwen", () => {
   const models = [
     "qwen_image_2512_fp8_e4m3fn.safetensors",
@@ -293,7 +343,7 @@ test("rileva separatamente checkpoint e dipendenze Qwen", () => {
   assert.equal(ready.find((item) => item.id === "qwenEdit").models.length, 1);
 });
 
-test("rileva entrambe le varianti BigLove Gwen 2 e preferisce MXFP8", () => {
+test("mantiene Qwen Image Edit 2511 come primario e richiede la selezione esplicita delle varianti", () => {
   const ready = imageModelConfig([
     "QWEN\\BigLoveGwen2_nf4.safetensors",
     "QWEN\\BigLoveGwen2_mxfp8.safetensors",
@@ -307,8 +357,24 @@ test("rileva entrambe le varianti BigLove Gwen 2 e preferisce MXFP8", () => {
   assert.equal(qwenText.models.length, 2);
   assert.equal(qwenEdit.available, true);
   assert.equal(qwenEdit.models.length, 2);
-  assert.equal(qwenEdit.defaultModelFile, "QWEN\\BigLoveGwen2_mxfp8.safetensors");
+  assert.equal(qwenEdit.primaryAvailable, false);
+  assert.equal(qwenEdit.defaultModelFile, "QWEN\\qwen_image_edit_2511_bf16.safetensors");
   assert.equal(qwenEdit.models.find((item) => item.file.endsWith("_nf4.safetensors")).name, "BigLove Gwen 2 · NF4 leggero");
+});
+
+test("preferisce il checkpoint ufficiale Qwen Image Edit 2511 quando installato", () => {
+  const ready = imageModelConfig([
+    "QWEN\\BigLoveGwen2_mxfp8.safetensors",
+    "QWEN\\Qwen-Rapid-AIO-NSFW-v23.safetensors",
+    "QWEN\\qwen_image_edit_2511_bf16.safetensors",
+  ], {
+    clips: ["qwen_2.5_vl_7b_fp8_scaled.safetensors"],
+    vaes: ["qwen_image_vae.safetensors"],
+  });
+  const qwenEdit = ready.find((item) => item.id === "qwenEdit");
+  assert.equal(qwenEdit.primaryAvailable, true);
+  assert.equal(qwenEdit.defaultModelFile, "QWEN\\qwen_image_edit_2511_bf16.safetensors");
+  assert.equal(qwenEdit.modelFile, "QWEN\\qwen_image_edit_2511_bf16.safetensors");
 });
 
 test("permette di scegliere checkpoint diversi nella stessa famiglia", () => {
@@ -362,11 +428,31 @@ test("Flux.2 concatena fino a quattro reference indipendenti", () => {
   assert.equal(workflow["25"].inputs.image, "remote/persona.png");
   assert.equal(workflow["30"].inputs.image, "remote/posa.png");
   assert.equal(workflow["35"].inputs.image, "remote/stile.png");
+  assert.equal(workflow["21"].class_type, "ImageScaleToTotalPixels");
+  assert.equal(workflow["21"].inputs.megapixels, 1.5);
+  assert.equal(workflow["26"].inputs.megapixels, 1);
   assert.deepEqual(workflow["13"].inputs.positive, ["38", 0]);
   assert.deepEqual(workflow["13"].inputs.negative, ["39", 0]);
   assert.equal(metadata.width, 1600);
   assert.equal(metadata.height, 896);
   assert.equal(metadata.referenceImages.length, 3);
+});
+
+test("PornMaster Flux2 Klein v4Turbo usa il profilo nativo 4 step CFG 1", () => {
+  const config = imageModelConfig([
+    "FLUX2\\pornmasterFlux2Klein_v4TurboFp8.safetensors",
+  ]);
+  const model = config.find((item) => item.id === "flux2").models[0];
+  assert.deepEqual(model.defaults, { steps: 4, guidance: 1 });
+});
+
+test("PornMaster Flux2 Klein v4 Base BF16 usa il profilo qualità 12 step CFG 2", () => {
+  const config = imageModelConfig([
+    "FLUX2\\pornmasterFlux2Klein_v4BaseBf16.safetensors",
+  ]);
+  const model = config.find((item) => item.id === "flux2").models[0];
+  assert.equal(model.name, "PornMaster Flux2 Klein v4 Base · BF16");
+  assert.deepEqual(model.defaults, { steps: 12, guidance: 2 });
 });
 
 test("estrae le immagini prodotte dalla history ComfyUI", () => {
@@ -459,7 +545,7 @@ test("inserisce più LoRA in tutte le famiglie di modello immagine", () => {
     ["fluxKlein9b", "13", base, null],
     ["zImage", "4", base, null],
     ["qwenImage", "4", { ...base, batchSize: "1" }, null],
-    ["qwenEdit", "8", { ...base, batchSize: "1", imageMode: "image" }, upload],
+    ["qwenEdit", "4", { ...base, batchSize: "1", imageMode: "image" }, upload],
   ];
   for (const [model, consumer, options, source] of variants) {
     const { workflow, metadata } = buildImageWorkflow(model, options, source, loras);

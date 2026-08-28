@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
-  <script type="module" src="/studio.js"></script>
+  <script type="module" src="/studio.js?v=20260823-krea2-selector"></script>
   <script type="module" src="/scene-integration.js"></script>
 </head>
 <body>
@@ -55,6 +55,9 @@
           </div>
           <select id="studioMode" name="studioMode"></select>
           <p id="studio-description" class="hint"></p>
+          <a id="studio-guided-workflow" class="context-guide-link hidden" href="/guided-create.html" target="_self">
+            <span aria-hidden="true">?</span><span><b>Guida interattiva passo passo</b><small>Dal materiale iniziale al controllo prima della generazione</small></span>
+          </a>
         </div>
         <div class="field">
           <label for="projectName">Nome progetto</label>
@@ -93,8 +96,8 @@
           <div class="guided-step-heading">
             <span>QK</span>
             <div>
-              <p class="subpanel-title">Workflow Qwen_Krea_Klein</p>
-              <p class="hint">Usa il JSON API originale: Qwen Image Editing, Krea refine, Klein refine e SeedVR2 finale nello stesso job.</p>
+              <p id="static-workflow-title" class="subpanel-title">Workflow Qwen_Krea_Klein</p>
+              <p id="static-workflow-hint" class="hint">Usa il JSON API originale: Qwen Image Editing, Krea refine, Klein refine e SeedVR2 finale nello stesso job.</p>
             </div>
           </div>
         </section>
@@ -108,6 +111,11 @@
             </div>
           </div>
           <div class="field-grid">
+            <div class="field">
+              <label for="kreaTripleModel">Checkpoint Krea iniziale</label>
+              <select id="kreaTripleModel" name="kreaTripleModel"></select>
+              <p id="krea-triple-model-hint" class="hint"></p>
+            </div>
             <div class="field">
               <label for="kreaTripleOperation">Modalità</label>
               <select id="kreaTripleOperation" name="kreaTripleOperation">

@@ -1,4 +1,5 @@
 import { buildVideoStudioInitialJob, videoStudioConfig } from "../src/video-studio-workflows.js";
+import { buildH3PreviewFinishingWorkflow } from "../src/h3-preview-workflows.js";
 import { validateWorkflow } from "../src/workflow-validator.js";
 
 const comfyUrl = process.env.COMFY_URL || "http://127.0.0.1:8188";
@@ -18,6 +19,9 @@ const config = videoStudioConfig({
   installedCheckpoints: combo(definitions.CheckpointLoaderSimple?.input?.required?.ckpt_name),
   installedTextEncoders: combo(definitions.LTXAVTextEncoderLoader?.input?.required?.text_encoder),
   installedLatentUpscalers: combo(definitions.LatentUpscaleModelLoader?.input?.required?.model_name),
+  installedDiffusionModels: combo(definitions.UNETLoader?.input?.required?.unet_name),
+  installedClips: combo(definitions.CLIPLoader?.input?.required?.clip_name),
+  installedVaes: combo(definitions.VAELoader?.input?.required?.vae_name),
   availableNodes: Object.keys(definitions),
 });
 const installedUnets = combo(definitions.UNETLoader?.input?.required?.unet_name);
@@ -62,6 +66,29 @@ if (config.capabilities.unionControl.available) {
 if (config.capabilities.hdr.available) {
   cases.push(["hdr", { ...base, hdrExposure: 7.1, saveExr: false }, { sourceVideo: video }]);
 }
+if (config.h3.available) {
+  const h3Base = {
+    h3Mode: "text",
+    prompt: "A natural handheld documentary shot with coherent motion and native location audio.",
+    duration: 5,
+    h3AspectRatio: "16:9 (Widescreen)",
+    h3FirstMegapixels: 0.6,
+    h3UseTurbo: true,
+    h3PurgeBetween: true,
+    h3PurgeAfter: true,
+    seed: 123,
+  };
+  cases.push(
+    ["minimaxH3/balanced", { ...h3Base, h3RefineMode: "h3Balanced" }, {}],
+    ["minimaxH3/maximum", { ...h3Base, h3RefineMode: "h3Maximum", h3SecondMegapixels: 1 }, {}],
+    ["minimaxH3/seedvr2", { ...h3Base, h3RefineMode: "seedvr2", h3SeedvrResolution: 768 }, {}],
+    ["minimaxH3/rtx", { ...h3Base, h3RefineMode: "rtx" }, {}],
+    ["minimaxH3/direct", { ...h3Base, h3RefineMode: "direct", h3FirstMegapixels: 0.9 }, {}],
+  );
+  if (config.h3.attentionAvailability.comfyKitchen) {
+    cases.push(["minimaxH3/kitchen", { ...h3Base, h3RefineMode: "direct", h3FirstMegapixels: 0.9, h3AttentionBackend: "comfyKitchen" }, {}]);
+  }
+}
 
 const workflows = cases.map(([mode, raw, uploads]) => [
   mode,
@@ -69,10 +96,23 @@ const workflows = cases.map(([mode, raw, uploads]) => [
     mode.split("/")[0],
     raw,
     uploads,
-    mode === "actorReplacement/editAnything" ? [{ name: config.ltxLoras[0], strength: 1 }] : [],
+    mode === "actorReplacement/editAnything"
+      ? [{ name: config.ltxLoras[0], strength: 1 }]
+      : mode === "minimaxH3/balanced"
+        ? [{ name: config.h3Loras.find((name) => /STY_Realism_People/i.test(name)), strength: 0.8 }].filter((item) => item.name)
+        : [],
     config,
   ).workflow,
 ]);
+if (config.h3.available) {
+  workflows.push(
+    ["minimaxH3/finishing-rtx", buildH3PreviewFinishingWorkflow(video, { finishingMode: "rtx" }).workflow],
+    ["minimaxH3/finishing-kj-lanczos", buildH3PreviewFinishingWorkflow(video, {
+      finishingMode: "kjLanczos",
+      aspectRatio: "9:16 (Portrait Widescreen)",
+    }).workflow],
+  );
+}
 const errors = workflows.flatMap(([name, workflow]) =>
   validateWorkflow(workflow, definitions, { label: name }).map((issue) => `${name} · ${issue}`)
 );
