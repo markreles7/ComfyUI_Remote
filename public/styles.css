@@ -2713,6 +2713,28 @@ textarea { resize: vertical; min-height: 80px; line-height: 1.55; }
   .topbar .connection { display: none; }
   .topbar-actions { gap: 0; }
 }
+
+.series-studio-page { max-width: 1500px; margin: 0 auto; }
+.series-hero { padding-bottom: 28px; }
+.series-focus-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+.series-focus-form { display: grid; gap: 18px; }
+.standalone-series-options { display: grid; gap: 16px; padding: 20px; border: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 88%, transparent); }
+.series-focus-summary { position: sticky; top: 88px; }
+.series-workflow-summary dl { display: grid; gap: 0; margin: 0; }
+.series-workflow-summary dl div { display: grid; gap: 5px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+.series-workflow-summary dt { color: var(--muted); font: 500 10px/1.2 "DM Mono", monospace; letter-spacing: .12em; text-transform: uppercase; }
+.series-workflow-summary dd { margin: 0; overflow-wrap: anywhere; }
+.pulid-focus-fields { display: grid; grid-template-columns: minmax(160px, .35fr) minmax(260px, 1fr); gap: 16px; align-items: end; }
+.series-anchor-link { display: inline-flex; align-items: center; justify-content: center; min-height: 34px; padding: 7px 10px; border: 1px solid var(--accent); color: var(--accent); text-decoration: none; font-size: 12px; }
+
+@media (max-width: 980px) {
+  .series-focus-layout { grid-template-columns: 1fr; }
+  .series-focus-summary { position: static; }
+}
+
+@media (max-width: 640px) {
+  .pulid-focus-fields { grid-template-columns: 1fr; }
+}
 @media (max-width: 560px) {
   .topbar { height: 62px; }
   .connection { padding: 7px; font-size: 9px; }

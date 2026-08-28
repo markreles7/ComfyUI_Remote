@@ -17,8 +17,6 @@ const state = {
   sceneSerial: 0,
   loraSerial: 0,
   videoModelSelections: {},
-  activeSeriesId: null,
-  seriesAnchor: null,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -1418,9 +1416,8 @@ function renderHistory() {
          <a class="download" href="/api/media/${item.id}/0?download=1" download>Download ↓</a>`
       : item.images?.length
         ? `<img src="${anchorImageUrl(item, 0)}" alt="${escapeHtml(item.seriesLabel || item.workflowName)}" loading="lazy">
-           <div class="history-image-actions">
+          <div class="history-image-actions">
              <a class="download" href="${anchorImageUrl(item, 0)}?download=1" download>Download ↓</a>
-             <button type="button" data-use-series-anchor="${item.id}" data-image-index="0">Usa come Series Anchor</button>
            </div>`
       : `<span class="status">${escapeHtml(statusLabel(item))}${item.status === "running" ? ` · ${item.progress || 0}%` : ""}</span>`;
     return `
@@ -2330,28 +2327,6 @@ $("#videoModelId").addEventListener("change", () => {
 $("#imageMode").addEventListener("change", () => imageOptionsChanged());
 $("#imageModelId").addEventListener("change", () => imageOptionsChanged(true));
 $("#imageModelFile").addEventListener("change", () => imageOptionsChanged(true));
-$("#imageSeriesMode").addEventListener("change", () => {
-  if (imageSeriesMode() === "samePlace") applySamePlaceModel();
-  updateImageSeriesOptions();
-});
-$("#seriesCharacterLora").addEventListener("change", () => {
-  syncSeriesTrigger();
-  updateImageSeriesOptions();
-});
-$("#influencerPromptMode").addEventListener("change", updateImageSeriesOptions);
-$("#characterConsistency").addEventListener("change", updateImageSeriesOptions);
-$("#samePlaceModel").addEventListener("change", () => {
-  applySamePlaceModel();
-  updateImageSeriesOptions();
-});
-$("#sceneLock").addEventListener("change", applySceneLockPreset);
-$("#samePlaceAnchor").addEventListener("change", () => {
-  if ($("#samePlaceAnchor").files[0]) state.seriesAnchor = null;
-  updateImageSeriesOptions();
-});
-for (const input of document.querySelectorAll(".series-sliders input[type=range]")) {
-  input.addEventListener("input", () => setRangeOutput(input));
-}
 $("#pose-library-random").addEventListener("click", insertTextualPose);
 $("#characterId").addEventListener("change", () => {
   syncCharacterFields();

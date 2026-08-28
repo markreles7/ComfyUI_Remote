@@ -23,6 +23,8 @@
       <nav class="primary-nav" aria-label="Navigazione principale">
         <a href="/guided-create.html">Crea guidata</a>
         <a class="active" href="/">Genera</a>
+        <a href="/random-influencer.html">Random Influencer</a>
+        <a href="/same-place.html">Same Place</a>
         <a href="/studio.html">Image Studio</a>
         <a href="/video-studio.html">Video Studio</a>
         <a href="/characters.html">Character Library</a>
@@ -811,7 +813,7 @@
           </div>
         </div>
 
-        <details id="image-series-panel" class="image-series-panel hidden" open>
+        <template id="legacy-image-series-panel">
           <summary>
             <span><b>Influencer & Same Place Series</b><small>Job indipendenti, prompt e seed separati, rigenerazione per singola card</small></span>
           </summary>
@@ -938,7 +940,7 @@
               <p id="same-place-model-message" class="hint"></p>
             </section>
           </div>
-        </details>
+        </template>
 
         <details id="image-enhancements" class="advanced-settings hidden">
           <summary>Miglioramento finale <span>Highres Fix, upscale realistico e protezione VRAM</span></summary>
@@ -1114,14 +1116,14 @@
       </aside>
     </div>
 
-    <section id="image-series-results" class="panel image-series-results hidden">
+    <template id="legacy-image-series-results">
       <div class="section-heading compact">
         <span>04</span>
         <div><h2>Risultati serie</h2><p>Prompt, seed e azioni indipendenti per ogni card</p></div>
       </div>
       <div id="image-series-results-heading" class="series-results-heading"></div>
       <div id="image-series-grid" class="image-series-grid"></div>
-    </section>
+    </template>
 
     <section class="history-section" aria-labelledby="recent-generations-heading">
       <div class="history-heading">

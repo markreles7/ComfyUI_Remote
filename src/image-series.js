@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-export const INFLUENCER_COUNTS = Object.freeze([1, 4, 6, 9]);
+export const INFLUENCER_COUNTS = Object.freeze([1, 2, 4, 6, 9]);
 export const SAME_PLACE_COUNTS = Object.freeze([2, 4, 6, 8]);
 
 export const INFLUENCER_CATALOG = Object.freeze({

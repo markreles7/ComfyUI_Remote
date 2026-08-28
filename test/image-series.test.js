@@ -8,8 +8,8 @@ import {
 } from "../src/image-series.js";
 import { buildImageWorkflow } from "../src/image-workflows.js";
 
-test("Random Influencer crea 1/4/6/9 job con prompt e seed indipendenti", () => {
-  for (const count of [1, 4, 6, 9]) {
+test("Random Influencer crea 1/2/4/6/9 job con prompt e seed indipendenti", () => {
+  for (const count of [1, 2, 4, 6, 9]) {
     const plan = generateInfluencerBatch("alessia_character", count, {
       planningSeed: 42,
       seedMode: "fixed",

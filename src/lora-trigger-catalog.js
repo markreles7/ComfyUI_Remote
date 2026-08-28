@@ -127,6 +127,10 @@ export const LORA_TRIGGER_CATALOG = Object.freeze({
   "ltx2.3\\仙侠风格.safetensors": civitai("仙侠风格", 2489394, 2798625),
 
   "qwen\\1nfl43nc3r.safetensors": civitai("1nfl43nc3r", 1938828, 2194349),
+  "qwen\\influencer2.safetensors": civitai(null, 2140610, 2421273, {
+    baseModel: "Qwen",
+    promptRule: "Civitai does not declare an activation token for this version; describe the intended influencer/selfie aesthetic directly.",
+  }),
   "qwen\\4play2512_v2.safetensors": civitaiOptions(["bl0wj0b", "c0wg1rl", "r3v3rs3_c0wg1rl", "d0ubl3_j0b", "m15510n4ry", "d0gg13", "pov"], 2004155, 3061098),
   "qwen\\[qwen] jtt2_5.safetensors": civitaiOptions(["massive breasts", "large breasts", "medium breasts", "small breasts"], 708319, 2146703, {
     baseModel: "Qwen",
