@@ -1531,6 +1531,46 @@ export function buildImageWorkflow(modelId, rawOptions, upload, rawLoras = undef
         finalWidth: enhanced ? finalWidth : width,
         finalHeight: enhanced ? finalHeight : height,
       },
+      seriesId: String(rawOptions.seriesId || "").trim() || null,
+      seriesType: ["influencer", "samePlace"].includes(rawOptions.seriesType)
+        ? rawOptions.seriesType
+        : null,
+      seriesIndex: rawOptions.seriesIndex === undefined
+        ? null
+        : numberOption(rawOptions.seriesIndex, 0, { min: 0, max: 8, integer: true, label: "Indice serie" }),
+      seriesCount: rawOptions.seriesCount === undefined
+        ? null
+        : numberOption(rawOptions.seriesCount, 1, { min: 1, max: 9, integer: true, label: "Numero elementi serie" }),
+      seriesLabel: String(rawOptions.seriesLabel || "").trim() || null,
+      seriesVariation: String(rawOptions.seriesVariation || "").trim() || null,
+      seriesSeedMode: ["random", "fixed", "anchor"].includes(rawOptions.seriesSeedMode)
+        ? rawOptions.seriesSeedMode
+        : null,
+      seriesRevision: numberOption(rawOptions.seriesRevision, 0, { min: 0, max: 999, integer: true, label: "Revisione serie" }),
+      seriesParentGenerationId: String(rawOptions.seriesParentGenerationId || "").trim() || null,
+      anchorGenerationId: String(rawOptions.anchorGenerationId || "").trim() || null,
+      anchorImageIndex: rawOptions.anchorImageIndex === undefined || rawOptions.anchorImageIndex === ""
+        ? null
+        : numberOption(rawOptions.anchorImageIndex, 0, { min: 0, max: 99, integer: true, label: "Indice anchor" }),
+      anchorContext: rawOptions.anchorContext && typeof rawOptions.anchorContext === "object"
+        ? rawOptions.anchorContext
+        : (() => {
+            try { return JSON.parse(String(rawOptions.anchorContext || "null")); } catch { return null; }
+          })(),
+      sceneLock: ["high", "medium", "low"].includes(rawOptions.sceneLock)
+        ? rawOptions.sceneLock
+        : null,
+      characterLora: String(rawOptions.characterLora || "").trim() || null,
+      characterTrigger: String(rawOptions.characterTrigger || "").trim() || null,
+      characterLoraStrength: rawOptions.characterLoraStrength === undefined || rawOptions.characterLoraStrength === ""
+        ? null
+        : numberOption(rawOptions.characterLoraStrength, 1, { min: -10, max: 10, label: "Forza Character LoRA" }),
+      characterConsistency: ["off", "lora", "pulid", "loraPulid"].includes(rawOptions.characterConsistency)
+        ? rawOptions.characterConsistency
+        : null,
+      pulidStrength: rawOptions.pulidStrength === undefined || rawOptions.pulidStrength === ""
+        ? null
+        : numberOption(rawOptions.pulidStrength, 1, { min: 0, max: 2, label: "Forza PuLID" }),
       loras,
     },
   };

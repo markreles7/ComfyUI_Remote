@@ -157,6 +157,15 @@ L'uscita finale usa i nodi core `CreateVideo` e `SaveVideo`: in questo modo Comf
 
 ## Generazione immagini
 
+### Serie fotografiche in Genera
+
+Il pannello **Serie fotografiche** integra due modalità senza creare una pagina separata:
+
+- **Random Influencer** genera 1, 4, 6 o 9 job ComfyUI indipendenti. Ogni card riceve prompt e seed propri; il builder combina trigger del personaggio, inquadratura, luogo, posa, outfit, luce e stile camera, garantendo varietà minima nei set da 6 e 9 immagini. Supporta Qwen Image 2512, Qwen Image Edit 2511 e Flux.2 Klein/PornMaster con una Character LoRA compatibile.
+- **Same Place Series** genera 2, 4, 6 o 8 variazioni ripartendo sempre dall'anchor originale. I lock di ambiente, outfit, luce e framing restano espliciti nel prompt, mentre pose, espressioni, angolo, mani e sguardo cambiano soltanto quando abilitati. Qwen Image Edit 2511 è il percorso principale; Qwen 2512 e Flux.2 sono alternative best-effort.
+
+Le griglie espongono prompt, seed, download, rigenerazione con seed uguale o nuovo e **Usa come Series Anchor**. La cronologia conserva metadata separati per ogni card. La disponibilità PuLID/InsightFace viene letta da `/object_info`: se non esiste un adapter locale verificato, l'interfaccia disabilita l'opzione e mostra il motivo invece di costruire nodi ComfyUI inesistenti.
+
 Selezionando **Immagine** nella home sono disponibili:
 
 - **Text to Image** per tutti i modelli compatibili;

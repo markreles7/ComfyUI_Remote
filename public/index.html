@@ -811,6 +811,135 @@
           </div>
         </div>
 
+        <details id="image-series-panel" class="image-series-panel hidden" open>
+          <summary>
+            <span><b>Influencer & Same Place Series</b><small>Job indipendenti, prompt e seed separati, rigenerazione per singola card</small></span>
+          </summary>
+          <div class="image-series-body">
+            <div class="field-grid">
+              <div class="field">
+                <label for="imageSeriesMode">Modalità serie</label>
+                <select id="imageSeriesMode">
+                  <option value="off">Disattivata · generazione standard</option>
+                  <option value="influencer">Random Influencer · scene diverse</option>
+                  <option value="samePlace">Same Place · stessa scena</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="seriesCharacterLora">Character LoRA <span class="optional">opzionale</span></label>
+                <select id="seriesCharacterLora"><option value="">Nessuna Character LoRA</option></select>
+              </div>
+              <div class="field">
+                <label for="seriesLoraStrength">LoRA weight</label>
+                <input id="seriesLoraStrength" type="number" min="-10" max="10" step="0.05" value="1">
+              </div>
+              <div class="field">
+                <label for="seriesCharacterTrigger">Trigger word</label>
+                <input id="seriesCharacterTrigger" type="text" placeholder="Letta dal catalogo LoRA">
+              </div>
+            </div>
+
+            <section id="influencer-series-options" class="series-options hidden">
+              <div class="series-heading">
+                <div><p class="eyebrow">RANDOM INFLUENCER</p><h3>Serie social con scene diverse</h3></div>
+                <span id="influencer-model-status"></span>
+              </div>
+              <div class="field-grid">
+                <div class="field">
+                  <label for="influencerCount">Numero immagini</label>
+                  <select id="influencerCount"><option>1</option><option>4</option><option>6</option><option>9</option></select>
+                </div>
+                <div class="field">
+                  <label for="influencerPromptMode">Modalità prompt</label>
+                  <select id="influencerPromptMode">
+                    <option value="random">Random Influencer</option>
+                    <option value="manual">Manual Prompt + variazioni modulari</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="influencerSeedMode">Seed</label>
+                  <select id="influencerSeedMode"><option value="random">Random indipendenti</option><option value="fixed">Derivati dal seed fisso</option></select>
+                </div>
+                <div class="field">
+                  <label for="characterConsistency">Character Consistency</label>
+                  <select id="characterConsistency">
+                    <option value="off">Off</option>
+                    <option value="lora">Character LoRA</option>
+                    <option value="pulid">PuLID Reference</option>
+                    <option value="loraPulid">LoRA + PuLID</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="pulidStrength">PuLID strength</label>
+                  <input id="pulidStrength" type="number" min="0" max="2" step="0.05" value="1">
+                </div>
+              </div>
+              <label id="pulid-reference-dropzone" class="dropzone compact-dropzone">
+                <input id="pulidReference" type="file" accept="image/png,image/jpeg,image/webp">
+                <img id="pulid-reference-preview" alt="Preview reference PuLID">
+                <span class="upload-icon">↗</span>
+                <strong>Reference volto PuLID</strong>
+                <small>Usata solo quando l’adapter PuLID Flux.2 è disponibile</small>
+              </label>
+              <p id="pulid-capability-message" class="hint"></p>
+            </section>
+
+            <section id="same-place-series-options" class="series-options hidden">
+              <div class="series-heading">
+                <div><p class="eyebrow">SAME PLACE SERIES</p><h3>Stessa anchor, stessa scena, micro-variazioni</h3></div>
+                <span>Ogni variante riparte dall’anchor originale</span>
+              </div>
+              <div class="field-grid">
+                <div class="field">
+                  <label for="samePlaceModel">Modello serie</label>
+                  <select id="samePlaceModel">
+                    <option value="qwenEdit">Qwen Image Edit 2511 · principale</option>
+                    <option value="qwenImage">Qwen Image 2512 · secondario</option>
+                    <option value="flux2">PornMaster Flux2 Klein v4Turbo · best effort</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="samePlaceCount">Numero immagini</label>
+                  <select id="samePlaceCount"><option>2</option><option>4</option><option>6</option><option>8</option></select>
+                </div>
+                <div class="field">
+                  <label for="samePlaceSeedMode">Seed</label>
+                  <select id="samePlaceSeedMode"><option value="random">Random indipendenti</option><option value="fixed">Derivati dal seed fisso</option><option value="anchor">Derivati dalla anchor</option></select>
+                </div>
+                <div class="field">
+                  <label for="sceneLock">Scene Lock</label>
+                  <select id="sceneLock"><option value="high">High · stesso minuto</option><option value="medium">Medium</option><option value="low">Low</option></select>
+                </div>
+              </div>
+              <div class="same-place-anchor-grid">
+                <label id="same-place-anchor-dropzone" class="dropzone compact-dropzone">
+                  <input id="samePlaceAnchor" type="file" accept="image/png,image/jpeg,image/webp">
+                  <img id="same-place-anchor-preview" alt="Preview anchor Same Place">
+                  <span class="upload-icon">↗</span>
+                  <strong>Carica Anchor Image</strong>
+                  <small>Oppure usa “Usa come Series Anchor” su un risultato</small>
+                </label>
+                <div id="selected-series-anchor" class="selected-series-anchor"><span>Nessuna anchor selezionata</span></div>
+              </div>
+              <div class="series-sliders">
+                <label>Preserva luogo <output for="preserveLocation">95</output><input id="preserveLocation" type="range" min="0" max="100" value="95"></label>
+                <label>Preserva outfit <output for="preserveOutfit">95</output><input id="preserveOutfit" type="range" min="0" max="100" value="95"></label>
+                <label>Preserva luce <output for="preserveLighting">95</output><input id="preserveLighting" type="range" min="0" max="100" value="95"></label>
+                <label>Preserva framing <output for="preserveFraming">90</output><input id="preserveFraming" type="range" min="0" max="100" value="90"></label>
+                <label>Forza variazione <output for="variationStrength">25</output><input id="variationStrength" type="range" min="0" max="100" value="25"></label>
+              </div>
+              <div class="series-toggles">
+                <label><input id="allowPoseChanges" type="checkbox" checked><span>Pose</span></label>
+                <label><input id="allowExpressionChanges" type="checkbox" checked><span>Espressioni</span></label>
+                <label><input id="allowSmallAngleChanges" type="checkbox" checked><span>Micro-angolo</span></label>
+                <label><input id="allowHandReposition" type="checkbox" checked><span>Mani</span></label>
+                <label><input id="allowGazeChanges" type="checkbox" checked><span>Sguardo</span></label>
+              </div>
+              <p id="same-place-model-message" class="hint"></p>
+            </section>
+          </div>
+        </details>
+
         <details id="image-enhancements" class="advanced-settings hidden">
           <summary>Miglioramento finale <span>Highres Fix, upscale realistico e protezione VRAM</span></summary>
           <div class="advanced-settings-body">
@@ -984,6 +1113,27 @@
         </section>
       </aside>
     </div>
+
+    <section id="image-series-results" class="panel image-series-results hidden">
+      <div class="section-heading compact">
+        <span>04</span>
+        <div><h2>Risultati serie</h2><p>Prompt, seed e azioni indipendenti per ogni card</p></div>
+      </div>
+      <div id="image-series-results-heading" class="series-results-heading"></div>
+      <div id="image-series-grid" class="image-series-grid"></div>
+    </section>
+
+    <section class="history-section" aria-labelledby="recent-generations-heading">
+      <div class="history-heading">
+        <div>
+          <p class="eyebrow">ANCHOR LIBRARY</p>
+          <h2 id="recent-generations-heading">Generazioni recenti</h2>
+        </div>
+        <p>Ogni immagine completata può diventare l’anchor originale di una nuova Same Place Series.</p>
+      </div>
+      <div id="history-empty" class="history-empty">Nessuna generazione recente.</div>
+      <div id="history" class="history-grid"></div>
+    </section>
 
   </main>
 

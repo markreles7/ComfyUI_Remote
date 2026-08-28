@@ -17,6 +17,8 @@ const state = {
   sceneSerial: 0,
   loraSerial: 0,
   videoModelSelections: {},
+  activeSeriesId: null,
+  seriesAnchor: null,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -257,6 +259,304 @@ function selectedPromptTriggers() {
   return automaticLoraTriggers(selectedLoras(), state.config?.loraMetadata || {});
 }
 
+function imageSeriesMode() {
+  return isImageGeneration() ? $("#imageSeriesMode")?.value || "off" : "off";
+}
+
+function selectedImageModel() {
+  return state.config?.imageModels?.find((item) => item.id === $("#imageModelId").value) || null;
+}
+
+function imageSeriesCompatibleLoras() {
+  return compatibleLoras();
+}
+
+function populateSeriesLoras() {
+  const select = $("#seriesCharacterLora");
+  if (!select) return;
+  const selected = select.value;
+  select.innerHTML = [
+    '<option value="">Nessuna Character LoRA</option>',
+    ...imageSeriesCompatibleLoras().map((name) =>
+      `<option value="${escapeAttribute(name)}">${escapeHtml(loraOptionLabel(name, state.config?.loraMetadata))}</option>`),
+  ].join("");
+  if ([...select.options].some((option) => option.value === selected)) select.value = selected;
+  syncSeriesTrigger();
+}
+
+function syncSeriesTrigger() {
+  const name = $("#seriesCharacterLora")?.value || "";
+  const metadata = state.config?.loraMetadata?.[name] || {};
+  const triggers = metadata.triggers || metadata.trigger || [];
+  const values = Array.isArray(triggers) ? triggers : [triggers];
+  $("#seriesCharacterTrigger").value = values.filter(Boolean).join(", ");
+  const consistency = $("#characterConsistency");
+  if (consistency && name && consistency.value === "off") consistency.value = "lora";
+}
+
+function seriesLoras() {
+  const name = $("#seriesCharacterLora")?.value || "";
+  if (!name) return selectedLoras();
+  const item = { name, strength: Number($("#seriesLoraStrength").value || 1) };
+  return [item, ...selectedLoras().filter((lora) => lora.name !== name)];
+}
+
+function setRangeOutput(input) {
+  const output = document.querySelector(`output[for="${input.id}"]`);
+  if (output) output.value = input.value;
+}
+
+function applySceneLockPreset() {
+  const presets = {
+    high: [95, 95, 95, 90, 25],
+    medium: [80, 85, 85, 70, 45],
+    low: [60, 70, 70, 50, 65],
+  };
+  const values = presets[$("#sceneLock").value] || presets.high;
+  ["preserveLocation", "preserveOutfit", "preserveLighting", "preserveFraming", "variationStrength"]
+    .forEach((id, index) => {
+      const input = $(`#${id}`);
+      input.value = values[index];
+      setRangeOutput(input);
+    });
+}
+
+function applySamePlaceModel() {
+  const id = $("#samePlaceModel").value;
+  $("#imageModelId").value = id;
+  imageOptionsChanged(true);
+  const model = selectedImageModel();
+  if (id === "flux2") {
+    const turbo = model?.models?.find((item) => /pornmaster.*flux2.*klein.*v4.*turbo/i.test(item.file));
+    if (turbo) {
+      $("#imageModelFile").value = turbo.file;
+      $("#imageSteps").value = turbo.defaults.steps;
+      $("#imageGuidance").value = turbo.defaults.guidance;
+    }
+  }
+  $("#imageMode").value = id === "qwenImage" ? "text" : "image";
+  imageOptionsChanged();
+}
+
+function updateImageSeriesOptions() {
+  const panel = $("#image-series-panel");
+  if (!panel) return;
+  const image = isImageGeneration();
+  panel.classList.toggle("hidden", !image);
+  if (!image) return;
+  const mode = imageSeriesMode();
+  $("#influencer-series-options").classList.toggle("hidden", mode !== "influencer");
+  $("#same-place-series-options").classList.toggle("hidden", mode !== "samePlace");
+  populateSeriesLoras();
+  const model = selectedImageModel();
+  $("#prompt").required = mode === "off"
+    || (mode === "influencer" && $("#influencerPromptMode").value === "manual");
+  if (mode === "samePlace") {
+    $("#sourceImage").required = false;
+    $("#source-image-field").classList.add("hidden");
+  }
+  const file = $("#imageModelFile").value;
+  const eligible = ["qwen", "qwenedit", "flux2"].includes(model?.family);
+  $("#influencer-model-status").textContent = eligible
+    ? `${model.name} · ${$("#imageModelFile").selectedOptions[0]?.textContent || file}`
+    : "Seleziona Qwen 2512, Qwen Edit 2511 o Flux.2 Klein";
+  const pulid = state.config?.imageSeries?.pulidFlux2 || {};
+  for (const option of $("#characterConsistency").options) {
+    if (["pulid", "loraPulid"].includes(option.value)) option.disabled = !pulid.available;
+  }
+  if ($("#characterConsistency").selectedOptions[0]?.disabled) $("#characterConsistency").value = $("#seriesCharacterLora").value ? "lora" : "off";
+  const pulidSelected = ["pulid", "loraPulid"].includes($("#characterConsistency").value);
+  $("#pulidStrength").disabled = !pulidSelected;
+  $("#pulidReference").disabled = !pulidSelected;
+  $("#pulid-reference-dropzone").classList.toggle("disabled", !pulidSelected);
+  $("#pulid-capability-message").textContent = pulid.available
+    ? `PuLID pronto · ${[...(pulid.pulidNodes || []), ...(pulid.insightFaceNodes || [])].join(", ")}`
+    : pulid.reason || "PuLID Flux.2 non disponibile; Flux standard e Character LoRA restano utilizzabili.";
+  const sameId = $("#samePlaceModel").value;
+  $("#same-place-model-message").textContent = sameId === "qwenEdit"
+    ? "Modalità principale: l’anchor originale viene inviata a ogni job Qwen Edit 2511."
+    : sameId === "qwenImage"
+      ? "Supporto secondario: Qwen 2512 usa Character LoRA e contesto testuale; non dispone di conditioning anchor nativo nel workflow attuale."
+      : "Best effort Flux.2: usa la reference latent nativa. PuLID resta disabilitato finché i nodi non compaiono in /object_info.";
+}
+
+function anchorImageUrl(item, index = 0) {
+  return `/api/image/${encodeURIComponent(item.id)}/${index}`;
+}
+
+function selectSeriesAnchor(item, index = 0) {
+  state.seriesAnchor = {
+    generationId: item.id,
+    imageIndex: index,
+    url: anchorImageUrl(item, index),
+    prompt: item.prompt || "",
+    seed: item.seed,
+    model: item.imageModelName || item.workflowName,
+  };
+  $("#selected-series-anchor").innerHTML = `
+    <img src="${state.seriesAnchor.url}" alt="Anchor selezionata">
+    <div><b>Anchor dalla cronologia</b><span>${escapeHtml(item.seriesLabel || item.workflowName)} · seed ${escapeHtml(item.seed)}</span></div>
+    <button type="button" data-clear-series-anchor aria-label="Rimuovi anchor">×</button>`;
+  $("#same-place-anchor-preview").src = state.seriesAnchor.url;
+  $("#same-place-anchor-dropzone").classList.add("has-image");
+  $("#imageSeriesMode").value = "samePlace";
+  applySamePlaceModel();
+  updateImageSeriesOptions();
+  $("#image-series-panel").open = true;
+  $("#image-series-panel").scrollIntoView({ behavior: "smooth", block: "center" });
+  showToast("Immagine impostata come Same Place Series Anchor");
+}
+
+function clearSeriesAnchor() {
+  state.seriesAnchor = null;
+  $("#selected-series-anchor").innerHTML = "<span>Nessuna anchor selezionata</span>";
+  if (!$("#samePlaceAnchor").files[0]) {
+    $("#same-place-anchor-preview").removeAttribute("src");
+    $("#same-place-anchor-dropzone").classList.remove("has-image");
+  }
+}
+
+async function selectedAnchorFile() {
+  const upload = $("#samePlaceAnchor").files[0];
+  if (upload) return upload;
+  if (!state.seriesAnchor?.url) return null;
+  const response = await fetch(state.seriesAnchor.url);
+  if (!response.ok) throw new Error("Impossibile caricare l’anchor selezionata dalla cronologia.");
+  const blob = await response.blob();
+  return new File([blob], `series-anchor-${state.seriesAnchor.generationId}.png`, { type: blob.type || "image/png" });
+}
+
+function seriesAnchorContext() {
+  return {
+    subjectIdentity: $("#seriesCharacterTrigger").value.trim(),
+    environmentSummary: state.seriesAnchor?.prompt || $("#prompt").value.trim(),
+    outfitSummary: "",
+    lightingSummary: "",
+    framingSummary: "",
+  };
+}
+
+async function requestSeriesPlan() {
+  const mode = imageSeriesMode();
+  const seed = $("#imageSeed").value.trim();
+  if (mode === "influencer") {
+    return api("/api/image-series/plan", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        type: "influencer",
+        characterTrigger: $("#seriesCharacterTrigger").value.trim(),
+        count: Number($("#influencerCount").value),
+        promptMode: $("#influencerPromptMode").value,
+        manualPrompt: $("#prompt").value.trim(),
+        seedMode: $("#influencerSeedMode").value,
+        seed,
+      }),
+    });
+  }
+  const requestedSeedMode = $("#samePlaceSeedMode").value;
+  const anchorSeed = state.seriesAnchor?.seed;
+  const seedMode = requestedSeedMode === "anchor" && !anchorSeed ? "fixed" : requestedSeedMode;
+  const fallbackSeed = seed || String(Math.floor(Math.random() * 2147483647));
+  return api("/api/image-series/plan", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      type: "samePlace",
+      count: Number($("#samePlaceCount").value),
+      anchorContext: seriesAnchorContext(),
+      seedMode,
+      seed: seedMode === "fixed" ? fallbackSeed : seed,
+      anchorSeed,
+      preserveLocation: Number($("#preserveLocation").value),
+      preserveOutfit: Number($("#preserveOutfit").value),
+      preserveLighting: Number($("#preserveLighting").value),
+      preserveFraming: Number($("#preserveFraming").value),
+      variationStrength: Number($("#variationStrength").value),
+      allowPoseChanges: $("#allowPoseChanges").checked,
+      allowExpressionChanges: $("#allowExpressionChanges").checked,
+      allowSmallAngleChanges: $("#allowSmallAngleChanges").checked,
+      allowHandReposition: $("#allowHandReposition").checked,
+      allowGazeChanges: $("#allowGazeChanges").checked,
+    }),
+  });
+}
+
+async function submitImageSeries() {
+  const mode = imageSeriesMode();
+  const model = selectedImageModel();
+  if (!["qwen", "qwenedit", "flux2"].includes(model?.family)) {
+    throw new Error("La modalità serie richiede Qwen Image 2512, Qwen Image Edit 2511 o Flux.2 Klein.");
+  }
+  if (mode === "influencer" && !$("#seriesCharacterLora").value) {
+    throw new Error("Seleziona una Character LoRA per mantenere la stessa identità nella serie Influencer.");
+  }
+  const file = $("#imageModelFile").value;
+  const consistency = $("#characterConsistency").value;
+  if (["pulid", "loraPulid"].includes(consistency)) {
+    throw new Error(state.config?.imageSeries?.pulidFlux2?.reason || "PuLID Flux.2 non disponibile.");
+  }
+  if (consistency === "lora" && !$("#seriesCharacterLora").value) {
+    throw new Error("Seleziona una Character LoRA oppure imposta Character Consistency su Off.");
+  }
+  let anchor = null;
+  if (mode === "samePlace") {
+    anchor = await selectedAnchorFile();
+    if (!anchor) throw new Error("Carica o seleziona una Anchor Image per Same Place Series.");
+  } else if (model.family === "qwenedit") {
+    anchor = $("#sourceImage").files[0];
+    if (!anchor) throw new Error("Qwen Image Edit 2511 richiede l’immagine input/reference.");
+  }
+  const plan = await requestSeriesPlan();
+  const seriesId = crypto.randomUUID();
+  state.activeSeriesId = seriesId;
+  const anchorContext = seriesAnchorContext();
+  const queued = [];
+  for (const item of plan.items) {
+    const data = new FormData(form);
+    data.set("generationType", "image");
+    data.set("batchSize", "1");
+    data.set("prompt", item.prompt);
+    data.set("seed", String(item.seed));
+    data.set("loras", JSON.stringify(seriesLoras()));
+    data.set("seriesId", seriesId);
+    data.set("seriesType", mode);
+    data.set("seriesIndex", String(item.index));
+    data.set("seriesCount", String(plan.count));
+    data.set("seriesLabel", item.label);
+    data.set("seriesVariation", item.variation || "");
+    data.set("seriesSeedMode", mode === "samePlace" ? $("#samePlaceSeedMode").value : $("#influencerSeedMode").value);
+    data.set("seriesRevision", "0");
+    data.set("anchorGenerationId", state.seriesAnchor?.generationId || "");
+    data.set("anchorImageIndex", String(state.seriesAnchor?.imageIndex ?? ""));
+    data.set("anchorContext", JSON.stringify(anchorContext));
+    data.set("sceneLock", mode === "samePlace" ? $("#sceneLock").value : "");
+    data.set("characterLora", $("#seriesCharacterLora").value);
+    data.set("characterLoraStrength", $("#seriesLoraStrength").value);
+    data.set("characterTrigger", $("#seriesCharacterTrigger").value.trim());
+    data.set("characterConsistency", consistency);
+    data.set("pulidStrength", $("#pulidStrength").value);
+    if (mode === "samePlace") {
+      data.set("imageModelId", $("#samePlaceModel").value);
+      data.set("imageMode", $("#samePlaceModel").value === "qwenImage" ? "text" : "image");
+      if ($("#samePlaceModel").value === "qwenImage") data.delete("sourceImage");
+      else data.set("sourceImage", anchor, anchor.name);
+    } else if (anchor) {
+      data.set("sourceImage", anchor, anchor.name);
+    }
+    if (model.family === "flux2" && !/pornmaster.*flux2.*klein.*v4.*turbo/i.test(file)) {
+      data.set("characterConsistency", $("#seriesCharacterLora").value ? "lora" : "off");
+    }
+    const generation = await api("/api/generations", { method: "POST", body: data });
+    queued.push(generation);
+    state.history = [generation, ...state.history.filter((entry) => entry.id !== generation.id)];
+    renderHistory();
+  }
+  renderSeriesResults();
+  showToast(`${queued.length} job indipendenti aggiunti alla coda`);
+  return queued;
+}
+
 function refreshLoraOptions() {
   for (const select of document.querySelectorAll("[data-lora-name]")) {
     const selected = select.value;
@@ -494,6 +794,7 @@ function imageOptionsChanged(updateDefaults = false) {
     : "Descrivi la modifica o il risultato desiderato…";
   updateEnhancementOptions();
   refreshLoraOptions();
+  updateImageSeriesOptions();
   updatePromptAssistantAvailability();
   syncCharacterFields();
 }
@@ -860,6 +1161,7 @@ function generationTypeChanged(type) {
 
   updateEnhancementOptions();
   refreshLoraOptions();
+  updateImageSeriesOptions();
   updatePromptAssistantAvailability();
   updatePoseLibraryControls();
 }
@@ -1099,6 +1401,7 @@ function renderHistory() {
   const container = $("#history");
   if (!container) {
     renderCurrent();
+    renderSeriesResults();
     return;
   }
   $("#history-empty").classList.toggle("hidden", state.history.length > 0);
@@ -1106,6 +1409,12 @@ function renderHistory() {
     const media = item.videos?.length
       ? `<video controls preload="metadata" playsinline src="/api/media/${item.id}/0"></video>
          <a class="download" href="/api/media/${item.id}/0?download=1" download>Download ↓</a>`
+      : item.images?.length
+        ? `<img src="${anchorImageUrl(item, 0)}" alt="${escapeHtml(item.seriesLabel || item.workflowName)}" loading="lazy">
+           <div class="history-image-actions">
+             <a class="download" href="${anchorImageUrl(item, 0)}?download=1" download>Download ↓</a>
+             <button type="button" data-use-series-anchor="${item.id}" data-image-index="0">Usa come Series Anchor</button>
+           </div>`
       : `<span class="status">${escapeHtml(statusLabel(item))}${item.status === "running" ? ` · ${item.progress || 0}%` : ""}</span>`;
     return `
       <article class="history-card">
@@ -1117,6 +1426,81 @@ function renderHistory() {
       </article>`;
   }).join("");
   renderCurrent();
+  renderSeriesResults();
+}
+
+function latestSeriesItems(seriesId) {
+  const byIndex = new Map();
+  for (const item of state.history.filter((entry) => entry.seriesId === seriesId)) {
+    const index = Number(item.seriesIndex || 0);
+    const current = byIndex.get(index);
+    if (!current || Number(item.seriesRevision || 0) > Number(current.seriesRevision || 0)
+      || (Number(item.seriesRevision || 0) === Number(current.seriesRevision || 0)
+        && new Date(item.createdAt) > new Date(current.createdAt))) {
+      byIndex.set(index, item);
+    }
+  }
+  return [...byIndex.values()].sort((a, b) => Number(a.seriesIndex) - Number(b.seriesIndex));
+}
+
+function renderSeriesResults() {
+  const panel = $("#image-series-results");
+  if (!panel) return;
+  const availableIds = [...new Set(state.history.filter((item) => item.seriesId).map((item) => item.seriesId))];
+  if (!state.activeSeriesId || !availableIds.includes(state.activeSeriesId)) state.activeSeriesId = availableIds[0] || null;
+  const items = state.activeSeriesId ? latestSeriesItems(state.activeSeriesId) : [];
+  panel.classList.toggle("hidden", items.length === 0);
+  if (!items.length) return;
+  const first = items[0];
+  $("#image-series-results-heading").innerHTML = `
+    <div><b>${first.seriesType === "samePlace" ? "Same Place Series" : "Random Influencer"}</b><span>${items.length}/${first.seriesCount || items.length} card · job ComfyUI indipendenti</span></div>
+    <code>${escapeHtml(first.seriesId)}</code>`;
+  const count = Number(first.seriesCount || items.length);
+  $("#image-series-grid").className = `image-series-grid count-${count}`;
+  $("#image-series-grid").innerHTML = items.map((item) => {
+    const ready = item.status === "completed" && item.images?.length;
+    const image = ready
+      ? `<img src="${anchorImageUrl(item, 0)}" alt="${escapeHtml(item.seriesLabel)}" loading="lazy">`
+      : `<div class="series-card-placeholder"><span>${escapeHtml(statusLabel(item))}</span><b>${item.progress || 0}%</b></div>`;
+    return `
+      <article class="image-series-card" data-series-generation="${item.id}">
+        <div class="series-card-media">${image}<span>${Number(item.seriesIndex) + 1}</span></div>
+        <div class="series-card-body">
+          <div class="series-card-title"><b>${escapeHtml(item.seriesLabel || `Foto ${Number(item.seriesIndex) + 1}`)}</b><code>seed ${escapeHtml(item.seed)}</code></div>
+          ${item.seriesVariation ? `<p>${escapeHtml(item.seriesVariation)}</p>` : ""}
+          <textarea data-series-card-prompt rows="4">${escapeHtml(item.prompt || "")}</textarea>
+          <div class="series-card-actions">
+            ${ready ? `<a href="${anchorImageUrl(item, 0)}?download=1" download>Download</a>` : ""}
+            <button type="button" data-regenerate-series="same" ${ready ? "" : "disabled"}>Rigenera · stesso seed</button>
+            <button type="button" data-regenerate-series="new" ${ready ? "" : "disabled"}>Nuovo seed</button>
+            <button type="button" data-use-series-anchor="${item.id}" data-image-index="0" ${ready ? "" : "disabled"}>Usa come nuova anchor</button>
+          </div>
+        </div>
+      </article>`;
+  }).join("");
+}
+
+async function regenerateSeriesCard(button) {
+  const card = button.closest("[data-series-generation]");
+  const generationId = card.dataset.seriesGeneration;
+  button.disabled = true;
+  try {
+    const item = await api(`/api/image-series/${encodeURIComponent(generationId)}/regenerate`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        seedMode: button.dataset.regenerateSeries,
+        prompt: card.querySelector("[data-series-card-prompt]").value.trim(),
+      }),
+    });
+    state.activeSeriesId = item.seriesId;
+    state.history = [item, ...state.history];
+    renderHistory();
+    showToast(button.dataset.regenerateSeries === "same" ? "Card rigenerata con lo stesso seed" : "Variante accodata con un nuovo seed");
+  } catch (error) {
+    showToast(error.message);
+    button.disabled = false;
+  }
 }
 
 async function loadHistory() {
@@ -1188,6 +1572,11 @@ form.addEventListener("submit", async (event) => {
   button.querySelector("span").textContent = "Invio a ComfyUI…";
   try {
     syncLoras();
+    if (isImageGeneration() && imageSeriesMode() !== "off") {
+      button.querySelector("span").textContent = "Creo i job della serie…";
+      await submitImageSeries();
+      return;
+    }
     applyLoraTriggers($("#prompt"), selectedPromptTriggers());
     const data = new FormData(form);
 
@@ -1389,6 +1778,15 @@ form.addEventListener("submit", async (event) => {
 document.addEventListener("click", async (event) => {
   const typeButton = event.target.closest("[data-generation-type]");
   if (typeButton) generationTypeChanged(typeButton.dataset.generationType);
+  const anchorButton = event.target.closest("[data-use-series-anchor]");
+  if (anchorButton && !anchorButton.disabled) {
+    const item = state.history.find((entry) => entry.id === anchorButton.dataset.useSeriesAnchor);
+    if (item) selectSeriesAnchor(item, Number(anchorButton.dataset.imageIndex || 0));
+  }
+  const clearAnchor = event.target.closest("[data-clear-series-anchor]");
+  if (clearAnchor) clearSeriesAnchor();
+  const regenerateCard = event.target.closest("[data-regenerate-series]");
+  if (regenerateCard && !regenerateCard.disabled) regenerateSeriesCard(regenerateCard);
   const removeLora = event.target.closest("[data-remove-lora]");
   if (removeLora) {
     removeLora.closest(".lora-row").remove();
@@ -1925,6 +2323,28 @@ $("#videoModelId").addEventListener("change", () => {
 $("#imageMode").addEventListener("change", () => imageOptionsChanged());
 $("#imageModelId").addEventListener("change", () => imageOptionsChanged(true));
 $("#imageModelFile").addEventListener("change", () => imageOptionsChanged(true));
+$("#imageSeriesMode").addEventListener("change", () => {
+  if (imageSeriesMode() === "samePlace") applySamePlaceModel();
+  updateImageSeriesOptions();
+});
+$("#seriesCharacterLora").addEventListener("change", () => {
+  syncSeriesTrigger();
+  updateImageSeriesOptions();
+});
+$("#influencerPromptMode").addEventListener("change", updateImageSeriesOptions);
+$("#characterConsistency").addEventListener("change", updateImageSeriesOptions);
+$("#samePlaceModel").addEventListener("change", () => {
+  applySamePlaceModel();
+  updateImageSeriesOptions();
+});
+$("#sceneLock").addEventListener("change", applySceneLockPreset);
+$("#samePlaceAnchor").addEventListener("change", () => {
+  if ($("#samePlaceAnchor").files[0]) state.seriesAnchor = null;
+  updateImageSeriesOptions();
+});
+for (const input of document.querySelectorAll(".series-sliders input[type=range]")) {
+  input.addEventListener("input", () => setRangeOutput(input));
+}
 $("#pose-library-random").addEventListener("click", insertTextualPose);
 $("#characterId").addEventListener("change", () => {
   syncCharacterFields();

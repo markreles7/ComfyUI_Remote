@@ -39,6 +39,11 @@ import {
 import { parseLoras, validateLoras } from "./loras.js";
 import { loraTriggerMetadata } from "./lora-trigger-catalog.js";
 import {
+  detectImageSeriesCapabilities,
+  generateInfluencerBatch,
+  generateSamePlaceSeries,
+} from "./image-series.js";
+import {
   applyQwenStructureGuide,
   buildStudioContinuation,
   buildStudioJobs,
@@ -2358,6 +2363,7 @@ async function buildAppConfig(infoOverride = null) {
     imageResolutions: IMAGE_RESOLUTIONS,
     loras: installedLoras,
     loraMetadata: loraTriggerMetadata(installedLoras),
+    imageSeries: detectImageSeriesCapabilities(info),
     fps: 24,
     outputDirectory,
     maxUploadMb,
@@ -2564,6 +2570,25 @@ app.get("/api/config", async (request, response, next) => {
     response.setHeader("x-config-cache", result.source);
     response.setHeader("cache-control", "private, max-age=15, stale-while-revalidate=300");
     response.json(result.value);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/image-series/plan", (request, response, next) => {
+  try {
+    const type = String(request.body.type || "");
+    if (type === "influencer") {
+      return response.json(generateInfluencerBatch(
+        String(request.body.characterTrigger || "").trim(),
+        Number(request.body.count),
+        request.body,
+      ));
+    }
+    if (type === "samePlace") {
+      return response.json(generateSamePlaceSeries(request.body));
+    }
+    throw new Error("Tipo serie immagine non valido.");
   } catch (error) {
     next(error);
   }
@@ -6267,6 +6292,11 @@ app.post("/api/generations", upload.any(), async (request, response, next) => {
 
     if (generationType === "image") {
       const definition = imageModelSelection(request.body.imageModelId, request.body.imageModelFile);
+      const consistencyMode = String(request.body.characterConsistency || "off");
+      if (["pulid", "loraPulid"].includes(consistencyMode)) {
+        const capability = detectImageSeriesCapabilities(await comfy.objectInfo()).pulidFlux2;
+        if (!capability.available) throw new Error(capability.reason);
+      }
       const modelLoader = definition.loader === "checkpoint" ? "CheckpointLoaderSimple" : "UNETLoader";
       const [info, clipInfo, vaeInfo] = await Promise.all([
         comfy.objectInfo(modelLoader),
@@ -6610,6 +6640,103 @@ app.post("/api/generations", upload.any(), async (request, response, next) => {
       finishedAt: null,
       ...metadata,
     });
+    broadcast({ type: "generation_created", generationId: item.id, data: item });
+    response.status(202).json(item);
+  } catch (error) {
+    next(error);
+  }
+});
+
+function uploadedInputFromMetadata(value) {
+  const normalized = String(value || "").replaceAll("\\", "/").replace(/^\/+/, "");
+  if (!normalized) return null;
+  const parts = normalized.split("/").filter(Boolean);
+  const name = parts.pop();
+  return { name, subfolder: parts.join("/") };
+}
+
+app.post("/api/image-series/:generationId/regenerate", async (request, response, next) => {
+  try {
+    cancelIdlePurge();
+    await comfy.health();
+    const source = store.get(request.params.generationId);
+    if (!source || source.mediaType !== "image" || !source.seriesId) {
+      return response.status(404).json({ error: "Elemento della serie non trovato." });
+    }
+    const prompt = String(request.body.prompt ?? source.prompt ?? "").trim();
+    if (!prompt) throw new Error("Inserisci il prompt per rigenerare la card.");
+    const sameSeed = String(request.body.seedMode || "same") !== "new";
+    const seed = sameSeed ? source.seed : crypto.randomInt(0, 2 ** 31);
+    const settings = source.imageSettings || {};
+    const raw = {
+      imageModelFile: source.imageModelFile,
+      imageMode: source.imageMode,
+      prompt,
+      negativePrompt: source.negativePrompt || "",
+      imageResolution: source.resolution,
+      imageWidth: source.width,
+      imageHeight: source.height,
+      seed,
+      batchSize: 1,
+      imageSteps: settings.steps,
+      imageGuidance: settings.guidance,
+      denoise: settings.denoise || 0.6,
+      referenceStrength: settings.referenceStrength || 1,
+      highresEnabled: settings.highresEnabled,
+      highresScale: settings.highresScale || 1.5,
+      highresSteps: settings.highresSteps || 10,
+      highresDenoise: settings.highresDenoise || 0.25,
+      upscaleMode: settings.upscaleMode || "none",
+      rtxQuality: settings.rtxQuality || "High",
+      seedvrProfile: settings.seedvrProfile || "balanced",
+      seedvrResolution: settings.seedvrResolution || 2048,
+      autoPurge: settings.autoPurge,
+      saveOriginal: settings.saveOriginal,
+      faceDetailer: settings.faceDetailer,
+      handDetailer: settings.handDetailer,
+      faceDetailerDenoise: settings.faceDetailerDenoise || 0.22,
+      handDetailerDenoise: settings.handDetailerDenoise || 0.28,
+      imageRecipe: settings.imageRecipe || "standard",
+      seriesId: source.seriesId,
+      seriesType: source.seriesType,
+      seriesIndex: source.seriesIndex,
+      seriesCount: source.seriesCount,
+      seriesLabel: source.seriesLabel,
+      seriesVariation: source.seriesVariation,
+      seriesSeedMode: sameSeed ? source.seriesSeedMode : "random",
+      seriesRevision: Number(source.seriesRevision || 0) + 1,
+      seriesParentGenerationId: source.id,
+      anchorGenerationId: source.anchorGenerationId,
+      anchorImageIndex: source.anchorImageIndex,
+      anchorContext: source.anchorContext,
+      sceneLock: source.sceneLock,
+      characterLora: source.characterLora,
+      characterTrigger: source.characterTrigger,
+      characterLoraStrength: source.characterLoraStrength,
+      characterConsistency: source.characterConsistency,
+      pulidStrength: source.pulidStrength,
+    };
+    const selectedLoras = Array.isArray(source.loras) ? source.loras : [];
+    if (selectedLoras.length) {
+      const loraInfo = await comfy.objectInfo("LoraLoaderModelOnly");
+      validateLoras(selectedLoras, comboOptions(loraInfo?.LoraLoaderModelOnly?.input?.required?.lora_name));
+    }
+    const uploadMetadata = uploadedInputFromMetadata(source.sourceImage);
+    const job = buildImageWorkflow(source.imageModelId, raw, uploadMetadata, selectedLoras);
+    const queued = await queueValidatedWorkflow(job.workflow, `${job.metadata.workflowName} · rigenerazione card`);
+    if (!queued.prompt_id) throw new Error("ComfyUI non ha restituito un ID di generazione.");
+    const item = store.add({
+      id: crypto.randomUUID(),
+      promptId: queued.prompt_id,
+      status: "queued",
+      progress: 0,
+      videos: [],
+      images: [],
+      createdAt: new Date().toISOString(),
+      finishedAt: null,
+      ...job.metadata,
+    });
+    store.update(source.id, { seriesSupersededBy: item.id });
     broadcast({ type: "generation_created", generationId: item.id, data: item });
     response.status(202).json(item);
   } catch (error) {
