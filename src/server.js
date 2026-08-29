@@ -2429,7 +2429,7 @@ async function buildAppConfig(infoOverride = null) {
         guided: true,
         adaptive: true,
         preferredWorkflow: "qwenEdit",
-        fallbackWorkflows: ["flux2", "mageFlowEdit"],
+        fallbackWorkflows: ["flux2", "qwenEdit"],
         decisions: ["approve", "reject", "regenerate"],
       },
       sheetWorkflows: Object.values(CHARACTER_SHEET_WORKFLOWS),
@@ -3436,10 +3436,10 @@ app.get("/api/characters/:id/photo-config", async (request, response, next) => {
 
 function characterMasterRuntime() {
   const imageModels = appConfigCache.value?.imageModels || [];
-  const flux1 = imageModels.find((item) => item.id === "flux1" && item.available);
+  const krea2 = imageModels.find((item) => item.id === "fluxKrea2" && item.available);
   const flux2 = imageModels.find((item) => item.id === "flux2" && item.available);
-  const kreaModel = flux1?.models?.find((model) => /moodykrea2mix_v50/i.test(model.file))
-    || flux1?.models?.find((model) => /krea/i.test(model.file));
+  const kreaModel = krea2?.models?.find((model) => /moodykrea2mix_v50/i.test(model.file))
+    || krea2?.models?.find((model) => /krea/i.test(model.file));
   const kleinModel = flux2?.models?.find((model) => /flux2klein_9bbase/i.test(model.file))
     || flux2?.models?.find((model) => !/turbo/i.test(model.file))
     || flux2?.models?.[0];
@@ -3598,7 +3598,7 @@ async function prepareCharacterMasterStage(rootGeneration, pipeline, stage, sour
     image: promptImage,
   });
   if (stage.id === "krea") {
-    const job = buildImageWorkflow("flux1", {
+    const job = buildImageWorkflow("fluxKrea2", {
       imageMode: "image",
       imageModelFile: stage.model,
       prompt: promptResult.prompt,
@@ -6810,7 +6810,7 @@ app.post("/api/prompt-assistant/enhance", upload.fields([
       return response.status(503).json({ error: "Il Prompt Assistant non è configurato. Imposta LM_STUDIO_MODEL." });
     }
     const allowedTargets = new Set([
-      "flux1", "flux2", "krea2", "krea2_moody", "qwen", "qwenedit", "zimage", "mageflow", "mageflowedit", "ltx", "ltx_architect", "ltx_scenes", "ltxedit", "studio", "videostudio",
+      "flux2", "krea2", "krea2_moody", "qwen", "qwenedit", "zimage", "ltx", "ltx_architect", "ltx_scenes", "ltxedit", "studio", "videostudio",
       "sulphur_ltx", "sulphur_ltx_architect", "sulphur_ltx_scenes", "sulphur_ltxedit", "sulphur_videostudio", "sulphur_prompt",
       "qwen_image_edit_architect", "flux2_klein_architect",
       "reverse_qwen", "reverse_klein",

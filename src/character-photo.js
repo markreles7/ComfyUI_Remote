@@ -186,9 +186,8 @@ export function routeCharacterPhotoWorkflow(imageModels = [], preferredEngine = 
   const limits = {
     qwenEdit: { maxReferences: 3, promptTarget: "qwenedit" },
     flux2: { maxReferences: 4, promptTarget: "flux2_klein_architect" },
-    mageFlowEdit: { maxReferences: 3, promptTarget: "studio" },
   };
-  for (const id of ["qwenEdit", "flux2", "mageFlowEdit"]) {
+  for (const id of ["qwenEdit", "flux2"]) {
     const model = imageModels.find((item) =>
       item.id === id
       && item.available

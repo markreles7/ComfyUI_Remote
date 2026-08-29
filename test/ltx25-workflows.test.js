@@ -23,7 +23,10 @@ const config = videoStudioConfig({
     "LTX2.3\\ltx-2.3-22b-ic-lora-deblur-0.9.safetensors",
     "LTX2.5\\LTX-2.5-Licon-MSR-V1.safetensors",
   ],
-  installedDiffusionModels: ["ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors"],
+  installedDiffusionModels: [
+    "ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
+    "redgraftLTX25Fast2K_ltx25RedgraftNSFW.safetensors",
+  ],
   installedClips: ["gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors"],
   installedVaes: [
     "ltx-2.5-video-vae-bf16.safetensors", "ltx-2.5-video-vae-conv-bf16.safetensors",
@@ -72,6 +75,16 @@ test("T2V finale usa due sampling, INT8 locale e purge fra ogni stadio", () => {
   assert.ok(Object.values(job.workflow).some((node) => node.class_type === "LTXVLatentUpsampler"));
   assert.ok(Object.values(job.workflow).some((node) => node.class_type === "LayerUtility: PurgeVRAM"));
   assert.ok(Object.values(job.workflow).some((node) => node.class_type === "UNETLoader" && node.inputs.unet_name.includes("int8-convrot")));
+});
+
+test("REDGraft è un secondo checkpoint LTX 2.5 selezionabile senza sostituire il Distilled standard", () => {
+  assert.equal(config.ltx25.modelProfiles.standard.available, true);
+  assert.equal(config.ltx25.modelProfiles.redGraft.available, true);
+  const job = build("text", { ltx25ModelProfile: "redGraft" });
+  const loader = Object.values(job.workflow).find((node) => node.class_type === "UNETLoader");
+  assert.equal(loader.inputs.unet_name, "redgraftLTX25Fast2K_ltx25RedgraftNSFW.safetensors");
+  assert.equal(job.metadata.ltx25ModelProfile, "redGraft");
+  assert.equal(job.metadata.modelFile, "redgraftLTX25Fast2K_ltx25RedgraftNSFW.safetensors");
 });
 
 test("First/Last e keyframe multipli mantengono guide temporali esatte", () => {

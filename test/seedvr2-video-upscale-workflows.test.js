@@ -45,7 +45,7 @@ test("SeedVR2 Video Anteprima e Massima cambiano profilo senza pass aggiuntivi",
     seed: "7",
   }, upload);
 
-  assert.equal(preview.workflow["4"].inputs.model, "seedvr2_ema_3b_fp8_e4m3fn.safetensors");
+  assert.equal(preview.workflow["4"].inputs.model, "seedvr2_ema_3b-Q4_K_M.gguf");
   assert.equal(preview.workflow["6"].inputs.resolution, 720);
   assert.equal(preview.workflow["6"].inputs.batch_size, 9);
   assert.equal(max.workflow["4"].inputs.model, "seedvr2_ema_7b_fp16.safetensors");

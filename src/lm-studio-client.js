@@ -9,7 +9,6 @@ import {
 const execFile = promisify(execFileCallback);
 
 const TARGET_RULES = {
-  flux1: "Write a FLUX.1 prompt as fluent natural language. Prioritize subject, environment, composition, camera, light, materials and photographic intent.",
   krea2: "Write a native Krea 2 prompt as fluent visual direction. Prioritize a clearly identified subject, environment, composition, camera, natural light, materials, skin texture and photographic intent.",
   krea2_moody: `Write a native Krea 2 prompt for the Moody Krea2 Mix checkpoint.
 The checkpoint has a known default bias toward Asian-looking social-media faces, so the prompt must begin with one precise adult human identity anchor whenever a woman or man is present.
@@ -1342,7 +1341,7 @@ No markdown, headings, comments, alternatives or extra keys.`,
     if (!character?.id || !stage || !objective || !image?.buffer) {
       throw new Error("Character, stage, obiettivo e risultato precedente sono richiesti per il prompt di refine.");
     }
-    const target = stage === "klein" ? "flux2_klein_architect" : "flux1";
+    const target = stage === "klein" ? "flux2_klein_architect" : "krea2";
     return this.enhance({
       text: [
         `Pipeline stage: ${stage}.`,

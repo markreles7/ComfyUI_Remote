@@ -212,10 +212,10 @@ function ingredientsPrompt(prompt) {
   ].join(" ");
 }
 
-function configureModels(workflow, config, decoder) {
+function configureModels(workflow, config, decoder, transformer) {
   for (const node of Object.values(workflow)) {
     if (node.class_type === "UNETLoader") {
-      node.inputs.unet_name = config.files.ltx25Transformer;
+      node.inputs.unet_name = transformer;
       node.inputs.weight_dtype = "default";
     }
     if (node.class_type === "CLIPLoader") {
@@ -231,7 +231,7 @@ function configureModels(workflow, config, decoder) {
     }
     if (node.class_type === "LatentUpscaleModelLoader") node.inputs.model_name = config.files.ltx25SpatialUpscaler;
     if (node.class_type === "GemmaAPITextEncode" && node.inputs.ckpt_name) {
-      node.inputs.ckpt_name = config.files.ltx25Transformer;
+      node.inputs.ckpt_name = transformer;
     }
   }
 }
@@ -643,6 +643,14 @@ export function buildLtx25Workflow(raw = {}, uploads = {}, loras = [], config = 
   if (capability && !capability.available) throw new Error(capability.reason || `${MODE_LABELS[mode]} non disponibile.`);
 
   const profile = ["preview", "balanced", "final", "maximum"].includes(raw.ltx25Profile) ? raw.ltx25Profile : "preview";
+  const requestedModelProfile = String(raw.ltx25ModelProfile || "standard");
+  const modelProfile = requestedModelProfile === "redGraft" ? "redGraft" : "standard";
+  const transformer = modelProfile === "redGraft" ? config.files.ltx25RedGraft : config.files.ltx25Transformer;
+  if (!transformer) {
+    throw new Error(modelProfile === "redGraft"
+      ? "REDGraft LTX 2.5 Fast 2K non è installato nell’istanza ComfyUI attiva."
+      : "Il transformer LTX 2.5 Distilled INT8 non è installato nell’istanza ComfyUI attiva.");
+  }
   const twoStage = BASIC_MODES.has(mode) && ["final", "maximum"].includes(profile) && !["firstLast", "keyframes", "multiReferenceMsr"].includes(mode);
   const rawPrompt = String(raw.prompt || "").trim();
   if (!rawPrompt) throw new Error("Inserisci il prompt LTX 2.5.");
@@ -663,11 +671,13 @@ export function buildLtx25Workflow(raw = {}, uploads = {}, loras = [], config = 
     loraPreset: ["custom", "selfieOrganic", "selfieHandheld", "fantasyHandheld", "cinematicNatural", "actionHandheld", "actionCinematic", "actionMultishot"].includes(raw.ltx25LoraPreset)
       ? raw.ltx25LoraPreset
       : "custom",
+    modelProfile,
+    transformer,
   };
 
   const template = BASIC_MODES.has(mode) && twoStage ? TWO_STAGE_TEMPLATE : TEMPLATE_BY_MODE[mode];
   const workflow = cloneTemplate(template);
-  configureModels(workflow, config, settings.decoder);
+  configureModels(workflow, config, settings.decoder, settings.transformer);
   configureCommon(workflow, {
     ...settings,
     prefix: `VideoStudio/LTX25_AIO/${mode}_${profile}`,
@@ -696,6 +706,8 @@ export function buildLtx25Workflow(raw = {}, uploads = {}, loras = [], config = 
       videoStudioLabel: `${MODE_LABELS[mode]} · ${profile}`,
       ltx25Mode: mode,
       ltx25Profile: profile,
+      ltx25ModelProfile: settings.modelProfile,
+      modelFile: settings.transformer,
       prompt,
       negativePrompt,
       seed: settings.seed,

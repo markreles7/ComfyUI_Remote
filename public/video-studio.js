@@ -327,7 +327,13 @@ function videoLoraChoices(selectedMode = mode()) {
   const choices = h3ModeActive
     ? state.config?.videoStudio?.h3Loras || []
     : state.config?.videoStudio?.ltxLoras || [];
-  return choices.filter((name) => selectedMode !== "actionH3" || name !== state.config?.videoStudio?.h3?.files?.combat);
+  const modelProfile = $("#h3ModelProfile")?.value || "base";
+  const compatibility = state.config?.videoStudio?.h3LoraCompatibility || {};
+  return choices.filter((name) => {
+    if (selectedMode === "actionH3" && name === state.config?.videoStudio?.h3?.files?.combat) return false;
+    const allowed = compatibility[name]?.allowedModelProfiles;
+    return !h3ModeActive || !Array.isArray(allowed) || allowed.includes(modelProfile);
+  });
 }
 
 function renderLoraPicker() {
@@ -774,19 +780,34 @@ function updateH3Fields() {
   const active = mode() === "minimaxH3";
   const modelSelect = $("#h3ModelProfile");
   const erosCapability = state.config?.videoStudio?.h3?.modelProfiles?.erosMax;
+  const pinkCapability = state.config?.videoStudio?.h3?.modelProfiles?.pinkCherry;
   const erosOption = [...(modelSelect?.options || [])].find((option) => option.value === "erosMax");
   if (erosOption) {
     erosOption.disabled = erosCapability?.available === false;
     erosOption.title = erosOption.disabled ? "h3ErosMax_beta3.safetensors non è installato." : "Turbo integrato · 6 step er_sde/simple";
   }
+  const pinkOption = [...(modelSelect?.options || [])].find((option) => option.value === "pinkCherry");
+  if (pinkOption) {
+    pinkOption.disabled = pinkCapability?.available === false;
+    pinkOption.title = pinkOption.disabled
+      ? "pinkcherryMMH3Fl2va_06Beta.safetensors non è installato."
+      : "INT8 unpruned da 32 GB · FL2VA sperimentale · usare senza Turbo";
+  }
   if (modelSelect?.selectedOptions[0]?.disabled) modelSelect.value = "base";
   const erosMax = modelSelect?.value === "erosMax";
+  const pinkCherry = modelSelect?.value === "pinkCherry";
   const firstLastOption = [...($("#h3Mode")?.options || [])].find((option) => option.value === "firstLast");
   if (firstLastOption) {
     firstLastOption.disabled = erosMax;
     firstLastOption.title = erosMax ? "Eros Max usa T2VA o reference; First/Last non è supportato." : "";
   }
   if (erosMax && $("#h3Mode")?.value === "firstLast") $("#h3Mode").value = "text";
+  const referencesOption = [...($("#h3Mode")?.options || [])].find((option) => option.value === "references");
+  if (referencesOption) {
+    referencesOption.disabled = pinkCherry;
+    referencesOption.title = pinkCherry ? "PinkCherry 0.6 beta è FL2VA, non Ref2VA." : "";
+  }
+  if (pinkCherry && $("#h3Mode")?.value === "references") $("#h3Mode").value = "image";
   const h3Mode = $("#h3Mode")?.value || "text";
   const promptPreset = $("#h3PromptPreset");
   if (erosMax && promptPreset) {
@@ -799,10 +820,24 @@ function updateH3Fields() {
   const modelHint = $("#h3-model-hint");
   if (modelHint) modelHint.textContent = erosMax
     ? "Eros Max beta3: T2V usa T2VA; Single Image viene inviata come Picture 1 Ref2VA. Turbo è già incorporato: 6 step er_sde/simple."
-    : "Il profilo base usa i checkpoint FL2VA e Ref2VA standard.";
+    : pinkCherry
+      ? "PinkCherry 0.6 beta INT8 unpruned: FL2VA sperimentale, consigliata Single Image/First-Last e Turbo disattivato. Molto pesante su RTX 4070 SUPER + 32 GB RAM."
+      : "Il profilo base usa i checkpoint FL2VA e Ref2VA standard.";
   const turboToggle = $("#h3UseTurbo");
-  if (turboToggle) turboToggle.disabled = !active || erosMax;
-  if ($("#h3-turbo-text")) $("#h3-turbo-text").textContent = erosMax ? "Turbo integrato nel checkpoint · 6 step" : "Turbo LoRA 8 step";
+  if (turboToggle) {
+    turboToggle.disabled = !active || erosMax || pinkCherry;
+    if (pinkCherry) turboToggle.checked = false;
+  }
+  const compatibleLoras = new Set(videoLoraChoices());
+  const removedLoras = state.loras.filter((item) => !compatibleLoras.has(item.name));
+  if (removedLoras.length) {
+    state.loras = state.loras.filter((item) => compatibleLoras.has(item.name));
+    renderLoras();
+    showToast(`LoRA rimossa perché incompatibile con ${pinkCherry ? "PinkCherry" : "il checkpoint selezionato"}: ${removedLoras.map((item) => item.name.split(/[\\/]/).pop()).join(", ")}`);
+  }
+  if ($("#h3-turbo-text")) $("#h3-turbo-text").textContent = erosMax
+    ? "Turbo integrato nel checkpoint · 6 step"
+    : pinkCherry ? "Turbo disattivato: raccomandazione del creatore" : "Turbo LoRA 8 step";
   const firstFrame = $("#h3-first-frame-field");
   const lastFrame = $("#h3-last-frame-field");
   const references = $("#h3-reference-fields");
@@ -928,6 +963,21 @@ const LTX25_MODE_HINTS = Object.freeze({
 
 function updateLtx25Fields() {
   const active = mode() === "ltx25Aio";
+  const modelSelect = $("#ltx25ModelProfile");
+  const modelProfiles = state.config?.videoStudio?.ltx25?.modelProfiles || {};
+  for (const option of modelSelect?.options || []) {
+    const capability = modelProfiles[option.value];
+    option.disabled = capability?.available === false;
+    option.title = option.disabled ? `${option.textContent} non è installato.` : "";
+  }
+  if (modelSelect?.selectedOptions[0]?.disabled) {
+    modelSelect.value = modelProfiles.standard?.available === false ? "redGraft" : "standard";
+  }
+  const redGraft = modelSelect?.value === "redGraft";
+  const modelHint = $("#ltx25-model-hint");
+  if (modelHint) modelHint.textContent = redGraft
+    ? "REDGraft Fast 2K: port Sulphur2 LTX 2.5 INT8; usa i workflow AIO locali con CFG 1 e il sampling del profilo scelto."
+    : "Checkpoint LTX 2.5 Distilled INT8 ConvRot standard.";
   const selected = $("#ltx25Mode")?.value || "text";
   const first = ["image", "firstLast", "keyframes", "audio", "motionTrack"].includes(selected);
   const last = ["firstLast", "keyframes"].includes(selected);
@@ -3304,6 +3354,10 @@ $("#ltx25Mode").addEventListener("change", () => {
   updateLtx25Fields();
   updateReadiness();
 });
+$("#ltx25ModelProfile")?.addEventListener("change", () => {
+  updateLtx25Fields();
+  updateReadiness();
+});
 $("#ltx25Profile").addEventListener("change", () => {
   updateLtx25Fields();
   updateMode();
@@ -3383,7 +3437,8 @@ $("#video-add-lora").addEventListener("click", () => {
   const h3Active = ["minimaxH3", "actionH3", "seedHunterH3"].includes(mode());
   const selected = $("#video-lora-picker")?.value;
   if (!selected) return showToast(`Nessuna altra LoRA ${h3Active ? "MiniMax H3" : "LTX 2.3"} disponibile.`);
-  state.loras.push({ name: selected, strength: .8 });
+  const metadata = state.config?.loraMetadata?.[selected] || state.config?.videoStudio?.h3LoraMetadata?.[selected];
+  state.loras.push({ name: selected, strength: Number(metadata?.recommendedStrength ?? .8) });
   renderLoras();
   showToast(`LoRA aggiunta: ${selected.split(/[\\/]/).pop()}`);
 });

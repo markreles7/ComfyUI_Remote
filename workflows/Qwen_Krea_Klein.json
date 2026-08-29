@@ -3678,7 +3678,7 @@
         "widget_ue_connectable": {}
       },
       "widgets_values": [
-        "FLUX1D\\moodyKrea2Mix_v50.safetensors",
+        "FluxKrea2\\moodyKrea2Mix_v50.safetensors",
         "default"
       ]
     },

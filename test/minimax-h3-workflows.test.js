@@ -31,6 +31,7 @@ const config = videoStudioConfig({
     "minimaxH3INT8INT4_fl2vaINT8Pruned.safetensors",
     "minimaxH3INT8INT4_ref2vaINT8Pruned.safetensors",
     "h3ErosMax_beta3.safetensors",
+    "pinkcherryMMH3Fl2va_06Beta.safetensors",
   ],
   installedClips: ["qwen3vl_32b_minimax_h3_int8_convrot.safetensors"],
   installedVaes: [
@@ -58,11 +59,9 @@ function build(h3Mode, raw = {}, uploads = {}, loras = []) {
 test("rileva pesi INT8, nodi e sole LoRA della cartella H3", () => {
   assert.equal(config.h3.available, true);
   assert.equal(config.capabilities.minimaxH3.available, true);
-  assert.deepEqual(config.h3Loras, [h3Lora, combatLora, realismLora]);
-  assert.deepEqual(config.disabledH3Loras, [{
-    name: galaxyLora,
-    reason: "Incompatibile con MiniMax H3 INT8 ConvRot: pesi AdaLN con forma non valida.",
-  }]);
+  assert.deepEqual(config.h3Loras, [h3Lora, combatLora, realismLora, galaxyLora]);
+  assert.deepEqual(config.disabledH3Loras, []);
+  assert.deepEqual(config.h3LoraCompatibility[galaxyLora].allowedModelProfiles, ["base", "erosMax"]);
   assert.equal(config.h3LoraMetadata[h3Lora].trigger, "dynv2");
   assert.equal(config.h3LoraMetadata[realismLora].trigger, "r34l1sm");
   assert.deepEqual(config.h3LoraMetadata[combatLora].triggerOptions, ["prfight2", "prfin1"]);
@@ -75,6 +74,35 @@ test("rileva pesi INT8, nodi e sole LoRA della cartella H3", () => {
   assert.equal(config.h3.files.ref2va, "minimaxH3INT8INT4_ref2vaINT8Pruned.safetensors");
   assert.equal(config.h3.files.erosMax, "h3ErosMax_beta3.safetensors");
   assert.equal(config.h3.modelProfiles.erosMax.available, true);
+});
+
+test("PinkCherry usa il checkpoint FL2VA INT8 unpruned senza Turbo", () => {
+  const job = build("image", {
+    h3ModelProfile: "pinkCherry",
+    h3UseTurbo: true,
+    h3RefineMode: "direct",
+  }, { h3FirstFrame: image });
+  assert.equal(job.workflow["4"].inputs.unet_name, "pinkcherryMMH3Fl2va_06Beta.safetensors");
+  assert.equal(job.workflow["10"], undefined);
+  assert.equal(job.metadata.h3ModelProfile, "pinkCherry");
+  assert.equal(job.metadata.h3Profile, "pinkCherry");
+  assert.equal(job.metadata.externalTurbo, false);
+  assert.throws(() => build("references", {
+    h3ModelProfile: "pinkCherry",
+  }), /FL2VA/);
+  assert.throws(() => build("image", {
+    h3ModelProfile: "pinkCherry",
+    h3RefineMode: "direct",
+  }, { h3FirstFrame: image }, [{ name: galaxyLora, strength: 1 }]), /GalaxyAce non è compatibile/);
+});
+
+test("GalaxyAce è applicabile a H3 base ed Eros Max con forza 1", () => {
+  const baseJob = build("text", { h3UseTurbo: false, h3RefineMode: "direct" }, {}, [{ name: galaxyLora, strength: 1 }]);
+  assert.equal(baseJob.workflow["10"].class_type, "LoraLoaderModelOnly");
+  assert.equal(baseJob.workflow["10"].inputs.lora_name, galaxyLora);
+  assert.equal(baseJob.workflow["10"].inputs.strength_model, 1);
+  const erosJob = build("text", { h3ModelProfile: "erosMax", h3RefineMode: "direct" }, {}, [{ name: galaxyLora, strength: 1 }]);
+  assert.equal(erosJob.workflow["10"].inputs.lora_name, galaxyLora);
 });
 
 test("Comfy-Kitchen sostituisce SageAttention senza concatenare i due backend", () => {

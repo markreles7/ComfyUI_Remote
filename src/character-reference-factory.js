@@ -183,7 +183,7 @@ export function patchReferencePlanItem(plan, referenceRole, patch = {}) {
 }
 
 export function selectReferenceWorkflow(imageModels = []) {
-  return ["qwenEdit", "flux2", "mageFlowEdit"]
+  return ["qwenEdit", "flux2"]
     .map((id) => imageModels.find((item) =>
       item.id === id
       && item.available

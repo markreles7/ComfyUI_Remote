@@ -312,7 +312,7 @@ function formatSettings(item) {
     }
     if (item.imageSettings.upscaleMode === "seedvr2") {
       entries.push(
-        ["Upscale", item.imageSettings.seedvrProfile === "realistic"
+        ["Upscale", ["maximum", "realistic"].includes(item.imageSettings.seedvrProfile)
           ? "SeedVR2 Massimo · 7B FP16"
           : "SeedVR2 Leggero · 3B FP8"],
         ["Lato corto", `${item.imageSettings.seedvrResolution}px`],

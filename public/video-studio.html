@@ -462,6 +462,7 @@
               <select id="h3ModelProfile" name="h3ModelProfile">
                 <option value="base">MiniMax H3 base · FL2VA / Ref2VA</option>
                 <option value="erosMax">H3 Eros Max beta3 · NSFW hybrid</option>
+                <option value="pinkCherry">PinkCherry H3 FL2VA 0.6 beta · INT8 32 GB</option>
               </select>
               <p id="h3-model-hint" class="hint">Il profilo base usa i checkpoint FL2VA e Ref2VA standard.</p>
             </div>
@@ -631,6 +632,14 @@
             <p>Un unico pannello per generazione, keyframe, reference sheet, audio e controllo video. Gemma viene scaricata prima del sampling; nei profili two-stage il transformer e l’upscaler vengono liberati fra le fasi.</p>
           </div>
           <div class="field-grid">
+            <div class="field">
+              <label for="ltx25ModelProfile">Checkpoint LTX 2.5</label>
+              <select id="ltx25ModelProfile" name="ltx25ModelProfile">
+                <option value="standard">LTX 2.5 Distilled INT8 ConvRot</option>
+                <option value="redGraft">REDGraft Fast 2K · Sulphur2 ported</option>
+              </select>
+              <p id="ltx25-model-hint" class="hint">Checkpoint LTX 2.5 Distilled standard.</p>
+            </div>
             <div class="field">
               <label for="ltx25Mode">Tipo di generazione</label>
               <select id="ltx25Mode" name="ltx25Mode">

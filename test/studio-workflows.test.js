@@ -66,7 +66,7 @@ test("Qwen Krea Klein usa il workflow API statico con input runtime", () => {
   assert.equal(job.metadata.sourceImage, "remote/pool.jpg");
   assert.equal(job.workflow["78"].inputs.image, "remote/pool.jpg");
   assert.equal(job.workflow["110"].inputs.prompt, "Transform the provided image into a realistic live-action photo.");
-  assert.equal(job.workflow["413"].inputs.unet_name, "FLUX1D\\moodyKrea2Mix_v50.safetensors");
+  assert.equal(job.workflow["413"].inputs.unet_name, "FluxKrea2\\moodyKrea2Mix_v50.safetensors");
   assert.equal(job.workflow["484"].inputs.unet_name, "FLUX2\\flux2Klein_9bBase.safetensors");
   assert.equal(job.workflow["492"].class_type, "SeedVR2VideoUpscaler");
   assert.equal(job.workflow["939999"].class_type, "RemoteImageTensorNormalize");
@@ -89,7 +89,7 @@ test("Krea Triple Text to Image usa il template T2I e normalizza SeedVR2", () =>
   assert.equal(job.metadata.workflowId, "studio:kreaTriple");
   assert.equal(job.metadata.imageSettings.operation, "text");
   assert.equal(job.metadata.imageSettings.staticWorkflow, "KreaTriple_T2I_API.json");
-  assert.equal(job.workflow["2"].inputs.unet_name, "FLUX1D\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors");
+  assert.equal(job.workflow["2"].inputs.unet_name, "FluxKrea2\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors");
   assert.equal(job.metadata.imageSettings.kreaModelId, "darkBeast");
   assert.equal(job.workflow["5"].inputs.text, "Realistic editorial poolside portrait.");
   assert.equal(job.workflow["15"].inputs.text, "Realistic editorial poolside portrait.");
@@ -103,7 +103,7 @@ test("Krea Triple Text to Image usa il template T2I e normalizza SeedVR2", () =>
 });
 
 test("Krea Triple permette Moody e registra l'ancoraggio prompt dedicato", () => {
-  const moody = "FLUX1D\\moodyKrea2Mix_v50.safetensors";
+  const moody = "FluxKrea2\\moodyKrea2Mix_v50.safetensors";
   const [job] = buildStudioJobs("kreaTriple", {
     kreaTripleOperation: "text",
     kreaTripleModel: moody,
@@ -284,7 +284,7 @@ test("Editor Guidato applica il ControlNet Canny Qwen prima del sampler", () => 
 test("Editor Guidato può usare anche un modello Flux.2 Klein selezionato", () => {
   const [job] = buildStudioJobs("guidedEdit", {
     guidedModelFamily: "klein",
-    guidedKleinModel: "FLUX2\\BigLoveKlein4_bf16.safetensors",
+    guidedKleinModel: "FLUX2\\flux2Klein_9bBase.safetensors",
     editAction: "addPerson",
     prompt: "Aggiungi una persona adulta vicino al soggetto principale.",
     structureGuide: "none",
@@ -294,7 +294,7 @@ test("Editor Guidato può usare anche un modello Flux.2 Klein selezionato", () =
   }, { source, mask, references: [{ name: "identity.png" }] });
 
   assert.equal(job.metadata.imageModelFamily, "flux2");
-  assert.equal(job.metadata.imageModelFile, "FLUX2\\BigLoveKlein4_bf16.safetensors");
+  assert.equal(job.metadata.imageModelFile, "FLUX2\\flux2Klein_9bBase.safetensors");
   assert.equal(job.metadata.guidedModelFamily, "flux2");
   assert.equal(job.metadata.imageSettings.steps, 20);
   assert.equal(job.metadata.imageSettings.guidance, 5);
@@ -383,13 +383,13 @@ test("Storyboard genera shot separati dalle stesse reference master", () => {
   assert.deepEqual(jobs.map((job) => job.metadata.shotIndex), [1, 2, 3]);
   assert.ok(jobs.every((job) => job.metadata.sourceImage === "remote/pool.jpg"));
   assert.ok(jobs.every((job) =>
-    job.metadata.imageModelFile === "FLUX2\\BigLoveKlein4_bf16.safetensors"
+    job.metadata.imageModelFile === "FLUX2\\flux2Klein_9bBase.safetensors"
   ));
   assert.ok(jobs.every((job) => job.metadata.storyboardModelProfile === "quality"));
   assert.match(jobs[1].metadata.prompt, /standalone full-resolution cinematic frame/i);
 });
 
-test("Storyboard usa sempre i modelli qualità di BigLove Klein e BigLove Gwen", () => {
+test("Storyboard usa i modelli qualità Qwen 2511 e Flux.2 Klein installati", () => {
   const base = {
     prompt: "Sequenza coerente.",
     shots: JSON.stringify([
@@ -403,18 +403,18 @@ test("Storyboard usa sempre i modelli qualità di BigLove Klein e BigLove Gwen",
     ...base,
     storyboardFamily: "klein",
   }, { source, references: [] });
-  const [gwen] = buildStudioJobs("storyboard", {
+  const [qwen] = buildStudioJobs("storyboard", {
     ...base,
-    storyboardFamily: "gwen",
+    storyboardFamily: "qwen2511",
   }, { source, references: [] });
-  assert.equal(klein.metadata.imageModelFile, "FLUX2\\BigLoveKlein4_bf16.safetensors");
+  assert.equal(klein.metadata.imageModelFile, "FLUX2\\flux2Klein_9bBase.safetensors");
   assert.equal(klein.workflow["1"].class_type, "UNETLoader");
-  assert.equal(gwen.metadata.imageModelFile, "QWEN\\BigLoveGwen2_mxfp8.safetensors");
-  assert.equal(gwen.workflow["1"].class_type, "UNETLoader");
-  assert.equal(gwen.metadata.imageModelFamily, "qwenEdit");
+  assert.equal(qwen.metadata.imageModelFile, "QWEN\\qwen_image_edit_2511_bf16.safetensors");
+  assert.equal(qwen.workflow["1"].class_type, "UNETLoader");
+  assert.equal(qwen.metadata.imageModelFamily, "qwenEdit");
 });
 
-test("il master Smartphone ricompone il refine Flux.1 sull'immagine selezionata", () => {
+test("il master Smartphone ricompone il refine Krea2 sull'immagine selezionata", () => {
   const final = buildStudioContinuation("finalize", {
     studioMode: "smartphone",
     prompt: "Rifinisci soltanto la persona inserita.",

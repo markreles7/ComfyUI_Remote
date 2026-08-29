@@ -39,11 +39,12 @@ test("costruisce SeedVR2 Velocità, Qualità e MAX con profili anti-OOM", () => 
   const max = buildUpscaleWorkflow({
     upscaleEngine: "seedvr2", upscalePreset: "max", upscaleAutoPurge: "on", seed: "42",
   }, upload, models);
-  assert.equal(speed.workflow["12"].inputs.resolution, 1536);
-  assert.equal(quality.workflow["12"].inputs.resolution, 2048);
-  assert.equal(max.workflow["12"].inputs.resolution, 2656);
+  assert.equal(speed.workflow["10"].inputs.model, "seedvr2_ema_3b-Q4_K_M.gguf");
+  assert.equal(speed.workflow["12"].inputs.resolution, 1280);
+  assert.equal(quality.workflow["12"].inputs.resolution, 1536);
+  assert.equal(max.workflow["12"].inputs.resolution, 1792);
   assert.equal(max.workflow["10"].inputs.model, "seedvr2_ema_7b_fp16.safetensors");
-  assert.equal(max.workflow["10"].inputs.blocks_to_swap, 24);
+  assert.equal(max.workflow["10"].inputs.blocks_to_swap, 32);
   assert.equal(max.workflow["11"].inputs.decode_tiled, true);
   assert.equal(max.workflow["12"].inputs.batch_size, 1);
   assert.equal(max.workflow["13"].class_type, "RemoteImageTensorNormalize");

@@ -545,7 +545,7 @@ function promptTarget() {
   if (engine === "flux2") return "flux2_klein_architect";
   if (engine === "qwenEdit") return "qwen_image_edit_architect";
   if (engine === "qwenImage") return state.route.imageMode === "text" ? "qwen" : "qwen_image_edit_architect";
-  if (engine === "flux1") return "flux1";
+  if (engine === "fluxKrea2") return "krea2";
   if (engine === "zImage") return "zimage";
   return state.route.target;
 }

@@ -12,10 +12,6 @@ import { normalizeDynamicInputs } from "./workflow-normalization.js";
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
 const workflowDirectory = path.resolve(moduleDirectory, "..", "workflows");
 
-const DISABLED_H3_LORAS = new Map([
-  ["sty_galaxyace.safetensors", "Incompatibile con MiniMax H3 INT8 ConvRot: pesi AdaLN con forma non valida."],
-]);
-
 const TEMPLATE_FILES = {
   inpaint: "LTX23_ICLORA_INPAINT_API.json",
   lipdub: "LTX23_ICLORA_LIPDUB_API.json",
@@ -116,6 +112,7 @@ const MODEL_CANDIDATES = {
     "minimax_h3_ref2va_int8_convrot.safetensors",
   ],
   h3ErosMax: ["h3ErosMax_beta3.safetensors"],
+  h3PinkCherry: ["pinkcherryMMH3Fl2va_06Beta.safetensors"],
   h3Clip: ["qwen3vl_32b_minimax_h3_int8_convrot.safetensors", "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"],
   h3VideoVae: ["minimax_h3_video_vae_int8_convrot.safetensors", "minimax_h3_video_vae_fp16.safetensors"],
   h3AudioVae: ["minimax_h3_audio_vae_fp32.safetensors"],
@@ -123,6 +120,10 @@ const MODEL_CANDIDATES = {
   h3Combat: ["STY_Combat.safetensors", "H3_Combat_V2.safetensors"],
   h3LatentUpscaler: ["minimax_h3_latent_upscaler_3d_bf16.safetensors"],
   ltx25Transformer: ["ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors"],
+  ltx25RedGraft: [
+    "redgraftLTX25Fast2K_ltx25RedgraftNSFW.safetensors",
+    "REDGraft-ltx25-sulphur2-int8-convrot-ComfyMCP.safetensors",
+  ],
   ltx25TextEncoder: ["gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors"],
   ltx25VideoVae: ["ltx-2.5-video-vae-bf16.safetensors"],
   ltx25VideoVaeConv: ["ltx-2.5-video-vae-conv-bf16.safetensors"],
@@ -250,6 +251,7 @@ export function videoStudioConfig({
     h3Fl2va: findInstalled(installedDiffusionModels, MODEL_CANDIDATES.h3Fl2va),
     h3Ref2va: findInstalled(installedDiffusionModels, MODEL_CANDIDATES.h3Ref2va),
     h3ErosMax: findInstalled(installedDiffusionModels, MODEL_CANDIDATES.h3ErosMax),
+    h3PinkCherry: findInstalled(installedDiffusionModels, MODEL_CANDIDATES.h3PinkCherry),
     h3Clip: findInstalled(installedClips, MODEL_CANDIDATES.h3Clip),
     h3VideoVae: findInstalled(installedVaes, MODEL_CANDIDATES.h3VideoVae),
     h3AudioVae: findInstalled(installedVaes, MODEL_CANDIDATES.h3AudioVae),
@@ -257,6 +259,7 @@ export function videoStudioConfig({
     h3Combat: findInstalled(installedLoras, MODEL_CANDIDATES.h3Combat),
     h3LatentUpscaler: findInstalled(installedLatentUpscalers, MODEL_CANDIDATES.h3LatentUpscaler),
     ltx25Transformer: findInstalled(installedDiffusionModels, MODEL_CANDIDATES.ltx25Transformer),
+    ltx25RedGraft: findInstalled(installedDiffusionModels, MODEL_CANDIDATES.ltx25RedGraft),
     ltx25TextEncoder: findInstalled(installedClips, MODEL_CANDIDATES.ltx25TextEncoder),
     ltx25VideoVae: findInstalled(installedVaes, MODEL_CANDIDATES.ltx25VideoVae),
     ltx25VideoVaeConv: findInstalled(installedVaes, MODEL_CANDIDATES.ltx25VideoVaeConv),
@@ -276,7 +279,7 @@ export function videoStudioConfig({
     const modelReady = id === "minimaxH3"
       ? Boolean(files.h3Fl2va && files.h3Ref2va && files.h3Clip && files.h3VideoVae && files.h3AudioVae && files.h3Turbo)
       : id === "ltx25"
-        ? Boolean(files.ltx25Transformer && files.ltx25TextEncoder && files.ltx25VideoVaeConv && files.ltx25AudioVae)
+        ? Boolean((files.ltx25Transformer || files.ltx25RedGraft) && files.ltx25TextEncoder && files.ltx25VideoVaeConv && files.ltx25AudioVae)
       : id === "temporalUpscale"
       ? Boolean(files.temporalUpscale)
       : id === "autoMask"
@@ -290,11 +293,8 @@ export function videoStudioConfig({
     }];
   }));
   const installedH3Loras = installedLoras.filter((name) => /(^|[\\/])H3[\\/]/i.test(name));
-  const disabledH3Loras = installedH3Loras.flatMap((name) => {
-    const reason = DISABLED_H3_LORAS.get(normalizedBaseName(name));
-    return reason ? [{ name, reason }] : [];
-  });
-  const h3Loras = installedH3Loras.filter((name) => !DISABLED_H3_LORAS.has(normalizedBaseName(name)));
+  const disabledH3Loras = [];
+  const h3Loras = installedH3Loras;
   const h3RefineAvailability = {
     latentLearned: availableNodes.includes("MinimaxH3LatentUpscaler3D") && Boolean(files.h3LatentUpscaler),
     h3Balanced: true,
@@ -321,6 +321,14 @@ export function videoStudioConfig({
     h3Loras,
     disabledH3Loras,
     h3LoraMetadata: loraTriggerMetadata(h3Loras),
+    h3LoraCompatibility: Object.fromEntries(h3Loras.map((name) => [name, {
+      allowedModelProfiles: normalizedBaseName(name) === "sty_galaxyace.safetensors"
+        ? ["base", "erosMax"]
+        : ["base", "erosMax", "pinkCherry"],
+      reason: normalizedBaseName(name) === "sty_galaxyace.safetensors"
+        ? "GalaxyAce è compatibile con H3 pruned ed Eros Max; non con PinkCherry INT8 unpruned."
+        : null,
+    }])),
     h3: {
       available: capabilities.minimaxH3.available,
       reason: capabilities.minimaxH3.available
@@ -332,6 +340,7 @@ export function videoStudioConfig({
         fl2va: files.h3Fl2va,
         ref2va: files.h3Ref2va,
         erosMax: files.h3ErosMax,
+        pinkCherry: files.h3PinkCherry,
         clip: files.h3Clip,
         videoVae: files.h3VideoVae,
         audioVae: files.h3AudioVae,
@@ -350,6 +359,14 @@ export function videoStudioConfig({
           sampler: "er_sde",
           scheduler: "simple",
           steps: 6,
+        },
+        pinkCherry: {
+          available: Boolean(files.h3PinkCherry),
+          name: "PinkCherry H3 FL2VA 0.6 beta · INT8 unpruned 32 GB",
+          modes: ["text", "image", "firstLast"],
+          integratedTurbo: false,
+          recommendedMode: "image",
+          warning: "Sperimentale e molto pesante: il creatore usa una RTX 5090 e consiglia il workflow senza Turbo.",
         },
       },
       sampling: {
@@ -386,11 +403,12 @@ export function videoStudioConfig({
       available: capabilities.ltx25.available,
       reason: capabilities.ltx25.available
         ? null
-        : files.ltx25Transformer && files.ltx25TextEncoder && files.ltx25VideoVaeConv && files.ltx25AudioVae
+        : (files.ltx25Transformer || files.ltx25RedGraft) && files.ltx25TextEncoder && files.ltx25VideoVaeConv && files.ltx25AudioVae
           ? `Nodi LTX 2.5 mancanti: ${capabilities.ltx25.missingNodes.join(", ")}`
           : "Mancano transformer INT8, Gemma 4 LTX 2.5 o VAE audio/video.",
       files: {
         transformer: files.ltx25Transformer,
+        redGraft: files.ltx25RedGraft,
         textEncoder: files.ltx25TextEncoder,
         videoVae: files.ltx25VideoVae,
         videoVaeConv: files.ltx25VideoVaeConv,
@@ -431,6 +449,21 @@ export function videoStudioConfig({
           reason: files.ltx25Msr
             ? "Mancano uno o più nodi ComfyUI-LTX2.5-MSR; riavvia ComfyUI e controlla il plugin."
             : "Manca LTX-2.5-Licon-MSR-V1.safetensors.",
+        },
+      },
+      modelProfiles: {
+        standard: {
+          available: Boolean(files.ltx25Transformer),
+          name: "LTX 2.5 Distilled INT8 ConvRot",
+          transformer: files.ltx25Transformer,
+        },
+        redGraft: {
+          available: Boolean(files.ltx25RedGraft),
+          name: "REDGraft LTX 2.5 Fast 2K · Sulphur2 ported",
+          transformer: files.ltx25RedGraft,
+          sampler: "euler",
+          cfg: 1,
+          sourceUrl: "https://civitai.red/models/1295569/redgraft-ltx-25-fast-2k-or-sulphur2-ported?modelVersionId=3250230",
         },
       },
       memoryPlan: ["Gemma su CPU e purge dopo encoding", "Purge transformer dopo Stage 1", "Purge upscaler prima del refine", "Decode VAE tiled", "Purge finale"],

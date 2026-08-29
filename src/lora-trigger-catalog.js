@@ -82,6 +82,13 @@ export const LORA_TRIGGER_CATALOG = Object.freeze({
   "h3\\nsfw_bouncetits.safetensors": civitaiOptions(["her breast is bouncing up and down", "her breast is bouncing from left to right"], 1343431, 3242184),
   "h3\\sty_combat.safetensors": civitaiOptions(["prfight2", "prfin1"], 2853878, 3246572, { selectedByProfile: true }),
   "h3\\sty_motion_booster.safetensors": civitai("dynv2", 2840146, 3228867),
+  "h3\\sty_galaxyace.safetensors": civitai(null, 2200329, 3201619, {
+    baseModel: "MiniMax H3",
+    recommendedStrength: 1,
+    recommendedRange: [0.7, 1],
+    compatibleModelProfiles: ["base", "erosMax"],
+    promptRule: "No activation token is required. Use with MiniMax H3 base/pruned or Eros Max; do not use with PinkCherry unpruned.",
+  }),
   "h3\\mot_better_motion.safetensors": civitai(null, 2734359, 3256084, {
     baseModel: "MiniMax H3",
     recommendedStrength: 0.55,

@@ -183,7 +183,7 @@
   },
   "413": {
     "inputs": {
-      "unet_name": "FLUX1D\\moodyKrea2Mix_v50.safetensors",
+      "unet_name": "FluxKrea2\\moodyKrea2Mix_v50.safetensors",
       "weight_dtype": "default"
     },
     "class_type": "UNETLoader",

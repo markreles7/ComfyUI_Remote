@@ -218,7 +218,7 @@ function updateMode() {
     "#flux2-turbo-model-field",
     "#flux2-base-model-field",
     "#zimage-model-field",
-    "#flux1-refine-model-field",
+    "#krea2-refine-model-field",
   ]) {
     toggle(selector, mode.id !== "guidedEdit");
   }
@@ -839,8 +839,8 @@ async function continueProject(button) {
       highresDenoise: studioPreset === "max" ? 0.25 : 0.2,
       upscaleMode: action === "finalize" ? upscaleMode : "none",
       rtxQuality: studioPreset === "max" ? "Ultra" : "High",
-      seedvrProfile: finalOutput === "seed7" ? "realistic" : "balanced",
-      seedvrResolution: finalOutput === "seed7" ? 2656 : 2048,
+      seedvrProfile: finalOutput === "seed7" ? "maximum" : "balanced",
+      seedvrResolution: finalOutput === "seed7" ? 1792 : 1536,
       autoPurge: true,
       saveOriginal: true,
       faceDetailer: true,
@@ -849,7 +849,7 @@ async function continueProject(button) {
       handDetailerDenoise: 0.28,
       flux2BaseModel: settings.flux2BaseModel,
       flux2TurboModel: settings.flux2TurboModel,
-      flux1RefineModel: settings.flux1RefineModel,
+      krea2RefineModel: settings.krea2RefineModel,
       loras: JSON.stringify(project.loras || []),
     };
     const updated = await api(`/api/studio/projects/${project.id}/continue`, {
@@ -957,7 +957,7 @@ async function start() {
   populateModels("#flux2TurboModel", "flux2", state.config.studio.defaults.flux2Turbo);
   populateModels("#flux2BaseModel", "flux2", state.config.studio.defaults.flux2Base);
   populateModels("#zImageModel", "zImage", state.config.studio.defaults.zImageTurbo);
-  populateModels("#flux1RefineModel", "flux1", state.config.studio.defaults.flux1Realistic);
+  populateModels("#krea2RefineModel", "fluxKrea2", state.config.studio.defaults.krea2Refine);
   populateModels("#qwenEditModel", "qwenEdit", state.config.studio.defaults.qwenEdit);
   populateModels("#guidedKleinModel", "flux2", state.config.studio.defaults.guidedKlein);
   const guideAvailability = new Map(

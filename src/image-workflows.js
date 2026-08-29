@@ -2,24 +2,12 @@ import crypto from "node:crypto";
 import { insertModelLoras, parseLoras } from "./loras.js";
 
 export const IMAGE_MODELS = {
-  flux1: {
-    id: "flux1",
-    name: "Flux.1",
-    family: "flux1",
-    modelPrefix: "FLUX1D\\",
-    modelExcludes: ["KREA2"],
-    defaultModelFile: "FLUX1D\\flux1-dev.safetensors",
-    description: "Modelli Flux.1 compatibili, con img2img e Flux Redux reference.",
-    modes: ["text", "image", "reference"],
-    defaults: { steps: 28, guidance: 3.5 },
-  },
   fluxKrea2: {
     id: "fluxKrea2",
     name: "Flux Krea 2",
     family: "krea2",
-    modelPrefix: "FLUX1D\\",
-    modelIncludes: ["KREA2"],
-    defaultModelFile: "FLUX1D\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors",
+    modelPrefix: "FluxKrea2\\",
+    defaultModelFile: "FluxKrea2\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors",
     description: "Checkpoint Krea 2 con encoder Qwen3-VL, VAE Qwen e sampling nativo Krea2.",
     modes: ["text", "image"],
     defaults: { steps: 8, guidance: 1 },
@@ -48,44 +36,14 @@ export const IMAGE_MODELS = {
     modes: ["text", "image"],
     defaults: { steps: 8, guidance: 1 },
   },
-  mageFlow: {
-    id: "mageFlow",
-    name: "Mage-Flow",
-    family: "mageflow",
-    modelPrefix: "",
-    modelIncludes: ["MAGE_FLOW_BF16"],
-    defaultModelFile: "mage_flow_bf16.safetensors",
-    description: "Microsoft Mage-Flow 4B RL-aligned BF16 per Text to Image nativo fino a 2048 px.",
-    modes: ["text"],
-    defaults: { steps: 20, guidance: 5 },
-    dependencies: {
-      clip: "qwen3vl_4b_bf16.safetensors",
-      vae: "mage_flow_vae_bf16.safetensors",
-    },
-  },
-  mageFlowEdit: {
-    id: "mageFlowEdit",
-    name: "Mage-Flow Edit",
-    family: "mageflowedit",
-    modelPrefix: "",
-    modelIncludes: ["MAGE_FLOW_EDIT_BF16"],
-    defaultModelFile: "mage_flow_edit_bf16.safetensors",
-    description: "Microsoft Mage-Flow Edit 4B RL-aligned BF16 per modifiche guidate da istruzioni e immagini reference.",
-    modes: ["image"],
-    defaults: { steps: 30, guidance: 5 },
-    dependencies: {
-      clip: "qwen3vl_4b_bf16.safetensors",
-      vae: "mage_flow_vae_bf16.safetensors",
-    },
-  },
   qwenImage: {
     id: "qwenImage",
     name: "Qwen Text to Image",
     family: "qwen",
     modelPrefix: "QWEN\\",
-    modelIncludes: ["QWEN_IMAGE_2512", "QWENIMAGE2512", "QWEN_RAPID_AIO_NSFW", "QWEN-RAPID-AIO-NSFW", "BIGLOVEGWEN2"],
+    modelIncludes: ["QWEN_IMAGE_2512", "QWENIMAGE2512", "QWEN_RAPID_AIO_NSFW", "QWEN-RAPID-AIO-NSFW"],
     defaultModelFile: "QWEN\\qwen_image_2512_fp8_e4m3fn.safetensors",
-    description: "Qwen Image 2512 FP8 per Text to Image; BigLove Gwen 2 resta disponibile in compatibilità testo.",
+    description: "Qwen Image 2512 FP8 e Qwen Rapid AIO per Text to Image.",
     modes: ["text"],
     defaults: { steps: 50, guidance: 4 },
     dependencies: {
@@ -98,9 +56,9 @@ export const IMAGE_MODELS = {
     name: "Qwen Image Edit 2511",
     family: "qwenedit",
     modelPrefix: "QWEN\\",
-    modelIncludes: ["QWEN_IMAGE_EDIT_2511", "QWENIMAGEEDIT2511", "QWEN_RAPID_AIO_NSFW", "QWEN-RAPID-AIO-NSFW", "BIGLOVEGWEN2"],
+    modelIncludes: ["QWEN_IMAGE_EDIT_2511", "QWENIMAGEEDIT2511", "QWEN_RAPID_AIO_NSFW", "QWEN-RAPID-AIO-NSFW"],
     defaultModelFile: "QWEN\\qwen_image_edit_2511_bf16.safetensors",
-    description: "Qwen Image Edit 2511 BF16 come motore primario; BigLove Gwen 2 e Qwen Rapid AIO restano varianti a selezione esplicita.",
+    description: "Qwen Image Edit 2511 BF16 come motore primario; Qwen Rapid AIO resta una variante a selezione esplicita.",
     modes: ["image"],
     defaults: { steps: 40, guidance: 4 },
     dependencies: {
@@ -145,8 +103,7 @@ export function qwenEdit2511Lightning8Preset(modelFile = IMAGE_MODELS.qwenEdit.d
 }
 
 const LEGACY_IMAGE_MODEL_IDS = {
-  fluxDev: { familyId: "flux1", defaultModelFile: "FLUX1D\\flux1-dev.safetensors" },
-  fluxKrea: { familyId: "fluxKrea2", defaultModelFile: "FLUX1D\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors" },
+  fluxKrea: { familyId: "fluxKrea2", defaultModelFile: "FluxKrea2\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors" },
   fluxKlein9b: { familyId: "flux2", defaultModelFile: "FLUX2\\flux2Klein_9bBase.safetensors" },
 };
 
@@ -159,15 +116,20 @@ export const IMAGE_RESOLUTIONS = {
 };
 
 export const SEEDVR2_PROFILES = {
+  fast: {
+    name: "Veloce · SeedVR2 3B Q4_K_M",
+    model: "seedvr2_ema_3b-Q4_K_M.gguf",
+    blocksToSwap: 24,
+  },
   balanced: {
-    name: "Leggero · SeedVR2 3B FP8",
+    name: "Bilanciato · SeedVR2 3B FP8",
     model: "seedvr2_ema_3b_fp8_e4m3fn.safetensors",
     blocksToSwap: 16,
   },
-  realistic: {
+  maximum: {
     name: "Massimo · SeedVR2 7B FP16",
     model: "seedvr2_ema_7b_fp16.safetensors",
-    blocksToSwap: 24,
+    blocksToSwap: 32,
   },
 };
 
@@ -191,21 +153,13 @@ function inputPath(upload) {
 function friendlyModelName(filename) {
   const basename = String(filename).split(/[\\/]/).pop()?.replace(/\.(safetensors|gguf|ckpt|pt|pth)$/i, "") || filename;
   const known = {
-    "flux1-dev": "Flux.1 Dev",
-    "flux1-krea-dev_fp8_scaled": "Flux.1 Krea Dev FP8",
     "darkBeast30BF16INT8_darkBeastKREA2FP8": "DarkBeast Krea2 FP8",
     "moodyKrea2Mix_v50": "Moody Krea2 Mix v5",
     "flux2Klein_9bBase": "Flux.2 Klein 9B Base",
     "z_image_turbo_bf16": "Z-Image Turbo BF16",
-    "mage_flow_bf16": "Mage-Flow 4B RL · BF16",
-    "mage_flow_edit_bf16": "Mage-Flow Edit 4B RL · BF16",
     "qwen_image_2512_fp8_e4m3fn": "Qwen Image 2512 FP8",
     "qwen_image_edit_2511_bf16": "Qwen Image Edit 2511 BF16",
     "Qwen-Rapid-AIO-NSFW-v23": "Qwen Rapid AIO NSFW v23",
-    "BigLoveGwen2_mxfp8": "BigLove Gwen 2 · MXFP8",
-    "BigLoveGwen2_nf4": "BigLove Gwen 2 · NF4 leggero",
-    "BigLoveKlein4_bf16": "BigLove Klein 4 · BF16",
-    "BigLoveKlein4_int8_convrot": "BigLove Klein 4 · INT8 ConvRot",
     "pornmasterFlux2Klein_v4BaseBf16": "PornMaster Flux2 Klein v4 Base · BF16",
     "pornmasterFlux2Klein_v4TurboFp8": "PornMaster Flux2 Klein v4 Turbo · FP8",
     "RealVisXL_V5.0": "RealVisXL V5.0",
@@ -226,19 +180,12 @@ function variantDefaults(definition, modelFile) {
   if (definition.family === "flux2" && /pornmaster.*flux2.*klein.*v4.*base.*bf16/i.test(modelFile)) {
     return { steps: 12, guidance: 2 };
   }
-  if (definition.family === "qwenedit" && /BIGLOVEGWEN2/i.test(modelFile)) {
-    return { steps: 6, guidance: 1 };
-  }
   if (/qwen[-_ ]?rapid[-_ ]?aio[-_ ]?nsfw|rapid[-_ ]?aio[-_ ]?nsfw/i.test(modelFile)) {
     return { steps: 8, guidance: 1 };
   }
   if (/lightning[-_ ]?4|4steps/i.test(modelFile)) return { steps: 4, guidance: 1 };
   if (/lightning[-_ ]?8|8steps|turbo|schnell|hyper/i.test(modelFile)) return { steps: 8, guidance: 1 };
   return definition.defaults;
-}
-
-function isBigLoveGwen2(modelFile) {
-  return /BIGLOVEGWEN2/i.test(String(modelFile || ""));
 }
 
 function modelCompatible(definition, modelFile) {
@@ -838,9 +785,7 @@ function buildBigLoveQwenEdit(definition, options, upload, referenceUploads = []
 }
 
 function buildQwenEdit(definition, options, upload, referenceUploads = []) {
-  return isBigLoveGwen2(definition.modelFile)
-    ? buildBigLoveQwenEdit(definition, options, upload, referenceUploads)
-    : buildStandardQwenEdit(definition, options, upload, referenceUploads);
+  return buildStandardQwenEdit(definition, options, upload, referenceUploads);
 }
 
 function buildSdxlRealistic(definition, options, upload) {
@@ -909,37 +854,25 @@ function applyPortableDetectionDetailers(workflow, definition, options) {
   const saveId = definition.family === "flux2" ? "16" : "10";
 
   // Qwen, Klein and Z-Image do not expose a detailer-compatible MODEL/CLIP
-  // pipeline. Refine only the detected crops with the same photographic
-  // Flux.1 pipeline used by standalone Upscaling, then return the crops to the
+  // pipeline. Refine only the detected crops with the installed Krea2 model,
+  // then return the crops to the
   // original full-resolution image. The primary generator remains unchanged.
   workflow["905000"] = node({
-    unet_name: "FLUX1D\\cyberrealisticFlux_v25.safetensors",
-    weight_dtype: "fp8_e4m3fn",
-  }, "UNETLoader", "Face Detailer universale · Flux.1 realistico");
+    unet_name: "FluxKrea2\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors",
+    weight_dtype: "default",
+  }, "UNETLoader", "Face Detailer universale · Krea2");
   workflow["905001"] = node({
-    clip_name1: "t5xxl_fp8_e4m3fn_scaled.safetensors",
-    clip_name2: "clip_l.safetensors",
-    type: "flux",
+    clip_name: "qwen3vl_4b_fp8_scaled.safetensors",
+    type: "krea2",
     device: "default",
-  }, "DualCLIPLoader", "Face Detailer universale · text encoders");
-  workflow["905002"] = node({ vae_name: "ae.safetensors" }, "VAELoader", "Face Detailer universale · VAE");
-  workflow["905003"] = node({
-    model: ["905000", 0],
-    max_shift: 1.15,
-    base_shift: 0.5,
-    width: options.width,
-    height: options.height,
-  }, "ModelSamplingFlux", "Face Detailer universale · sampling");
+  }, "CLIPLoader", "Face Detailer universale · text encoder Krea2");
+  workflow["905002"] = node({ vae_name: "qwen_image_vae.safetensors" }, "VAELoader", "Face Detailer universale · VAE Krea2");
   workflow["905004"] = node({
     text: "natural photographic local refinement, preserve exact identity, realistic skin texture, accurate eyes, mouth and nose",
     clip: ["905001", 0],
   }, "CLIPTextEncode", "Face Detailer universale · prompt");
-  workflow["905005"] = node({
-    conditioning: ["905004", 0],
-    guidance: 3.5,
-  }, "FluxGuidance", "Face Detailer universale · guidance");
   workflow["905006"] = node({
-    conditioning: ["905005", 0],
+    conditioning: ["905004", 0],
   }, "ConditioningZeroOut", "Face Detailer universale · negativo");
   workflow["905007"] = node({
     model_name: "sam_vit_b_01ec64.pth",
@@ -986,8 +919,8 @@ function applyPortableDetectionDetailers(workflow, definition, options) {
     const prepareId = String(905002 + pass.offset);
     const fixId = String(905003 + pass.offset);
     workflow[pipeId] = node({
-      model: ["905003", 0],
-      pos: ["905005", 0],
+      model: ["905000", 0],
+      pos: ["905004", 0],
       neg: ["905006", 0],
       vae: ["905002", 0],
       clip: ["905001", 0],
@@ -1453,43 +1386,29 @@ export function buildImageWorkflow(modelId, rawOptions, upload, rawLoras = undef
   if (definition.family === "qwenedit" && options.batchSize > 1) {
     throw new Error("Qwen Image Edit 2511 richiede Numero immagini = 1.");
   }
-  if (["mageflow", "mageflowedit"].includes(definition.family) && options.batchSize > 1) {
-    throw new Error("Mage-Flow BF16 richiede Numero immagini = 1 su questa configurazione.");
-  }
   if (options.faceEnhance && !options.faceModel) {
     throw new Error("Nessun modello di miglioramento volti disponibile.");
   }
   if (["pulid", "loraPulid"].includes(options.characterConsistency) && definition.family !== "flux2") {
     throw new Error("PuLID è compatibile solo con Flux.2 Klein nella configurazione attuale.");
   }
-  const workflow = definition.family === "flux1"
-    ? buildFlux1(definition, options, upload)
-    : definition.family === "krea2"
+  const workflow = definition.family === "krea2"
       ? buildKrea2(definition, options, upload)
     : definition.family === "flux2"
       ? buildKlein(definition, options, upload, rawOptions.referenceUploads)
       : definition.family === "qwen"
         ? buildQwenText(definition, options)
-        : definition.family === "mageflow"
-          ? buildMageFlow(definition, options)
-        : definition.family === "mageflowedit"
-          ? buildMageFlowEdit(definition, options, upload, rawOptions.referenceUploads)
         : definition.family === "qwenedit"
           ? buildQwenEdit(definition, options, upload, rawOptions.referenceUploads)
           : definition.family === "sdxl"
             ? buildSdxlRealistic(definition, options, upload)
             : buildZImage(definition, options, upload);
-  if (options.preserveStages && definition.family === "flux1") {
-    workflow["14"].inputs.filename_prefix = `${options.outputBase}/05_refine_flux1`;
-  }
   const loras = parseLoras(rawLoras ?? rawOptions.loras);
-  if (definition.family === "qwenedit" && isBigLoveGwen2(definition.modelFile)) {
+  if (definition.family === "sdxl") {
     insertModelLoras(workflow, loras, ["1", 0], ["8"]);
-  } else if (definition.family === "sdxl") {
+  } else if (definition.family === "krea2") {
     insertModelLoras(workflow, loras, ["1", 0], ["8"]);
-  } else if (["mageflow", "mageflowedit", "krea2"].includes(definition.family)) {
-    insertModelLoras(workflow, loras, ["1", 0], ["8"]);
-  } else if (definition.family === "flux1" || definition.family === "qwen" || definition.family === "qwenedit") {
+  } else if (definition.family === "qwen" || definition.family === "qwenedit") {
     insertModelLoras(workflow, loras, ["1", 0], ["4"]);
   } else if (definition.family === "flux2") {
     insertModelLoras(workflow, loras, ["1", 0], ["13"]);
@@ -1524,9 +1443,7 @@ export function buildImageWorkflow(modelId, rawOptions, upload, rawLoras = undef
       mediaType: "image",
       generationType: "image",
       workflowId: `image:${modelId}:${mode}`,
-      workflowName: definition.family === "qwenedit" && isBigLoveGwen2(definition.modelFile)
-        ? `${definition.name} · BigLove Image Editing`
-        : `${definition.name} · ${mode === "text" ? "Text to Image" : mode === "reference" ? "Reference" : "Image to Image"}`,
+      workflowName: `${definition.name} · ${mode === "text" ? "Text to Image" : mode === "reference" ? "Reference" : "Image to Image"}`,
       imageModelId: modelId,
       imageModelFamily: definition.id,
       imageModelFile: definition.modelFile,
@@ -1553,7 +1470,7 @@ export function buildImageWorkflow(modelId, rawOptions, upload, rawLoras = undef
       imageSettings: {
         steps: options.steps,
         guidance: options.guidance,
-        denoise: ["qwenedit", "mageflowedit"].includes(definition.family) ? 1 : mode === "image" ? options.denoise : null,
+        denoise: definition.family === "qwenedit" ? 1 : mode === "image" ? options.denoise : null,
         referenceStrength: mode === "reference" ? options.referenceStrength : null,
         highresEnabled: options.highresEnabled,
         highresScale: options.highresEnabled ? options.highresScale : null,

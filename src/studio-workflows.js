@@ -145,21 +145,20 @@ const KREA_TRIPLE_MODELS = Object.freeze([
   {
     id: "darkBeast",
     name: "DarkBeast Krea2 FP8 · bilanciato",
-    file: "FLUX1D\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors",
+    file: "FluxKrea2\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors",
     moodyPromptAnchor: false,
   },
   {
     id: "moodyKrea",
     name: "Moody Krea2 Mix v5 · estetica social/asiatica",
-    file: "FLUX1D\\moodyKrea2Mix_v50.safetensors",
+    file: "FluxKrea2\\moodyKrea2Mix_v50.safetensors",
     moodyPromptAnchor: true,
   },
 ]);
 const FLUX2_BASE = "FLUX2\\flux2Klein_9bBase.safetensors";
 const FLUX2_TURBO = "FLUX2\\pornmasterFlux2Klein_v4TurboFp8.safetensors";
 const ZIMAGE_TURBO = "Z-IMG\\z_image_turbo_bf16.safetensors";
-const FLUX1_REALISTIC = "FLUX1D\\cyberrealisticFlux_v25.safetensors";
-const QWEN_EDIT = "QWEN\\BigLoveGwen2_mxfp8.safetensors";
+const KREA2_REFINE = "FluxKrea2\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors";
 const QWEN_EDIT_2511 = "QWEN\\qwen_image_edit_2511_bf16.safetensors";
 const STORYBOARD_MODELS = {
   qwen2511: {
@@ -170,15 +169,9 @@ const STORYBOARD_MODELS = {
   },
   klein: {
     id: "klein",
-    name: "BigLove Klein 4",
-    draft: "FLUX2\\BigLoveKlein4_bf16.safetensors",
-    quality: "FLUX2\\BigLoveKlein4_bf16.safetensors",
-  },
-  gwen: {
-    id: "gwen",
-    name: "BigLove Gwen 2",
-    draft: "QWEN\\BigLoveGwen2_mxfp8.safetensors",
-    quality: "QWEN\\BigLoveGwen2_mxfp8.safetensors",
+    name: "Flux.2 Klein 9B Base",
+    draft: FLUX2_TURBO,
+    quality: FLUX2_BASE,
   },
 };
 
@@ -646,7 +639,7 @@ function imageOptions(raw, {
       ? (mode === "text" ? "qwenImage" : "qwenEdit")
     : modelFile.startsWith("Z-IMG\\")
       ? "zImage"
-      : "flux1";
+      : "fluxKrea2";
   return {
     modelId: family,
     raw: {
@@ -1375,7 +1368,7 @@ export function studioConfig({ modelPatches = [], preprocessors = [], imageModel
       flux2Base: FLUX2_BASE,
       flux2Turbo: FLUX2_TURBO,
       zImageTurbo: ZIMAGE_TURBO,
-      flux1Realistic: FLUX1_REALISTIC,
+      krea2Refine: KREA2_REFINE,
       qwenEdit: QWEN_EDIT_2511,
       guidedKlein: STORYBOARD_MODELS.klein.quality,
     },
@@ -1761,7 +1754,7 @@ export function buildStudioContinuation(action, raw, selectedUpload, loras = und
         outputBase: `Studio/${raw.studioMode || "guidedEdit"}`,
       },
       source: selectedUpload,
-      modelFile: String(raw.flux1RefineModel || FLUX1_REALISTIC),
+      modelFile: String(raw.krea2RefineModel || KREA2_REFINE),
       prompt: `${prompt} Refine photographic skin, hair, fabric, materials and natural light without changing the approved composition.`,
       seed: seedAt(raw),
       width,

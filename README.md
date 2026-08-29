@@ -125,6 +125,15 @@ I file richiesti sono:
 
 Sulla RTX 4070 SUPER da 12 GB il workflow usa reference ridimensionate all'area di generazione. È comunque una pipeline molto pesante: ComfyUI deve essere avviato in modalità Low VRAM e può usare RAM e pagefile durante il caricamento dei checkpoint INT8.
 
+## Checkpoint LTX 2.5
+
+Video Studio permette di scegliere senza sovrascrizioni fra due transformer LTX 2.5:
+
+- **LTX 2.5 Distilled INT8 ConvRot**, checkpoint standard per tutti i workflow AIO;
+- **REDGraft LTX 2.5 Fast 2K · Sulphur2 ported**, rilevato come `redgraftLTX25Fast2K_ltx25RedgraftNSFW.safetensors` e utilizzabile negli stessi workflow locali con Gemma 4, VAE audio/video, decoder tiled, upscale latente e purge VRAM.
+
+La scelta viene salvata nei metadata della generazione come `ltx25ModelProfile` e `modelFile`, così cronologia, rigenerazione e diagnostica distinguono sempre i due checkpoint.
+
 ## Storyboard Director
 
 Selezionando `LTX 2.3 Director 2 UHD`, il normale campo immagine/prompt viene sostituito da uno storyboard.
@@ -174,9 +183,7 @@ Selezionando **Immagine** nella home sono disponibili:
 - **Image Edit** nativo con Qwen Image Edit 2511;
 - **Text to Image** nativo con Microsoft Mage-Flow 4B BF16;
 - **Image Edit** nativo con Microsoft Mage-Flow Edit 4B BF16 e fino a tre immagini complessive;
-- **Reference Image** tramite Flux Redux per la famiglia Flux.1.
-
-La scelta avviene su due livelli: prima la famiglia/workflow (**Flux.1**, **Flux.2**, **Qwen Text to Image**, **Qwen Image Edit 2511**, **Mage-Flow**, **Mage-Flow Edit** o **Z-Image**), poi il modello installato. La lista è letta direttamente da ComfyUI e comprende automaticamente i file presenti rispettivamente sotto `FLUX1D\`, `FLUX2\`, `QWEN\` e `Z-IMG\`, oltre ai checkpoint `mage_flow_bf16.safetensors` e `mage_flow_edit_bf16.safetensors`. I checkpoint Qwen possono anche essere collocati direttamente nella cartella diffusion models: vengono riconosciuti dal nome. I modelli aggiunti in futuro compaiono dopo il riavvio di ComfyUI e il ricaricamento della webapp, senza modificare il codice.
+La scelta avviene su due livelli: prima la famiglia/workflow (**Flux Krea 2**, **Flux.2**, **Qwen Text to Image**, **Qwen Image Edit 2511** o **Z-Image**), poi il modello installato. La lista è letta direttamente da ComfyUI e comprende automaticamente i file presenti rispettivamente sotto `FluxKrea2\`, `FLUX2\`, `QWEN\` e `Z-IMG\`. I checkpoint Qwen possono anche essere collocati direttamente nella cartella diffusion models: vengono riconosciuti dal nome. I modelli aggiunti in futuro compaiono dopo il riavvio di ComfyUI e il ricaricamento della webapp, senza modificare il codice.
 
 La configurazione usata da Generate, Image Studio e Video Studio viene condivisa e salvata in `.data/app-config-cache.json`. Al primo avvio il backend attende al massimo `APP_CONFIG_BOOTSTRAP_WAIT_MS` (predefinito 1200 ms), quindi mostra una configurazione provvisoria e completa in background l'inventario ComfyUI. `APP_CONFIG_TTL_SECONDS` (predefinito 60) controlla ogni quanto viene aggiornato l'inventario; le capability più pesanti di Interactive Cast e Scene Integration non bloccano il rendering iniziale.
 
@@ -186,8 +193,6 @@ Qwen usa due workflow distinti perché i modelli hanno scopi diversi:
 - **Qwen Image Edit 2511** modifica una fotografia tramite istruzione, usa `TextEncodeQwenImageEditPlus`, `CFGNorm`, reference latent e denoise nativo `1`.
 
 Per entrambi servono `qwen_2.5_vl_7b_fp8_scaled.safetensors` nei text encoder e `qwen_image_vae.safetensors` nei VAE. La webapp verifica separatamente checkpoint, text encoder e VAE e mostra il componente mancante senza tentare download automatici.
-
-Mage-Flow usa il checkpoint RL-aligned `mage_flow_bf16.safetensors` con 20 step e CFG 5. Richiede `qwen3vl_4b_bf16.safetensors` nei text encoder e `mage_flow_vae_bf16.safetensors` nei VAE. Sulla RTX 4070 SUPER il batch è limitato a una singola immagine e ComfyUI gestisce automaticamente l'offload tra GPU e RAM.
 
 BigLove Gwen 2 viene rilevato come modello Edit 2511 dal marcatore interno `index_timestep_zero`. La variante **MXFP8** usa il loader nativo ed è il profilo predefinito; la variante **NF4** usa `RemoteUNETLoaderNF4`, incluso in `comfyui_nodes/ComfyUI_Remote_Model_Loaders`, e richiede `bitsandbytes >= 0.50.0`. Un vero checkpoint Qwen Image 2512, quando installato, resta selezionabile separatamente.
 

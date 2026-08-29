@@ -154,7 +154,7 @@ for (const model of appConfig.imageModels || []) {
     }
   }
 }
-add("Immagini/post/Highres", () => buildImageWorkflow("flux1", {
+add("Immagini/post/Highres", () => buildImageWorkflow("fluxKrea2", {
   ...baseImage,
   imageMode: "image",
   highresEnabled: true,

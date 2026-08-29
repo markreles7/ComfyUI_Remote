@@ -22,8 +22,8 @@ export const SEEDVR2_VIDEO_UPSCALE_PROFILES = {
   preview: {
     id: "preview",
     name: "Anteprima",
-    description: "Molto rapida: batch piccolo, overlap ridotto e modello 3B.",
-    model: "seedvr2_ema_3b_fp8_e4m3fn.safetensors",
+    description: "Veloce: modello 3B Q4_K_M, batch piccolo e overlap ridotto.",
+    model: "seedvr2_ema_3b-Q4_K_M.gguf",
     resolution: 720,
     batchSize: 9,
     temporalOverlap: 1,
@@ -36,7 +36,7 @@ export const SEEDVR2_VIDEO_UPSCALE_PROFILES = {
   quality: {
     id: "quality",
     name: "Qualita",
-    description: "Bilanciata: piu' dettaglio e continuita' temporale.",
+    description: "Bilanciata: modello 3B FP8 con piu' dettaglio e continuita' temporale.",
     model: "seedvr2_ema_3b_fp8_e4m3fn.safetensors",
     resolution: 1080,
     batchSize: 17,

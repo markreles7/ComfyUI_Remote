@@ -86,7 +86,14 @@ test("il selettore LoRA MiniMax H3 sceglie esplicitamente la LoRA prima di aggiu
   assert.match(script, /function applyLtx25LoraPreset/);
   assert.match(script, /function renderLoraPicker/);
   assert.match(script, /const selected = \$\("#video-lora-picker"\)\?\.value/);
-  assert.match(script, /state\.loras\.push\(\{ name: selected, strength: \.8 \}\)/);
+  assert.match(script, /const metadata = state\.config\?\.loraMetadata\?\.\[selected\]/);
+  assert.match(script, /state\.loras\.push\(\{ name: selected, strength: Number\(metadata\?\.recommendedStrength \?\? \.8\) \}\)/);
+});
+
+test("LTX 2.5 permette di scegliere Distilled standard o REDGraft Fast 2K", () => {
+  assert.match(html, /id="ltx25ModelProfile"[\s\S]*LTX 2\.5 Distilled INT8 ConvRot[\s\S]*REDGraft Fast 2K/);
+  assert.match(script, /modelSelect\.value = modelProfiles\.standard\?\.available === false \? "redGraft" : "standard"/);
+  assert.match(script, /REDGraft Fast 2K: port Sulphur2 LTX 2\.5 INT8/);
 });
 
 test("i trigger verificati delle LoRA Video vengono aggiunti dopo LM Studio e garantiti all'invio", () => {

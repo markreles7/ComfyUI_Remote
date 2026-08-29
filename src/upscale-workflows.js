@@ -79,29 +79,20 @@ function applyPreUpscaleDetailers(workflow, image, options) {
   const width = Number(options.upscaleSourceWidth) || 1024;
   const height = Number(options.upscaleSourceHeight) || 1024;
   workflow["300"] = node({
-    unet_name: "FLUX1D\\cyberrealisticFlux_v25.safetensors",
-    weight_dtype: "fp8_e4m3fn",
-  }, "UNETLoader", "Pre-upscale detailer · Flux.1 realistico");
+    unet_name: "FluxKrea2\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors",
+    weight_dtype: "default",
+  }, "UNETLoader", "Pre-upscale detailer · Krea2");
   workflow["301"] = node({
-    clip_name1: "t5xxl_fp8_e4m3fn_scaled.safetensors",
-    clip_name2: "clip_l.safetensors",
-    type: "flux",
+    clip_name: "qwen3vl_4b_fp8_scaled.safetensors",
+    type: "krea2",
     device: "default",
-  }, "DualCLIPLoader", "Pre-upscale detailer · text encoders");
-  workflow["302"] = node({ vae_name: "ae.safetensors" }, "VAELoader", "Pre-upscale detailer · VAE");
-  workflow["303"] = node({
-    model: ["300", 0],
-    max_shift: 1.15,
-    base_shift: 0.5,
-    width,
-    height,
-  }, "ModelSamplingFlux", "Pre-upscale detailer · sampling");
+  }, "CLIPLoader", "Pre-upscale detailer · text encoder Krea2");
+  workflow["302"] = node({ vae_name: "qwen_image_vae.safetensors" }, "VAELoader", "Pre-upscale detailer · VAE Krea2");
   workflow["304"] = node({
     text: "realistic photographic local refinement, preserve exact identity, preserve composition, natural skin texture, clean edges",
     clip: ["301", 0],
   }, "CLIPTextEncode", "Pre-upscale detailer · prompt");
-  workflow["305"] = node({ conditioning: ["304", 0], guidance: 3.5 }, "FluxGuidance", "Pre-upscale detailer · guidance");
-  workflow["306"] = node({ conditioning: ["305", 0] }, "ConditioningZeroOut", "Pre-upscale detailer · negativo");
+  workflow["306"] = node({ conditioning: ["304", 0] }, "ConditioningZeroOut", "Pre-upscale detailer · negativo");
   workflow["307"] = node({
     model_name: "sam_vit_b_01ec64.pth",
     device_mode: "AUTO",
@@ -254,8 +245,8 @@ function applyPreUpscaleDetailers(workflow, image, options) {
     const prepareId = String(302 + pass.offset);
     const fixId = String(303 + pass.offset);
     workflow[pipeId] = node({
-      model: ["303", 0],
-      pos: ["305", 0],
+      model: ["300", 0],
+      pos: ["304", 0],
       neg: ["306", 0],
       vae: ["302", 0],
       clip: ["301", 0],
@@ -369,9 +360,9 @@ export function buildUpscaleWorkflow(rawOptions, upload, availableModels = []) {
     image = ["11", 0];
   } else if (engine === "seedvr2") {
     const settings = {
-      speed: { profile: "balanced", resolution: 1536, blocks: 24 },
-      quality: { profile: "balanced", resolution: 2048, blocks: 16 },
-      max: { profile: "realistic", resolution: 2656, blocks: 24 },
+      speed: { profile: "fast", resolution: 1280, blocks: 24 },
+      quality: { profile: "balanced", resolution: 1536, blocks: 16 },
+      max: { profile: "maximum", resolution: 1792, blocks: 32 },
     }[preset];
     const profile = SEEDVR2_PROFILES[settings.profile];
     workflow["10"] = node({
@@ -541,7 +532,7 @@ export function upscaleConfig({
         name,
         available: detectorModels.has(name),
       })),
-      model: "FLUX1D\\cyberrealisticFlux_v25.safetensors",
+      model: "FluxKrea2\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors",
     },
     deviceName,
     cloudEnginesExcluded: ["Magnific", "Recraft", "WaveSpeed"],

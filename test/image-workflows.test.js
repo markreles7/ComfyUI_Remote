@@ -19,41 +19,6 @@ const base = {
 };
 const upload = { name: "reference.png", subfolder: "remote", type: "input" };
 
-test("costruisce Flux.1 Dev Text to Image", () => {
-  const { workflow, metadata } = buildImageWorkflow("fluxDev", base, null);
-  assert.equal(workflow["1"].inputs.unet_name, "FLUX1D\\flux1-dev.safetensors");
-  assert.equal(workflow["5"].inputs.text, base.prompt);
-  assert.equal(workflow["7"].class_type, "EmptySD3LatentImage");
-  assert.equal(workflow["7"].inputs.width, 896);
-  assert.equal(workflow["7"].inputs.height, 1152);
-  assert.equal(workflow["7"].inputs.batch_size, 2);
-  assert.equal(workflow["8"].inputs.noise_seed, 1234);
-  assert.equal(workflow["9"].inputs.steps, 24);
-  assert.equal(metadata.mediaType, "image");
-});
-
-test("costruisce Flux.1 Dev Image to Image con denoise", () => {
-  const { workflow } = buildImageWorkflow("fluxDev", {
-    ...base,
-    imageMode: "image",
-    denoise: "0.55",
-  }, upload);
-  assert.equal(workflow["20"].inputs.image, "remote/reference.png");
-  assert.equal(workflow["7"].class_type, "VAEEncode");
-  assert.equal(workflow["9"].inputs.denoise, 0.55);
-});
-
-test("costruisce Flux Redux Reference Image", () => {
-  const { workflow } = buildImageWorkflow("fluxDev", {
-    ...base,
-    imageMode: "reference",
-    referenceStrength: "0.8",
-  }, upload);
-  assert.equal(workflow["22"].inputs.style_model_name, "flux1-redux-dev.safetensors");
-  assert.equal(workflow["25"].inputs.strength, 0.8);
-  assert.deepEqual(workflow["11"].inputs.conditioning, ["25", 0]);
-});
-
 test("costruisce Klein 9B con reference editing nativo", () => {
   const { workflow } = buildImageWorkflow("fluxKlein9b", {
     ...base,
@@ -136,72 +101,7 @@ test("preset Character accelera solo Qwen Image Edit 2511 con Lightning 8-step e
     name: "QWEN\\Qwen-Image-Edit-2511-Lightning-8steps-V1.0-bf16.safetensors",
     strength: 1,
   }]);
-  assert.equal(qwenEdit2511Lightning8Preset("QWEN\\BigLoveGwen2_mxfp8.safetensors"), null);
   assert.equal(qwenEdit2511Lightning8Preset("QWEN\\Qwen-Rapid-AIO-NSFW-v23.safetensors"), null);
-});
-
-test("usa il loader corretto per le due varianti BigLove Gwen 2", () => {
-  const mxfp8 = buildImageWorkflow("qwenEdit", {
-    ...base,
-    batchSize: "1",
-    imageMode: "image",
-    imageModelFile: "QWEN\\BigLoveGwen2_mxfp8.safetensors",
-  }, upload);
-  assert.equal(mxfp8.workflow["1"].class_type, "UNETLoader");
-  assert.equal(mxfp8.workflow["1"].inputs.weight_dtype, "default");
-  assert.equal(mxfp8.workflow["2"].inputs.type, "qwen_image");
-  assert.equal(mxfp8.workflow["21"].class_type, "ImageScaleToTotalPixels");
-  assert.equal(mxfp8.workflow["21"].inputs.megapixels, 1.5);
-  assert.equal(mxfp8.workflow["12"].class_type, "CFGNorm");
-  assert.equal(mxfp8.workflow["13"].class_type, "FluxKontextMultiReferenceLatentMethod");
-  assert.equal(mxfp8.workflow["14"].class_type, "FluxKontextMultiReferenceLatentMethod");
-  assert.equal(mxfp8.workflow["8"].inputs.sampler_name, "euler");
-  assert.equal(mxfp8.workflow["8"].inputs.scheduler, "simple");
-  assert.deepEqual(mxfp8.workflow["8"].inputs.model, ["12", 0]);
-  assert.deepEqual(mxfp8.workflow["8"].inputs.positive, ["13", 0]);
-  assert.deepEqual(mxfp8.workflow["8"].inputs.negative, ["14", 0]);
-  assert.equal(mxfp8.metadata.workflowName, "BigLove Gwen 2 · MXFP8 · BigLove Image Editing");
-
-  const nf4 = buildImageWorkflow("qwenEdit", {
-    ...base,
-    batchSize: "1",
-    imageMode: "image",
-    imageModelFile: "QWEN\\BigLoveGwen2_nf4.safetensors",
-  }, upload);
-  assert.equal(nf4.workflow["1"].class_type, "RemoteUNETLoaderNF4");
-  assert.equal(nf4.workflow["1"].inputs.unet_name, "QWEN\\BigLoveGwen2_nf4.safetensors");
-  assert.equal("weight_dtype" in nf4.workflow["1"].inputs, false);
-  assert.equal(nf4.workflow["8"].inputs.scheduler, "simple");
-});
-
-test("mantiene la ricetta BigLove anche nel secondo passaggio Highres", () => {
-  const { workflow } = buildImageWorkflow("qwenEdit", {
-    ...base,
-    batchSize: "1",
-    imageMode: "image",
-    imageModelFile: "QWEN\\BigLoveGwen2_mxfp8.safetensors",
-    highresEnabled: "on",
-    highresScale: "1.5",
-    highresSteps: "4",
-    highresDenoise: "0.3",
-  }, upload);
-  assert.equal(workflow["910005"].class_type, "KSampler");
-  assert.equal(workflow["910005"].inputs.scheduler, "simple");
-  assert.deepEqual(workflow["910005"].inputs.model, ["12", 0]);
-  assert.deepEqual(workflow["910005"].inputs.positive, ["13", 0]);
-  assert.deepEqual(workflow["910005"].inputs.negative, ["14", 0]);
-});
-
-test("abilita BigLove Gwen 2 anche come Text to Image compatibile", () => {
-  const { workflow, metadata } = buildImageWorkflow("qwenImage", {
-    ...base,
-    batchSize: "1",
-    imageMode: "text",
-    imageModelFile: "QWEN\\BigLoveGwen2_mxfp8.safetensors",
-  }, null);
-  assert.equal(workflow["1"].class_type, "UNETLoader");
-  assert.equal(workflow["7"].class_type, "EmptySD3LatentImage");
-  assert.equal(metadata.imageModelFamily, "qwenImage");
 });
 
 test("abilita Qwen Rapid AIO NSFW v23 sia per testo sia per image editing", () => {
@@ -280,32 +180,28 @@ test("rileva checkpoint SDXL realistici dalla lista CheckpointLoaderSimple", () 
 
 test("segnala i modelli immagine non installati", () => {
   const config = imageModelConfig([
-    "FLUX1D\\flux1-dev.safetensors",
-    "FLUX1D\\cyberrealisticFlux_v25.safetensors",
+    "FluxKrea2\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors",
     "FLUX2\\flux2Klein_9bBase.safetensors",
-  ]);
-  const flux1 = config.find((item) => item.id === "flux1");
-  assert.equal(flux1.available, true);
-  assert.equal(flux1.models.length, 2);
-  assert.equal(flux1.defaultModelFile, "FLUX1D\\flux1-dev.safetensors");
+  ], {
+    clips: ["qwen3vl_4b_fp8_scaled.safetensors"],
+    vaes: ["qwen_image_vae.safetensors"],
+  });
+  assert.equal(config.find((item) => item.id === "fluxKrea2").available, true);
   assert.equal(config.find((item) => item.id === "flux2").available, true);
   assert.equal(config.find((item) => item.id === "zImage").available, false);
 });
 
-test("separa i checkpoint Krea2 da Flux.1 e usa il workflow Krea2 nativo", () => {
-  const darkBeast = "FLUX1D\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors";
-  const moody = "FLUX1D\\moodyKrea2Mix_v50.safetensors";
+test("rileva la cartella FluxKrea2 e usa il workflow Krea2 nativo", () => {
+  const darkBeast = "FluxKrea2\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors";
+  const moody = "FluxKrea2\\moodyKrea2Mix_v50.safetensors";
   const config = imageModelConfig([
-    "FLUX1D\\flux1-dev.safetensors",
     darkBeast,
     moody,
   ], {
     clips: ["qwen3vl_4b_fp8_scaled.safetensors"],
     vaes: ["qwen_image_vae.safetensors"],
   });
-  const flux1 = config.find((item) => item.id === "flux1");
   const krea2 = config.find((item) => item.id === "fluxKrea2");
-  assert.deepEqual(flux1.models.map((item) => item.file), ["FLUX1D\\flux1-dev.safetensors"]);
   assert.equal(krea2.available, true);
   assert.deepEqual(new Set(krea2.models.map((item) => item.file)), new Set([darkBeast, moody]));
   assert.equal(krea2.defaultModelFile, darkBeast);
@@ -343,10 +239,9 @@ test("rileva separatamente checkpoint e dipendenze Qwen", () => {
   assert.equal(ready.find((item) => item.id === "qwenEdit").models.length, 1);
 });
 
-test("mantiene Qwen Image Edit 2511 come primario e richiede la selezione esplicita delle varianti", () => {
+test("mantiene Qwen Image Edit 2511 come primario e Qwen Rapid come variante", () => {
   const ready = imageModelConfig([
-    "QWEN\\BigLoveGwen2_nf4.safetensors",
-    "QWEN\\BigLoveGwen2_mxfp8.safetensors",
+    "QWEN\\Qwen-Rapid-AIO-NSFW-v23.safetensors",
   ], {
     clips: ["qwen_2.5_vl_7b_fp8_scaled.safetensors"],
     vaes: ["qwen_image_vae.safetensors"],
@@ -354,17 +249,15 @@ test("mantiene Qwen Image Edit 2511 come primario e richiede la selezione esplic
   const qwenEdit = ready.find((item) => item.id === "qwenEdit");
   const qwenText = ready.find((item) => item.id === "qwenImage");
   assert.equal(qwenText.available, true);
-  assert.equal(qwenText.models.length, 2);
+  assert.equal(qwenText.models.length, 1);
   assert.equal(qwenEdit.available, true);
-  assert.equal(qwenEdit.models.length, 2);
+  assert.equal(qwenEdit.models.length, 1);
   assert.equal(qwenEdit.primaryAvailable, false);
   assert.equal(qwenEdit.defaultModelFile, "QWEN\\qwen_image_edit_2511_bf16.safetensors");
-  assert.equal(qwenEdit.models.find((item) => item.file.endsWith("_nf4.safetensors")).name, "BigLove Gwen 2 · NF4 leggero");
 });
 
 test("preferisce il checkpoint ufficiale Qwen Image Edit 2511 quando installato", () => {
   const ready = imageModelConfig([
-    "QWEN\\BigLoveGwen2_mxfp8.safetensors",
     "QWEN\\Qwen-Rapid-AIO-NSFW-v23.safetensors",
     "QWEN\\qwen_image_edit_2511_bf16.safetensors",
   ], {
@@ -379,7 +272,7 @@ test("preferisce il checkpoint ufficiale Qwen Image Edit 2511 quando installato"
 
 test("permette di scegliere checkpoint diversi nella stessa famiglia", () => {
   const variants = [
-    ["flux1", "FLUX1D\\cyberrealisticFlux_v25.safetensors", "4"],
+    ["fluxKrea2", "FluxKrea2\\moodyKrea2Mix_v50.safetensors", "8"],
     ["flux2", "FLUX2\\pornmasterFlux2Klein_v4TurboFp8.safetensors", "13"],
     ["zImage", "Z-IMG\\moodyProMix_zitV13.safetensors", "4"],
   ];
@@ -396,7 +289,7 @@ test("permette di scegliere checkpoint diversi nella stessa famiglia", () => {
 });
 
 test("impedisce di usare un checkpoint appartenente a un'altra famiglia", () => {
-  assert.throws(() => buildImageWorkflow("flux1", {
+  assert.throws(() => buildImageWorkflow("fluxKrea2", {
     ...base,
     imageModelFile: "Z-IMG\\z_image_turbo_bf16.safetensors",
   }, null), /non è compatibile/);
@@ -541,7 +434,7 @@ test("inserisce più LoRA in tutte le famiglie di modello immagine", () => {
     { name: "family\\two.safetensors", strength: -0.2 },
   ];
   const variants = [
-    ["fluxDev", "4", base, null],
+    ["fluxKrea", "8", base, null],
     ["fluxKlein9b", "13", base, null],
     ["zImage", "4", base, null],
     ["qwenImage", "4", { ...base, batchSize: "1" }, null],
@@ -558,7 +451,7 @@ test("inserisce più LoRA in tutte le famiglie di modello immagine", () => {
   }
 });
 
-test("aggiunge Highres Fix ai tre tipi di sampler immagine", () => {
+test("aggiunge Highres Fix ai sampler Krea2, Flux2 e Z-Image", () => {
   const highres = {
     ...base,
     batchSize: "1",
@@ -568,19 +461,18 @@ test("aggiunge Highres Fix ai tre tipi di sampler immagine", () => {
     highresDenoise: "0.25",
     saveOriginal: "on",
   };
-  const flux1 = buildImageWorkflow("fluxDev", highres, null);
+  const krea2 = buildImageWorkflow("fluxKrea", highres, null);
   const klein = buildImageWorkflow("fluxKlein9b", highres, null);
   const zimage = buildImageWorkflow("zImage", { ...highres, imageSteps: "8", imageGuidance: "1" }, null);
 
-  assert.equal(flux1.workflow["910004"].class_type, "BasicScheduler");
-  assert.equal(flux1.workflow["910005"].class_type, "SamplerCustomAdvanced");
+  assert.equal(krea2.workflow["910005"].class_type, "KSampler");
   assert.equal(klein.workflow["910004"].class_type, "Flux2Scheduler");
   assert.equal(klein.workflow["910005"].class_type, "SplitSigmas");
   assert.equal(zimage.workflow["910005"].class_type, "KSampler");
-  assert.equal(flux1.workflow["940001"].class_type, "SaveImage");
-  assert.ok(flux1.workflow["14"]);
-  assert.equal(flux1.metadata.imageSettings.finalWidth, 1344);
-  assert.equal(flux1.metadata.imageSettings.finalHeight, 1728);
+  assert.equal(krea2.workflow["940001"].class_type, "SaveImage");
+  assert.ok(krea2.workflow["10"]);
+  assert.equal(krea2.metadata.imageSettings.finalWidth, 1344);
+  assert.equal(krea2.metadata.imageSettings.finalHeight, 1728);
 });
 
 test("aggiunge RealESRGAN 2x con purge pass-through e può salvare solo il risultato finale", () => {
@@ -602,20 +494,20 @@ test("aggiunge RealESRGAN 2x con purge pass-through e può salvare solo il risul
   assert.equal(metadata.imageSettings.finalHeight, 2304);
 });
 
-test("aggiunge SeedVR2 realistico tiled e con offload CPU", () => {
+test("aggiunge SeedVR2 massimo tiled e con offload CPU", () => {
   const { workflow, metadata } = buildImageWorkflow("zImage", {
     ...base,
     batchSize: "1",
     imageSteps: "8",
     imageGuidance: "1",
     upscaleMode: "seedvr2",
-    seedvrProfile: "realistic",
-    seedvrResolution: "2656",
+    seedvrProfile: "maximum",
+    seedvrResolution: "1792",
     autoPurge: "on",
     saveOriginal: "on",
   }, null);
   assert.equal(workflow["920002"].inputs.model, "seedvr2_ema_7b_fp16.safetensors");
-  assert.equal(workflow["920002"].inputs.blocks_to_swap, 24);
+  assert.equal(workflow["920002"].inputs.blocks_to_swap, 32);
   assert.equal(workflow["920002"].inputs.offload_device, "cpu");
   assert.equal(workflow["920003"].inputs.encode_tiled, true);
   assert.equal(workflow["920004"].inputs.batch_size, 1);
@@ -624,13 +516,13 @@ test("aggiunge SeedVR2 realistico tiled e con offload CPU", () => {
   assert.equal(workflow["939999"].class_type, "RemoteImageTensorNormalize");
   assert.deepEqual(workflow["939999"].inputs.image, ["920005", 0]);
   assert.deepEqual(workflow["940001"].inputs.images, ["939999", 0]);
-  assert.equal(metadata.imageSettings.seedvrProfile, "realistic");
-  assert.equal(metadata.imageSettings.finalWidth, 2656);
-  assert.equal(metadata.imageSettings.finalHeight, 3415);
+  assert.equal(metadata.imageSettings.seedvrProfile, "maximum");
+  assert.equal(metadata.imageSettings.finalWidth, 1792);
+  assert.equal(metadata.imageSettings.finalHeight, 2304);
 });
 
 test("aggiunge RTX VSR con purge automatico alla pipeline immagine", () => {
-  const { workflow, metadata } = buildImageWorkflow("flux1", {
+  const { workflow, metadata } = buildImageWorkflow("fluxKrea", {
     ...base,
     batchSize: "1",
     upscaleMode: "rtx",
@@ -644,7 +536,7 @@ test("aggiunge RTX VSR con purge automatico alla pipeline immagine", () => {
 });
 
 test("impedisce batch multipli con Highres Fix o SeedVR2", () => {
-  assert.throws(() => buildImageWorkflow("fluxDev", {
+  assert.throws(() => buildImageWorkflow("fluxKrea", {
     ...base,
     highresEnabled: "on",
   }, null), /Numero immagini = 1/);
@@ -654,8 +546,8 @@ test("impedisce batch multipli con Highres Fix o SeedVR2", () => {
   }, null), /Numero immagini = 1/);
 });
 
-test("il master Flux.1 applica detailer volto e mani prima di Highres Fix", () => {
-  const { workflow, metadata } = buildImageWorkflow("flux1", {
+test("il master Krea2 applica detailer volto e mani prima di Highres Fix", () => {
+  const { workflow, metadata } = buildImageWorkflow("fluxKrea", {
     ...base,
     imageMode: "image",
     batchSize: "1",
@@ -673,17 +565,17 @@ test("il master Flux.1 applica detailer volto e mani prima di Highres Fix", () =
   assert.equal(metadata.imageSettings.handDetailer, true);
 });
 
-test("Face Detailer universale rifinisce BigLove Gwen prima di Highres e SeedVR2", () => {
+test("Face Detailer universale rifinisce Qwen 2511 prima di Highres e SeedVR2", () => {
   const { workflow, metadata } = buildImageWorkflow("qwenEdit", {
     ...base,
     batchSize: "1",
     imageMode: "image",
-    imageModelFile: "QWEN\\BigLoveGwen2_mxfp8.safetensors",
+    imageModelFile: "QWEN\\qwen_image_edit_2511_bf16.safetensors",
     faceDetailer: "on",
     faceDetailerDenoise: "0.18",
     highresEnabled: "on",
   }, upload);
-  assert.equal(workflow["905000"].inputs.unet_name, "FLUX1D\\cyberrealisticFlux_v25.safetensors");
+  assert.equal(workflow["905000"].inputs.unet_name, "FluxKrea2\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors");
   assert.equal(workflow["905007"].class_type, "easy samLoaderPipe");
   assert.equal(workflow["905011"].inputs.model_name, "bbox/face_yolov8n.pt");
   assert.deepEqual(workflow["905012"].inputs.optional_image, ["9", 0]);
@@ -700,7 +592,7 @@ test("Face Detailer universale rifinisce Flux.2 Klein senza cambiare il generato
     faceDetailerDenoise: "0.18",
   }, null);
   assert.equal(workflow["1"].inputs.unet_name, "FLUX2\\flux2Klein_9bBase.safetensors");
-  assert.equal(workflow["905000"].inputs.unet_name, "FLUX1D\\cyberrealisticFlux_v25.safetensors");
+  assert.equal(workflow["905000"].inputs.unet_name, "FluxKrea2\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors");
   assert.deepEqual(workflow["905012"].inputs.optional_image, ["15", 0]);
   assert.deepEqual(workflow["939999"].inputs.image, ["905013", 1]);
 });

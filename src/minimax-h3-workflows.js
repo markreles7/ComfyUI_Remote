@@ -209,18 +209,27 @@ export function buildMiniMaxH3Workflow(raw = {}, uploads = {}, loras = [], confi
   if (!definition) throw new Error("Modalità MiniMax H3 non riconosciuta.");
   const files = h3.files;
   const requestedModelProfile = String(raw.h3ModelProfile || "base");
-  const modelProfile = requestedModelProfile === "erosMax" ? "erosMax" : "base";
+  const modelProfile = ["erosMax", "pinkCherry"].includes(requestedModelProfile)
+    ? requestedModelProfile
+    : "base";
   const erosMax = modelProfile === "erosMax";
+  const pinkCherry = modelProfile === "pinkCherry";
   if (erosMax && !files.erosMax) {
     throw new Error("H3 Eros Max beta3 non è installato nell’istanza ComfyUI attiva.");
   }
   if (erosMax && mode === "firstLast") {
     throw new Error("H3 Eros Max beta3 non supporta First / Last Frame: usa Text to Video, Single Image come Picture 1 Ref2VA oppure Multi Reference.");
   }
+  if (pinkCherry && !files.pinkCherry) {
+    throw new Error("PinkCherry H3 FL2VA 0.6 beta non è installato nell’istanza ComfyUI attiva.");
+  }
+  if (pinkCherry && mode === "references") {
+    throw new Error("PinkCherry 0.6 beta è un modello FL2VA: usa Text to Video, Single Image o First / Last Frame.");
+  }
   const effectiveFamily = erosMax && mode === "image" ? "ref2va" : definition.family;
   const promptMode = erosMax && mode === "image" ? "references" : mode;
   const actionProfile = raw.h3Profile === "action";
-  if (actionProfile && erosMax) throw new Error("ACTION H3 usa il checkpoint FL2VA base e non H3 Eros Max.");
+  if (actionProfile && (erosMax || pinkCherry)) throw new Error("ACTION H3 usa il checkpoint FL2VA base.");
   if (actionProfile && definition.family !== "fl2va") {
     throw new Error("ACTION H3 supporta soltanto Text to Video, Single Image e First / Last Frame FL2VA.");
   }
@@ -273,7 +282,7 @@ export function buildMiniMaxH3Workflow(raw = {}, uploads = {}, loras = [], confi
     : number(raw.h3SecondMegapixels, 1, firstMegapixels, 1);
   const secondSteps = ["latentLearned", "h3Balanced"].includes(refineMode) ? 3 : 4;
   const secondDenoise = refineMode === "latentLearned" ? 0.2 : refineMode === "h3Balanced" ? 0.15 : 0.2;
-  const nativeUseTurbo = erosMax ? false : bool(raw.h3UseTurbo, true);
+  const nativeUseTurbo = erosMax || pinkCherry ? false : bool(raw.h3UseTurbo, true);
   const requestedAttentionBackend = String(raw.h3AttentionBackend || "memoryEfficient");
   const attentionBackend = requestedAttentionBackend === "comfyKitchen" ? "comfyKitchen" : "memoryEfficient";
   if (attentionBackend === "comfyKitchen" && h3.attentionAvailability?.comfyKitchen === false) {
@@ -281,18 +290,30 @@ export function buildMiniMaxH3Workflow(raw = {}, uploads = {}, loras = [], confi
   }
   // L'anteprima e' volutamente economica, ma la ricetta conserva la scelta
   // nativa per la rigenerazione finale con lo stesso seed.
-  const useTurbo = erosMax || (["preview", "seedCandidate"].includes(runProfile) ? true : nativeUseTurbo);
+  const useTurbo = pinkCherry ? false : erosMax || (["preview", "seedCandidate"].includes(runProfile) ? true : nativeUseTurbo);
   const externalTurbo = useTurbo && !erosMax;
   const purgeBetween = (secondPass || postRefine) && bool(raw.h3PurgeBetween, true);
   const purgeAfter = bool(raw.h3PurgeAfter, true);
   const refImageSize = raw.h3ReferenceSize === "max" ? "max" : "match";
   if (actionProfile && !files.combat) throw new Error("La LoRA Combat V2 richiesta da ACTION H3 non è installata.");
-  const modelName = erosMax ? files.erosMax : effectiveFamily === "fl2va" ? files.fl2va : files.ref2va;
+  const modelName = erosMax
+    ? files.erosMax
+    : pinkCherry
+      ? files.pinkCherry
+      : effectiveFamily === "fl2va" ? files.fl2va : files.ref2va;
+  const galaxyAceSelected = loras.some((selected) => /(?:^|[\\/])STY_GalaxyAce\.safetensors$/i.test(selected.name));
+  if (pinkCherry && galaxyAceSelected) {
+    throw new Error("GalaxyAce non è compatibile con PinkCherry INT8 unpruned: usa MiniMax H3 base oppure Eros Max.");
+  }
   const workflow = {
     "1": node("CLIPLoader", { clip_name: files.clip, type: "minimax", device: "default" }, "MiniMax H3 · Qwen3-VL INT8"),
     "2": node("VAELoader", { vae_name: files.videoVae }, "MiniMax H3 · Video VAE"),
     "3": node("VAELoader", { vae_name: files.audioVae }, "MiniMax H3 · Audio VAE"),
-    "4": node("UNETLoader", { unet_name: modelName, weight_dtype: "default" }, erosMax ? "H3 Eros Max beta3 · INT8 ConvRot" : `MiniMax H3 · ${effectiveFamily.toUpperCase()} INT8`),
+    "4": node("UNETLoader", { unet_name: modelName, weight_dtype: "default" }, erosMax
+      ? "H3 Eros Max beta3 · INT8 ConvRot"
+      : pinkCherry
+        ? "PinkCherry H3 FL2VA 0.6 beta · INT8 unpruned"
+        : `MiniMax H3 · ${effectiveFamily.toUpperCase()} INT8`),
     "5": attentionBackend === "comfyKitchen"
       ? node("ModelAttentionBackend", { model: ["4", 0], attention: "comfy kitchen attention" }, "MiniMax H3 · Comfy-Kitchen Attention")
       : node("MiniMaxH3MemoryEfficientSageAttentionPatch", { model: ["4", 0] }, "MiniMax H3 · Memory Efficient SageAttention"),
@@ -580,7 +601,7 @@ export function buildMiniMaxH3Workflow(raw = {}, uploads = {}, loras = [], confi
       h3Mode: mode,
       modelFamily: effectiveFamily,
       modelFile: modelName,
-      h3Profile: actionProfile ? "action" : erosMax ? "erosMax" : "standard",
+      h3Profile: actionProfile ? "action" : erosMax ? "erosMax" : pinkCherry ? "pinkCherry" : "standard",
       h3ModelProfile: modelProfile,
       integratedTurbo: erosMax,
       samplerName,

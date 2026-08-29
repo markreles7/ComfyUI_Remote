@@ -204,10 +204,8 @@ function compatibleLoras() {
       : model?.family === "flux2"
         ? "FLUX2\\"
       : model?.family === "zimage"
-          ? "ZIMG\\"
-          : ["mageflow", "mageflowedit"].includes(model?.family)
-            ? "MAGEFLOW\\"
-          : "FLUX\\";
+        ? "ZIMG\\"
+        : "FLUX\\";
   }
   const family = prefix.replace("\\", "").toLocaleUpperCase();
   return all.filter((name) => loraMatchesFamily(name, family, state.config?.loraMetadata));
@@ -446,9 +444,7 @@ function imageOptionsChanged(updateDefaults = false) {
   const previousMode = modeSelect.value;
   const labels = {
     text: "Text to Image",
-    image: model.family === "mageflowedit"
-      ? "Image Edit · Mage-Flow"
-      : model.family === "qwenedit"
+    image: model.family === "qwenedit"
       ? "Image Edit 2511"
       : model.family === "flux2"
         ? "Image Edit / Reference"
@@ -477,7 +473,7 @@ function imageOptionsChanged(updateDefaults = false) {
   }
   const mode = modeSelect.value;
   const needsImage = mode !== "text";
-  const singleImageModel = ["qwenedit", "mageflow", "mageflowedit"].includes(model.family);
+  const singleImageModel = model.family === "qwenedit";
   $("#batchSize").max = singleImageModel ? "1" : "4";
   if (singleImageModel) $("#batchSize").value = "1";
   $("#source-image-field").classList.toggle("hidden", !needsImage);
@@ -487,7 +483,7 @@ function imageOptionsChanged(updateDefaults = false) {
   $("#source-image-copy").textContent = mode === "reference"
     ? "Carica l’immagine di riferimento"
     : "Carica l’immagine da modificare";
-  const nativeInstructionEdit = ["flux2", "qwenedit", "mageflowedit"].includes(model.family);
+  const nativeInstructionEdit = ["flux2", "qwenedit"].includes(model.family);
   $("#denoise-field").classList.toggle("hidden", mode !== "image" || nativeInstructionEdit);
   $("#denoise").disabled = mode !== "image" || nativeInstructionEdit;
   $("#reference-strength-field").classList.toggle("hidden", mode !== "reference");
