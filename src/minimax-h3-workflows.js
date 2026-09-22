@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { h3ActionPreset } from "./h3-action-presets.js";
 
 export const MINIMAX_H3_MODES = Object.freeze({
   text: { id: "text", name: "Text to Video", family: "fl2va" },
@@ -32,14 +33,7 @@ const SCENE_PRESET_DIRECTIONS = Object.freeze({
   dynamicTracking: "SCENE PRESET: Energetic but credible tracking shot. Follow one clearly defined adult subject through one continuous physical action with readable acceleration, foot placement, balance, inertia, cloth and hair response, coherent parallax and a stable ending. The camera operator reacts a fraction late and makes small framing corrections while keeping the subject readable. Preserve identity, outfit, environment and object continuity. Avoid teleporting, floaty motion, impossible speed, random shake, speed ramps, morphing, duplicated limbs, discontinuous backgrounds or music-video gloss.",
 });
 
-const ACTION_PRESET_DIRECTIONS = Object.freeze({
-  custom: "",
-  streetBrawlVerite: "ACTION PRESET: Grounded street-brawl verite. Keep exchanges short, close and physically causal, with planted footwork, imperfect balance, guarded reactions and restrained operator-held camera corrections. Favor practical light, ordinary clothing deformation, sweat, breath and surface contact over heroic posing or glossy action-film polish. No attack-reset loops, weightless hits, random flailing or impossible recovery.",
-  fantasyMelee: "ACTION PRESET: Gritty live-action fantasy melee. Preserve the established realistic world, worn leather, cloth, mud, dust, practical firelight and believable weapon or fist weight. Stage a small number of readable attacks with clear spacing, defensive reactions and environmental contact. Fantasy production design must remain tactile and photographed, without videogame glow, weightless weapons, superhero motion or synthetic CGI spectacle unless explicitly requested.",
-  cinematicOneTake: "ACTION PRESET: Cinematic continuous-take duel. Use one uninterrupted motivated dolly, truck or restrained orbit that maintains screen direction, fighter silhouettes and spatial geography. Build a clear opening, escalation and stable resolution with complete contact, reaction and recovery beats. Do not invent cuts, montage, speed ramps, excessive slow motion, impossible camera travel or repeated attacks.",
-  brutalFinisher: "ACTION PRESET: Short brutal escalation with one decisive finisher. Keep early exchanges controlled and reserve the strongest acceleration, impact and environmental response for the final requested technique. Show anticipation, exact contact, balance loss, complete fall or recovery and a stable aftermath. Avoid gore unless requested, repeated finishing blows, frozen impact poses, anatomy collapse or an abrupt ending before the consequence completes.",
-  readableGroupFight: "ACTION PRESET: Readable group fight centered on one primary fighter and no more than three immediately active attackers. Stagger attacks causally, keep inactive opponents spatially present, preserve screen direction and let each block, counter, stumble and reposition finish before the next beat. Use a sufficiently wide human-operated frame with motivated reframing. Avoid simultaneous random punching, duplicated people, teleporting attackers, crowd morphing or lost spatial geography.",
-});
+const ACTION_ANIME_STYLE_LOCK = "ANIME STYLE LOCK: Treat the supplied frame's drawing style as binding and preserve a hand-drawn 2D Japanese TV-anime look from the first frame through the last. Keep clean inked contours, flat cel-shaded color regions, graphic shadow shapes, limited material reflections and painted background treatment. Do not transition toward volumetric 3D, photorealism, CGI, game-engine rendering, plastic skin or physically based materials.";
 
 const H3_BASE_FIELDS = ["integrated_multimodal_description", "overall_soundscape", "non_diegetic_music"];
 const H3_REFERENCE_FIELDS = ["subject_definitions", "summary", "retention_analysis", "detailed_description", "overall_soundscape", "non_diegetic_music"];
@@ -138,6 +132,10 @@ function framesForDuration(value) {
 }
 
 function seedValue(value) {
+  const normalized = value == null ? "" : String(value).trim();
+  if (!normalized || ["random", "casuale", "null", "undefined"].includes(normalized.toLowerCase())) {
+    return crypto.randomInt(0, 2 ** 31);
+  }
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : crypto.randomInt(0, 2 ** 31);
 }
@@ -229,29 +227,43 @@ export function buildMiniMaxH3Workflow(raw = {}, uploads = {}, loras = [], confi
   const effectiveFamily = erosMax && mode === "image" ? "ref2va" : definition.family;
   const promptMode = erosMax && mode === "image" ? "references" : mode;
   const actionProfile = raw.h3Profile === "action";
-  if (actionProfile && (erosMax || pinkCherry)) throw new Error("ACTION H3 usa il checkpoint FL2VA base.");
-  if (actionProfile && definition.family !== "fl2va") {
-    throw new Error("ACTION H3 supporta soltanto Text to Video, Single Image e First / Last Frame FL2VA.");
+  const weaponProfile = raw.h3Profile === "weapon";
+  const combatProfile = actionProfile || weaponProfile;
+  const actionLoraType = actionProfile && raw.actionH3PrimaryLora === "weapon" ? "weapon" : actionProfile ? "combat" : weaponProfile ? "weapon" : "combat";
+  const profileName = weaponProfile ? "Weapon Combat" : actionProfile ? "ACTION H3" : "MiniMax H3";
+  if (combatProfile && (erosMax || pinkCherry)) throw new Error(`${profileName} usa il checkpoint Hybrid b25-49 dedicato.`);
+  if (weaponProfile && definition.family !== "fl2va") {
+    throw new Error(`${profileName} supporta soltanto Text to Video, Single Image e First / Last Frame FL2VA.`);
   }
-  const actionTrigger = actionProfile && ["prfight2", "prfight2, prfin1"].includes(String(raw.actionH3Trigger))
-    ? String(raw.actionH3Trigger)
+  const selectedActionPreset = actionProfile ? h3ActionPreset(raw.actionH3Preset, actionLoraType) : h3ActionPreset("custom");
+  const actionTrigger = actionProfile
+    ? actionLoraType === "weapon"
+      ? "BUNNY"
+      : ["prfight2", "prfight2, prfin1"].includes(String(raw.actionH3Trigger))
+        ? String(raw.actionH3Trigger)
+        : selectedActionPreset.trigger || ""
+    : "";
+  const motionRepairEnabled = combatProfile && bool(raw.h3MotionRepair, false);
+  const motionRepairTrigger = motionRepairEnabled && bool(raw.h3MotionRepairTrigger, true)
+    ? "bunny_crisp_motion"
     : "";
   const userPrompt = String(raw.prompt || "").trim();
-  if (!userPrompt) throw new Error(`Inserisci un prompt ${actionProfile ? "ACTION H3" : "MiniMax H3"}.`);
+  if (!userPrompt) throw new Error(`Inserisci un prompt ${profileName}.`);
   const lookPreset = Object.hasOwn(REALISM_DIRECTIONS, String(raw.h3LookPreset))
     ? String(raw.h3LookPreset)
     : "neutral";
   const scenePreset = Object.hasOwn(SCENE_PRESET_DIRECTIONS, String(raw.h3ScenePreset))
     ? String(raw.h3ScenePreset)
     : "none";
-  const actionPreset = actionProfile && Object.hasOwn(ACTION_PRESET_DIRECTIONS, String(raw.actionH3Preset))
-    ? String(raw.actionH3Preset)
-    : "custom";
+  const actionPreset = actionProfile ? selectedActionPreset.id : "custom";
+  const flatAnimeSelected = actionProfile && loras.some((selected) =>
+    /(?:^|[\\/])STY_Flat_Anime_H3\.safetensors$/i.test(String(selected.name || ""))
+  );
   const duration = number(raw.duration, 5, 4, 15);
   const length = framesForDuration(duration);
   const prompt = formatH3ThreeFieldPrompt(userPrompt, {
-    triggers: actionTrigger ? [actionTrigger] : [],
-    directives: [ACTION_PRESET_DIRECTIONS[actionPreset], SCENE_PRESET_DIRECTIONS[scenePreset], REALISM_DIRECTIONS[lookPreset]],
+    triggers: [actionTrigger, weaponProfile ? "BUNNY" : "", motionRepairTrigger].filter(Boolean),
+    directives: [flatAnimeSelected ? ACTION_ANIME_STYLE_LOCK : "", selectedActionPreset.direction, SCENE_PRESET_DIRECTIONS[scenePreset], REALISM_DIRECTIONS[lookPreset]],
     mode: promptMode,
     effectiveDuration: (length - 1) / 24,
   });
@@ -272,17 +284,20 @@ export function buildMiniMaxH3Workflow(raw = {}, uploads = {}, loras = [], confi
   }
   const secondPass = ["latentLearned", "h3Balanced", "h3Maximum"].includes(refineMode);
   const postRefine = ["seedvr2", "rtx"].includes(refineMode);
+  const nativeUseTurbo = erosMax || pinkCherry ? false : bool(raw.h3UseTurbo, true);
+  // Ogni percorso rispetta l'interruttore: Turbo OFF significa davvero nessun
+  // loader Turbo, sampling nativo a 25 step e canvas iniziale da 0,9 MP.
+  const useTurbo = pinkCherry ? false : erosMax || nativeUseTurbo;
   const firstMegapixels = runProfile === "preview"
-    ? 0.4
+    ? useTurbo ? 0.4 : 0.9
     : runProfile === "seedCandidate"
-      ? 0.25
-    : number(raw.h3FirstMegapixels, refineMode === "direct" ? 0.9 : 0.6, 0.2, 1);
+      ? useTurbo ? 0.25 : 0.9
+      : !useTurbo ? 0.9 : number(raw.h3FirstMegapixels, refineMode === "direct" ? 0.9 : 0.6, 0.2, 1);
   const secondMegapixels = refineMode === "h3Balanced"
     ? 0.9
     : number(raw.h3SecondMegapixels, 1, firstMegapixels, 1);
   const secondSteps = ["latentLearned", "h3Balanced"].includes(refineMode) ? 3 : 4;
   const secondDenoise = refineMode === "latentLearned" ? 0.2 : refineMode === "h3Balanced" ? 0.15 : 0.2;
-  const nativeUseTurbo = erosMax || pinkCherry ? false : bool(raw.h3UseTurbo, true);
   const requestedAttentionBackend = String(raw.h3AttentionBackend || "memoryEfficient");
   const attentionBackend = requestedAttentionBackend === "comfyKitchen" ? "comfyKitchen" : "memoryEfficient";
   if (attentionBackend === "comfyKitchen" && h3.attentionAvailability?.comfyKitchen === false) {
@@ -290,17 +305,22 @@ export function buildMiniMaxH3Workflow(raw = {}, uploads = {}, loras = [], confi
   }
   // L'anteprima e' volutamente economica, ma la ricetta conserva la scelta
   // nativa per la rigenerazione finale con lo stesso seed.
-  const useTurbo = pinkCherry ? false : erosMax || (["preview", "seedCandidate"].includes(runProfile) ? true : nativeUseTurbo);
   const externalTurbo = useTurbo && !erosMax;
   const purgeBetween = (secondPass || postRefine) && bool(raw.h3PurgeBetween, true);
   const purgeAfter = bool(raw.h3PurgeAfter, true);
   const refImageSize = raw.h3ReferenceSize === "max" ? "max" : "match";
-  if (actionProfile && !files.combat) throw new Error("La LoRA Combat V2 richiesta da ACTION H3 non è installata.");
+  if (actionProfile && actionLoraType === "combat" && !files.combat) throw new Error("La LoRA Combat V2 richiesta da ACTION H3 non è installata.");
+  if (actionProfile && actionLoraType === "weapon" && !files.weaponCombat) throw new Error("La LoRA Weapon Combat richiesta da ACTION H3 non è installata.");
+  if (actionProfile && !files.hybridB25) throw new Error("Il checkpoint Hybrid b25-49 richiesto da ACTION H3 non è installato.");
+  if (weaponProfile && !files.weaponCombat) throw new Error("La LoRA Weapon Combat richiesta non è installata.");
+  if (motionRepairEnabled && !files.motionRepair) throw new Error("La LoRA Motion Continuity Repair richiesta non è installata.");
   const modelName = erosMax
     ? files.erosMax
     : pinkCherry
       ? files.pinkCherry
-      : effectiveFamily === "fl2va" ? files.fl2va : files.ref2va;
+      : actionProfile
+        ? files.hybridB25
+        : effectiveFamily === "fl2va" ? files.fl2va : files.ref2va;
   const galaxyAceSelected = loras.some((selected) => /(?:^|[\\/])STY_GalaxyAce\.safetensors$/i.test(selected.name));
   if (pinkCherry && galaxyAceSelected) {
     throw new Error("GalaxyAce non è compatibile con PinkCherry INT8 unpruned: usa MiniMax H3 base oppure Eros Max.");
@@ -313,7 +333,9 @@ export function buildMiniMaxH3Workflow(raw = {}, uploads = {}, loras = [], confi
       ? "H3 Eros Max beta3 · INT8 ConvRot"
       : pinkCherry
         ? "PinkCherry H3 FL2VA 0.6 beta · INT8 unpruned"
-        : `MiniMax H3 · ${effectiveFamily.toUpperCase()} INT8`),
+        : actionProfile
+          ? "ACTION H3 · Hybrid FL2VA/Ref2VA b25-49 INT8"
+          : `MiniMax H3 · ${effectiveFamily.toUpperCase()} INT8`),
     "5": attentionBackend === "comfyKitchen"
       ? node("ModelAttentionBackend", { model: ["4", 0], attention: "comfy kitchen attention" }, "MiniMax H3 · Comfy-Kitchen Attention")
       : node("MiniMaxH3MemoryEfficientSageAttentionPatch", { model: ["4", 0] }, "MiniMax H3 · Memory Efficient SageAttention"),
@@ -326,17 +348,40 @@ export function buildMiniMaxH3Workflow(raw = {}, uploads = {}, loras = [], confi
     if (!files.turbo) throw new Error("La Turbo LoRA MiniMax H3 configurata non è installata.");
     modelLink = addModelLora(workflow, String(nextLoraId++), modelLink, files.turbo, 1, "MiniMax H3 · Turbo 8 step");
   }
-  const selectedLoras = actionProfile
-    ? loras.filter((selected) => selected.name !== files.combat)
+  const automaticProfileLora = actionProfile
+    ? actionLoraType === "weapon" ? files.weaponCombat : files.combat
+    : weaponProfile ? files.weaponCombat : null;
+  const selectedLoras = combatProfile
+    ? loras.filter((selected) => ![files.combat, files.weaponCombat, files.motionRepair].filter(Boolean).includes(selected.name))
     : loras;
   if (actionProfile) {
     modelLink = addModelLora(
       workflow,
       String(nextLoraId++),
       modelLink,
-      files.combat,
-      number(raw.actionH3CombatStrength, 0.8, 0, 1.5),
-      "ACTION H3 · Combat Base V2",
+      automaticProfileLora,
+      number(raw.actionH3CombatStrength, selectedActionPreset.strength || 0.8, 0, 1.5),
+      actionLoraType === "weapon" ? "ACTION H3 · Weapon Combat BUNNY" : "ACTION H3 · Combat Base V2",
+    );
+  }
+  if (weaponProfile) {
+    modelLink = addModelLora(
+      workflow,
+      String(nextLoraId++),
+      modelLink,
+      files.weaponCombat,
+      number(raw.weaponCombatStrength, 0.8, 0, 1.5),
+      "Weapon Combat H3 · BUNNY",
+    );
+  }
+  if (motionRepairEnabled) {
+    modelLink = addModelLora(
+      workflow,
+      String(nextLoraId++),
+      modelLink,
+      files.motionRepair,
+      number(raw.h3MotionRepairStrength, 0.6, 0, 1.5),
+      `${profileName} · Motion Continuity Repair · passaggio 1`,
     );
   }
   for (const selected of selectedLoras) {
@@ -411,10 +456,11 @@ export function buildMiniMaxH3Workflow(raw = {}, uploads = {}, loras = [], confi
 
   workflow["30"] = node("RandomNoise", { noise_seed: seed }, "MiniMax H3 · seed primo sampling");
   workflow["31"] = node("BasicGuider", { model: modelLink, conditioning: conditioningLink }, "MiniMax H3 · guider primo sampling");
-  const samplerName = erosMax ? "er_sde" : actionProfile ? "res_multistep" : "euler";
-  const schedulerName = erosMax || actionProfile ? "simple" : "beta";
+  const samplerName = String(raw.h3SamplerName || (erosMax ? "er_sde" : combatProfile ? "res_multistep" : "euler"));
+  const schedulerName = String(raw.h3SchedulerName || (erosMax || combatProfile ? "simple" : "beta"));
   workflow["32"] = node("KSamplerSelect", { sampler_name: samplerName }, `MiniMax H3 · ${samplerName}`);
-  workflow["33"] = node("BasicScheduler", { model: modelLink, scheduler: schedulerName, steps: erosMax ? 6 : useTurbo ? 8 : 25, denoise: 1 }, "MiniMax H3 · scheduler primo sampling");
+  const firstSteps = number(raw.h3FirstSteps, erosMax ? 6 : useTurbo ? 8 : 25, 1, 50);
+  workflow["33"] = node("BasicScheduler", { model: modelLink, scheduler: schedulerName, steps: firstSteps, denoise: 1 }, "MiniMax H3 · scheduler primo sampling");
   workflow["34"] = node("SamplerCustomAdvanced", { noise: ["30", 0], guider: ["31", 0], sampler: ["32", 0], sigmas: ["33", 0], latent_image: latentLink }, "MiniMax H3 · primo sampling");
   workflow["35"] = node("VAEDecode", { samples: ["34", 0], vae: ["2", 0] }, "MiniMax H3 · decode video primo sampling");
   workflow["36"] = node("VAEDecodeAudio", { samples: ["34", 0], vae: ["3", 0] }, "MiniMax H3 · decode audio primo sampling");
@@ -458,7 +504,7 @@ export function buildMiniMaxH3Workflow(raw = {}, uploads = {}, loras = [], confi
         resize_method: "Center Crop (Fill)",
         device_id: 0,
       }, "MiniMax H3 · refine RTX VSR rapido");
-      workflow["52"] = outputNode(`VideoStudio/${actionProfile ? "ActionH3" : "MiniMaxH3"}/${mode}_rtx`, ["41", 0], firstPassAudio);
+      workflow["52"] = outputNode(`VideoStudio/${weaponProfile ? "WeaponCombat" : actionProfile ? "ActionH3" : "MiniMaxH3"}/${mode}_rtx`, ["41", 0], firstPassAudio);
       outputId = "52";
     } else if (refineMode === "seedvr2") {
       const seedvrResolution = number(raw.h3SeedvrResolution, 768, 360, 1080);
@@ -501,7 +547,7 @@ export function buildMiniMaxH3Workflow(raw = {}, uploads = {}, loras = [], confi
         offload_device: "cpu",
         enable_debug: false,
       }, "MiniMax H3 · refine definizione SeedVR2");
-      workflow["52"] = outputNode(`VideoStudio/${actionProfile ? "ActionH3" : "MiniMaxH3"}/${mode}_seedvr2`, ["42", 0], firstPassAudio);
+      workflow["52"] = outputNode(`VideoStudio/${weaponProfile ? "WeaponCombat" : actionProfile ? "ActionH3" : "MiniMaxH3"}/${mode}_seedvr2`, ["42", 0], firstPassAudio);
       outputId = "52";
     } else {
     workflow["40"] = node("ResolutionSelector", { aspect_ratio: aspectRatio, megapixels: secondMegapixels, multiple: 32 }, "MiniMax H3 · risoluzione secondo sampling");
@@ -533,7 +579,8 @@ export function buildMiniMaxH3Workflow(raw = {}, uploads = {}, loras = [], confi
       workflow["42"] = node("MinimaxH3LatentUpscaler3D", {
         latent: ["41", 0],
         model_name: files.latentUpscaler,
-        mode: { mode: "megapixels", megapixels: secondMegapixels },
+        mode: "megapixels",
+        "mode.megapixels": secondMegapixels,
         align: 32,
         enable_chunking: true,
         device: "cuda",
@@ -556,22 +603,39 @@ export function buildMiniMaxH3Workflow(raw = {}, uploads = {}, loras = [], confi
     workflow["43"] = node("VAEEncodeAudio", { audio: firstPassAudio, vae: ["3", 0] }, "MiniMax H3 · re-encode audio");
     workflow["44"] = node("LTXVConcatAVLatent", { video_latent: ["42", 0], audio_latent: ["43", 0] }, "MiniMax H3 · ricompone latenti AV");
     }
+    let secondModelLink = modelLink;
+    if (motionRepairEnabled) {
+      // Il secondo passaggio usa una catena separata: la LoRA di riparazione
+      // deve essere molto più debole per correggere il moto senza riscrivere la scena.
+      secondModelLink = ["5", 0];
+      if (externalTurbo) secondModelLink = addModelLora(workflow, String(nextLoraId++), secondModelLink, files.turbo, 1, "MiniMax H3 · Turbo 8 step · passaggio 2");
+      if (actionProfile) secondModelLink = addModelLora(workflow, String(nextLoraId++), secondModelLink, automaticProfileLora, number(raw.actionH3CombatStrength, selectedActionPreset.strength || 0.8, 0, 1.5), actionLoraType === "weapon" ? "ACTION H3 · Weapon Combat BUNNY · passaggio 2" : "ACTION H3 · Combat Base V2 · passaggio 2");
+      if (weaponProfile) secondModelLink = addModelLora(workflow, String(nextLoraId++), secondModelLink, files.weaponCombat, number(raw.weaponCombatStrength, 0.8, 0, 1.5), "Weapon Combat H3 · BUNNY · passaggio 2");
+      secondModelLink = addModelLora(workflow, String(nextLoraId++), secondModelLink, files.motionRepair, number(raw.h3MotionRepairSecondStrength, 0.25, 0, 1), `${profileName} · Motion Continuity Repair · passaggio 2`);
+      for (const selected of selectedLoras) secondModelLink = addModelLora(workflow, String(nextLoraId++), secondModelLink, selected.name, number(selected.strength, 0.8, -2, 2), `MiniMax H3 · ${selected.name} · passaggio 2`);
+    }
+    const secondSamplerName = String(raw.h3SecondSamplerName || samplerName);
+    const secondSchedulerName = String(raw.h3SecondSchedulerName || schedulerName);
+    const effectiveSecondSteps = number(raw.h3SecondStepsOverride, secondSteps, 1, 30);
+    const effectiveSecondDenoise = number(raw.h3SecondDenoiseOverride, secondDenoise, 0.01, 1);
     workflow["45"] = node("RandomNoise", { noise_seed: seed }, "MiniMax H3 · seed secondo sampling");
-    workflow["46"] = node("BasicGuider", { model: modelLink, conditioning: secondConditioningLink }, "MiniMax H3 · guider secondo sampling");
-    workflow["47"] = node("KSamplerSelect", { sampler_name: samplerName }, `MiniMax H3 · ${samplerName} secondo sampling`);
-    workflow["48"] = refineMode === "latentLearned"
-      ? node("ManualSigmas", { sigmas: "0.9035, 0.6316, 0.3158, 0.0000" }, "Seed Hunter · sigmas refine 3 step")
-      : node("BasicScheduler", { model: modelLink, scheduler: schedulerName, steps: secondSteps, denoise: secondDenoise }, "MiniMax H3 · scheduler secondo sampling");
+    workflow["46"] = node("BasicGuider", { model: secondModelLink, conditioning: secondConditioningLink }, "MiniMax H3 · guider secondo sampling");
+    workflow["47"] = node("KSamplerSelect", { sampler_name: secondSamplerName }, `MiniMax H3 · ${secondSamplerName} secondo sampling`);
+    workflow["48"] = raw.h3SecondSchedulerName || raw.h3SecondStepsOverride || raw.h3SecondDenoiseOverride
+      ? node("BasicScheduler", { model: secondModelLink, scheduler: secondSchedulerName, steps: effectiveSecondSteps, denoise: effectiveSecondDenoise }, "MiniMax H3 · scheduler refine controllato")
+      : refineMode === "latentLearned"
+        ? node("ManualSigmas", { sigmas: "0.9035, 0.6316, 0.3158, 0.0000" }, "Seed Hunter · sigmas refine 3 step")
+        : node("BasicScheduler", { model: secondModelLink, scheduler: secondSchedulerName, steps: effectiveSecondSteps, denoise: effectiveSecondDenoise }, "MiniMax H3 · scheduler secondo sampling");
     workflow["49"] = node("SamplerCustomAdvanced", { noise: ["45", 0], guider: ["46", 0], sampler: ["47", 0], sigmas: ["48", 0], latent_image: ["44", 0] }, "MiniMax H3 · secondo sampling");
     workflow["50"] = node("VAEDecode", { samples: ["49", 0], vae: ["2", 0] }, "MiniMax H3 · decode video finale");
     workflow["51"] = node("VAEDecodeAudio", { samples: ["49", 0], vae: ["3", 0] }, "MiniMax H3 · decode audio finale");
-    workflow["52"] = outputNode(`VideoStudio/${actionProfile ? "ActionH3" : "MiniMaxH3"}/${mode}_2pass`, ["50", 0], ["51", 0]);
+    workflow["52"] = outputNode(`VideoStudio/${weaponProfile ? "WeaponCombat" : actionProfile ? "ActionH3" : "MiniMaxH3"}/${mode}_2pass`, ["50", 0], ["51", 0]);
     outputId = "52";
     }
   } else {
     const candidateIndex = Math.max(1, Math.min(3, Number(raw.h3CandidateIndex) || 1));
     const directSuffix = runProfile === "seedCandidate" ? `seed_hunter_candidate_${candidateIndex}_seed_${seed}` : runProfile === "preview" ? "preview" : "direct";
-    workflow["52"] = outputNode(`VideoStudio/${runProfile === "seedCandidate" ? "SeedHunterH3" : actionProfile ? "ActionH3" : "MiniMaxH3"}/${mode}_${directSuffix}`, ["35", 0], ["36", 0]);
+    workflow["52"] = outputNode(`VideoStudio/${runProfile === "seedCandidate" ? "SeedHunterH3" : weaponProfile ? "WeaponCombat" : actionProfile ? "ActionH3" : "MiniMaxH3"}/${mode}_${directSuffix}`, ["35", 0], ["36", 0]);
     outputId = "52";
   }
   if (purgeAfter) {
@@ -591,9 +655,9 @@ export function buildMiniMaxH3Workflow(raw = {}, uploads = {}, loras = [], confi
   return {
     workflow,
     metadata: {
-      workflowId: `videoStudio:${runProfile === "seedCandidate" ? "seedHunterH3" : actionProfile ? "actionH3" : "minimaxH3"}`,
-      workflowName: `Video Studio · ${runProfile === "seedCandidate" ? "Seed Hunter H3" : actionProfile ? "ACTION H3" : "MiniMax H3"} · ${definition.name}`,
-      videoStudioMode: runProfile === "seedCandidate" ? "seedHunterH3" : actionProfile ? "actionH3" : "minimaxH3",
+      workflowId: `videoStudio:${runProfile === "seedCandidate" ? "seedHunterH3" : weaponProfile ? "weaponCombatH3" : actionProfile ? "actionH3" : "minimaxH3"}`,
+      workflowName: `Video Studio · ${runProfile === "seedCandidate" ? "Seed Hunter H3" : profileName} · ${definition.name}`,
+      videoStudioMode: runProfile === "seedCandidate" ? "seedHunterH3" : weaponProfile ? "weaponCombatH3" : actionProfile ? "actionH3" : "minimaxH3",
       videoStudioStage: runProfile === "preview" ? "preview" : runProfile === "seedCandidate" ? "seedCandidate" : "generation",
       videoStudioLabel: runProfile === "preview" ? `Anteprima rapida · ${definition.name}` : runProfile === "seedCandidate" ? `Candidato ${Math.max(1, Math.min(3, Number(raw.h3CandidateIndex) || 1))} · seed ${seed}` : definition.name,
       h3RunProfile: runProfile,
@@ -601,15 +665,24 @@ export function buildMiniMaxH3Workflow(raw = {}, uploads = {}, loras = [], confi
       h3Mode: mode,
       modelFamily: effectiveFamily,
       modelFile: modelName,
-      h3Profile: actionProfile ? "action" : erosMax ? "erosMax" : pinkCherry ? "pinkCherry" : "standard",
+      h3Profile: weaponProfile ? "weapon" : actionProfile ? "action" : erosMax ? "erosMax" : pinkCherry ? "pinkCherry" : "standard",
       h3ModelProfile: modelProfile,
       integratedTurbo: erosMax,
       samplerName,
       schedulerName,
       actionTrigger,
       actionPreset,
-      combatLora: actionProfile ? files.combat : null,
-      combatStrength: actionProfile ? number(raw.actionH3CombatStrength, 0.8, 0, 1.5) : null,
+      actionLoraType: actionProfile ? actionLoraType : null,
+      animeStyleLock: flatAnimeSelected,
+      combatLora: actionProfile && actionLoraType === "combat" ? files.combat : null,
+      combatStrength: actionProfile ? number(raw.actionH3CombatStrength, selectedActionPreset.strength || 0.8, 0, 1.5) : null,
+      actionWeaponLora: actionProfile && actionLoraType === "weapon" ? files.weaponCombat : null,
+      weaponCombatLora: weaponProfile ? files.weaponCombat : null,
+      weaponCombatStrength: weaponProfile ? number(raw.weaponCombatStrength, 0.8, 0, 1.5) : null,
+      motionRepairLora: motionRepairEnabled ? files.motionRepair : null,
+      motionRepairEnabled,
+      motionRepairStrength: motionRepairEnabled ? number(raw.h3MotionRepairStrength, 0.6, 0, 1.5) : null,
+      motionRepairSecondStrength: motionRepairEnabled && secondPass ? number(raw.h3MotionRepairSecondStrength, 0.25, 0, 1) : null,
       prompt,
       lookPreset,
       scenePreset,
@@ -622,8 +695,8 @@ export function buildMiniMaxH3Workflow(raw = {}, uploads = {}, loras = [], confi
       secondPass,
       refineMode,
       secondMegapixels: secondPass ? secondMegapixels : null,
-      secondSteps: secondPass ? secondSteps : null,
-      secondDenoise: secondPass ? secondDenoise : null,
+      secondSteps: secondPass ? number(raw.h3SecondStepsOverride, secondSteps, 1, 30) : null,
+      secondDenoise: secondPass ? number(raw.h3SecondDenoiseOverride, secondDenoise, 0.01, 1) : null,
       seedvrResolution: refineMode === "seedvr2" ? number(raw.h3SeedvrResolution, 768, 360, 1080) : null,
       purgeBetween,
       purgeAfter,
@@ -631,14 +704,208 @@ export function buildMiniMaxH3Workflow(raw = {}, uploads = {}, loras = [], confi
       nativeUseTurbo,
       externalTurbo,
       attentionBackend,
-      loras: actionProfile
-        ? [{ name: files.combat, strength: number(raw.actionH3CombatStrength, 0.8, 0, 1.5), automatic: true }, ...selectedLoras]
+      loras: combatProfile
+        ? [
+          { name: automaticProfileLora, strength: actionProfile ? number(raw.actionH3CombatStrength, 0.8, 0, 1.5) : number(raw.weaponCombatStrength, 0.8, 0, 1.5), automatic: true },
+          ...(motionRepairEnabled ? [{ name: files.motionRepair, strength: number(raw.h3MotionRepairStrength, 0.6, 0, 1.5), secondStrength: secondPass ? number(raw.h3MotionRepairSecondStrength, 0.25, 0, 1) : null, automatic: true }] : []),
+          ...selectedLoras,
+        ]
         : loras,
       references: {
         images: (mode === "image" && erosMax ? [uploads.h3FirstFrame] : uploads.h3ReferenceImages || []).filter(Boolean).map(inputPath),
         videos: (uploads.h3ReferenceVideos || []).map(inputPath),
         audios: (uploads.h3ReferenceAudios || []).map(inputPath),
       },
+    },
+  };
+}
+
+export function buildMiniMaxH3SeamlessChainWorkflow(raw = {}, uploads = {}, loras = [], config = {}) {
+  const h3 = config?.h3;
+  if (!h3?.seamlessChain?.available) throw new Error(h3?.seamlessChain?.reason || "H3 Seamless Chain non è disponibile.");
+  const segments = String(raw.prompt || "").split(/^\s*---+\s*$/mu).map((value) => value.trim()).filter(Boolean);
+  if (segments.length < 2 || segments.length > 8) throw new Error("H3 Seamless Chain richiede da 2 a 8 prompt separati da --- su una riga.");
+  const useTurbo = bool(raw.h3ChainUseTurbo, true);
+  const mode = uploads.h3FirstFrame?.name ? "image" : "text";
+  const duration = number(raw.duration, 5, 4, 15);
+  const seed = seedValue(raw.seed);
+  const aspectRatio = ASPECTS.has(String(raw.h3ChainAspectRatio)) ? String(raw.h3ChainAspectRatio) : "16:9 (Widescreen)";
+  const workflow = {
+    "1": node("CLIPLoader", { clip_name: h3.files.clip, type: "minimax", device: "default" }, "H3 Seamless Chain · Qwen3-VL"),
+    "2": node("VAELoader", { vae_name: h3.files.videoVae }, "H3 Seamless Chain · Video VAE"),
+    "3": node("VAELoader", { vae_name: h3.files.audioVae }, "H3 Seamless Chain · Audio VAE"),
+    "4": node("UNETLoader", { unet_name: h3.files.fl2va, weight_dtype: "default" }, "H3 Seamless Chain · FL2VA INT8"),
+    "5": node("MiniMaxH3MemoryEfficientSageAttentionPatch", { model: ["4", 0] }, "H3 Seamless Chain · Memory Efficient Sage"),
+    "6": node("ResolutionSelector", { aspect_ratio: aspectRatio, megapixels: useTurbo ? 0.4 : 0.9, multiple: 32 }, "H3 Seamless Chain · risoluzione nativa per take"),
+  };
+  let modelLink = ["5", 0];
+  let nextId = 10;
+  if (useTurbo) modelLink = addModelLora(workflow, String(nextId++), modelLink, h3.files.turbo, 1, "H3 Seamless Chain · Turbo 8 step");
+  for (const selected of loras) modelLink = addModelLora(workflow, String(nextId++), modelLink, selected.name, number(selected.strength, 0.8, -2, 2), `H3 Seamless Chain · ${selected.name}`);
+  const inputs = {
+    model: modelLink,
+    clip: ["1", 0],
+    video_vae: ["2", 0],
+    audio_vae: ["3", 0],
+    script: segments.join("\n---\n"),
+    shot_count: 0,
+    width: ["6", 0],
+    height: ["6", 1],
+    frames_per_shot: framesForDuration(duration),
+    seed,
+    steps: useTurbo ? 8 : 25,
+    seed_per_shot: true,
+    sampler_name: "res_multistep",
+    scheduler: "simple",
+    save_every_shot: true,
+  };
+  if (mode === "image") inputs.start_image = addLoadImage(workflow, "7", uploads.h3FirstFrame, "H3 Seamless Chain · unica immagine iniziale");
+  workflow["30"] = node("H3MultishotSampler", inputs, "H3 Seamless Chain · ogni take eredita il frame finale precedente");
+  workflow["31"] = outputNode("VideoStudio/H3SeamlessChain/master", ["30", 0], ["30", 1]);
+  workflow["32"] = node("DisTorchPurgeVRAMV2", { anything: ["31", 0], purge_cache: true, purge_models: true, purge_seedvr2_models: false, purge_qwen3vl_models: true, purge_nunchaku_models: false, HSWQ: false, Ollama: false }, "H3 Seamless Chain · purge finale");
+  return {
+    workflow,
+    metadata: {
+      workflowId: "videoStudio:h3SeamlessChain",
+      workflowName: "Video Studio · H3 Multishot Seamless Chain",
+      videoStudioMode: "h3SeamlessChain",
+      videoStudioStage: "generation",
+      videoStudioLabel: `${segments.length} take concatenati · ${duration} s ciascuno`,
+      prompt: segments.join("\n---\n"), segments: segments.length, duration, totalDuration: segments.length * duration,
+      seed, aspectRatio, useTurbo, steps: useTurbo ? 8 : 25, samplerName: "res_multistep", schedulerName: "simple",
+      startImage: mode === "image" ? inputPath(uploads.h3FirstFrame) : null,
+      loras,
+    },
+  };
+}
+
+export function buildMiniMaxH3FastWorkflow(raw = {}, uploads = {}, loras = [], config = {}) {
+  const fast = config?.h3?.fast;
+  if (!fast?.available) {
+    throw new Error(fast?.reason || "MiniMax H3 Fast non è disponibile nell’istanza ComfyUI attiva.");
+  }
+  const files = fast.files;
+  const mode = raw.h3FastMode === "text" ? "text" : "image";
+  const source = mode === "image"
+    ? requireUpload(uploads.h3FirstFrame, "Carica l’immagine iniziale per MiniMax H3 Fast Image to Video.")
+    : null;
+  const userPrompt = String(raw.prompt || "").trim();
+  if (!userPrompt) throw new Error("Inserisci un prompt MiniMax H3 Fast.");
+  const duration = number(raw.duration, 5, 4, 15);
+  const length = framesForDuration(duration);
+  const seed = seedValue(raw.seed);
+  const aspectRatio = ASPECTS.has(String(raw.h3FastAspectRatio))
+    ? String(raw.h3FastAspectRatio)
+    : "16:9 (Widescreen)";
+  const useTurbo = bool(raw.h3FastUseTurbo, true);
+  const firstMegapixels = useTurbo ? number(raw.h3FastFirstMegapixels, 0.2, 0.2, 0.6) : 0.9;
+  const targetMegapixels = useTurbo ? number(raw.h3FastTargetMegapixels, 0.98, firstMegapixels, 1.2) : 0.9;
+  const splitStep = number(raw.h3FastSplitStep, 6, 1, 11, true);
+  const turboStrength = number(raw.h3FastTurboStrength, 0.75, 0, 1.5);
+  const prompt = formatH3ThreeFieldPrompt(userPrompt, {
+    mode,
+    effectiveDuration: (length - 1) / 24,
+  });
+
+  const workflow = {
+    "1": node("CLIPLoader", { clip_name: files.clip, type: "minimax", device: "default" }, "MiniMax H3 Fast · Qwen3-VL"),
+    "2": node("VAELoader", { vae_name: files.videoVae }, "MiniMax H3 Fast · Video VAE"),
+    "3": node("VAELoader", { vae_name: files.audioVae }, "MiniMax H3 Fast · Audio VAE"),
+    "4": node("UNETLoader", { unet_name: files.hybrid, weight_dtype: "default" }, "MiniMax H3 Fast · hybrid FL2VA/Ref2VA INT8"),
+    "5": node("ResolutionSelector", { aspect_ratio: aspectRatio, megapixels: firstMegapixels, multiple: 128 }, "MiniMax H3 Fast · risoluzione stage 1"),
+    "6": node("ResolutionSelector", { aspect_ratio: aspectRatio, megapixels: targetMegapixels, multiple: 32 }, "MiniMax H3 Fast · risoluzione finale"),
+  };
+  if (source) {
+    workflow["7"] = node("LoadImage", { image: inputPath(source) }, "MiniMax H3 Fast · immagine iniziale");
+    workflow["8"] = node("ImageResizeKJv2", {
+      image: ["7", 0], width: ["6", 0], height: ["6", 1], upscale_method: "nearest-exact",
+      keep_proportion: "crop", pad_color: "0, 0, 0", crop_position: "center", divisible_by: 32, device: "cpu",
+    }, "MiniMax H3 Fast · adatta frame iniziale");
+  }
+
+  let modelLink = ["4", 0];
+  let loraId = 10;
+  for (const selected of loras) {
+    modelLink = addModelLora(workflow, String(loraId++), modelLink, selected.name, number(selected.strength, 0.8, -2, 2), `MiniMax H3 Fast · ${selected.name}`);
+  }
+  if (useTurbo) {
+    modelLink = addModelLora(workflow, "18", modelLink, files.turbo, turboStrength, "MiniMax H3 Fast · Turbo 4 step");
+  }
+  workflow["19"] = node("ModelAttentionBackend", { model: modelLink, attention: "comfy kitchen attention" }, "MiniMax H3 Fast · Comfy-Kitchen Attention");
+  modelLink = ["19", 0];
+
+  const firstConditioning = { clip: ["1", 0], vae: ["2", 0], prompt, width: ["5", 0], height: ["5", 1], length };
+  const finalConditioning = { clip: ["1", 0], vae: ["2", 0], prompt, width: ["6", 0], height: ["6", 1], length };
+  if (source) {
+    firstConditioning.first_frame = ["8", 0];
+    finalConditioning.first_frame = ["8", 0];
+  }
+  workflow["20"] = node("MiniMaxH3ImageToVideo", firstConditioning, `MiniMax H3 Fast · ${mode === "text" ? "T2V" : "I2V"} stage 1`);
+  if (useTurbo) workflow["21"] = node("MiniMaxH3ImageToVideo", finalConditioning, `MiniMax H3 Fast · ${mode === "text" ? "T2V" : "I2V"} stage 2`);
+  workflow["22"] = node("RandomNoise", { noise_seed: seed }, "MiniMax H3 Fast · seed condiviso");
+  if (useTurbo) {
+    workflow["23"] = node("MiniMaxH3DualClockSamplerT8", {
+      model: modelLink, av_latent: ["20", 1], steps: 12, shift_video: 12, shift_audio: 3,
+      sampler_name: "dual_clock_euler", scheduler: "native_flow",
+    }, "MiniMax H3 Fast · Dual Clock T8");
+    workflow["24"] = node("SplitSigmas", { sigmas: ["23", 2], step: splitStep }, "MiniMax H3 Fast · sigma split");
+    workflow["25"] = node("BasicGuider", { model: ["23", 0], conditioning: ["20", 0] }, "MiniMax H3 Fast · guider stage 1");
+    workflow["26"] = node("SamplerCustomAdvanced", {
+      noise: ["22", 0], guider: ["25", 0], sampler: ["23", 1], sigmas: ["24", 0], latent_image: ["20", 1],
+    }, "MiniMax H3 Fast · sampling parziale stage 1");
+    workflow["27"] = node("LTXVSeparateAVLatent", { av_latent: ["26", 1] }, "MiniMax H3 Fast · separa latent AV");
+    workflow["28"] = node("MinimaxH3LatentUpscaler3D", {
+      latent: ["27", 0], model_name: files.latentUpscaler, mode: "target dimensions",
+      "mode.width": ["6", 0], "mode.height": ["6", 1], align: 32, device: "cuda",
+      precision: files.latentUpscaler.toLowerCase().includes("bf16") ? "bf16" : "fp16", enable_chunking: true,
+    }, "MiniMax H3 Fast · learned latent upscale 3D");
+    workflow["29"] = node("LTXVConcatAVLatent", { video_latent: ["28", 0], audio_latent: ["27", 1] }, "MiniMax H3 Fast · ricompone latent AV");
+    workflow["30"] = node("BasicGuider", { model: modelLink, conditioning: ["21", 0] }, "MiniMax H3 Fast · guider stage 2");
+    workflow["31"] = node("KSamplerSelect", { sampler_name: "euler" }, "MiniMax H3 Fast · Euler finale");
+    workflow["32"] = node("ManualSigmas", { sigmas: "0.9035, 0.6316, 0.3158, 0.0000" }, "MiniMax H3 Fast · sigmas finali");
+    workflow["33"] = node("SamplerCustomAdvanced", {
+      noise: ["22", 0], guider: ["30", 0], sampler: ["31", 0], sigmas: ["32", 0], latent_image: ["29", 0],
+    }, "MiniMax H3 Fast · sampling finale");
+  } else {
+    workflow["25"] = node("BasicGuider", { model: modelLink, conditioning: ["20", 0] }, "MiniMax H3 Fast · guider nativo 25-step");
+    workflow["31"] = node("KSamplerSelect", { sampler_name: "euler" }, "MiniMax H3 Fast · Euler nativo");
+    workflow["32"] = node("BasicScheduler", { model: modelLink, scheduler: "beta", steps: 25, denoise: 1 }, "MiniMax H3 Fast · scheduler nativo 25 step");
+    workflow["33"] = node("SamplerCustomAdvanced", {
+      noise: ["22", 0], guider: ["25", 0], sampler: ["31", 0], sigmas: ["32", 0], latent_image: ["20", 1],
+    }, "MiniMax H3 Fast · sampling nativo 0,9 MP");
+  }
+  workflow["34"] = node("VAEDecode", { samples: ["33", 0], vae: ["2", 0] }, "MiniMax H3 Fast · decode video");
+  workflow["35"] = node("VAEDecodeAudio", { samples: ["33", 0], vae: ["3", 0] }, "MiniMax H3 Fast · decode audio");
+  workflow["36"] = outputNode(`VideoStudio/MinimaxH3Fast/${mode}_${useTurbo ? "sigma_split" : "native_25step"}`, ["34", 0], ["35", 0]);
+
+  return {
+    workflow,
+    metadata: {
+      workflowId: "videoStudio:minimaxH3Fast",
+      workflowName: `Video Studio · MiniMax H3 Fast · ${mode === "text" ? "T2V" : "I2V"} ${useTurbo ? "Sigma-Split" : "Native 25-step"}`,
+      videoStudioMode: "minimaxH3Fast",
+      videoStudioStage: "generation",
+      videoStudioLabel: `${mode === "text" ? "T2V" : "I2V"} ${useTurbo ? "2-Stage Sigma-Split" : "0,9 MP · 25 step · Turbo OFF"}`,
+      h3Mode: mode,
+      h3Profile: useTurbo ? "fastSigmaSplit" : "native25",
+      modelFile: files.hybrid,
+      prompt,
+      duration,
+      frames: length,
+      seed,
+      aspectRatio,
+      firstMegapixels,
+      secondMegapixels: targetMegapixels,
+      splitStep,
+      turboStrength,
+      useTurbo,
+      externalTurbo: useTurbo,
+      steps: useTurbo ? 12 : 25,
+      samplerName: useTurbo ? "dual_clock_euler → euler" : "euler",
+      schedulerName: useTurbo ? "native_flow → manual_sigmas" : "beta",
+      latentUpscaler: useTurbo ? files.latentUpscaler : null,
+      loras,
+      references: { images: source ? [inputPath(source)] : [], videos: [], audios: [] },
     },
   };
 }

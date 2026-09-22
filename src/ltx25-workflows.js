@@ -544,10 +544,78 @@ function configureAdvancedGraph(workflow, mode, uploads, settings, config) {
     }
   }
   if (mode === "h3Ltx2k") {
+    const videoComponents = Object.entries(workflow)
+      .find(([, node]) => node.class_type === "GetVideoComponents");
+    const portrait = settings.aspect === "9:16";
+    const [ltxWidth, ltxHeight] = portrait ? [576, 1024] : [1024, 576];
+    const [finalWidth, finalHeight] = portrait ? [1152, 2048] : [2048, 1152];
+    const legalFrames = frameCount(settings.duration, settings.fps);
+    const sourceResize = Object.entries(workflow).find(([, node]) =>
+      node.class_type === "ResizeImageMaskNode"
+      && Array.isArray(node.inputs.input)
+      && String(node.inputs.input[0]) === String(videoComponents?.[0])
+    );
+    if (!videoComponents || !sourceResize) throw new Error("Il template H3 → LTX 2.5 non espone il preprocess video richiesto.");
+
+    const trimFramesId = nextNodeId(workflow, "h3_ltx25_frames");
+    workflow[trimFramesId] = {
+      class_type: "GetImageRangeFromBatch",
+      inputs: { images: [videoComponents[0], 0], start_index: 0, num_frames: legalFrames },
+      _meta: { title: `H3 → LTX 2.5 · griglia temporale ${legalFrames} frame (8n+1)` },
+    };
+    sourceResize[1].inputs = {
+      input: [trimFramesId, 0],
+      resize_type: "scale dimensions",
+      "resize_type.width": ltxWidth,
+      "resize_type.height": ltxHeight,
+      "resize_type.crop": "center",
+      scale_method: "lanczos",
+    };
+
+    const targetLatent = Object.values(workflow).find((node) => node.class_type === "EmptyLTXVLatentVideo");
+    if (!targetLatent) throw new Error("Il template H3 → LTX 2.5 non espone il latent video target.");
+    targetLatent.inputs = { width: ltxWidth, height: ltxHeight, length: legalFrames, batch_size: 1 };
+
+    for (const node of Object.values(workflow)) {
+      if (node.class_type === "LoadImage" && videoComponents) {
+        // Il template V2V contiene anche un LoadImage obbligatorio. In questo
+        // percorso l'unico input e il video H3: usa il suo primo frame invece
+        // di lasciare una stringa vuota, che LoadImage interpreta come la
+        // directory input e passa poi ad av.open (Permission denied).
+        node.class_type = "ImageFromBatch";
+        node.inputs = { image: [trimFramesId, 0], batch_index: 0, length: 1 };
+        node._meta = { ...(node._meta || {}), title: "H3 → LTX 2.5 · primo frame dal video sorgente" };
+      }
+    }
+    for (const node of Object.values(workflow)) {
+      if (node.class_type === "ResizeImageMaskNode" && node !== sourceResize[1]) {
+        node.inputs = {
+          ...node.inputs,
+          resize_type: "scale dimensions",
+          "resize_type.width": ltxWidth,
+          "resize_type.height": ltxHeight,
+          "resize_type.crop": "center",
+          scale_method: "lanczos",
+        };
+        delete node.inputs["resize_type.longer_size"];
+        delete node.inputs["resize_type.shorter_size"];
+      }
+    }
+
+    const trimAudioId = nextNodeId(workflow, "h3_ltx25_audio");
+    workflow[trimAudioId] = {
+      class_type: "TrimAudioDuration",
+      inputs: { audio: [videoComponents[0], 1], start_index: 0, duration: legalFrames / settings.fps },
+      _meta: { title: "H3 → LTX 2.5 · audio allineato alla griglia video" },
+    };
+    for (const node of Object.values(workflow)) {
+      if (node.class_type === "VAEEncodeAudio") node.inputs.audio = [trimAudioId, 0];
+    }
+
     for (const node of Object.values(workflow)) {
       const title = String(node._meta?.title || "").toLowerCase();
-      if (node.class_type === "PrimitiveInt" && title.includes("target width")) node.inputs.value = 2048;
-      if (node.class_type === "PrimitiveInt" && title.includes("target height")) node.inputs.value = 1152;
+      if (node.class_type === "PrimitiveInt" && title.includes("target width")) node.inputs.value = ltxWidth;
+      if (node.class_type === "PrimitiveInt" && title.includes("target height")) node.inputs.value = ltxHeight;
       if (node.class_type === "VAEDecodeTiled") {
         node.inputs.tile_size = 256;
         node.inputs.overlap = 64;
@@ -555,6 +623,35 @@ function configureAdvancedGraph(workflow, mode, uploads, settings, config) {
         node.inputs.temporal_overlap = 8;
       }
     }
+
+    const decode = Object.entries(workflow).find(([, node]) => node.class_type === "VAEDecodeTiled");
+    const createVideo = Object.values(workflow).find((node) => node.class_type === "CreateVideo");
+    if (!decode || !createVideo) throw new Error("Il template H3 → LTX 2.5 non espone decode e composizione video.");
+    const decoded = passthroughPurge(workflow, [decode[0], 0], "H3 → LTX 2.5 · purge prima di RTX VSR");
+    const rtxId = nextNodeId(workflow, "h3_ltx25_rtx2k");
+    workflow[rtxId] = {
+      class_type: "DaSiWa_RTX_UpscalerRefiner",
+      inputs: {
+        images: decoded,
+        denoise: false,
+        denoise_quality: "Medium",
+        deblur: false,
+        deblur_quality: "Medium",
+        upscale: "VSR",
+        upscale_quality: "Ultra",
+        resize_type: "Manual",
+        scale: 2,
+        megapixels: 2.36,
+        width: finalWidth,
+        height: finalHeight,
+        divisible_by: "64",
+        ratio_preset: "16:9",
+        resize_method: "Center Crop (Fill)",
+        device_id: 0,
+      },
+      _meta: { title: "H3 → LTX 2.5 · RTX VSR finale 2K" },
+    };
+    createVideo.inputs.images = [rtxId, 0];
   }
   if (mode === "referenceSheet") {
     const [width, height] = resolutionFor(settings.profile, settings.aspect);

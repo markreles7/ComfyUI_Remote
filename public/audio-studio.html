@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0c10">
+  <title>Audio Studio · LTX Remote Studio</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/audio-studio.js?v=20260911-audio-studio"></script>
+  <script type="module" src="/generation-console.js?v=20260908-live-progress"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"></span><span>LTX <b>REMOTE</b></span></a>
+    <div class="topbar-actions">
+      <nav class="primary-nav" aria-label="Navigazione principale">
+        <a href="/guided-create.html">Crea guidata</a><a href="/">Genera</a><a href="/random-influencer.html">Random Influencer</a><a href="/same-place.html">Same Place</a><a href="/studio.html">Image Studio</a><a href="/video-studio.html">Video Studio</a><a class="active" href="/audio-studio.html">Audio Studio</a><a href="/characters.html">Character Library</a><a href="/workflow-guide.html">Guida</a><a href="/generations.html">Generazioni</a>
+      </nav>
+      <div id="connection" class="connection checking"><span></span>Connessione…</div>
+    </div>
+  </header>
+
+  <main class="studio-page audio-studio-page">
+    <section class="studio-hero">
+      <div><p class="eyebrow">TEXT TO AUDIO · LOCALE</p><h1>Audio <em>Studio.</em></h1><p>Crea canzoni, musica strumentale, soundscape ed effetti con MiniMax H3 oppure LTX 2.5.</p></div>
+      <div class="studio-hero-stat"><b id="audio-ready-count">0/2</b><span>motori pronti</span></div>
+    </section>
+
+    <div class="studio-layout audio-studio-layout">
+      <form id="audio-studio-form" class="panel generator">
+        <div class="section-heading"><span>01</span><div><h2>Nuova traccia</h2><p>Il prompt assistant prepara il testo, la generazione parte solo dal pulsante finale</p></div></div>
+        <fieldset class="video-studio-mode-grid audio-engine-grid">
+          <legend>Motore</legend>
+          <label><input type="radio" name="audioEngine" value="minimaxH3" checked><span><b>MiniMax H3 Music</b><small>Canzoni e strumentali fino a 60 s</small></span></label>
+          <label><input type="radio" name="audioEngine" value="ltx25"><span><b>LTX 2.5 Audio</b><small>Musica, atmosfera e sound design fino a 20 s</small></span></label>
+        </fieldset>
+        <div id="audio-readiness" class="video-readiness" role="status"></div>
+
+        <div id="h3-audio-fields">
+          <div class="field-grid">
+            <div class="field"><label for="audioMode">Tipo</label><select id="audioMode" name="audioMode"><option value="instrumental">Strumentale</option><option value="song">Canzone con testo</option></select></div>
+            <div class="field"><label for="musicPreset">Preset musicale</label><select id="musicPreset" name="musicPreset"><option>Custom</option></select></div>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label-row"><label for="audioPrompt">Descrizione musicale / sonora</label><button id="audio-prompt-assistant" class="prompt-assistant-button" type="button">✦ Migliora prompt audio</button></div>
+          <textarea id="audioPrompt" name="prompt" rows="8" required placeholder="Genere, atmosfera, ritmo, strumenti, sviluppo, mix e finale…"></textarea>
+          <p id="audio-prompt-status" class="prompt-assistant-status">LM Studio prepara soltanto il prompt: non avvia la generazione.</p>
+        </div>
+
+        <div id="h3-song-fields" class="hidden">
+          <div class="field"><label for="audioLyrics">Testo della canzone</label><textarea id="audioLyrics" name="lyrics" rows="10" placeholder="[Intro]&#10;&#10;[Verse 1]&#10;...&#10;&#10;[Chorus]&#10;..."></textarea><small class="hint">Usa [Intro], [Verse], [Pre-Chorus], [Chorus], [Bridge], [Solo], [Outro].</small></div>
+          <div class="field-grid"><div class="field"><label for="audioVocalist">Voce</label><input id="audioVocalist" name="vocalist" placeholder="Voce adulta, timbro, interpretazione"></div><div class="field"><label for="audioLanguage">Lingua cantata</label><input id="audioLanguage" name="language" value="Italian"></div></div>
+        </div>
+
+        <div id="h3-detail-fields">
+          <div class="field-grid"><div class="field"><label for="audioInstrumentation">Strumentazione</label><input id="audioInstrumentation" name="instrumentation" placeholder="Piano, archi, basso, batteria…"></div><div class="field"><label for="audioSoundscape">Ambiente / mix</label><input id="audioSoundscape" name="soundscape" value="clean studio recording, wide stereo image, no clipping"></div></div>
+        </div>
+
+        <div class="field-grid">
+          <div class="field"><label for="audioDuration">Durata</label><input id="audioDuration" name="duration" type="number" min="5" max="60" value="20"><small id="audio-duration-hint" class="hint">5–60 secondi</small></div>
+          <div class="field"><label for="audioQuality">Qualità</label><select id="audioQuality" name="quality"><option value="preview">FAST</option><option value="balanced" selected>BALANCED</option><option value="final">MAX</option></select></div>
+          <div id="h3-steps-field" class="field"><label for="audioSteps">Step H3</label><input id="audioSteps" name="steps" type="number" min="10" max="50" value="20"></div>
+          <div class="field"><label for="audioSeed">Seed</label><input id="audioSeed" name="seed" inputmode="numeric" placeholder="Random"></div>
+        </div>
+        <details id="h3-advanced-fields" class="generation-details"><summary>Impostazioni H3 avanzate</summary><div class="field-grid"><div class="field"><label for="audioCanvas">Canvas audio-first</label><select id="audioCanvas" name="audioCanvas"><option value="32">32 · consigliato</option><option value="64">64 · più contesto</option><option value="128">128 · massimo</option></select></div><div class="field"><label for="audioDurationMode">Durata canzone</label><select id="audioDurationMode" name="durationMode"><option value="manual">Manuale</option><option value="auto">Automatica dal testo</option></select></div><div class="field"><label for="audioSampler">Sampler</label><select id="audioSampler" name="sampler"><option>res_multistep</option></select></div><div class="field"><label for="audioScheduler">Scheduler</label><select id="audioScheduler" name="scheduler"><option>simple</option></select></div></div></details>
+        <button id="audio-submit" class="submit-button" type="submit"><span>Genera audio</span><span>→</span></button>
+        <p id="audio-form-error" class="form-error"></p>
+      </form>
+
+      <aside class="studio-results panel">
+        <div class="results-header"><div><p class="eyebrow">OUTPUT</p><h2>Tracce recenti</h2></div><a class="ghost-button compact" href="/generations.html?mediaType=audio">Archivio</a></div>
+        <div id="audio-results" class="audio-results"><p class="empty-state">Le tracce generate compariranno qui.</p></div>
+      </aside>
+    </div>
+  </main>
+  <div id="toast" class="toast" role="status"></div>
+</body>
+</html>

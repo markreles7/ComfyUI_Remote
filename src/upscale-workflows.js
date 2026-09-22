@@ -79,7 +79,7 @@ function applyPreUpscaleDetailers(workflow, image, options) {
   const width = Number(options.upscaleSourceWidth) || 1024;
   const height = Number(options.upscaleSourceHeight) || 1024;
   workflow["300"] = node({
-    unet_name: "FluxKrea2\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors",
+    unet_name: "FluxKrea2\\krea2_raw_bf16.safetensors",
     weight_dtype: "default",
   }, "UNETLoader", "Pre-upscale detailer · Krea2");
   workflow["301"] = node({
@@ -264,7 +264,7 @@ function applyPreUpscaleDetailers(workflow, image, options) {
       guide_size_for: true,
       max_size: 1024,
       seed: options.seed + pass.offset,
-      steps: 10,
+      steps: 52,
       cfg: 3.5,
       sampler_name: "euler",
       scheduler: "simple",
@@ -532,7 +532,7 @@ export function upscaleConfig({
         name,
         available: detectorModels.has(name),
       })),
-      model: "FluxKrea2\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors",
+      model: "FluxKrea2\\krea2_raw_bf16.safetensors",
     },
     deviceName,
     cloudEnginesExcluded: ["Magnific", "Recraft", "WaveSpeed"],

@@ -180,7 +180,7 @@ test("rileva checkpoint SDXL realistici dalla lista CheckpointLoaderSimple", () 
 
 test("segnala i modelli immagine non installati", () => {
   const config = imageModelConfig([
-    "FluxKrea2\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors",
+    "FluxKrea2\\krea2_raw_bf16.safetensors",
     "FLUX2\\flux2Klein_9bBase.safetensors",
   ], {
     clips: ["qwen3vl_4b_fp8_scaled.safetensors"],
@@ -191,32 +191,41 @@ test("segnala i modelli immagine non installati", () => {
   assert.equal(config.find((item) => item.id === "zImage").available, false);
 });
 
-test("rileva la cartella FluxKrea2 e usa il workflow Krea2 nativo", () => {
-  const darkBeast = "FluxKrea2\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors";
-  const moody = "FluxKrea2\\moodyKrea2Mix_v50.safetensors";
+test("Krea generico espone i checkpoint installati non Turbo con RAW predefinito", () => {
+  const raw = "FluxKrea2\\krea2_raw_bf16.safetensors";
+  const legacy = "FluxKrea2\\moodyKrea2Mix_v50.safetensors";
+  const turbo = "FluxKrea2\\krea2_turbo_bf16.safetensors";
   const config = imageModelConfig([
-    darkBeast,
-    moody,
+    raw,
+    legacy,
+    turbo,
   ], {
     clips: ["qwen3vl_4b_fp8_scaled.safetensors"],
     vaes: ["qwen_image_vae.safetensors"],
   });
   const krea2 = config.find((item) => item.id === "fluxKrea2");
   assert.equal(krea2.available, true);
-  assert.deepEqual(new Set(krea2.models.map((item) => item.file)), new Set([darkBeast, moody]));
-  assert.equal(krea2.defaultModelFile, darkBeast);
+  assert.deepEqual(krea2.models.map((item) => item.file), [raw, legacy]);
+  assert.equal(krea2.defaultModelFile, raw);
 
   const { workflow, metadata } = buildImageWorkflow("fluxKrea2", {
     ...base,
-    imageModelFile: darkBeast,
-    imageSteps: "8",
-    imageGuidance: "1",
+    imageModelFile: raw,
+    imageSteps: "52",
+    imageGuidance: "3.5",
   }, null);
-  assert.equal(workflow["1"].inputs.unet_name, darkBeast);
+  assert.equal(workflow["1"].inputs.unet_name, raw);
+  assert.equal(workflow["8"].inputs.steps, 52);
+  assert.equal(workflow["8"].inputs.cfg, 3.5);
   assert.equal(workflow["2"].class_type, "CLIPLoader");
   assert.equal(workflow["2"].inputs.type, "krea2");
   assert.equal(workflow["3"].inputs.vae_name, "qwen_image_vae.safetensors");
   assert.equal(workflow["7"].class_type, "EmptyLatentImage");
+  assert.equal(workflow["6"].class_type, "CLIPTextEncode");
+  assert.equal(workflow["6"].inputs.text, "artifacts");
+  assert.equal(workflow["7900"].class_type, "Krea2ModelSampling");
+  assert.equal(workflow["7900"].inputs.sampling_mode, "raw_dynamic");
+  assert.deepEqual(workflow["8"].inputs.model, ["7900", 0]);
   assert.equal(workflow["8"].class_type, "KSampler");
   assert.equal(metadata.imageModelFamily, "fluxKrea2");
 });
@@ -272,7 +281,6 @@ test("preferisce il checkpoint ufficiale Qwen Image Edit 2511 quando installato"
 
 test("permette di scegliere checkpoint diversi nella stessa famiglia", () => {
   const variants = [
-    ["fluxKrea2", "FluxKrea2\\moodyKrea2Mix_v50.safetensors", "8"],
     ["flux2", "FLUX2\\pornmasterFlux2Klein_v4TurboFp8.safetensors", "13"],
     ["zImage", "Z-IMG\\moodyProMix_zitV13.safetensors", "4"],
   ];
@@ -442,7 +450,10 @@ test("inserisce più LoRA in tutte le famiglie di modello immagine", () => {
   ];
   for (const [model, consumer, options, source] of variants) {
     const { workflow, metadata } = buildImageWorkflow(model, options, source, loras);
-    const second = workflow[workflow[consumer].inputs.model[0]];
+    const consumerModel = workflow[workflow[consumer].inputs.model[0]];
+    const second = consumerModel.class_type === "Krea2ModelSampling"
+      ? workflow[consumerModel.inputs.model[0]]
+      : consumerModel;
     const first = workflow[second.inputs.model[0]];
     assert.equal(second.inputs.lora_name, loras[1].name);
     assert.equal(first.inputs.lora_name, loras[0].name);
@@ -575,7 +586,8 @@ test("Face Detailer universale rifinisce Qwen 2511 prima di Highres e SeedVR2", 
     faceDetailerDenoise: "0.18",
     highresEnabled: "on",
   }, upload);
-  assert.equal(workflow["905000"].inputs.unet_name, "FluxKrea2\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors");
+  assert.equal(workflow["905000"].inputs.unet_name, "FluxKrea2\\krea2_raw_bf16.safetensors");
+  assert.equal(workflow["905012"].inputs.steps, 52);
   assert.equal(workflow["905007"].class_type, "easy samLoaderPipe");
   assert.equal(workflow["905011"].inputs.model_name, "bbox/face_yolov8n.pt");
   assert.deepEqual(workflow["905012"].inputs.optional_image, ["9", 0]);
@@ -592,7 +604,8 @@ test("Face Detailer universale rifinisce Flux.2 Klein senza cambiare il generato
     faceDetailerDenoise: "0.18",
   }, null);
   assert.equal(workflow["1"].inputs.unet_name, "FLUX2\\flux2Klein_9bBase.safetensors");
-  assert.equal(workflow["905000"].inputs.unet_name, "FluxKrea2\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors");
+  assert.equal(workflow["905000"].inputs.unet_name, "FluxKrea2\\krea2_raw_bf16.safetensors");
+  assert.equal(workflow["905012"].inputs.steps, 52);
   assert.deepEqual(workflow["905012"].inputs.optional_image, ["15", 0]);
   assert.deepEqual(workflow["939999"].inputs.image, ["905013", 1]);
 });

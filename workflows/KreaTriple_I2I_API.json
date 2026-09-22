@@ -1,7 +1,7 @@
 {
   "2": {
     "inputs": {
-      "unet_name": "FluxKrea2\\moodyKrea2Mix_v50.safetensors",
+      "unet_name": "FluxKrea2\\krea2_raw_bf16.safetensors",
       "weight_dtype": "default"
     },
     "class_type": "UNETLoader",
@@ -74,8 +74,8 @@
   "8": {
     "inputs": {
       "seed": 734526763038618,
-      "steps": 8,
-      "cfg": 1,
+      "steps": 52,
+      "cfg": 3.5,
       "sampler_name": "euler",
       "scheduler": "simple",
       "denoise": 1,

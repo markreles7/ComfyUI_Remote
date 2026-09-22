@@ -183,7 +183,7 @@
   },
   "413": {
     "inputs": {
-      "unet_name": "FluxKrea2\\moodyKrea2Mix_v50.safetensors",
+      "unet_name": "FluxKrea2\\krea2_raw_bf16.safetensors",
       "weight_dtype": "default"
     },
     "class_type": "UNETLoader",
@@ -622,12 +622,12 @@
         "522",
         0
       ],
-      "steps": 40,
-      "cfg": 1,
+      "steps": 52,
+      "cfg": 3.5,
       "sampler_name": "euler",
       "scheduler": "simple",
-      "start_at_step": 32,
-      "end_at_step": 40,
+      "start_at_step": 42,
+      "end_at_step": 52,
       "return_with_leftover_noise": "enable",
       "model": [
         "413",

@@ -16,6 +16,7 @@ const base = {
   alternatives: 2,
 };
 const cases = [
+  ["anima", { ...base, animaModel: "ANIMA\\anima_turboV11.safetensors", animaOutputs: 1 }, {}],
   ["guidedEdit", { ...base, editAction: "addPerson", placement: JSON.stringify({ x: 0.4, y: 0.2, width: 0.2, height: 0.7 }) }, { source, mask, references }],
   ["smartphone", { ...base }, { source, mask, references }],
   ["smartEditor", { ...base, editScope: "global" }, { source, references }],

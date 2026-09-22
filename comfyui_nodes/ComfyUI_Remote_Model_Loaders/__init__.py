@@ -4,6 +4,7 @@ The NF4 parameter handling is adapted from ComfyUI_bitsandbytes_NF4 by
 comfyanonymous (AGPL-3.0) and the Forge implementation credited there.
 """
 
+import gc
 import json
 
 import folder_paths
@@ -13,6 +14,7 @@ import bitsandbytes as bnb
 from bitsandbytes.nn.modules import Params4bit, QuantState
 
 import comfy.ops
+import comfy.model_management as model_management
 import comfy.sd
 import comfy.utils
 
@@ -302,12 +304,59 @@ class RemoteImageTensorNormalize:
         return (result.contiguous().clamp(0, 1),)
 
 
+class RemoteUnloadCLIP:
+    """Pass conditioning through after releasing the exact CLIP/Qwen model."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "conditioning": ("CONDITIONING",),
+                "clip": ("CLIP",),
+            }
+        }
+
+    RETURN_TYPES = ("CONDITIONING",)
+    FUNCTION = "unload"
+    CATEGORY = "ComfyUI Remote/memory"
+
+    def unload(self, conditioning, clip):
+        patcher = getattr(clip, "patcher", None)
+        released = 0
+        try:
+            try:
+                import comfy.model_prefetch
+
+                comfy.model_prefetch.cleanup_prefetch_queues()
+            except Exception:
+                pass
+            if patcher is not None:
+                model_management.unload_model_and_clones(
+                    patcher,
+                    unload_additional_models=False,
+                    all_devices=True,
+                )
+                if hasattr(patcher, "partially_unload_ram"):
+                    released = int(patcher.partially_unload_ram(1 << 60) or 0)
+            gc.collect()
+            model_management.soft_empty_cache()
+        except Exception as exc:
+            print(f"[RemoteUnloadCLIP] cleanup skipped: {exc}")
+        else:
+            print(
+                "[RemoteUnloadCLIP] Qwen/CLIP released after conditioning "
+                f"({released / (1024 * 1024):.1f} MB dynamic pins)"
+            )
+        return (conditioning,)
+
+
 NODE_CLASS_MAPPINGS = {
     "RemoteUNETLoaderNF4": RemoteUNETLoaderNF4,
     "RemoteUNETLoaderConvRotINT8": RemoteUNETLoaderConvRotINT8,
     "RemoteTrackedFaceSwap": RemoteTrackedFaceSwap,
     "RemoteFaceSelectionPoint": RemoteFaceSelectionPoint,
     "RemoteImageTensorNormalize": RemoteImageTensorNormalize,
+    "RemoteUnloadCLIP": RemoteUnloadCLIP,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -316,4 +365,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "RemoteTrackedFaceSwap": "Tracked Face Swap (Remote)",
     "RemoteFaceSelectionPoint": "Select Face for SAM (Remote)",
     "RemoteImageTensorNormalize": "Normalize Image Tensor (Remote)",
+    "RemoteUnloadCLIP": "Unload CLIP After Conditioning (Remote)",
 }

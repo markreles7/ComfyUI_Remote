@@ -9,6 +9,13 @@ const PROFILES = Object.freeze({
   maximum: { q: 0.7, dMax: 4, bridge: 8, inject: 0.7 },
 });
 
+function h3Prompt(value) {
+  const prompt = String(value || "").trim();
+  if (/integrated_multimodal_description\s*:/i.test(prompt)) return prompt;
+  const scene = prompt || "Preserve the exact source clip, identity, wardrobe, environment, camera path and action.";
+  return `integrated_multimodal_description: [Shot 1] ${scene} Reconstruct only fast-motion intervals so every frame is crisp at a plausible high shutter speed, with clean limb contours and stable anatomy.\n\noverall_soundscape: Preserve the source timing and diegetic sound.\n\nnon_diegetic_music: N/A`;
+}
+
 export function buildH3DeRopeWorkflow(raw = {}, source, config = {}) {
   if (!source?.name) throw new Error("Temporal De-Rope richiede un video H3 completato.");
   const h3 = config.h3;
@@ -26,14 +33,29 @@ export function buildH3DeRopeWorkflow(raw = {}, source, config = {}) {
   workflow["305"].inputs.q = profile.q;
   workflow["305"].inputs.d_max = profile.dMax;
   workflow["305"].inputs.bridge = profile.bridge;
+  workflow["305"].inputs.preset = "custom";
   workflow["309"].inputs.inject = profile.inject;
+  workflow["309"].inputs.preset = "custom";
   workflow["310"].inputs.noise_seed = seed;
-  workflow["311"].inputs.prompt = String(raw.prompt || "").trim() || "integrated_multimodal_description: [Shot 1] Preserve the exact source clip, identity, wardrobe, environment, camera path and action. Reconstruct only fast-motion intervals so every frame is crisp at a plausible high shutter speed, with clean limb contours and stable anatomy.\n\noverall_soundscape: Preserve the source timing and diegetic sound.\n\nnon_diegetic_music: N/A";
+  workflow["311"].inputs.prompt = h3Prompt(raw.prompt);
   workflow["319"].inputs.filename_prefix = `VideoStudio/TemporalDeRope/${profileId}`;
   for (const id of ["320", "321", "322", "323", "324", "325"]) delete workflow[id];
   workflow["326"] = { class_type: "DisTorchPurgeVRAMV2", inputs: { anything: ["304", 0], purge_cache: true, purge_models: true, purge_seedvr2_models: false, purge_qwen3vl_models: true, purge_nunchaku_models: false, HSWQ: false, Ollama: false }, _meta: { title: "De-Rope · purge prima della rigenerazione" } };
   workflow["305"].inputs.samples = ["326", 0];
-  workflow["327"] = { class_type: "LayerUtility: PurgeVRAM", inputs: { anything: ["316", 0], purge_cache: true, purge_models: true }, _meta: { title: "De-Rope · purge dopo recupero" } };
+  workflow["327"] = {
+    class_type: "DisTorchPurgeVRAMV2",
+    inputs: {
+      anything: ["316", 0],
+      purge_cache: true,
+      purge_models: true,
+      purge_seedvr2_models: false,
+      purge_qwen3vl_models: true,
+      purge_nunchaku_models: false,
+      HSWQ: false,
+      Ollama: false,
+    },
+    _meta: { title: "De-Rope · purge pass-through dopo recupero" },
+  };
   workflow["318"].inputs.images = ["327", 0];
   return {
     workflow,

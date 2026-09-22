@@ -2,6 +2,7 @@ import { WebSocket } from "ws";
 
 const VIDEO_EXTENSIONS = new Set([".mp4", ".webm", ".mov", ".mkv", ".avi"]);
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"]);
+const AUDIO_EXTENSIONS = new Set([".flac", ".mp3", ".wav", ".ogg", ".opus", ".m4a", ".aac"]);
 
 export class ComfyClient {
   constructor({ httpUrl, wsUrl, clientId, onEvent }) {
@@ -165,6 +166,10 @@ export function extractVideos(historyEntry) {
 
 export function extractImages(historyEntry) {
   return preferFinalImages(extractFiles(historyEntry, IMAGE_EXTENSIONS));
+}
+
+export function extractAudios(historyEntry) {
+  return extractFiles(historyEntry, AUDIO_EXTENSIONS);
 }
 
 function preferFinalImages(files) {

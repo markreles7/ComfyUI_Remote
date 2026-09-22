@@ -1,6 +1,6 @@
 import { enhanceMainPrompt } from "./prompt-assistant.js?v=20260827-h3-character-context";
 import { consumeGuidedHandoff, guidedTokenFromLocation, setInputFile } from "./guided-handoff.js";
-import { applyH3LoraTriggers, applyLoraTriggers, automaticLoraTriggers, loraOptionLabel, uniquePromptTriggers } from "./lora-triggers.js?v=20260824-h3-fields";
+import { applyH3LoraTriggers, applyLoraTriggers, automaticLoraTriggers, loraOptionLabel, uniquePromptTriggers } from "./lora-triggers.js?v=20260908-h3-timeline-preserve";
 import { setupUploadPreviews } from "./upload-previews.js";
 import { createAdaptivePoller, getAppConfig, warmAppConfig } from "./runtime-cache.js";
 import { attachFormDraft } from "./form-draft.js";
@@ -77,54 +77,94 @@ const H3_SCENE_PRESETS = Object.freeze({
     mode: "text", duration: "8", aspect: "16:9 (Widescreen)", look: "documentary", lora: "drone", strength: 0.7,
     starter: "A single continuous low-altitude drone shot advances over the environment, then rises gradually while yawing just enough to reveal the wider geography. Stable horizon, coherent parallax, plausible inertia, subtle wind buffeting and realistic exposure adaptation. Preserve spatial continuity and scale. Natural environmental sound only, no cuts, no impossible acceleration, no random orbit.",
   },
+  adultRealisticGeneral: {
+    hint: "NSFW realistico generale (solo adulti consenzienti): NSFW AIO 0,65 + Realism People 0,45. Base solida per I2V; trigger hmmotion automatico.",
+    mode: "image", duration: "8", aspect: "9:16 (Portrait Widescreen)", look: "amateurHandheld", lora: "nsfwAio", strength: 0.65, final: true,
+    extraLoras: [{ type: "realism", strength: 0.45 }],
+    starter: "Two clearly adult consenting partners share an intimate moment in one continuous handheld take. Preserve both adult identities, anatomy, wardrobe, room and lighting from the source image. Describe the requested action in precise chronological order, including contact, body mechanics, breathing, gaze and a stable ending. Natural diegetic sound only, no cuts, no morphing, no duplicated anatomy.",
+  },
+  adultStableMotion: {
+    hint: "NSFW movimento stabile (solo adulti): MysticXXX 0,80 + Better Motion 0,30 + Realism 0,35. Priorità a continuità, anatomia e dettaglio temporale.",
+    mode: "image", duration: "8", aspect: "16:9 (Widescreen)", look: "documentary", lora: "mystic", strength: 0.8, final: true,
+    extraLoras: [{ type: "betterMotion", strength: 0.3 }, { type: "realism", strength: 0.35 }],
+    starter: "Two clearly adult consenting partners perform the requested intimate action in one uninterrupted observational take. Preserve exact identities, anatomy, environment and spatial relationships. Use complete motion arcs, grounded weight transfer, realistic contact, restrained camera movement and a stable final pose. Natural breathing and room sound, no cuts, no morphing, no sudden changes of position.",
+  },
+  adultOralRealistic: {
+    hint: "Scena orale realistica (solo adulti): Blowjob H3 v2 0,70 + Realism 0,40. Nessun trigger ufficiale: l'azione va descritta chiaramente nel prompt.",
+    mode: "image", duration: "8", aspect: "9:16 (Portrait Widescreen)", look: "amateurHandheld", lora: "blowjob", strength: 0.7, final: true,
+    extraLoras: [{ type: "realism", strength: 0.4 }],
+    starter: "Two clearly adult consenting partners perform the requested oral scene in one continuous handheld take. Preserve both identities, anatomy, starting pose, room and lighting. Describe the action and camera framing explicitly and chronologically, with realistic contact, breathing and a stable ending. No cuts, no morphing, no duplicated anatomy.",
+  },
+  adultOralDeepStable: {
+    hint: "Scena orale intensa e continua (solo adulti): Deepthroat FL2VA 0,65 + Better Motion 0,30 + Realism 0,30. Pensata per I2V lungo e movimento leggibile.",
+    mode: "image", duration: "8", aspect: "9:16 (Portrait Widescreen)", look: "documentary", lora: "deepthroat", strength: 0.65, final: true,
+    extraLoras: [{ type: "betterMotion", strength: 0.3 }, { type: "realism", strength: 0.3 }],
+    starter: "Two clearly adult consenting partners perform the requested intense oral action in one uninterrupted take. Preserve both identities and the source composition. Describe the motion rhythm, contact, breathing, gaze and recovery in chronological order, keeping anatomy and camera position temporally coherent. No cuts, no morphing, no duplicated anatomy.",
+  },
+  adultBreastPhysics: {
+    hint: "Fisica naturale del seno (solo adulti): Boob Physics 0,65 + Realism 0,45. Descrivi movimento, direzione e causa; nessun trigger ufficiale.",
+    mode: "image", duration: "6", aspect: "9:16 (Portrait Widescreen)", look: "amateurHandheld", lora: "boobPhysics", strength: 0.65, final: true,
+    extraLoras: [{ type: "realism", strength: 0.45 }],
+    starter: "A clearly adult subject performs one simple continuous movement. Preserve identity, anatomy, clothing and environment. Show physically plausible soft-tissue inertia caused by the stated body movement, with natural acceleration, settling and restrained handheld camera response. Natural room sound, no cuts, no anatomy changes, no morphing.",
+  },
+  adultBreastBounceVertical: {
+    hint: "Rimbalzo verticale (solo adulti): BounceTits 0,65 + Realism 0,40. Inserisce il trigger direzionale ufficiale “her breast is bouncing up and down”.",
+    mode: "image", duration: "6", aspect: "9:16 (Portrait Widescreen)", look: "amateurHandheld", lora: "bounce", strength: 0.65, final: true,
+    extraLoras: [{ type: "realism", strength: 0.4 }], forcedTriggers: ["her breast is bouncing up and down"],
+    starter: "A clearly adult subject performs a continuous rhythmic vertical movement in one take. Preserve identity, anatomy, clothing and location. The motion has a clear physical cause, coherent inertia and gradual settling while the handheld camera makes only small corrections. No cuts, no anatomy changes, no morphing.",
+  },
+  adultBreastPlayReasoning: {
+    hint: "POV Breast Play Pro (solo adulti): GalaxyAce 0,55 + VBVR Pro 0,80 + Breast Play & Jiggle v2 0,75 + Bouncing Boobs FL2VA v0.7 0,60. Il preset non modifica né aggiunge la Turbo LoRA.",
+    mode: "image", duration: "6", aspect: "9:16 (Portrait Widescreen)", look: "amateurHandheld", lora: "breastPlay", strength: 0.75, final: true, preserveTurbo: true,
+    sampler: "res_2s", scheduler: "beta57",
+    extraLoras: [{ type: "galaxyAce", strength: 0.55 }, { type: "vbvrPro", strength: 0.8 }, { type: "bounceFl2va", strength: 0.6 }],
+    forcedTriggers: ["her breast is bouncing from left to right"],
+    starter: "POV video of a clearly adult consenting woman during the requested breast-play action. Preserve her exact identity, face, anatomy, clothing, room and practical light from the source image. The visible adult hands make deliberate anatomically coherent contact; soft-tissue movement follows the direction and pressure of each hand with plausible weight, inertia and gradual settling. Keep fingers separated and consistent, maintain natural breathing and eye movement, and finish in a stable pose. One uninterrupted handheld take, synchronized diegetic sound, no cuts, no extra hands, no fused fingers, no anatomy changes, no morphing.",
+  },
+  adultBreastNippleDetail: {
+    hint: "Seno e capezzoli realistici (solo adulti): PlagueKind Tiddies/Realism Slider 1,10 + VBVR Pro 0,60. Nessun trigger; Turbo non viene aggiunta né modificata.",
+    mode: "image", duration: "6", aspect: "9:16 (Portrait Widescreen)", look: "documentary",
+    lora: "tiddiesRealism", strength: 1.1, final: true, preserveTurbo: true,
+    extraLoras: [{ type: "vbvrPro", strength: 0.6 }],
+    starter: "A clearly adult subject appears in one continuous realistic close or medium shot. Preserve exact identity, anatomy, source proportions, room and practical lighting. Render natural skin texture and anatomically coherent breast, areola and nipple detail without artificial smoothing or colored vertical bands. Keep breathing, gravity, contact and soft-tissue inertia physically plausible, with a stable final pose. No cuts, no morphing, no duplicated anatomy.",
+  },
+  adultLargeBreastPhysics: {
+    hint: "Seno grande + fisica (solo adulti): Big Sloppy Tits 0,75 + Boob Physics 0,35 + Realism 0,30. Trigger bigsloppytits automatico.",
+    mode: "image", duration: "6", aspect: "9:16 (Portrait Widescreen)", look: "amateurHandheld", lora: "bst", strength: 0.75, final: true,
+    extraLoras: [{ type: "boobPhysics", strength: 0.35 }, { type: "realism", strength: 0.3 }],
+    starter: "A clearly adult subject performs one simple continuous movement. Preserve identity, source proportions, clothing and location unless the prompt explicitly requests a proportion change. Show plausible weight, inertia and gradual settling with restrained handheld camera movement. Natural room sound, no cuts, no morphing, no duplicated anatomy.",
+  },
+  adultAnime: {
+    hint: "Anime NSFW moderno (solo adulti): General Hentai Anime 0,75 + Flat Anime 0,35 + NSFW AIO 0,35. Trigger 2D-animated e hmmotion automatici.",
+    mode: "image", duration: "6", aspect: "9:16 (Portrait Widescreen)", look: "neutral", lora: "animeAdult", strength: 0.75, final: true,
+    extraLoras: [{ type: "flatAnime", strength: 0.35 }, { type: "nsfwAio", strength: 0.35 }],
+    starter: "Two clearly adult consenting anime characters perform the requested intimate action in one continuous modern 2D anime shot. Preserve character designs, facial features, costume details, line art, cel shading and background layout. Use readable body mechanics, consistent anatomy, controlled secondary motion and a stable ending. No cuts, no style drift into 3D or CGI, no morphing.",
+  },
+  adultMaleDetail: {
+    hint: "Dettaglio anatomico maschile (solo adulti): Penis V2 0,45 + NSFW AIO 0,55 + Realism 0,35. Trigger penis e hmmotion automatici.",
+    mode: "image", duration: "6", aspect: "9:16 (Portrait Widescreen)", look: "documentary", lora: "penis", strength: 0.45, final: true,
+    extraLoras: [{ type: "nsfwAio", strength: 0.55 }, { type: "realism", strength: 0.35 }],
+    starter: "Clearly adult consenting subjects perform the requested intimate action in one continuous close or medium shot. Preserve identities, anatomy, source composition and lighting. Keep anatomical detail temporally consistent through contact and movement, with realistic body mechanics and a stable ending. No cuts, no morphing, no duplicated anatomy.",
+  },
 });
 
-const ACTION_H3_PRESETS = Object.freeze({
-  custom: {
-    hint: "Personalizzato: mantiene parametri e stack LoRA ACTION correnti.",
-    loras: [],
-  },
-  streetBrawlVerite: {
-    hint: "Rissa realistica vérité: scontri ravvicinati, camera umana e impatti credibili. Combat 0,75 · Realism 0,65 · Motion 0,30 · diretto 0,9 MP.",
-    duration: "6", aspect: "16:9 (Widescreen)", trigger: "prfight2", combatStrength: 0.75, quality: "direct09", look: "amateurHandheld",
-    loras: [{ type: "realism", strength: 0.65 }, { type: "motion", strength: 0.3 }],
-  },
-  fantasyMelee: {
-    hint: "Mischia fantasy realistica: peso di armi, cuoio, fango e collisioni ambientali senza effetto CGI. Combat 0,80 · Realism 0,55 · Motion 0,35 · diretto 0,9 MP.",
-    duration: "8", aspect: "16:9 (Widescreen)", trigger: "prfight2", combatStrength: 0.8, quality: "direct09", look: "documentary",
-    loras: [{ type: "realism", strength: 0.55 }, { type: "motion", strength: 0.35 }],
-  },
-  cinematicOneTake: {
-    hint: "Duello cinematografico one-take: regia motivata, silhouette leggibili e nessun taglio inventato. Combat 0,70 · Realism 0,50 · Motion 0,35 · 0,4 → 1,0 MP.",
-    duration: "8", aspect: "16:9 (Widescreen)", trigger: "prfight2", combatStrength: 0.7, quality: "twoPass04", look: "documentary",
-    loras: [{ type: "realism", strength: 0.5 }, { type: "motion", strength: 0.35 }],
-  },
-  brutalFinisher: {
-    hint: "Finisher brutale: escalation breve e un solo colpo conclusivo enfatizzato, con reazione e recupero completi. Combat 0,90 · Realism 0,60 · Motion 0,25 · diretto 0,9 MP.",
-    duration: "6", aspect: "16:9 (Widescreen)", trigger: "prfight2, prfin1", combatStrength: 0.9, quality: "direct09", look: "amateurHandheld",
-    loras: [{ type: "realism", strength: 0.6 }, { type: "motion", strength: 0.25 }],
-  },
-  readableGroupFight: {
-    hint: "Combattimento di gruppo leggibile: un protagonista, attacchi scaglionati e geografia stabile. Combat 0,80 · Realism 0,55 · Motion 0,45 · diretto 0,9 MP.",
-    duration: "6", aspect: "16:9 (Widescreen)", trigger: "prfight2", combatStrength: 0.8, quality: "direct09", look: "amateurHandheld",
-    loras: [{ type: "realism", strength: 0.55 }, { type: "motion", strength: 0.45 }],
-  },
-  smoothChoreography: {
-    hint: "Coreografia fluida: Combat 0,75 · Better Motion 0,45 · Realism 0,50 · Turbo OFF · 0,9 MP. Evita Motion Booster e privilegia contatti leggibili.",
-    duration: "8", aspect: "16:9 (Widescreen)", trigger: "prfight2", combatStrength: 0.75, quality: "direct09", look: "documentary", turbo: false,
-    loras: [{ type: "betterMotion", strength: 0.45 }, { type: "realism", strength: 0.5 }],
-  },
-  fantasyBattleVerite: {
-    hint: "Battaglia fantasy vérité: Combat 0,80 · Better Motion 0,45 · Realism 0,55 · camera fisica, 0,9 MP e Turbo OFF.",
-    duration: "8", aspect: "16:9 (Widescreen)", trigger: "prfight2", combatStrength: 0.8, quality: "direct09", look: "amateurHandheld", turbo: false,
-    loras: [{ type: "betterMotion", strength: 0.45 }, { type: "realism", strength: 0.55 }],
-  },
-  aerialAction: {
-    hint: "Azione aerea: Combat 0,65 · Drone 0,60 · Realism 0,45. Per inseguimenti o battaglie leggibili dall’alto, senza Motion Booster.",
-    duration: "8", aspect: "16:9 (Widescreen)", trigger: "prfight2", combatStrength: 0.65, quality: "direct09", look: "documentary", turbo: false,
-    loras: [{ type: "drone", strength: 0.6 }, { type: "realism", strength: 0.45 }],
-  },
-});
+const H3_SCENE_MANAGED_LORA_TYPES = Object.freeze([
+  "realism", "motion", "betterMotion", "zeroTwo", "whisper", "drone",
+  "nsfwAio", "mystic", "blowjob", "deepthroat", "boobPhysics", "bounce",
+  "bst", "animeAdult", "flatAnime", "penis", "galaxyAce", "vbvrPro",
+  "breastPlay", "bounceFl2va", "bounceRef2va",
+  "tiddiesRealism",
+]);
+
+function h3ActionPresets() {
+  return state.config?.videoStudio?.h3?.actionPresets || [];
+}
+
+function h3ActionPreset(id) {
+  return h3ActionPresets().find((preset) => preset.id === id)
+    || h3ActionPresets().find((preset) => preset.id === "custom")
+    || { id: "custom", label: "Personalizzato", hint: "Mantiene i parametri correnti.", extraLoras: [] };
+}
 
 const LTX25_LORA_PRESETS = Object.freeze({
   custom: {
@@ -289,6 +329,7 @@ async function checkHealth() {
       state.configRefreshInFlight = true;
       try {
         state.config = await getAppConfig({ force: true });
+        renderH3SparseModels();
         updateReadiness();
       } finally {
         state.configRefreshInFlight = false;
@@ -323,14 +364,18 @@ function syncDialogue() {
 }
 
 function videoLoraChoices(selectedMode = mode()) {
-  const h3ModeActive = ["minimaxH3", "actionH3", "seedHunterH3"].includes(selectedMode);
+  const h3ModeActive = ["minimaxH3", "minimaxH3Fast", "minimaxH3AllInOne", "h3SparseV9", "h3SeamlessChain", "actionH3", "weaponCombatH3", "seedHunterH3"].includes(selectedMode);
   const choices = h3ModeActive
     ? state.config?.videoStudio?.h3Loras || []
     : state.config?.videoStudio?.ltxLoras || [];
   const modelProfile = $("#h3ModelProfile")?.value || "base";
   const compatibility = state.config?.videoStudio?.h3LoraCompatibility || {};
   return choices.filter((name) => {
-    if (selectedMode === "actionH3" && name === state.config?.videoStudio?.h3?.files?.combat) return false;
+    if (selectedMode === "actionH3" && [state.config?.videoStudio?.h3?.files?.combat, state.config?.videoStudio?.h3?.files?.weaponCombat].includes(name)) return false;
+    if (selectedMode === "minimaxH3AllInOne" && $("#directorPreset")?.value === "actionScene"
+        && [state.config?.videoStudio?.h3?.files?.combat, state.config?.videoStudio?.h3?.files?.weaponCombat].includes(name)) return false;
+    if (selectedMode === "weaponCombatH3" && name === state.config?.videoStudio?.h3?.files?.weaponCombat) return false;
+    if (["actionH3", "weaponCombatH3"].includes(selectedMode) && name === state.config?.videoStudio?.h3?.files?.motionRepair) return false;
     const allowed = compatibility[name]?.allowedModelProfiles;
     return !h3ModeActive || !Array.isArray(allowed) || allowed.includes(modelProfile);
   });
@@ -427,52 +472,117 @@ function findH3PresetLora(type) {
     zeroTwo: /MOT_Zero_Two_Dance\.safetensors$/i,
     whisper: /AUD_Whispering\.safetensors$/i,
     drone: /CAM_Drone_Shot\.safetensors$/i,
+    nsfwAio: /NSFW_AIO\.safetensors$/i,
+    mystic: /(?:NSFW_)?MysticXXX_MMH3-V4\.safetensors$/i,
+    blowjob: /NSFW_Blowjob\.safetensors$/i,
+    deepthroat: /NSFW_deepthroat\.safetensors$/i,
+    boobPhysics: /NSFW_Boob Physics\.safetensors$/i,
+    bounce: /NSFW_bouncetits\.safetensors$/i,
+    bounceFl2va: /NSFW_bounceV07_fl2va-000230_Intense\.safetensors$/i,
+    bounceRef2va: /NSFW_bounceV07-000230_Intense\.safetensors$/i,
+    breastPlay: /NSFW_breastplayjiggle_h3_v2\.safetensors$/i,
+    tiddiesRealism: /NSFW_PlagueKind-tiddies-realismslider\.safetensors$/i,
+    galaxyAce: /STY_GalaxyAce\.safetensors$/i,
+    vbvrPro: /STY_H3_VBVR_Pro_attn_only\.safetensors$/i,
+    bst: /(?:NSFW_)?MiniMax_bst_v1\.safetensors$/i,
+    animeAdult: /NSFW_General_Hentai_Anime_H3\.safetensors$/i,
+    flatAnime: /STY_Flat_Anime_H3\.safetensors$/i,
+    penis: /(?:NSFW_)?PenisV2_minimax-h3_epoch60\.safetensors$/i,
   };
   return (state.config?.videoStudio?.h3Loras || []).find((name) => matchers[type]?.test(name)) || "";
 }
 
 function updateActionH3PresetHint() {
-  const preset = ACTION_H3_PRESETS[$("#actionH3Preset")?.value] || ACTION_H3_PRESETS.custom;
+  const preset = h3ActionPreset($("#actionH3Preset")?.value);
   const hint = $("#action-h3-preset-hint");
   if (hint) hint.textContent = preset.hint;
 }
 
-function applyActionH3Preset() {
-  const presetId = $("#actionH3Preset")?.value || "custom";
-  const preset = ACTION_H3_PRESETS[presetId] || ACTION_H3_PRESETS.custom;
-  updateActionH3PresetHint();
-  if (presetId === "custom") return showToast("Parametri ACTION H3 lasciati invariati.");
+function renderH3ActionPresetSelect(selector, loraType) {
+  const select = $(selector);
+  if (!select) return;
+  const previous = select.value;
+  const presets = h3ActionPresets().filter((preset) => preset.id === "custom" || preset.loraType === loraType);
+  select.innerHTML = presets.map((preset) => `<option value="${escapeHtml(preset.id)}">${escapeHtml(preset.label)}</option>`).join("");
+  select.value = presets.some((preset) => preset.id === previous) ? previous : "custom";
+}
 
-  $("#actionH3Duration").value = preset.duration;
-  $("#actionH3AspectRatio").value = preset.aspect;
-  $("#actionH3RunProfile").value = "preview";
-  $("#actionH3Trigger").value = preset.trigger;
-  $("#actionH3CombatStrength").value = String(preset.combatStrength);
-  $("#actionH3Quality").value = preset.quality;
-  $("#h3LookPreset").value = preset.look;
-  $("#h3ScenePreset").value = "none";
-  if (typeof preset.turbo === "boolean") $("#h3UseTurbo").checked = preset.turbo;
-
-  const installedByType = {
-    realism: findH3RealismPeopleLora(),
-    motion: findH3MotionBoosterLora(),
-    betterMotion: findH3PresetLora("betterMotion"),
-    drone: findH3PresetLora("drone"),
-  };
-  const managedNames = Object.values(installedByType).filter(Boolean);
+function applyH3ActionExtraLoras(preset) {
+  const managedTypes = [...new Set(h3ActionPresets().flatMap((item) => (item.extraLoras || []).map((entry) => entry.type)))];
+  const installedByType = Object.fromEntries(managedTypes.map((type) => [type, findH3PresetLora(type)]));
+  const managedNames = [
+    ...Object.values(installedByType),
+    state.config?.videoStudio?.h3?.files?.combat,
+    state.config?.videoStudio?.h3?.files?.weaponCombat,
+  ].filter(Boolean);
   state.loras = state.loras.filter((item) => !managedNames.includes(item.name));
   const missing = [];
-  for (const entry of preset.loras) {
+  for (const entry of preset.extraLoras || []) {
     const name = installedByType[entry.type];
     if (name) state.loras.push({ name, strength: entry.strength });
     else missing.push(entry.type);
   }
   renderLoras();
+  return missing;
+}
+
+function syncActionPresetFamily() {
+  const loraType = $("#actionH3PrimaryLora")?.value === "weapon" ? "weapon" : "combat";
+  renderH3ActionPresetSelect("#actionH3Preset", loraType);
+  renderLoras();
+  updateActionH3PresetHint();
+  updateActionH3Fields();
+}
+
+function applyActionH3Preset() {
+  const presetId = $("#actionH3Preset")?.value || "custom";
+  const preset = h3ActionPreset(presetId);
+  updateActionH3PresetHint();
+  if (presetId === "custom") return showToast("Parametri ACTION H3 lasciati invariati.");
+
+  $("#actionH3PrimaryLora").value = preset.loraType;
+  $("#actionH3Duration").value = String(preset.duration);
+  $("#actionH3AspectRatio").value = preset.aspect;
+  $("#actionH3RunProfile").value = "preview";
+  if (preset.loraType === "combat") $("#actionH3Trigger").value = preset.trigger;
+  $("#actionH3CombatStrength").value = String(preset.strength);
+  $("#actionH3Quality").value = preset.quality;
+  $("#h3LookPreset").value = preset.look;
+  $("#h3ScenePreset").value = "none";
+  if (typeof preset.turbo === "boolean") $("#h3UseTurbo").checked = preset.turbo;
+
+  const missing = applyH3ActionExtraLoras(preset);
   updateActionH3Fields();
   $("#actionH3Prompt")?.dispatchEvent(new Event("input", { bubbles: true }));
   showToast(missing.length
     ? `Preset ACTION applicato parzialmente: LoRA ${missing.join(", ")} non trovata.`
     : `Preset ACTION applicato: ${preset.hint.split(":")[0]}.`);
+}
+
+function syncDirectorActionPresetFamily() {
+  const loraType = $("#directorActionLora")?.value === "weapon" ? "weapon" : "combat";
+  renderH3ActionPresetSelect("#directorActionPreset", loraType);
+  renderLoras();
+  updateH3DirectorFields();
+}
+
+function applyDirectorActionPreset() {
+  const preset = h3ActionPreset($("#directorActionPreset")?.value);
+  if (preset.id === "custom") return showToast("Parametri ACTION SCENE lasciati invariati.");
+  $("#directorActionLora").value = preset.loraType;
+  $("#directorActionStrength").value = String(preset.strength);
+  $("#directorDuration").value = String(preset.duration);
+  $("#directorAspectRatio").value = String(preset.aspect).split(" ")[0];
+  $("#directorContinuityFrames").value = String(preset.continuityFrames || 22);
+  $("#directorRefineMode").value = "off";
+  $("#directorRefinePasses").value = "1";
+  $("#directorUseTurbo").checked = preset.turbo !== false;
+  $("#directorMegapixels").value = "0.4";
+  const missing = applyH3ActionExtraLoras(preset);
+  updateH3DirectorFields();
+  showToast(missing.length
+    ? `Preset ACTION SCENE applicato parzialmente: LoRA ${missing.join(", ")} non trovata.`
+    : `Preset ACTION SCENE applicato: ${preset.label}.`);
 }
 
 function updateH3ScenePresetHint() {
@@ -481,6 +591,19 @@ function updateH3ScenePresetHint() {
   if (!hint) return;
   hint.textContent = H3_SCENE_PRESETS[selected]?.hint
     || "Personalizzata: nessun vincolo scena aggiuntivo; i singoli controlli restano interamente manuali.";
+}
+
+function applyH3SceneLoras(preset) {
+  const managedLoras = H3_SCENE_MANAGED_LORA_TYPES.map(findH3PresetLora).filter(Boolean);
+  state.loras = state.loras.filter((item) => !managedLoras.includes(item.name));
+  const missing = [];
+  for (const entry of [{ type: preset.lora, strength: preset.strength }, ...(preset.extraLoras || [])]) {
+    const name = findH3PresetLora(entry.type);
+    if (name) state.loras.push({ name, strength: entry.strength });
+    else missing.push(entry.type);
+  }
+  renderLoras();
+  return missing;
 }
 
 function applyH3ScenePreset() {
@@ -497,37 +620,66 @@ function applyH3ScenePreset() {
   $("#h3FirstMegapixels").value = preset.final ? "0.9" : "0.4";
   $("#h3RefineMode").value = "direct";
   $("#h3AttentionBackend").value = "memoryEfficient";
-  $("#h3UseTurbo").checked = false;
+  if (!preset.preserveTurbo) $("#h3UseTurbo").checked = false;
   $("#h3PurgeBetween").checked = true;
   $("#h3PurgeAfter").checked = true;
   $("#h3ReferenceSize").value = "match";
   if (!$("#h3Prompt").value.trim()) $("#h3Prompt").value = preset.starter;
 
-  const managedLoras = ["realism", "motion", "betterMotion", "zeroTwo", "whisper", "drone"].map(findH3PresetLora).filter(Boolean);
-  state.loras = state.loras.filter((item) => !managedLoras.includes(item.name));
-  const selectedLora = findH3PresetLora(preset.lora);
-  if (selectedLora) {
-    state.loras.push({ name: selectedLora, strength: preset.strength });
-  }
-  for (const entry of preset.extraLoras || []) {
-    const name = findH3PresetLora(entry.type);
-    if (name) state.loras.push({ name, strength: entry.strength });
-  }
-  renderLoras();
+  const missing = applyH3SceneLoras(preset);
   updateH3Fields();
   updateH3ScenePresetHint();
-  $("#h3Prompt").dispatchEvent(new Event("input", { bubbles: true }));
-  showToast(selectedLora
-    ? `Preset H3 applicato con ${preset.lora} ${preset.strength.toFixed(2).replace(".", ",")}.`
-    : "Preset applicato; la LoRA consigliata non è installata, quindi la ricetta prosegue senza LoRA.");
+  if (preset.forcedTriggers?.length) applyH3LoraTriggers($("#h3Prompt"), preset.forcedTriggers);
+  else $("#h3Prompt").dispatchEvent(new Event("input", { bubbles: true }));
+  showToast(missing.length
+    ? `Preset applicato parzialmente: LoRA ${missing.join(", ")} non trovata.`
+    : `Preset H3 applicato: ${preset.hint.split(":")[0]}.`);
+}
+
+function updateH3SparseScenePresetHint() {
+  const preset = H3_SCENE_PRESETS[$("#h3SparseScenePreset")?.value];
+  const hint = $("#h3-sparse-scene-preset-hint");
+  if (!hint) return;
+  if (!preset) {
+    hint.textContent = "Scegli una scena normale o NSFW: applica le stesse LoRA, i trigger e i pesi del preset H3.";
+    return;
+  }
+  const entries = [{ type: preset.lora, strength: preset.strength }, ...(preset.extraLoras || [])];
+  const selected = entries.map((entry) => ({ ...entry, name: findH3PresetLora(entry.type) }));
+  const loras = selected.map((entry) => `${entry.name?.split(/[\\/]/).pop() || `${entry.type} (non installata)`} · ${entry.strength.toFixed(2)}`);
+  const metadata = state.config?.loraMetadata || state.config?.videoStudio?.h3LoraMetadata || {};
+  const triggers = uniquePromptTriggers([
+    ...(preset.forcedTriggers || []),
+    ...automaticLoraTriggers(selected.filter((entry) => entry.name), metadata),
+  ]);
+  hint.textContent = `LoRA: ${loras.join(" + ")}. Trigger: ${triggers.join(", ") || "nessuno verificato"}.`;
+}
+
+function applyH3SparseScenePreset() {
+  const preset = H3_SCENE_PRESETS[$("#h3SparseScenePreset")?.value];
+  if (!preset) return showToast("Seleziona un preset scena PlagueKind.");
+  updateH3SparseScenePresetHint();
+  const missing = applyH3SceneLoras(preset);
+  applyVideoPromptTriggers($("#h3SparsePrompt"), "h3SparseV9");
+  showToast(missing.length
+    ? `Preset applicato parzialmente: LoRA ${missing.join(", ")} non trovata.`
+    : `Preset LoRA applicato: ${preset.hint.split(":")[0]}.`);
 }
 
 function selectedVideoPromptTriggers(selectedMode) {
   const metadata = state.config?.loraMetadata || state.config?.videoStudio?.h3LoraMetadata || {};
   const triggers = automaticLoraTriggers(state.loras, metadata);
+  if (selectedMode === "minimaxH3") {
+    triggers.unshift(...(H3_SCENE_PRESETS[$("#h3ScenePreset")?.value]?.forcedTriggers || []));
+  }
+  if (selectedMode === "h3SparseV9") {
+    triggers.unshift(...(H3_SCENE_PRESETS[$("#h3SparseScenePreset")?.value]?.forcedTriggers || []));
+  }
   if (selectedMode === "actionH3") {
     triggers.unshift($("#actionH3Trigger")?.value || "");
   }
+  if (selectedMode === "weaponCombatH3") triggers.unshift("BUNNY");
+  if (selectedMode === "actionH3" && $("#actionH3MotionRepair")?.checked) triggers.unshift("bunny_crisp_motion");
   return uniquePromptTriggers(triggers);
 }
 
@@ -541,13 +693,15 @@ function h3LoraPromptContract(triggers = []) {
     if (key === "hmmotion") return "hmmotion: describe contact, body mechanics and temporal motion precisely, but only for actions explicitly requested by the user.";
     if (key === "prfight2") return "prfight2: intensify coherent combat motion, impacts and cumulative reactions while preserving anatomy and readable staging.";
     if (key === "prfin1") return "prfin1: reserve the strongest emphasis for the requested decisive final action and its complete physical recovery or fall.";
+    if (key === "bunny") return "BUNNY: describe the weapon, guard, trajectory, contact, recoil and recovery as one readable high-speed choreography; avoid random spins or weightless weapons.";
+    if (key === "bunny_crisp_motion") return "bunny_crisp_motion: preserve temporal continuity, clean silhouettes and complete motion arcs without changing the intended scene.";
     return `${trigger}: preserve this verified activation word exactly and adapt the scene only to the LoRA purpose implied by the selected LoRA and the user's request.`;
   });
   return `Selected H3 LoRA behavior is active. Do not copy activation words into the rewritten output; the application inserts them after LM Studio finishes. LoRA-specific direction: ${directions.join(" ")}`;
 }
 
 function applyVideoPromptTriggers(input, selectedMode, triggers = selectedVideoPromptTriggers(selectedMode)) {
-  if (["minimaxH3", "actionH3", "seedHunterH3"].includes(selectedMode)) {
+  if (["minimaxH3", "minimaxH3Fast", "minimaxH3AllInOne", "h3SparseV9", "h3SeamlessChain", "actionH3", "weaponCombatH3", "seedHunterH3"].includes(selectedMode)) {
     return applyH3LoraTriggers(input, triggers);
   }
   return applyLoraTriggers(input, triggers);
@@ -592,18 +746,57 @@ function updateReadiness() {
     detail = ready
       ? `${videoConfig.h3Loras.length} LoRA H3 rilevate · FL2VA e Ref2VA pronti · doppio sampling con purge disponibile.`
       : videoConfig.h3?.reason || "Controlla modelli, VAE, Qwen3-VL e nodi H3.";
+  } else if (selectedMode === "minimaxH3AllInOne") {
+    ready = Boolean(videoConfig.h3?.director?.available);
+    title = ready ? "AllInOne Director pronto" : "AllInOne Director non disponibile";
+    detail = ready
+      ? ($("#directorPreset")?.value === "actionScene"
+        ? `ACTION SCENE · Hybrid b25-49 · ${$("#directorActionLora")?.value === "weapon" ? "Weapon Combat BUNNY" : "Combat Base V2"} · res_multistep/simple.`
+        : "Director Station caricato · timeline multi-segmento, continuità, audio nativo, cache e refine integrato disponibili.")
+      : videoConfig.h3?.director?.reason || "Controlla il plugin ComfyUI_MiniMaxH3_Director e i modelli H3.";
+  } else if (selectedMode === "h3SeamlessChain") {
+    ready = Boolean(videoConfig.h3?.seamlessChain?.available);
+    title = ready ? "H3 Seamless Chain pronto" : "H3 Seamless Chain non disponibile";
+    detail = ready
+      ? "ComfyUI-H3-Multishot 2.7.2 · una sola start image · handoff automatico fra 2–8 take."
+      : videoConfig.h3?.seamlessChain?.reason || "Controlla il nodo H3MultishotSampler.";
+  } else if (selectedMode === "minimaxH3Fast") {
+    ready = Boolean(videoConfig.h3?.fast?.available);
+    title = ready ? "Minimax H3 Fast pronto" : "Minimax H3 Fast non disponibile";
+    detail = ready
+      ? ($("#h3FastUseTurbo")?.checked !== false
+        ? "Turbo ON: checkpoint hybrid, LoRA 4-step, scheduler Dual Clock 12, sigma-split e latent upscale 3D."
+        : "Turbo OFF: checkpoint hybrid, 0,9 MP e 25 step nativi senza loader Turbo.")
+      : videoConfig.h3?.fast?.reason || "Controlla checkpoint hybrid, Turbo 4-step, upscaler latent e nodi sigma-split.";
+  } else if (selectedMode === "h3SparseV9") {
+    ready = Boolean(videoConfig.h3?.sparseV9?.available);
+    title = ready ? "PlagueKind H3 Sparse V9 pronto" : "PlagueKind H3 Sparse V9 non disponibile";
+    detail = ready
+      ? ($("#h3SparseMultiSequence")?.checked
+        ? "PlagueKind continuativo: Director concatena 2–8 sequenze mantenendo Hybrid b30-49, SLA Sparse, Parasyte 1,5 ed ER-SDE/Beta-57."
+        : "Workflow V9 completo: hybrid b30-49 INT8, SLA Sparse comfy, Parasyte 1,5, ER-SDE/Beta-57 e finitura modulare. Gli stadi post sono bypassati come nel JSON originale.")
+      : videoConfig.h3?.sparseV9?.reason || "Controlla hybrid b30-49, Parasyte/Fast6, TAE, AdaLN e nodi PlagueKind/MMH3.";
   } else if (selectedMode === "seedHunterH3") {
     ready = Boolean(videoConfig.h3?.available && videoConfig.h3?.seedHunter?.available);
     title = ready ? "Seed Hunter H3 pronto · 3 job" : "Seed Hunter H3 non disponibile";
     detail = ready
-      ? "Tre sampling separati a 0,25 MP, seed consecutivi e selezione individuale; nessun SaveLatent su NestedTensor AV."
+      ? ($("#seedHunterH3UseTurbo")?.checked !== false
+        ? "Tre sampling separati a 0,25 MP e 8 step Turbo, seed consecutivi e selezione individuale."
+        : "Tre sampling nativi separati a 0,9 MP e 25 step, senza Turbo; seed consecutivi e selezione individuale.")
       : videoConfig.h3?.reason || "Controlla modelli e nodi MiniMax H3.";
   } else if (selectedMode === "actionH3") {
     ready = Boolean(videoConfig.h3?.actionAvailable);
     title = ready ? "ACTION H3 pronto" : "ACTION H3 non disponibile";
+    const primaryActionLora = $("#actionH3PrimaryLora")?.value === "weapon" ? videoConfig.h3.files.weaponCombat : videoConfig.h3.files.combat;
     detail = ready
-      ? `FL2VA INT8 · ${videoConfig.h3.files.combat} · res_multistep + simple · nessun modello aggiuntivo.`
-      : videoConfig.h3?.actionReason || videoConfig.h3?.reason || "Controlla FL2VA e Combat Base V2.";
+      ? `Hybrid b25-49 INT8 · ${primaryActionLora} · res_multistep + simple.`
+      : videoConfig.h3?.actionReason || videoConfig.h3?.reason || "Controlla Hybrid b25-49 e Combat Base V2.";
+  } else if (selectedMode === "weaponCombatH3") {
+    ready = Boolean(videoConfig.h3?.weaponCombatAvailable);
+    title = ready ? "Weapon Combat pronto" : "Weapon Combat non disponibile";
+    detail = ready
+      ? `FL2VA INT8 · ${videoConfig.h3.files.weaponCombat} · BUNNY · learned latent refine 3D.`
+      : videoConfig.h3?.weaponCombatReason || videoConfig.h3?.reason || "Controlla FL2VA e la LoRA Weapon Combat.";
   } else if (selectedMode === "sequentialStory") {
     ready = Boolean(state.config.promptAssistant?.enabled);
     title = ready ? "Storia continua pronta" : "Storia continua richiede LM Studio";
@@ -808,15 +1001,7 @@ function updateH3Fields() {
     referencesOption.title = pinkCherry ? "PinkCherry 0.6 beta è FL2VA, non Ref2VA." : "";
   }
   if (pinkCherry && $("#h3Mode")?.value === "references") $("#h3Mode").value = "image";
-  const h3Mode = $("#h3Mode")?.value || "text";
-  const promptPreset = $("#h3PromptPreset");
-  if (erosMax && promptPreset) {
-    promptPreset.value = "h3_eros_max";
-  } else if (["image", "firstLast"].includes(h3Mode) && promptPreset?.value === "h3_general") {
-    promptPreset.value = "h3_image_to_video";
-  } else if (h3Mode === "text" && promptPreset?.value === "h3_image_to_video") {
-    promptPreset.value = "h3_general";
-  }
+  if ($("#h3PromptPreset")) $("#h3PromptPreset").value = "h3_general";
   const modelHint = $("#h3-model-hint");
   if (modelHint) modelHint.textContent = erosMax
     ? "Eros Max beta3: T2V usa T2VA; Single Image viene inviata come Picture 1 Ref2VA. Turbo è già incorporato: 6 step er_sde/simple."
@@ -870,10 +1055,13 @@ function updateH3Fields() {
   if (attentionSelect?.selectedOptions[0]?.disabled) attentionSelect.value = "memoryEfficient";
   const refineMode = refineSelect?.value || "rtx";
   const hasRefine = active && refineMode !== "direct";
+  const turboEnabled = erosMax || (turboToggle?.checked && !pinkCherry);
   $("#h3SecondMegapixels").disabled = !active || !["latentLearned", "h3Maximum"].includes(refineMode);
   $("#h3SeedvrResolution").disabled = !active || refineMode !== "seedvr2";
   $("#h3PurgeBetween").disabled = !hasRefine;
-  if (active && !hasRefine) {
+  if (active && !turboEnabled) {
+    $("#h3FirstMegapixels").value = "0.9";
+  } else if (active && !hasRefine) {
     $("#h3FirstMegapixels").value = "0.9";
   } else if (active && hasRefine && $("#h3FirstMegapixels").value === "0.9") {
     $("#h3FirstMegapixels").value = "0.6";
@@ -890,7 +1078,9 @@ function updateH3Fields() {
   };
   if (hint) {
     const h3RunProfile = $("#h3RunProfile")?.value;
-    hint.textContent = h3RunProfile === "preview"
+    hint.textContent = !turboEnabled
+      ? "Turbo OFF: nessun loader Turbo; sampling H3 nativo a 0,9 MP e 25 step. L'eventuale refine scelto viene applicato dopo il render nativo."
+      : h3RunProfile === "preview"
       ? `ANTEPRIMA: H3 usa temporaneamente 0,4 MP, ${erosMax ? "Turbo Eros integrato a 6 step" : "Turbo 8 step"} e nessun refine. Impostazioni finale salvate: ${hints[refineMode] || hints.h3Balanced}`
       : hints[refineMode] || hints.h3Balanced;
   }
@@ -903,27 +1093,278 @@ function updateH3Fields() {
 function updateActionH3Fields() {
   const active = mode() === "actionH3";
   const actionMode = $("#actionH3Mode")?.value || "text";
+  const actionLoraType = $("#actionH3PrimaryLora")?.value === "weapon" ? "weapon" : "combat";
+  const actionLoraName = actionLoraType === "weapon" ? "Weapon Combat BUNNY" : "Combat Base V2";
+  if ($("#actionH3Trigger")) $("#actionH3Trigger").disabled = !active || actionLoraType === "weapon";
+  if ($("#action-h3-strength-label")) $("#action-h3-strength-label").textContent = `Forza ${actionLoraName}`;
   const firstFrame = $("#action-h3-first-frame-field");
   const lastFrame = $("#action-h3-last-frame-field");
+  const references = $("#action-h3-reference-fields");
   const showFirst = active && ["image", "firstLast"].includes(actionMode);
   const showLast = active && actionMode === "firstLast";
+  const showReferences = active && actionMode === "references";
   firstFrame?.classList.toggle("hidden", !showFirst);
   lastFrame?.classList.toggle("hidden", !showLast);
+  references?.classList.toggle("hidden", !showReferences);
   firstFrame?.querySelectorAll("input").forEach((input) => { input.disabled = !showFirst; });
   lastFrame?.querySelectorAll("input").forEach((input) => { input.disabled = !showLast; });
+  references?.querySelectorAll("input, select").forEach((input) => { input.disabled = !showReferences; });
   const loraHint = $("#video-lora-hint");
   if (active && loraHint) {
-    loraHint.textContent = "Combat Base V2 viene applicata automaticamente a 0,8 con il trigger scelto sopra; le eventuali LoRA H3 supplementari aggiungono il proprio trigger verificato dopo LM Studio.";
+    loraHint.textContent = `${actionLoraName} viene applicata automaticamente con il trigger ${actionLoraType === "weapon" ? "BUNNY" : "scelto sopra"}; le LoRA supplementari aggiungono il proprio trigger verificato.`;
   }
   const actionRunProfile = $("#actionH3RunProfile")?.value;
   const preview = actionRunProfile === "preview";
+  const maxQuality = $("#actionH3Quality")?.value === "max25";
   const runHint = $("#action-h3-run-hint");
   if (runHint) {
     runHint.textContent = preview
-        ? "ANTEPRIMA: 0,4 MP, Combat V2, Turbo 8 step e res_multistep/simple; nessun secondo sampling. La qualità finale resta salvata per la rigenerazione nativa."
-        : "FINALE NATIVO: applica il profilo qualità ACTION selezionato con lo stesso stack Combat V2.";
+        ? `ANTEPRIMA: 0,4 MP, ${actionLoraName}, Turbo 8 step e res_multistep/simple; nessun secondo sampling.`
+        : maxQuality
+          ? `FINALE MAX: 0,9 MP, 25 step reali, Turbo OFF e stesso stack ${actionLoraName}/LoRA.`
+          : `FINALE NATIVO: applica il profilo qualità ACTION con ${actionLoraName}.`;
   }
+  const pipelineHint = $("#action-h3-pipeline-hint");
+  if (pipelineHint) pipelineHint.textContent = maxQuality
+    ? `Hybrid b25-49 INT8 · ${actionLoraName} automatica · 25 step · Turbo OFF · res_multistep + simple · purge finale.`
+    : `Hybrid b25-49 INT8 · ${actionLoraName} automatica · Turbo 8 step · res_multistep + simple · purge dopo il salvataggio.`;
   updateActionH3PresetHint();
+}
+
+function updateWeaponCombatH3Fields() {
+  const active = mode() === "weaponCombatH3";
+  const selected = $("#weaponCombatMode")?.value || "image";
+  const showFirst = active && ["image", "firstLast"].includes(selected);
+  const showLast = active && selected === "firstLast";
+  for (const [selector, show] of [["#weapon-combat-first-frame-field", showFirst], ["#weapon-combat-last-frame-field", showLast]]) {
+    const field = $(selector);
+    field?.classList.toggle("hidden", !show);
+    field?.querySelectorAll("input").forEach((input) => { input.disabled = !show; });
+  }
+  const loraHint = $("#video-lora-hint");
+  if (active && loraHint) loraHint.textContent = "Weapon Combat BUNNY è automatica a 0,8; qui puoi aggiungere altre LoRA H3 compatibili senza duplicarla.";
+}
+
+function updateH3FastFields() {
+  const active = mode() === "minimaxH3Fast";
+  const selected = $("#h3FastMode")?.value || "image";
+  const useTurbo = $("#h3FastUseTurbo")?.checked !== false;
+  const firstFrameField = $("#h3-fast-first-frame-field");
+  const showFirst = active && selected === "image";
+  firstFrameField?.classList.toggle("hidden", !showFirst);
+  firstFrameField?.querySelectorAll("input").forEach((input) => { input.disabled = !showFirst; });
+  for (const selector of ["#h3FastFirstMegapixels", "#h3FastTargetMegapixels", "#h3FastSplitStep", "#h3FastTurboStrength"]) {
+    const control = $(selector);
+    if (control) control.disabled = !active || !useTurbo;
+  }
+  const hint = $("#h3-fast-sampling-hint");
+  if (hint) hint.textContent = useTurbo
+    ? `Turbo ON: scheduler Dual Clock da 12 step, split allo step ${$("#h3FastSplitStep")?.value || 6}, poi 3 sigma finali dopo il latent upscale.`
+    : "Turbo OFF: nessun nodo Turbo e nessun sigma-split; sampling nativo diretto a 0,9 MP, 25 step, Euler/Beta.";
+}
+
+function h3SparseModelProfile(modelName) {
+  const name = String(modelName || "").toLowerCase();
+  if (name.includes("hybrid")) return {
+    supports: { text: true, image: true, firstLast: true, references: true },
+    hint: name.includes("b25-49")
+      ? "Hybrid b25-49: equilibrio consigliato tra qualità e coerenza delle reference."
+      : "Hybrid b30-49: qualità più FL2VA, reference consistency moderata; predefinito PlagueKind.",
+  };
+  if (name.includes("eros")) return {
+    supports: { text: true, image: true, firstLast: false, references: true },
+    hint: "Eros Max beta3: modello ibrido NSFW; Text, Single Image e Reference, senza First/Last.",
+  };
+  if (name.includes("ref2va") && !name.includes("fl2va")) return {
+    supports: { text: false, image: false, firstLast: false, references: true },
+    hint: "Ref2VA: dedicato alla modalità Reference Images / Video / Audio.",
+  };
+  if (name.includes("pinkcherry")) return {
+    supports: { text: true, image: true, firstLast: true, references: false },
+    hint: "PinkCherry 0.6 beta: FL2VA INT8 unpruned, sperimentale e molto pesante; niente Reference mode.",
+  };
+  if (name.includes("fl2va")) return {
+    supports: { text: true, image: true, firstLast: true, references: false },
+    hint: "FL2VA: Text, Single Image e First/Last Frame; non usa il conditioning Ref2VA.",
+  };
+  return {
+    supports: { text: true, image: true, firstLast: true, references: true },
+    hint: "Modello MiniMax H3 rilevato da ComfyUI; compatibilità estesa non classificata.",
+  };
+}
+
+function h3SparseModelLabel(modelName, defaultModel) {
+  const name = String(modelName || "");
+  const lower = name.toLowerCase();
+  if (name === defaultModel) return "Hybrid b30-49 · predefinito PlagueKind";
+  if (lower.includes("b25-49")) return "Hybrid b25-49 · bilanciato";
+  if (lower.includes("eros")) return "H3 Eros Max beta3 · NSFW hybrid";
+  if (lower.includes("pinkcherry")) return "PinkCherry H3 0.6 beta · FL2VA";
+  if (lower.includes("ref2va") && !lower.includes("fl2va")) return "MiniMax H3 Ref2VA INT8 · reference";
+  if (lower.includes("fl2va")) return "MiniMax H3 FL2VA INT8 · base";
+  return name.split(/[\\/]/u).pop() || name;
+}
+
+function renderH3SparseModels() {
+  const select = $("#h3SparseModel");
+  const sparse = state.config?.videoStudio?.h3?.sparseV9;
+  if (!select || !sparse) return;
+  const defaultModel = sparse.files?.hybrid || "";
+  const models = Array.isArray(sparse.modelOptions) && sparse.modelOptions.length
+    ? sparse.modelOptions
+    : [defaultModel].filter(Boolean);
+  const previous = select.value;
+  select.innerHTML = models.map((modelName) =>
+    `<option value="${escapeHtml(modelName)}">${escapeHtml(h3SparseModelLabel(modelName, defaultModel))}</option>`
+  ).join("");
+  select.value = models.includes(previous) ? previous : defaultModel || models[0] || "";
+}
+
+function updateH3SparseV9Fields() {
+  const active = mode() === "h3SparseV9";
+  let selected = $("#h3SparseMode")?.value || "image";
+  const modelProfile = h3SparseModelProfile($("#h3SparseModel")?.value);
+  for (const option of $("#h3SparseMode")?.options || []) {
+    option.disabled = modelProfile.supports[option.value] === false;
+    option.title = option.disabled ? "Modalità non compatibile con il modello H3 selezionato." : "";
+  }
+  if (!modelProfile.supports[selected]) {
+    selected = modelProfile.supports.references && !modelProfile.supports.text ? "references" : "text";
+    $("#h3SparseMode").value = selected;
+  }
+  const modelHint = $("#h3-sparse-model-hint");
+  if (modelHint) modelHint.textContent = modelProfile.hint;
+  const multiControl = $("#h3SparseMultiSequence");
+  if (multiControl) {
+    if (selected === "firstLast") multiControl.checked = false;
+    multiControl.disabled = !active || selected === "firstLast";
+  }
+  const multiSequence = active && multiControl?.checked === true;
+  const showFirst = active && ["image", "firstLast"].includes(selected);
+  const showLast = active && selected === "firstLast";
+  const showReferences = active && selected === "references";
+  for (const [selector, show] of [
+    ["#h3-sparse-first-frame-field", showFirst],
+    ["#h3-sparse-last-frame-field", showLast],
+    ["#h3-sparse-reference-fields", showReferences],
+  ]) {
+    const field = $(selector);
+    field?.classList.toggle("hidden", !show);
+    field?.querySelectorAll("input, select").forEach((input) => { input.disabled = !show; });
+  }
+  const continuityField = $("#h3-sparse-continuity-frames-field");
+  continuityField?.classList.toggle("hidden", !multiSequence);
+  continuityField?.querySelectorAll("select").forEach((input) => { input.disabled = !multiSequence; });
+  const latentUpscale = $("#h3SparseLatentUpscale");
+  if (latentUpscale) {
+    if (multiSequence) latentUpscale.checked = false;
+    latentUpscale.disabled = !active || multiSequence;
+  }
+  const latentEnabled = active && !multiSequence && latentUpscale?.checked === true;
+  for (const selector of ["#h3SparseTemporalChunks", "#h3SparseSpatialTiling"]) {
+    const control = $(selector);
+    if (control) control.disabled = !latentEnabled;
+  }
+  const lowVram = $("#h3SparseLowVram");
+  if (lowVram) {
+    lowVram.checked = true;
+    lowVram.disabled = true;
+  }
+  const memoryHint = $("#h3-sparse-memory-hint");
+  if (memoryHint) memoryHint.textContent = "Low VRAM Attention e FF chunking sono sempre attivi nel profilo PlagueKind da 12 GB. Qwen viene scaricato dopo il conditioning; Parasyte Turbo resta incorporata una sola volta a 1,5 e FastH3 6-step resta bypassata.";
+  const duration = Number($("#h3SparseDuration")?.value || 8);
+  const segments = h3DirectorPromptSegments($("#h3SparsePrompt")?.value || "");
+  const malformedSeparator = /---/u.test($("#h3SparsePrompt")?.value || "") && segments.length === 1;
+  const sequenceSummary = $("#h3-sparse-sequence-summary");
+  if (sequenceSummary) {
+    const valid = !multiSequence || (!malformedSeparator && segments.length >= 2 && segments.length <= 8);
+    sequenceSummary.textContent = !multiSequence
+      ? selected === "firstLast"
+        ? "Modalità singola First / Last Frame: la concatenazione automatica non è disponibile."
+        : "Modalità singola: il prompt genera una sola clip."
+      : valid
+        ? `${segments.length} sequenze × ${duration} s = circa ${segments.length * duration} s; handoff automatico di ${$("#h3SparseContinuityFrames")?.value || 22} frame.`
+        : "Inserisci da 2 a 8 prompt e separali con --- da solo su una riga.";
+    sequenceSummary.classList.toggle("prompt-assistant-error", !valid);
+  }
+  const durationLabel = $("#h3-sparse-duration-label");
+  if (durationLabel) durationLabel.textContent = multiSequence ? "Durata per sequenza" : "Durata";
+  const loraHint = $("#video-lora-hint");
+  if (active && loraHint) loraHint.textContent = "Parasyte Turbo 1,5 è interno al workflow originale; qui puoi aggiungere LoRA H3 ulteriori. Fast6 resta presente ma bypassata.";
+}
+
+function updateH3DirectorFields() {
+  const active = mode() === "minimaxH3AllInOne";
+  const selected = $("#directorMode")?.value || "t2v";
+  const start = $("#director-start-images-field");
+  const end = $("#director-end-images-field");
+  const refs = $("#director-reference-fields");
+  const showStart = active && ["i2v", "fl2v"].includes(selected);
+  const showEnd = active && selected === "fl2v";
+  const showRefs = active && selected === "r2v";
+  const actionScene = active && $("#directorPreset")?.value === "actionScene";
+  const actionOptions = $("#director-action-scene-options");
+  actionOptions?.classList.toggle("hidden", !actionScene);
+  actionOptions?.querySelectorAll("input, select").forEach((input) => { input.disabled = !actionScene; });
+  const actionType = $("#directorActionLora")?.value === "weapon" ? "weapon" : "combat";
+  const actionPreset = h3ActionPreset($("#directorActionPreset")?.value);
+  const presetHint = $("#director-preset-hint");
+  if (presetHint) presetHint.textContent = actionScene
+    ? "ACTION SCENE usa sempre Hybrid b25-49 e mantiene tutte le funzioni Director, comprese le sequenze concatenate."
+    : "STANDARD usa FL2VA o Ref2VA in base alla modalità.";
+  const actionHint = $("#director-action-scene-hint");
+  if (actionHint) actionHint.textContent = actionPreset.id !== "custom"
+    ? `${actionPreset.label}: ${actionPreset.hint} · ${actionType === "weapon" ? "BUNNY" : actionPreset.trigger || "prfight2"} · res_multistep/simple.`
+    : actionType === "weapon"
+      ? "Weapon Combat · trigger BUNNY · res_multistep/simple · scegli un preset per spade, armi o gun-fu."
+      : "Combat Base V2 · trigger prfight2 · res_multistep/simple · scegli un preset per corpo a corpo, fluidità o impatto.";
+  for (const [section, show] of [[start, showStart], [end, showEnd], [refs, showRefs]]) {
+    section?.classList.toggle("hidden", !show);
+    section?.querySelectorAll("input, select").forEach((input) => { input.disabled = !show; });
+  }
+  const useTurbo = $("#directorUseTurbo")?.checked !== false;
+  if ($("#directorMegapixels")) $("#directorMegapixels").disabled = !active || !useTurbo;
+  const refine = $("#directorRefineMode")?.value || "off";
+  if ($("#directorRefinePasses")) $("#directorRefinePasses").disabled = !active || !["refine", "upscale"].includes(refine);
+  const hint = $("#director-sampling-hint");
+  if (hint) hint.textContent = useTurbo
+    ? `Turbo ON: 8 step a ${String($("#directorMegapixels")?.value || "0.4").replace(".", ",")} MP; res_multistep/simple, shift video 12 e audio 3.`
+    : "Turbo OFF: nessuna Turbo LoRA, 25 step nativi a 0,9 MP; res_multistep/simple. La VRAM viene liberata fra i segmenti.";
+  updateH3DirectorTimelineSummary();
+}
+
+function h3DirectorPromptSegments(value = $("#directorPrompt")?.value || "") {
+  return String(value)
+    .split(/^\s*---+\s*$/mu)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+}
+
+function updateH3SeamlessChainFields() {
+  const segments = h3DirectorPromptSegments($("#h3ChainPrompt")?.value || "");
+  const duration = Number($("#h3ChainDuration")?.value || 5);
+  const summary = $("#h3-chain-summary");
+  if (summary) {
+    const valid = segments.length >= 2 && segments.length <= 8;
+    summary.textContent = valid
+      ? `${segments.length} take × ${duration} s = circa ${segments.length * duration} s; una sola immagine iniziale richiesta.`
+      : "Inserisci da 2 a 8 segmenti, con --- da solo su una riga tra un prompt e il successivo.";
+    summary.classList.toggle("prompt-assistant-error", !valid);
+  }
+}
+
+function updateH3DirectorTimelineSummary() {
+  const summary = $("#director-timeline-summary");
+  if (!summary) return;
+  const value = $("#directorPrompt")?.value || "";
+  const segments = h3DirectorPromptSegments(value);
+  const count = Math.max(1, segments.length);
+  const duration = Number($("#directorDuration")?.value || 5);
+  const malformedSeparator = /---/u.test(value) && count === 1;
+  summary.textContent = malformedSeparator
+    ? "Separatore non riconosciuto: inserisci --- da solo su una riga. Il video sarebbe ancora un unico segmento."
+    : `${count} ${count === 1 ? "segmento" : "segmenti"} × ${duration} s = video finale di circa ${count * duration} s.`;
+  summary.classList.toggle("prompt-assistant-error", malformedSeparator);
 }
 
 function updateSeedHunterH3Fields() {
@@ -939,9 +1380,11 @@ function updateSeedHunterH3Fields() {
     field?.classList.toggle("hidden", !show);
     field?.querySelectorAll("input").forEach((input) => { input.disabled = !show; });
   }
-  const preset = $("#seedHunterH3PromptPreset");
-  if (preset && ["image", "firstLast"].includes(selected) && preset.value === "h3_general") preset.value = "h3_image_to_video";
-  if (preset && selected === "text" && preset.value === "h3_image_to_video") preset.value = "h3_general";
+  const useTurbo = $("#seedHunterH3UseTurbo")?.checked !== false;
+  const hint = $("#seed-hunter-h3-sampling-hint");
+  if (hint) hint.textContent = useTurbo
+    ? "Turbo ON: tre candidati separati a 0,25 MP, er_sde/beta e 8 step; il seed scelto usa learned latent 3D con refine er_sde/linear_quadratic a 6 step."
+    : "Turbo OFF: tre candidati separati a 0,9 MP, er_sde/beta e 25 step, senza alcuna Turbo LoRA; ricerca molto più lenta ma già nativa.";
 }
 
 const LTX25_MODE_HINTS = Object.freeze({
@@ -1028,6 +1471,7 @@ function updateLtx25Fields() {
 
 function updateMode() {
   const selected = mode();
+  $("#h3-sparse-scene-preset")?.classList.toggle("hidden", selected !== "h3SparseV9");
   const sections = {
     actorReplacement: "#actor-replacement-fields",
     interactiveScene: "#interactive-scene-fields",
@@ -1039,8 +1483,13 @@ function updateMode() {
     temporalUpscale: "#temporal-fields",
     sequentialStory: "#sequential-story-fields",
     minimaxH3: "#minimax-h3-fields",
+    minimaxH3AllInOne: "#minimax-h3-allinone-fields",
+    h3SeamlessChain: "#h3-seamless-chain-fields",
+    minimaxH3Fast: "#minimax-h3-fast-fields",
+    h3SparseV9: "#h3-sparse-v9-fields",
     seedHunterH3: "#seed-hunter-h3-fields",
     actionH3: "#action-h3-fields",
+    weaponCombatH3: "#weapon-combat-h3-fields",
     ltx25Aio: "#ltx25-aio-fields",
   };
   for (const [id, selector] of Object.entries(sections)) {
@@ -1059,19 +1508,32 @@ function updateMode() {
   $("#video-studio-submit").classList.toggle("hidden", selected === "sequentialStory");
   $("#video-studio-submit").classList.toggle("hidden", ["sequentialStory", "interactiveCast"].includes(selected));
   updateH3Fields();
+  updateH3DirectorFields();
+  updateH3SeamlessChainFields();
+  updateH3FastFields();
+  updateH3SparseV9Fields();
   updateSeedHunterH3Fields();
   updateActionH3Fields();
+  updateWeaponCombatH3Fields();
   updateLtx25Fields();
   const submitLabel = $("#video-studio-submit span");
   if (submitLabel) {
     const h3Preview = selected === "minimaxH3" && $("#h3RunProfile")?.value === "preview";
     const actionPreview = selected === "actionH3" && $("#actionH3RunProfile")?.value === "preview";
-    submitLabel.textContent = selected === "seedHunterH3"
+    submitLabel.textContent = selected === "minimaxH3AllInOne"
+      ? "Avvia timeline AllInOne"
+      : selected === "h3SeamlessChain"
+      ? "Genera H3 Seamless Chain"
+      : selected === "h3SparseV9"
+      ? "Genera PlagueKind Sparse V9"
+      : selected === "seedHunterH3"
       ? "Genera 3 candidati Seed Hunter"
       : h3Preview
       ? "Crea anteprima MiniMax H3"
       : actionPreview
         ? "Crea anteprima ACTION H3"
+        : selected === "weaponCombatH3"
+          ? "Genera Weapon Combat"
         : selected === "ltx25Aio" && $("#ltx25Profile")?.value === "preview"
           ? "Crea anteprima LTX 2.5 AIO"
           : "Crea progetto Video Studio";
@@ -1322,14 +1784,26 @@ function renderProjects() {
   $("#video-studio-projects").innerHTML = state.projects.map((project) => {
     const completedVideo = [...(project.generations || [])].reverse().find((item) =>
       item.status === "completed" && item.videos?.length
+        && (project.videoStudioMode !== "seedHunterH3" || item.h3Stage === "nativeFinal")
     );
     const active = (project.generations || []).some((item) => ["queued", "running"].includes(item.status));
     const completedPreview = [...(project.generations || [])].reverse().find((item) =>
       item.status === "completed" && item.h3Stage === "preview" && item.videos?.length
     );
+    const completedSparseNative = [...(project.generations || [])].reverse().find((item) =>
+      item.status === "completed" && item.videoStudioStage === "generation"
+        && item.workflowId === "videoStudio:h3SparseV9" && item.videos?.length
+    );
     const h3RecipeReady = ["minimaxH3", "actionH3"].includes(project.videoStudioMode) && project.sceneRecipe && completedPreview;
     const h3ProjectName = project.videoStudioMode === "actionH3" ? "ACTION H3" : "MiniMax H3";
     const finishing = state.config.videoStudio.h3?.previewFinishing;
+    const finishingAvailability = (id) => finishing?.modes?.[id] || (id === "all" ? finishing : null);
+    const finishingDisabled = (id) => {
+      const capability = finishingAvailability(id);
+      return capability?.available === false
+        ? `disabled title="Nodi mancanti: ${escapeHtml((capability.missingNodes || []).join(", "))}"`
+        : "";
+    };
     const modeName = state.config.videoStudio.modes.find((item) => item.id === project.videoStudioMode)?.name || project.videoStudioMode;
     return `
       <article class="video-project-card">
@@ -1367,7 +1841,7 @@ function renderProjects() {
           </button>
         ` : ""}
         <div class="video-project-actions">
-          ${completedVideo && ["minimaxH3", "actionH3"].includes(project.videoStudioMode) && !active ? `
+          ${completedVideo && ["minimaxH3", "actionH3", "seedHunterH3"].includes(project.videoStudioMode) && !active ? `
             <button class="chip-button" type="button" data-h3-derope="${escapeHtml(project.id)}" data-generation="${escapeHtml(completedVideo.id)}"
               ${state.config.videoStudio.h3?.temporalDeRope?.available === false ? 'disabled title="MAINodes non ancora caricato: riavvia ComfyUI"' : ""}>
               Temporal De-Rope · bilanciato
@@ -1377,11 +1851,45 @@ function renderProjects() {
               H3 → LTX 2.5 IC · 2K
             </button>
           ` : ""}
+          ${completedSparseNative && project.videoStudioMode === "h3SparseV9" && !active ? `
+            <button class="chip-button h3-promote-action" type="button"
+              data-h3-promote="${escapeHtml(project.id)}" data-finishing="latent"
+              data-generation="${escapeHtml(completedSparseNative.id)}"
+              ${completedSparseNative.multiSequence
+                ? 'disabled title="Il latent refine richiede una singola clip"'
+                : state.config.videoStudio.h3?.sparseV9?.available === false
+                  ? `disabled title="${escapeHtml(state.config.videoStudio.h3.sparseV9.reason || "H3 Latent Upscale non disponibile")}"`
+                  : ""}>
+              H3 Latent Upscale + Refine · stesso seed
+            </button>
+            <button class="chip-button h3-promote-action" type="button"
+              data-h3-promote="${escapeHtml(project.id)}" data-finishing="rtx"
+              data-generation="${escapeHtml(completedSparseNative.id)}" ${finishingDisabled("rtx")}>
+              Solo RTX Super Resolution ×2
+            </button>
+            <button class="chip-button h3-promote-action" type="button"
+              data-h3-promote="${escapeHtml(project.id)}" data-finishing="rcas"
+              data-rcas-strength="0.3" data-generation="${escapeHtml(completedSparseNative.id)}"
+              ${finishingDisabled("rcas")}>
+              Solo RCAS · 0,30
+            </button>
+            <button class="chip-button h3-promote-action" type="button"
+              data-h3-promote="${escapeHtml(project.id)}" data-finishing="film"
+              data-generation="${escapeHtml(completedSparseNative.id)}" ${finishingDisabled("film")}>
+              Solo FILM ×2
+            </button>
+            <button class="chip-button h3-promote-action" type="button"
+              data-h3-promote="${escapeHtml(project.id)}" data-finishing="all"
+              data-rcas-strength="0.3" data-generation="${escapeHtml(completedSparseNative.id)}"
+              ${finishingDisabled("all")}>
+              Migliora finale · FILM ×2 → RTX VSR → RCAS
+            </button>
+          ` : ""}
           ${h3RecipeReady && !active ? `
             <button class="chip-button h3-promote-action" type="button" data-h3-promote="${escapeHtml(project.id)}" data-finishing="kjLanczos" data-generation="${escapeHtml(completedPreview.id)}">
               KJ Lanczos · conserva il look
             </button>
-            <button class="chip-button h3-promote-action" type="button" data-h3-promote="${escapeHtml(project.id)}" data-finishing="rtx" data-generation="${escapeHtml(completedPreview.id)}"
+            <button class="chip-button h3-promote-action" type="button" data-h3-promote="${escapeHtml(project.id)}" data-finishing="all" data-generation="${escapeHtml(completedPreview.id)}"
               ${finishing?.available === false ? `disabled title="Nodi mancanti: ${escapeHtml((finishing.missingNodes || []).join(", "))}"` : ""}>
               RTX · FILM ×2 → VSR → RCAS
             </button>
@@ -2704,11 +3212,43 @@ async function submitProject(event) {
     extend: "#extendPrompt",
     hdr: "#hdrPrompt",
     minimaxH3: "#h3Prompt",
+    minimaxH3AllInOne: "#directorPrompt",
+    h3SeamlessChain: "#h3ChainPrompt",
+    minimaxH3Fast: "#h3FastPrompt",
+    h3SparseV9: "#h3SparsePrompt",
     seedHunterH3: "#seedHunterH3Prompt",
     actionH3: "#actionH3Prompt",
+    weaponCombatH3: "#weaponCombatPrompt",
     ltx25Aio: "#ltx25Prompt",
   };
   const promptInput = promptByMode[selectedMode] ? $(promptByMode[selectedMode]) : null;
+  const directorSegmentCountBeforeSubmit = selectedMode === "minimaxH3AllInOne"
+    ? Math.max(1, h3DirectorPromptSegments(promptInput?.value || "").length)
+    : null;
+  const sparseMultiSequence = selectedMode === "h3SparseV9" && $("#h3SparseMultiSequence")?.checked === true;
+  const sparseSegmentCountBeforeSubmit = sparseMultiSequence
+    ? h3DirectorPromptSegments(promptInput?.value || "").length
+    : 1;
+  if (sparseMultiSequence) {
+    const malformedSeparator = /---/u.test(promptInput?.value || "") && sparseSegmentCountBeforeSubmit === 1;
+    if (malformedSeparator || sparseSegmentCountBeforeSubmit < 2 || sparseSegmentCountBeforeSubmit > 8) {
+      const message = malformedSeparator
+        ? "Separatore PlagueKind non riconosciuto: metti --- da solo su una riga."
+        : "PlagueKind continuativo richiede da 2 a 8 prompt separati da --- su una riga.";
+      $("#video-studio-status").textContent = message;
+      showToast(message);
+      return;
+    }
+  }
+  if (selectedMode === "h3SeamlessChain") {
+    const count = h3DirectorPromptSegments(promptInput?.value || "").length;
+    if (count < 2 || count > 8) {
+      const message = "H3 Seamless Chain richiede da 2 a 8 prompt separati da --- su una riga.";
+      $("#video-studio-status").textContent = message;
+      showToast(message);
+      return;
+    }
+  }
   applyVideoPromptTriggers(promptInput, selectedMode);
   const button = $("#video-studio-submit");
   const status = $("#video-studio-status");
@@ -2719,8 +3259,13 @@ async function submitProject(event) {
     sceneTransform: "#duration",
     retake: "#retakeDuration",
     minimaxH3: "#h3Duration",
+    minimaxH3AllInOne: "#directorDuration",
+    h3SeamlessChain: "#h3ChainDuration",
+    minimaxH3Fast: "#h3FastDuration",
+    h3SparseV9: "#h3SparseDuration",
     seedHunterH3: "#seedHunterH3Duration",
     actionH3: "#actionH3Duration",
+    weaponCombatH3: "#weaponCombatDuration",
     ltx25Aio: "#ltx25Duration",
   };
   form.set("videoStudioMode", selectedMode);
@@ -2728,8 +3273,13 @@ async function submitProject(event) {
   if (durationByMode[selectedMode]) form.set("duration", $(durationByMode[selectedMode]).value);
   const seedByMode = {
     minimaxH3: "#videoSeed",
+    minimaxH3AllInOne: "#directorSeed",
+    h3SeamlessChain: "#h3ChainSeed",
+    minimaxH3Fast: "#h3FastSeed",
+    h3SparseV9: "#h3SparseSeed",
     seedHunterH3: "#seedHunterH3Seed",
     actionH3: "#actionH3Seed",
+    weaponCombatH3: "#weaponCombatSeed",
     ltx25Aio: "#ltx25Seed",
   };
   if (seedByMode[selectedMode]) form.set("seed", $(seedByMode[selectedMode])?.value || "");
@@ -2738,6 +3288,46 @@ async function submitProject(event) {
       form.set(name, String($(`#${name}`)?.checked));
     }
     form.set("h3SecondPass", String(["latentLearned", "h3Balanced", "h3Maximum"].includes($("#h3RefineMode").value)));
+  }
+  if (selectedMode === "minimaxH3") {
+    const scenePreset = H3_SCENE_PRESETS[$("#h3ScenePreset")?.value];
+    if (scenePreset?.sampler) form.set("h3SamplerName", scenePreset.sampler);
+    if (scenePreset?.scheduler) form.set("h3SchedulerName", scenePreset.scheduler);
+  }
+  if (selectedMode === "minimaxH3Fast") {
+    form.set("h3FastUseTurbo", String($("#h3FastUseTurbo")?.checked));
+  }
+  if (selectedMode === "h3SparseV9") {
+    for (const name of ["h3SparseMultiSequence", "h3SparseCache", "h3SparseLowVram", "h3SparseLatentUpscale", "h3SparseTemporalChunks", "h3SparseSpatialTiling"]) {
+      form.set(name, String($(`#${name}`)?.checked));
+    }
+    form.set("h3SparseSegmentCount", String(sparseSegmentCountBeforeSubmit));
+  }
+  if (selectedMode === "minimaxH3AllInOne") {
+    form.set("directorUseTurbo", String($("#directorUseTurbo")?.checked));
+    form.set("directorContinuity", String($("#directorContinuity")?.checked));
+    const directorSegments = h3DirectorPromptSegments($("#directorPrompt")?.value || "");
+    if (/---/u.test($("#directorPrompt")?.value || "") && directorSegments.length === 1) {
+      const message = "Separatore AllInOne non riconosciuto: metti --- da solo su una riga vuota tra i prompt.";
+      status.textContent = message;
+      showToast(message);
+      return;
+    }
+    if (directorSegments.length !== directorSegmentCountBeforeSubmit) {
+      const message = `AllInOne ha perso un confine di scena durante la preparazione (${directorSegmentCountBeforeSubmit} → ${directorSegments.length}). Invio bloccato per evitare un video troncato.`;
+      status.textContent = message;
+      showToast(message);
+      return;
+    }
+    form.set("directorSegmentCount", String(directorSegmentCountBeforeSubmit));
+  }
+  if (selectedMode === "h3SeamlessChain") form.set("h3ChainUseTurbo", String($("#h3ChainUseTurbo")?.checked));
+  if (selectedMode === "seedHunterH3") {
+    form.set("seedHunterH3UseTurbo", String($("#seedHunterH3UseTurbo")?.checked));
+  }
+  if (selectedMode === "actionH3") {
+    form.set("h3MotionRepair", String($("#actionH3MotionRepair")?.checked));
+    form.set("h3MotionRepairTrigger", String($("#actionH3MotionRepairTrigger")?.checked));
   }
   form.set("dialogue", $("#dialogue-json").value);
   form.set("loras", $("#video-loras-json").value);
@@ -2791,22 +3381,40 @@ async function applyLipdub(button) {
 
 async function promoteH3Preview(button) {
   button.disabled = true;
-  const finishingMode = button.dataset.finishing || "rtx";
+  const finishingMode = button.dataset.finishing || "all";
+  const labels = {
+    latent: "H3 Latent Upscale + Refine · stesso seed",
+    rtx: "Solo RTX Super Resolution ×2",
+    rcas: "Solo RCAS · 0,30",
+    film: "Solo FILM ×2",
+    all: button.dataset.rcasStrength ? "Migliora finale · FILM ×2 → RTX VSR → RCAS" : "RTX · FILM ×2 → VSR → RCAS",
+    kjLanczos: "KJ Lanczos · conserva il look",
+  };
+  const messages = {
+    latent: "H3 Latent Upscale + Refine aggiunto alla coda con lo stesso seed.",
+    rtx: "RTX Super Resolution ×2 aggiunto alla coda.",
+    rcas: "RCAS aggiunto alla coda.",
+    film: "FILM ×2 aggiunto alla coda.",
+    all: "Finishing FILM → RTX ×2 → RCAS aggiunto alla coda.",
+    kjLanczos: "Finitura KJ Lanczos conservativa aggiunta alla coda.",
+  };
   button.textContent = "Preparazione finishing…";
   try {
     const project = await api(`/api/video-studio/projects/${button.dataset.h3Promote}/promote-preview`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ generationId: button.dataset.generation, finishingMode, rcasStrength: 0.35 }),
+      body: JSON.stringify({
+        generationId: button.dataset.generation,
+        finishingMode,
+        rcasStrength: Number(button.dataset.rcasStrength || 0.35),
+      }),
     });
     state.projects = state.projects.map((item) => item.id === project.id ? project : item);
     renderProjects();
-    showToast(finishingMode === "kjLanczos"
-      ? "Finitura KJ Lanczos conservativa aggiunta alla coda."
-      : "Finishing FILM → RTX ×2 → RCAS aggiunto alla coda.");
+    showToast(messages[finishingMode] || messages.all);
   } catch (error) {
     button.disabled = false;
-    button.textContent = finishingMode === "kjLanczos" ? "KJ Lanczos · conserva il look" : "RTX · FILM ×2 → VSR → RCAS";
+    button.textContent = labels[finishingMode] || labels.all;
     showToast(error.message);
   }
 }
@@ -2946,6 +3554,9 @@ async function start() {
   ].join("");
   populateInteractiveCastCharacters();
   syncCharacterFields();
+  renderH3SparseModels();
+  renderH3ActionPresetSelect("#actionH3Preset", $("#actionH3PrimaryLora")?.value === "weapon" ? "weapon" : "combat");
+  renderH3ActionPresetSelect("#directorActionPreset", $("#directorActionLora")?.value === "weapon" ? "weapon" : "combat");
   const requestedWorkflow = new URLSearchParams(location.search).get("workflow");
   if (state.config.videoStudio.modes.some((item) => item.id === requestedWorkflow)) {
     const requested = document.querySelector(`[name=videoStudioMode][value="${requestedWorkflow}"]`);
@@ -2968,6 +3579,8 @@ async function start() {
       }
       renderDialogue();
       renderLoras();
+      renderH3ActionPresetSelect("#actionH3Preset", $("#actionH3PrimaryLora")?.value === "weapon" ? "weapon" : "combat");
+      renderH3ActionPresetSelect("#directorActionPreset", $("#directorActionLora")?.value === "weapon" ? "weapon" : "combat");
       updateMode();
       syncCharacterFields();
     },
@@ -3007,8 +3620,13 @@ function promptInputForMode(selectedMode) {
     extend: $("#extendPrompt"),
     hdr: $("#hdrPrompt"),
     minimaxH3: $("#h3Prompt"),
+    minimaxH3AllInOne: $("#directorPrompt"),
+    h3SeamlessChain: $("#h3ChainPrompt"),
+    minimaxH3Fast: $("#h3FastPrompt"),
+    h3SparseV9: $("#h3SparsePrompt"),
     seedHunterH3: $("#seedHunterH3Prompt"),
     actionH3: $("#actionH3Prompt"),
+    weaponCombatH3: $("#weaponCombatPrompt"),
     ltx25Aio: $("#ltx25Prompt"),
   }[selectedMode] || null;
 }
@@ -3075,13 +3693,7 @@ function ltxPromptConfigForMode(selectedMode) {
         if (h3Mode === "image") return "image";
         return "text";
       },
-      promptPreset: () => {
-        if ($("#h3ModelProfile")?.value === "erosMax") return "h3_eros_max";
-        const selected = $("#h3PromptPreset")?.value || "h3_general";
-        return ["image", "firstLast"].includes($("#h3Mode")?.value) && selected === "h3_general"
-          ? "h3_image_to_video"
-          : selected;
-      },
+      promptPreset: () => "h3_general",
       duration: () => $("#h3Duration")?.value || "",
       text: (triggers = []) => {
         const h3Mode = $("#h3Mode")?.value || "text";
@@ -3096,6 +3708,80 @@ function ltxPromptConfigForMode(selectedMode) {
         return `H3 input mode: ${modeName}. Target duration: ${$("#h3Duration")?.value || 5} seconds.${referenceCounts} ${h3LoraPromptContract(triggers)}${sceneHint ? ` Scene preset: ${sceneHint}` : ""} User request: ${$("#h3Prompt").value}`;
       },
       toast: "Prompt MiniMax H3 creato; controlla i tag reference e avvia quando vuoi.",
+    },
+    minimaxH3AllInOne: {
+      input: $("#directorPrompt"),
+      status: $("#director-prompt-status"),
+      workflowName: "Video Studio · AllInOne MiniMax H3 Director",
+      sourceFile: () => $("#directorStartImages")?.files[0] || $("#directorReferenceImages")?.files[0] || null,
+      sourceFiles: () => [
+        ...([...($("#directorStartImages")?.files || [])]),
+        ...([...($("#directorEndImages")?.files || [])]),
+        ...([...($("#directorReferenceImages")?.files || [])]),
+      ].slice(0, 8),
+      mode: () => ({ t2v: "text", i2v: "image", fl2v: "firstLast", r2v: "references" })[$("#directorMode")?.value] || "text",
+      promptPreset: () => $("#directorPromptPreset")?.value || "h3_general",
+      duration: () => $("#directorDuration")?.value || "5",
+      text: (triggers = []) => {
+        const actionScene = $("#directorPreset")?.value === "actionScene";
+        const preset = h3ActionPreset($("#directorActionPreset")?.value);
+        const actionContract = actionScene ? ` ACTION SCENE uses ${$("#directorActionLora")?.value === "weapon" ? "Weapon Combat with BUNNY" : "Combat Base V2"}. Preset: ${preset.hint} ${preset.direction || ""}` : "";
+        return `Create the COMPLETE coherent MiniMax H3 Director timeline. Infer every sequence requested by the user and output one independently renderable prompt per sequence, separated by a standalone --- line. Director mode: ${$("#directorMode")?.value || "t2v"}; each segment lasts ${$("#directorDuration")?.value || 5} seconds; one supplied start image belongs only to segment 1 and later segments inherit the previous output.${actionContract} ${h3LoraPromptContract(triggers)} Every next segment must begin from the exact prior ending state and preserve identity, wardrobe, positions, environment, props, camera axis, light and audio continuity. User request: ${$("#directorPrompt").value}`;
+      },
+      toast: "Timeline AllInOne preparata; ogni blocco eredita lo stato finale del precedente.",
+    },
+    h3SeamlessChain: {
+      input: $("#h3ChainPrompt"),
+      status: null,
+      workflowName: "Video Studio · H3 Multishot Seamless Chain",
+      sourceFile: () => $("#h3ChainFirstFrame")?.files[0] || null,
+      sourceFiles: () => [$("#h3ChainFirstFrame")?.files[0]].filter(Boolean),
+      mode: () => $("#h3ChainFirstFrame")?.files[0] ? "image" : "text",
+      promptPreset: () => "h3_general",
+      duration: () => $("#h3ChainDuration")?.value || "5",
+      text: (triggers = []) => `Prepare the current MiniMax H3 take prompt while preserving every line containing only --- exactly as a segment boundary. Each take lasts ${$("#h3ChainDuration")?.value || 5} seconds and must begin as a causal continuation of the previous take. ${h3LoraPromptContract(triggers)} User request: ${$("#h3ChainPrompt").value}`,
+      toast: "Prompt Seamless Chain preparato; i confini --- sono stati conservati.",
+    },
+    minimaxH3Fast: {
+      input: $("#h3FastPrompt"),
+      status: $("#h3-fast-prompt-assistant-status"),
+      workflowName: "Video Studio · Minimax H3 Fast · I2V Sigma-Split",
+      sourceFile: () => $("#h3FastMode")?.value === "image" ? $("#h3FastFirstFrame")?.files[0] || null : null,
+      sourceFiles: () => $("#h3FastMode")?.value === "image" ? [$("#h3FastFirstFrame")?.files[0]].filter(Boolean) : [],
+      mode: () => "image",
+      promptPreset: () => "h3_general",
+      duration: () => $("#h3FastDuration")?.value || "",
+      text: (triggers = []) => `H3 ${$("#h3FastMode")?.value === "text" ? "text-to-video" : "I2VA"} ${$("#h3FastUseTurbo")?.checked !== false ? "sigma-split" : "native 25-step"} workflow. Target duration: ${$("#h3FastDuration")?.value || 5} seconds. ${h3LoraPromptContract(triggers)} Describe fast but coherent action${$("#h3FastMode")?.value === "image" ? " from Picture 1" : ""} through the complete timeline. User request: ${$("#h3FastPrompt").value}`,
+      toast: "Prompt Minimax H3 Fast creato; verifica la timeline e avvia quando vuoi.",
+    },
+    h3SparseV9: {
+      input: $("#h3SparsePrompt"),
+      status: $("#h3-sparse-prompt-assistant-status"),
+      workflowName: "Video Studio · PlagueKind H3 Sparse V9",
+      sourceFile: () => $("#h3SparseFirstFrame")?.files[0] || $("#h3SparseReferenceImages")?.files[0] || null,
+      sourceFiles: () => {
+        const selected = $("#h3SparseMode")?.value || "image";
+        if (selected === "image") return [$("#h3SparseFirstFrame")?.files[0]].filter(Boolean);
+        if (selected === "firstLast") return [$("#h3SparseFirstFrame")?.files[0], $("#h3SparseLastFrame")?.files[0]].filter(Boolean);
+        if (selected === "references") return [...($("#h3SparseReferenceImages")?.files || [])].slice(0, 9);
+        return [];
+      },
+      mode: () => {
+        const selected = $("#h3SparseMode")?.value || "image";
+        return selected === "references" ? "references" : selected === "firstLast" ? "firstLast" : selected === "image" ? "image" : "text";
+      },
+      promptPreset: () => "h3_general",
+      duration: () => $("#h3SparseDuration")?.value || "8",
+      text: (triggers = []) => {
+        const selected = $("#h3SparseMode")?.value || "image";
+        const modeName = { text: "T2VA", image: "I2VA", firstLast: "FL2VA", references: "Ref2VA" }[selected];
+        const multiSequence = $("#h3SparseMultiSequence")?.checked === true;
+        const refs = selected === "references"
+          ? ` Supplied references: ${Math.min(9, $("#h3SparseReferenceImages")?.files?.length || 0)} pictures, ${Math.min(3, $("#h3SparseReferenceVideos")?.files?.length || 0)} videos and ${Math.min(3, $("#h3SparseReferenceAudios")?.files?.length || 0)} audios.`
+          : "";
+        return `PlagueKind H3 Sparse V9 input mode: ${modeName}. ${multiSequence ? "Create 2-8 causal continuous sequences separated by a standalone --- line; each next sequence inherits the exact final identity, pose, positions, camera, lighting, props and audio state of the previous one. " : ""}Target duration ${multiSequence ? "per sequence" : ""}: ${$("#h3SparseDuration")?.value || 8} seconds.${refs} ${h3LoraPromptContract(triggers)} Preserve chronological shot timing, camera motion and native sound. User request: ${$("#h3SparsePrompt").value}`;
+      },
+      toast: "Prompt Sparse V9 creato; controlla la timeline e avvia quando vuoi.",
     },
     seedHunterH3: {
       input: $("#seedHunterH3Prompt"),
@@ -3120,28 +3806,53 @@ function ltxPromptConfigForMode(selectedMode) {
     actionH3: {
       input: $("#actionH3Prompt"),
       status: $("#action-h3-prompt-assistant-status"),
-      workflowName: "Video Studio · ACTION H3 · FL2VA Combat V2",
+      workflowName: "Video Studio · ACTION H3 · Hybrid b25-49 · Combat / Weapon",
       sourceFile: () => null,
       sourceFiles: () => {
         const actionMode = $("#actionH3Mode")?.value;
         if (actionMode === "image") return [$("#actionH3FirstFrame")?.files[0]].filter(Boolean);
         if (actionMode === "firstLast") return [$("#actionH3FirstFrame")?.files[0], $("#actionH3LastFrame")?.files[0]].filter(Boolean);
+        if (actionMode === "references") return [...($("#actionH3ReferenceImages")?.files || [])].slice(0, 9);
         return [];
       },
       mode: () => {
         const actionMode = $("#actionH3Mode")?.value || "text";
-        return actionMode === "firstLast" ? "firstLast" : actionMode === "image" ? "image" : "text";
+        return actionMode === "references" ? "references" : actionMode === "firstLast" ? "firstLast" : actionMode === "image" ? "image" : "text";
       },
-      promptPreset: () => $("#actionH3PromptPreset")?.value || "h3_action",
+      promptPreset: () => "h3_general",
       duration: () => $("#actionH3Duration")?.value || "",
       text: (triggers = []) => {
         const actionMode = $("#actionH3Mode")?.value || "text";
-        const modeName = { text: "T2VA", image: "I2VA", firstLast: "FL2VA" }[actionMode];
-        const trigger = $("#actionH3Trigger")?.value || "no trigger";
-        const preset = ACTION_H3_PRESETS[$("#actionH3Preset")?.value] || ACTION_H3_PRESETS.custom;
-        return `H3 input mode: ${modeName}. Target duration: ${$("#actionH3Duration")?.value || 5} seconds. ${h3LoraPromptContract(triggers)} Combat Base V2 trigger: ${trigger}. ACTION preset direction: ${preset.hint} Complete every action beat before dialogue. User request: ${$("#actionH3Prompt").value}`;
+        const modeName = { text: "T2VA", image: "I2VA", firstLast: "FL2VA", references: "Ref2VA" }[actionMode];
+        const referenceCounts = actionMode === "references"
+          ? ` Supplied reference images: ${Math.min(9, $("#actionH3ReferenceImages")?.files?.length || 0)}. Preserve their order and address them as <Picture 1>, <Picture 2>, etc.`
+          : "";
+        const loraType = $("#actionH3PrimaryLora")?.value === "weapon" ? "weapon" : "combat";
+        const trigger = loraType === "weapon" ? "BUNNY" : $("#actionH3Trigger")?.value || "no trigger";
+        const preset = h3ActionPreset($("#actionH3Preset")?.value);
+        return `H3 input mode: ${modeName}. Target duration: ${$("#actionH3Duration")?.value || 5} seconds.${referenceCounts} ${h3LoraPromptContract(triggers)} Main action LoRA: ${loraType === "weapon" ? "Weapon Combat" : "Combat Base V2"}; trigger: ${trigger}. ACTION preset direction: ${preset.hint} ${preset.direction || ""} Complete every action beat before dialogue. User request: ${$("#actionH3Prompt").value}`;
       },
       toast: "Coreografia ACTION H3 creata; verifica impatti, reazioni e ordine temporale.",
+    },
+    weaponCombatH3: {
+      input: $("#weaponCombatPrompt"),
+      status: null,
+      workflowName: "Video Studio · Weapon Combat · MiniMax H3",
+      sourceFile: () => null,
+      sourceFiles: () => {
+        const selected = $("#weaponCombatMode")?.value || "image";
+        if (selected === "image") return [$("#weaponCombatFirstFrame")?.files[0]].filter(Boolean);
+        if (selected === "firstLast") return [$("#weaponCombatFirstFrame")?.files[0], $("#weaponCombatLastFrame")?.files[0]].filter(Boolean);
+        return [];
+      },
+      mode: () => {
+        const selected = $("#weaponCombatMode")?.value || "image";
+        return selected === "firstLast" ? "firstLast" : selected === "image" ? "image" : "text";
+      },
+      promptPreset: () => "h3_general",
+      duration: () => $("#weaponCombatDuration")?.value || "5",
+      text: (triggers = []) => `MiniMax H3 Weapon Combat. Target duration: ${$("#weaponCombatDuration")?.value || 5} seconds. ${h3LoraPromptContract(triggers)} Keep the weapon choreography causal and readable: guard, acceleration, trajectory, contact, recoil and stable recovery. User request: ${$("#weaponCombatPrompt").value}`,
+      toast: "Prompt Weapon Combat creato; il trigger BUNNY sarà inserito automaticamente.",
     },
     ltx25Aio: {
       input: $("#ltx25Prompt"),
@@ -3185,6 +3896,7 @@ function ltxPromptLabel(target) {
     minimax_h3: "H3 Prompt",
     minimax_h3_fantasy_verite: "H3 Fantasy vérité",
     minimax_h3_action: "ACTION Prompt",
+    minimax_h3_director_sequence: "H3 Director Timeline",
   }[target] || "LTX Prompt";
 }
 
@@ -3196,6 +3908,9 @@ async function runVideoStudioLtxPrompt(button) {
   let target = button.dataset.ltxPrompt;
   if (selectedMode === "minimaxH3" && $("#h3ScenePreset")?.value === "fantasyVerite") {
     target = "minimax_h3_fantasy_verite";
+  }
+  if (selectedMode === "h3SparseV9" && $("#h3SparseMultiSequence")?.checked === true) {
+    target = "minimax_h3_director_sequence";
   }
   syncLoras();
   const selectedPromptTriggers = selectedVideoPromptTriggers(selectedMode);
@@ -3213,7 +3928,7 @@ async function runVideoStudioLtxPrompt(button) {
       sourceFiles: config.sourceFiles?.() || [],
       text: config.promptPreset ? config.input.value : config.text?.(selectedPromptTriggers),
       negativeInput: $("#videoNegativePrompt"),
-      includeNegative: !["minimaxH3", "actionH3", "seedHunterH3"].includes(selectedMode),
+      includeNegative: !["minimaxH3", "minimaxH3Fast", "minimaxH3AllInOne", "h3SparseV9", "h3SeamlessChain", "actionH3", "weaponCombatH3", "seedHunterH3"].includes(selectedMode),
       buttonScope: tools,
       fields: {
         characterId: $("#videoCharacterId")?.value || "",
@@ -3323,22 +4038,10 @@ async function applyGuidedCreation() {
 
 document.querySelectorAll("[name=videoStudioMode]").forEach((input) => input.addEventListener("change", updateMode));
 $("#h3Mode").addEventListener("change", () => {
-  const selectedMode = $("#h3Mode")?.value || "text";
-  if ($("#h3ModelProfile")?.value === "erosMax") {
-    $("#h3PromptPreset").value = "h3_eros_max";
-  } else if (["image", "firstLast"].includes(selectedMode) && $("#h3PromptPreset").value === "h3_general") {
-    $("#h3PromptPreset").value = "h3_image_to_video";
-  } else if (selectedMode === "text" && $("#h3PromptPreset").value === "h3_image_to_video") {
-    $("#h3PromptPreset").value = "h3_general";
-  }
   updateH3Fields();
   updateReadiness();
 });
 $("#h3ModelProfile")?.addEventListener("change", () => {
-  const erosMax = $("#h3ModelProfile").value === "erosMax";
-  $("#h3PromptPreset").value = erosMax
-    ? "h3_eros_max"
-    : $("#h3Mode").value === "image" ? "h3_image_to_video" : "h3_general";
   updateH3Fields();
   updateReadiness();
 });
@@ -3346,10 +4049,63 @@ $("#actionH3Mode").addEventListener("change", () => {
   updateActionH3Fields();
   updateReadiness();
 });
+$("#weaponCombatMode")?.addEventListener("change", () => {
+  updateWeaponCombatH3Fields();
+  updateReadiness();
+});
+$("#weaponCombatQuality")?.addEventListener("change", updateReadiness);
 $("#seedHunterH3Mode")?.addEventListener("change", () => {
   updateSeedHunterH3Fields();
   updateReadiness();
 });
+$("#seedHunterH3UseTurbo")?.addEventListener("change", () => {
+  updateSeedHunterH3Fields();
+  updateReadiness();
+});
+$("#h3FastMode")?.addEventListener("change", () => {
+  updateH3FastFields();
+  updateReadiness();
+});
+$("#h3FastUseTurbo")?.addEventListener("change", () => {
+  updateH3FastFields();
+  updateReadiness();
+});
+$("#h3SparseMode")?.addEventListener("change", () => {
+  updateH3SparseV9Fields();
+  updateReadiness();
+});
+$("#h3SparseModel")?.addEventListener("change", () => {
+  updateH3SparseV9Fields();
+  updateReadiness();
+});
+for (const selector of ["#h3SparseMultiSequence", "#h3SparseContinuityFrames", "#h3SparseDuration"]) {
+  $(selector)?.addEventListener("change", () => {
+    updateH3SparseV9Fields();
+    updateReadiness();
+  });
+}
+$("#h3SparsePrompt")?.addEventListener("input", updateH3SparseV9Fields);
+$("#h3SparseLatentUpscale")?.addEventListener("change", () => {
+  updateH3SparseV9Fields();
+  updateReadiness();
+});
+for (const selector of ["#h3SparseCache", "#h3SparseLowVram"]) {
+  $(selector)?.addEventListener("change", updateReadiness);
+}
+for (const selector of ["#directorPreset", "#directorActionPreset", "#directorActionStrength", "#directorMode", "#directorUseTurbo", "#directorMegapixels", "#directorRefineMode"]) {
+  $(selector)?.addEventListener("change", () => {
+    updateH3DirectorFields();
+    updateReadiness();
+  });
+}
+$("#directorActionLora")?.addEventListener("change", syncDirectorActionPresetFamily);
+$("#directorPreset")?.addEventListener("change", renderLoras);
+$("#director-action-apply-preset")?.addEventListener("click", applyDirectorActionPreset);
+$("#directorPrompt")?.addEventListener("input", updateH3DirectorTimelineSummary);
+$("#directorDuration")?.addEventListener("change", updateH3DirectorTimelineSummary);
+$("#h3ChainPrompt")?.addEventListener("input", updateH3SeamlessChainFields);
+$("#h3ChainDuration")?.addEventListener("change", updateH3SeamlessChainFields);
+$("#h3ChainUseTurbo")?.addEventListener("change", updateReadiness);
 $("#ltx25Mode").addEventListener("change", () => {
   updateLtx25Fields();
   updateReadiness();
@@ -3367,11 +4123,17 @@ $("#ltx25-apply-lora-preset").addEventListener("click", applyLtx25LoraPreset);
 for (const selector of ["#h3RefineMode", "#h3FirstMegapixels", "#h3SecondMegapixels", "#h3SeedvrResolution"]) {
   $(selector).addEventListener("change", updateH3Fields);
 }
+$("#h3UseTurbo")?.addEventListener("change", updateH3Fields);
 $("#h3RunProfile").addEventListener("change", updateMode);
 $("#h3ScenePreset").addEventListener("change", updateH3ScenePresetHint);
 $("#h3ApplyScenePreset").addEventListener("click", applyH3ScenePreset);
+$("#h3SparseScenePreset").innerHTML = $("#h3ScenePreset").innerHTML;
+$("#h3SparseScenePreset").addEventListener("change", updateH3SparseScenePresetHint);
+$("#h3SparseApplyScenePreset").addEventListener("click", applyH3SparseScenePreset);
 $("#actionH3RunProfile").addEventListener("change", updateMode);
+$("#actionH3Quality").addEventListener("change", updateActionH3Fields);
 $("#actionH3Preset").addEventListener("change", updateActionH3PresetHint);
+$("#actionH3PrimaryLora")?.addEventListener("change", syncActionPresetFamily);
 $("#action-h3-apply-preset").addEventListener("click", applyActionH3Preset);
 $("#interactive-cast-workspace-nav").addEventListener("click", (event) => {
   const button = event.target.closest("[data-interactive-cast-view]");
@@ -3434,7 +4196,7 @@ $("#dialogue-list").addEventListener("click", (event) => {
 });
 $("#video-add-lora").addEventListener("click", () => {
   syncLoras();
-  const h3Active = ["minimaxH3", "actionH3", "seedHunterH3"].includes(mode());
+  const h3Active = ["minimaxH3", "minimaxH3Fast", "minimaxH3AllInOne", "h3SparseV9", "h3SeamlessChain", "actionH3", "weaponCombatH3", "seedHunterH3"].includes(mode());
   const selected = $("#video-lora-picker")?.value;
   if (!selected) return showToast(`Nessuna altra LoRA ${h3Active ? "MiniMax H3" : "LTX 2.3"} disponibile.`);
   const metadata = state.config?.loraMetadata?.[selected] || state.config?.videoStudio?.h3LoraMetadata?.[selected];

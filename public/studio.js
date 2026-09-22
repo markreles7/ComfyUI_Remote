@@ -1,7 +1,9 @@
 import { WORKFLOW_GUIDE_BY_ID } from "./workflow-guides.js";
 import { enhanceMainPrompt } from "./prompt-assistant.js";
 import { consumeGuidedHandoff, guidedTokenFromLocation, setInputFile } from "./guided-handoff.js";
-import { applyLoraTriggers, automaticLoraTriggers, loraMatchesFamily, loraOptionLabel } from "./lora-triggers.js?v=20260822-scalar-fix";
+import { applyLoraTriggers, automaticLoraTriggers, loraMatchesFamily, loraOptionLabel, promptWithTriggerPrefix } from "./lora-triggers.js?v=20260902-anima";
+import { MAX_PROMPT_BATCH, promptBatchSummary } from "./prompt-batch.js?v=20260902";
+import { compactFormData } from "./form-data-utils.js?v=20260902";
 import { setupUploadPreviews } from "./upload-previews.js";
 import { createAdaptivePoller, getAppConfig, warmAppConfig } from "./runtime-cache.js";
 
@@ -133,9 +135,117 @@ function toggle(selector, visible) {
   $(selector)?.classList.toggle("hidden", !visible);
 }
 
+function updateStudioPromptButtons() {
+  const enabled = Boolean(state.config?.promptAssistant?.enabled);
+  const specialized = ["duoScene", "anima"].includes($("#studioMode")?.value);
+  $("#studio-prompt-assistant")?.classList.toggle("hidden", !enabled);
+  $("#studio-qwen-edit-prompt")?.classList.toggle("hidden", !enabled || specialized);
+  $("#studio-klein-prompt")?.classList.toggle("hidden", !enabled || $("#studioMode")?.value === "anima");
+}
+
 function selectedKreaTripleModel() {
   const value = $("#kreaTripleModel")?.value;
   return (state.config?.studio?.kreaTripleModels || []).find((model) => model.file === value) || null;
+}
+
+function applyDuoAspectRatio() {
+  const dimensions = {
+    portrait: [896, 1152],
+    square: [1024, 1024],
+    landscape: [1216, 832],
+    cinema: [1344, 768],
+  }[$("#duoAspectRatio")?.value] || [1216, 832];
+  $("#imageWidth").value = dimensions[0];
+  $("#imageHeight").value = dimensions[1];
+}
+
+function applyAnimaAspectRatio() {
+  const dimensions = {
+    portrait: [896, 1152],
+    square: [1024, 1024],
+    landscape: [1216, 832],
+    cinema: [1344, 768],
+  }[$("#animaAspectRatio")?.value] || [1024, 1024];
+  $("#imageWidth").value = dimensions[0];
+  $("#imageHeight").value = dimensions[1];
+}
+
+function applyKreaRawAspectRatio() {
+  const ratio = /^([0-9]+):([0-9]+)/.exec($("#kreaRawAspectRatio")?.value || "9:16");
+  const megapixels = Number($("#kreaRawMegapixels")?.value || 1.2);
+  const ratioWidth = Number(ratio?.[1] || 9);
+  const ratioHeight = Number(ratio?.[2] || 16);
+  const pixels = megapixels * 1_000_000;
+  $("#imageWidth").value = Math.round(Math.sqrt(pixels * ratioWidth / ratioHeight) / 8) * 8;
+  $("#imageHeight").value = Math.round(Math.sqrt(pixels * ratioHeight / ratioWidth) / 8) * 8;
+}
+
+function updateKreaRawStatus() {
+  const runtime = state.config?.studio?.kreaRawMaster || {};
+  const missing = [
+    !runtime.modelAvailable && "Krea 2 Raw BF16",
+    !runtime.clipAvailable && "Qwen3-VL 4B BF16",
+    !runtime.vaeAvailable && "Wan 2.1 VAE",
+    !runtime.lorasAvailable && "Turbo + Filter Bypass + FameGrid",
+    !runtime.samplerAvailable && "RES4LYF ClownsharKSampler",
+    !runtime.resolutionSelectorAvailable && "Resolution Selector",
+    !runtime.colorFinishAvailable && "FameGridColorFinish",
+  ].filter(Boolean);
+  $("#krea-raw-runtime-status").textContent = missing.length
+    ? `Componenti ancora mancanti: ${missing.join(" · ")}.`
+    : "Workflow originale rilevato 1:1. Doppio sampler RES4LYF pronto; upscale finale manuale.";
+}
+
+function updateKreaTripleStages() {
+  const stages = [
+    ["#kreaTripleUseZImage", "Z-Image"],
+    ["#kreaTripleUseKlein", "Flux 2 Klein"],
+    ["#kreaTripleUseSeedVR2", "SeedVR2"],
+  ];
+  const active = ["Krea RAW"];
+  for (const [selector, name] of stages) {
+    const input = $(selector);
+    const row = input?.closest(".krea-triple-stage");
+    const enabled = Boolean(input?.checked);
+    if (enabled) active.push(name);
+    row?.classList.toggle("bypassed", !enabled);
+    const stateLabel = row?.querySelector(".stage-state");
+    if (stateLabel) stateLabel.textContent = enabled ? "ATTIVO" : "BYPASS";
+  }
+  $("#krea-triple-stage-status").textContent = `Output: ${active.join(" → ")}. Gli stadi in bypass non vengono caricati né eseguiti.`;
+}
+
+function selectedAnimaModel() {
+  const file = $("#animaModel")?.value;
+  return (state.config?.studio?.anima?.models || []).find((model) => model.file === file) || null;
+}
+
+function updateAnimaModel() {
+  const model = selectedAnimaModel();
+  const runtime = state.config?.studio?.anima || {};
+  const usesReferences = $("#animaInputMode")?.value !== "text";
+  const composer = (state.config?.imageModels || []).find((item) => item.id === "flux2");
+  $("#anima-model-hint").textContent = model
+    ? `${model.steps} step · CFG ${model.cfg} · ${model.sampler} / ${model.scheduler}`
+    : "Nessun checkpoint ANIMA disponibile.";
+  const missing = [
+    !runtime.textEncoderAvailable && runtime.textEncoder,
+    !runtime.vaeAvailable && runtime.vae,
+    usesReferences && !composer?.available && "Flux.2 Klein 9B Base",
+  ].filter(Boolean);
+  $("#anima-runtime-status").textContent = missing.length
+    ? `Componenti mancanti: ${missing.join(" · ")}`
+    : usesReferences
+      ? "ANIMA, Qwen3 0.6B, VAE e compositore identitario Flux.2 rilevati. Pipeline pronta."
+      : "Qwen3 0.6B e Qwen Image VAE rilevati. Pipeline pronta.";
+}
+
+function updateAnimaInputMode() {
+  const references = $("#animaInputMode")?.value !== "text";
+  toggle("#anima-reference-inputs", references);
+  toggle("#anima-reference-strength-field", references);
+  if ($("#anima-character-1")) $("#anima-character-1").required = references && $("#studioMode")?.value === "anima";
+  updateAnimaModel();
 }
 
 function updateKreaTripleModel() {
@@ -176,10 +286,21 @@ function updateMode() {
   if (guidedLink && guidedRoute) guidedLink.href = `/guided-create.html?workflow=${guidedRoute}`;
   const staticQwenKreaKlein = ["qwenKreaKlein", "animeToReal"].includes(mode.id);
   const kreaTriple = mode.id === "kreaTriple";
+  const kreaRawMaster = mode.id === "kreaRawMaster";
+  const duoScene = mode.id === "duoScene";
+  const anima = mode.id === "anima";
+  const promptBatchAvailable = mode.input !== "firstLast";
+  toggle(".studio-prompt-batch-controls", promptBatchAvailable);
+  if (!promptBatchAvailable) $("#studioPromptMode").value = "single";
   const kreaTripleOperation = $("#kreaTripleOperation")?.value || "text";
   $("#studio-description").textContent = mode.description;
   renderQuickGuide(WORKFLOW_GUIDE_BY_ID[mode.id]);
-  toggle("#source-section", mode.input !== "firstLast" && !(kreaTriple && kreaTripleOperation === "text"));
+  toggle("#source-section", mode.input !== "firstLast" && !duoScene && !anima && !kreaRawMaster && !(kreaTriple && kreaTripleOperation === "text"));
+  toggle("#duo-scene-section", duoScene);
+  toggle("#anima-section", anima);
+  toggle("#studio-character-section", !duoScene && !anima && !kreaRawMaster);
+  toggle("#edit-scope-field", !duoScene && !anima && !kreaRawMaster);
+  toggle("[data-scene-integration]", !duoScene && !anima && !kreaRawMaster);
   toggle("#qwen-krea-klein-section", staticQwenKreaKlein);
   if (staticQwenKreaKlein) {
     $("#static-workflow-title").textContent = mode.id === "animeToReal"
@@ -190,6 +311,11 @@ function updateMode() {
       : "Usa il JSON API originale: Qwen Image Editing, Krea refine, Klein refine e SeedVR2 finale nello stesso job.";
   }
   toggle("#krea-triple-section", kreaTriple);
+  toggle("#krea-raw-master-section", kreaRawMaster);
+  if (kreaRawMaster) {
+    applyKreaRawAspectRatio();
+    updateKreaRawStatus();
+  }
   if (kreaTriple) updateKreaTripleModel();
   toggle("#krea-triple-denoise-field", kreaTriple && kreaTripleOperation !== "text");
   toggle("#guided-edit-section", mode.id === "guidedEdit");
@@ -203,13 +329,16 @@ function updateMode() {
   toggle("#bible-section", mode.id === "bible");
   toggle("#camera-section", mode.id === "camera");
   toggle("#relight-section", mode.id === "relight");
-  toggle("#common-settings", mode.input !== "firstLast" && !staticQwenKreaKlein);
-  toggle("#editing-controls", mode.input !== "firstLast" && !staticQwenKreaKlein && !kreaTriple);
+  toggle("#common-settings", mode.input !== "firstLast" && !staticQwenKreaKlein && !anima && !kreaRawMaster);
+  toggle("#editing-controls", mode.input !== "firstLast" && !staticQwenKreaKlein && !kreaTriple && !duoScene && !anima && !kreaRawMaster);
   toggle("#studio-models", mode.input !== "firstLast"
     && mode.id !== "storyboard"
+    && !duoScene
+    && !anima
     && !kreaTriple
+    && !kreaRawMaster
     && !staticQwenKreaKlein);
-  toggle("#final-output-section", mode.input !== "firstLast" && !staticQwenKreaKlein && !kreaTriple);
+  toggle("#final-output-section", mode.input !== "firstLast" && !staticQwenKreaKlein && !kreaTriple && !kreaRawMaster);
   toggle("#studio-lora-section", !staticQwenKreaKlein && !kreaTriple);
   toggle("#guided-model-family-field", mode.id === "guidedEdit");
   for (const selector of [
@@ -233,6 +362,28 @@ function updateMode() {
       ? "Descrivi il soggetto, scena, luce, camera e look fotografico per Krea Triple..."
       : "Descrivi la modifica o il risultato da ottenere mantenendo coerenza fotografica...";
     $("#edit-wildcard-panel").classList.add("hidden");
+  } else if (kreaRawMaster) {
+    $("#studio-prompt").placeholder = "Descrivi soggetto, anatomia, ambiente, materiali, luce e camera. Il trigger famegrid viene inserito automaticamente…";
+    $("#edit-wildcard-panel").classList.add("hidden");
+  } else if (duoScene) {
+    $("#studio-prompt").placeholder = "Descrivi i due personaggi nella scena: luogo, abiti, azione, relazione, espressioni, camera, luce e atmosfera…";
+    $("#edit-wildcard-panel").classList.add("hidden");
+  } else if (anima) {
+    $("#studio-prompt").placeholder = "Descrivi personaggi, abiti, posa, ambiente, camera, luce, palette e stile anime…";
+    $("#edit-wildcard-panel").classList.add("hidden");
+  }
+
+  $("#duo-male").required = duoScene;
+  $("#duo-female").required = duoScene;
+  if (duoScene) {
+    applyDuoAspectRatio();
+    if ($("#finalOutput").value === "seed3") $("#finalOutput").value = "animeSharp";
+  }
+  if (anima) {
+    applyAnimaAspectRatio();
+    updateAnimaModel();
+    updateAnimaInputMode();
+    if ($("#finalOutput").value === "seed3") $("#finalOutput").value = "animeSharp";
   }
 
   if (mode.id === "smartphone" || mode.id === "inpaint" || mode.id === "guidedEdit") {
@@ -248,9 +399,11 @@ function updateMode() {
   if (mode.id === "bible") updateBibleDefaults();
   if (mode.id === "guidedEdit") updateGuidedAction();
   updateGuidedModel();
-  if (!staticQwenKreaKlein && !kreaTriple) updateEditWildcardDefaults();
+  if (!staticQwenKreaKlein && !kreaTriple && !kreaRawMaster && !duoScene && !anima) updateEditWildcardDefaults();
   updateMaskMode();
   renderLoras();
+  updateStudioPromptButtons();
+  updatePromptBatchUi();
 }
 
 function guidedAction() {
@@ -558,12 +711,19 @@ function compatibleLoras() {
   const requestedFamilies = mode === "guidedEdit"
     ? [$("#guidedModelFamily").value === "klein" ? "FLUX2" : "QWEN"]
     : mode === "storyboard"
-      ? [$("#storyboardFamily").value === "gwen" ? "QWEN" : "FLUX2"]
+      ? [$("#storyboardFamily").value.startsWith("qwen")
+        ? "QWEN"
+        : $("#storyboardFamily").value === "krea2" ? "FLUX" : "FLUX2"]
       : mode === "firstLast"
         ? ["LTX2.3"]
+        : mode === "anima"
+          ? ["ANIMA"]
         : ["FLUX2", "FLUX", "ZIMG"];
+  const fixedKreaRaw = new Set((state.config?.studio?.kreaRawMaster?.fixedLoras || [])
+    .map((item) => String(item.name || "").toLowerCase()));
   return (state.config?.loras || []).filter((name) =>
     requestedFamilies.some((family) => loraMatchesFamily(name, family, state.config?.loraMetadata))
+      && (mode !== "kreaRawMaster" || !fixedKreaRaw.has(String(name).toLowerCase()))
   );
 }
 
@@ -582,13 +742,26 @@ function renderLoras() {
 function addLora() {
   const choices = compatibleLoras();
   if (!choices.length) return showToast("Nessuna LoRA compatibile rilevata.");
+  const initialName = choices[0];
+  const initialMetadata = state.config?.loraMetadata?.[initialName] || {};
+  const anima = $("#studioMode").value === "anima";
+  const initialStrength = Number.isFinite(Number(initialMetadata.recommendedStrength))
+    ? Number(initialMetadata.recommendedStrength)
+    : 1;
   const row = document.createElement("div");
   row.className = "studio-lora-row";
   row.innerHTML = `
     <select>${choices.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(loraOptionLabel(name, state.config?.loraMetadata))}</option>`).join("")}</select>
-    <input type="number" min="-2" max="2" step=".05" value="1" aria-label="Forza LoRA">
+    <input type="number" min="-2" max="${anima ? 4 : 2}" step=".05" value="${initialStrength}" aria-label="Forza LoRA">
     <button type="button" aria-label="Rimuovi LoRA">×</button>
   `;
+  row.querySelector("select").addEventListener("change", (event) => {
+    const metadata = state.config?.loraMetadata?.[event.target.value] || {};
+    if (Number.isFinite(Number(metadata.recommendedStrength))) {
+      row.querySelector("input").value = String(metadata.recommendedStrength);
+    }
+    syncLoras();
+  });
   row.addEventListener("input", syncLoras);
   row.querySelector("button").addEventListener("click", () => {
     row.remove();
@@ -623,6 +796,12 @@ function syncStructuredFields() {
     $("#bibleViewsText").value.split("\n").map((value) => value.trim()).filter(Boolean),
   );
   if ($("#maskMode").value !== "automatic") $("#maskTarget").value = "";
+  $("#duo-has-female").value = String(Boolean($("#duo-female")?.files?.length));
+  $("#duo-has-environment").value = String(Boolean($("#duo-environment")?.files?.length));
+  $("#duo-has-style").value = String(Boolean($("#duo-style")?.files?.length));
+  $("#anima-has-character-2").value = String(Boolean($("#anima-character-2")?.files?.length));
+  $("#anima-has-character-3").value = String(Boolean($("#anima-character-3")?.files?.length));
+  $("#anima-has-environment").value = String(Boolean($("#anima-environment")?.files?.length));
 }
 
 async function submitProject(event) {
@@ -632,13 +811,36 @@ async function submitProject(event) {
   try {
     syncStructuredFields();
     syncLoras();
-    applyLoraTriggers($("#studio-prompt"), selectedStudioPromptTriggers());
+    const batchEnabled = $("#studioPromptMode").value === "batch";
+    const summary = promptBatchSummary($("#studio-prompt").value, batchEnabled);
+    if (!summary.count) throw new Error("Inserisci almeno un prompt nell’elenco scene.");
+    if (summary.exceedsLimit) throw new Error(`Puoi avviare al massimo ${MAX_PROMPT_BATCH} scene per volta.`);
+    const triggers = selectedStudioPromptTriggers();
+    if (!batchEnabled) applyLoraTriggers($("#studio-prompt"), triggers);
     if (state.maskTouched && !$("#placement").value) {
       const inferredPlacement = placementFromPaintedMask();
       if (inferredPlacement) $("#placement").value = JSON.stringify(inferredPlacement);
     }
-    const formData = new FormData(event.currentTarget);
-    if ($("#identityReferenceFormat").value === "characterSheet") {
+    const formData = compactFormData(new FormData(event.currentTarget));
+    if ($("#studioMode").value === "kreaTriple") {
+      for (const name of ["kreaTripleUseZImage", "kreaTripleUseKlein", "kreaTripleUseSeedVR2"]) {
+        formData.set(name, String(Boolean(document.getElementById(name)?.checked)));
+      }
+    }
+    if (batchEnabled) {
+      const prompts = summary.prompts.map((prompt) => promptWithTriggerPrefix(prompt, triggers));
+      formData.set("prompt", prompts[0]);
+      formData.set("promptBatch", JSON.stringify(prompts));
+    }
+    if (["duoScene", "anima"].includes($("#studioMode").value)) {
+      formData.delete("characterId");
+      formData.delete("identityStrength");
+      formData.delete("lockFace");
+      formData.delete("lockHair");
+      formData.delete("lockBody");
+      formData.delete("lockOutfit");
+    }
+    if ($("#studioMode").value !== "duoScene" && $("#identityReferenceFormat").value === "characterSheet") {
       const crops = state.referenceSheetCrops || await prepareCharacterSheetReference();
       if (!crops) throw new Error("Carica il character sheet nella reference Identità / WHO.");
       formData.set("reference1", await canvasPng(crops.front), "identity-front.png");
@@ -654,7 +856,9 @@ async function submitProject(event) {
       }
     }
     button.disabled = true;
-    status.textContent = "Caricamento e creazione dei workflow…";
+    status.textContent = batchEnabled
+      ? `Preparazione di ${summary.count} scene e creazione dei workflow…`
+      : "Caricamento e creazione dei workflow…";
     const project = await api("/api/studio/projects", {
       method: "POST",
       body: formData,
@@ -662,8 +866,10 @@ async function submitProject(event) {
     });
     state.projects.unshift(project);
     renderProjects();
-    status.textContent = `${project.generations.length} lavoro/i aggiunti alla coda.`;
-    showToast("Progetto Studio creato.");
+    status.textContent = batchEnabled
+      ? `${summary.count} scene · ${project.generations.length} lavoro/i aggiunti alla coda.`
+      : `${project.generations.length} lavoro/i aggiunti alla coda.`;
+    showToast(batchEnabled ? `Elenco di ${summary.count} scene avviato.` : "Progetto Studio creato.");
   } catch (error) {
     status.textContent = error.name === "TimeoutError"
       ? "La creazione ha superato 3 minuti. Lo stato dei progetti è stato aggiornato: verifica la scheda prima di riprovare."
@@ -710,7 +916,10 @@ function stageActions(project, generation) {
   if (generation.status !== "completed" || !generation.images?.length || generation.mediaType !== "image") return "";
   const index = generation.images.length - 1;
   const actions = [];
-  if (["drafts", "variations"].includes(generation.studioStage)) {
+  if (project.studioMode === "anima" && generation.studioStage === "drafts") {
+    actions.push(["finalize", "Master anime / Upscale"]);
+  }
+  if (project.studioMode !== "anima" && ["drafts", "variations"].includes(generation.studioStage)) {
     actions.push(["variation", "Nuova variante"]);
     if (project.settings?.studioPreset === "speed") {
       actions.push(["finalize", "Master veloce"]);
@@ -759,7 +968,9 @@ function projectMarkup(project) {
         <h3>${escapeHtml(project.name)}</h3>
         <small>${escapeHtml(statusLabel(project.status))}</small>
       </div>
-      <p>${escapeHtml(project.prompt || project.studioMode)}</p>
+      <p>${project.promptBatch?.length
+        ? `${project.promptBatch.length} scene generate in sequenza con lo stesso workflow e le stesse impostazioni.`
+        : escapeHtml(project.prompt || project.studioMode)}</p>
       ${project.executionMode === "automatic"
         ? `<p class="hint">Pipeline automatica · ${escapeHtml(project.autoState || "in preparazione")}${project.autoError ? ` · ${escapeHtml(project.autoError)}` : ""}</p>`
         : ""}
@@ -769,6 +980,7 @@ function projectMarkup(project) {
           ${generations.map((generation) => `
             <div class="studio-result">
               <div class="studio-result-label"><span>${escapeHtml(generation.studioLabel || generation.workflowName)}</span><span>${escapeHtml(statusLabel(generation.status))}</span></div>
+              ${generation.batchPrompt ? `<details class="studio-batch-prompt"><summary>Prompt scena ${generation.batchSceneIndex}</summary><p>${escapeHtml(generation.batchPrompt)}</p></details>` : ""}
               ${imageButtons(project, generation)}
               ${generation.error ? `<p class="model-warning">${escapeHtml(generation.error)}</p>` : ""}
               ${subjectInsertionReport(generation)}
@@ -821,6 +1033,7 @@ async function continueProject(button) {
       seed7: "seedvr2",
       rtx: "rtx",
       realesrgan: "fast",
+      animeSharp: "fast",
     }[finalOutput] || "seedvr2";
     const payload = {
       action,
@@ -898,6 +1111,29 @@ async function refreshProjects() {
   }
 }
 
+async function cleanProjects(button, archive) {
+  const action = archive ? "archiviare le generazioni completate e ripulire" : "ripulire";
+  if (!confirm(`Vuoi ${action} il pannello? I lavori attivi resteranno visibili e i file generati non verranno cancellati.`)) return;
+  const original = button.textContent;
+  button.disabled = true;
+  button.textContent = archive ? "Archiviazione…" : "Pulizia…";
+  try {
+    const result = await api("/api/studio/projects/cleanup", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ archive }),
+    });
+    await refreshProjects();
+    const detail = archive ? ` · ${result.generationsArchived} generazioni archiviate` : "";
+    showToast(`${result.projectsRemoved} progetti rimossi dal pannello${detail}.`);
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = original;
+  }
+}
+
 async function cancelProjectGeneration(button) {
   if (!confirm("Vuoi annullare questa generazione?")) return;
   button.disabled = true;
@@ -929,6 +1165,20 @@ async function start() {
     || kreaModels.find((model) => model.available)
     || kreaModels[0];
   if (preferredKreaModel) $("#kreaTripleModel").value = preferredKreaModel.file;
+  updateKreaTripleStages();
+  const animaModels = state.config.studio.anima?.models || [];
+  const storyboardModels = state.config.studio.storyboardModels || [];
+  $("#storyboardFamily").innerHTML = storyboardModels.map((model) =>
+    `<option value="${escapeHtml(model.id)}">${escapeHtml(model.name)}</option>`
+  ).join("");
+  if (storyboardModels.some((model) => model.id === "klein")) $("#storyboardFamily").value = "klein";
+  $("#animaModel").innerHTML = animaModels.map((model) =>
+    `<option value="${escapeHtml(model.file)}"${model.available ? "" : " disabled"}>${escapeHtml(model.name)}${model.available ? "" : " · non installato"}</option>`
+  ).join("");
+  const preferredAnima = animaModels.find((model) => model.id === "turbo" && model.available)
+    || animaModels.find((model) => model.available)
+    || animaModels[0];
+  if (preferredAnima) $("#animaModel").value = preferredAnima.file;
   const requestedWorkflow = new URLSearchParams(location.search).get("workflow");
   if (state.config.studio.modes.some((mode) => mode.id === requestedWorkflow)) {
     $("#studioMode").value = requestedWorkflow;
@@ -977,9 +1227,7 @@ async function start() {
   await applyGuidedCreation();
   setupUploadPreviews();
   updateStructureGuide();
-  $("#studio-prompt-assistant").classList.toggle("hidden", !state.config.promptAssistant?.enabled);
-  $("#studio-qwen-edit-prompt").classList.toggle("hidden", !state.config.promptAssistant?.enabled);
-  $("#studio-klein-prompt").classList.toggle("hidden", !state.config.promptAssistant?.enabled);
+  updateStudioPromptButtons();
   renderProjects();
   checkHealth();
   createAdaptivePoller(checkHealth, { idleMs: 15_000, hiddenMs: 60_000 });
@@ -1012,7 +1260,7 @@ async function applyGuidedCreation() {
       $("#guidedModelFamily").value = klein ? "klein" : "qwen";
       updateGuidedModel();
     } else if ($("#studioMode").value === "storyboard") {
-      $("#storyboardFamily").value = klein ? "klein" : "gwen";
+      $("#storyboardFamily").value = klein ? "klein" : "qwenImage";
       updateStoryboardModel();
     } else if ($("#studioMode").value === "firstLast") {
       const videoModel = [...$("#firstLastVideoModel").options].find((option) =>
@@ -1042,9 +1290,18 @@ async function applyGuidedCreation() {
 }
 
 $("#studioMode").addEventListener("change", updateMode);
+$("#duoAspectRatio").addEventListener("change", applyDuoAspectRatio);
+$("#animaAspectRatio").addEventListener("change", applyAnimaAspectRatio);
+$("#animaModel").addEventListener("change", updateAnimaModel);
+$("#animaInputMode").addEventListener("change", updateAnimaInputMode);
 $("#studioCharacterId").addEventListener("change", syncCharacterFields);
 $("#kreaTripleOperation").addEventListener("change", updateMode);
 $("#kreaTripleModel").addEventListener("change", updateKreaTripleModel);
+for (const id of ["#kreaTripleUseZImage", "#kreaTripleUseKlein", "#kreaTripleUseSeedVR2"]) {
+  $(id).addEventListener("change", updateKreaTripleStages);
+}
+$("#kreaRawAspectRatio").addEventListener("change", applyKreaRawAspectRatio);
+$("#kreaRawMegapixels").addEventListener("change", applyKreaRawAspectRatio);
 $("#open-workflow-guide").addEventListener("click", openQuickGuide);
 $("#close-workflow-guide").addEventListener("click", () => $("#workflow-guide-dialog").close());
 $("#workflow-guide-dialog").addEventListener("click", (event) => {
@@ -1084,7 +1341,9 @@ $("#identityReferenceFormat").addEventListener("change", () => {
   });
 });
 function studioPromptAssistantSource() {
-  return $("#studio-source").files[0]
+  return $("#duo-male")?.files?.[0]
+    || $("#anima-character-1")?.files?.[0]
+    || $("#studio-source").files[0]
     || document.querySelector('[name="firstFrame"]')?.files[0]
     || null;
 }
@@ -1096,12 +1355,14 @@ $("#studio-prompt-assistant").addEventListener("click", async () => {
     ? "ltx"
     : $("#studioMode").value === "kreaTriple"
       ? (kreaModel?.moodyPromptAnchor ? "krea2_moody" : "krea2")
+    : $("#studioMode").value === "duoScene"
+      ? "flux2"
     : ["qwenKreaKlein", "animeToReal"].includes($("#studioMode").value)
       ? "qwen_image_edit_architect"
     : $("#studioMode").value === "guidedEdit"
       ? "qwenedit"
       : $("#studioMode").value === "storyboard"
-        ? ($("#storyboardFamily").value === "gwen"
+        ? ($("#storyboardFamily").value.startsWith("qwen")
           ? (source ? "qwenedit" : "qwen")
           : "flux2")
         : "studio";
@@ -1122,7 +1383,6 @@ $("#studio-prompt-assistant").addEventListener("click", async () => {
     });
     applyLoraTriggers($("#studio-prompt"), triggers);
     showToast(`Prompt Studio creato; modello LM Studio scaricato.${triggers.length ? ` Trigger: ${triggers.join(", ")}.` : ""}`);
-    if (state.config.promptAssistant?.autoGenerate) $("#studio-form").requestSubmit();
   } catch {
     // Il dettaglio resta vicino al prompt.
   }
@@ -1207,7 +1467,35 @@ $("#editWildcardFamily").addEventListener("change", () => {
 
 $("#studio-prompt").addEventListener("input", (event) => {
   $("#studio-prompt-count").textContent = event.target.value.length;
+  updatePromptBatchUi();
 });
+function updatePromptBatchUi() {
+  const enabled = $("#studioPromptMode")?.value === "batch";
+  const summary = promptBatchSummary($("#studio-prompt")?.value, enabled);
+  $("#studio-prompt-batch-help")?.classList.toggle("hidden", !enabled);
+  $("#studio-prompt-batch-hint")?.classList.toggle("hidden", !enabled);
+  $("#alternatives-field")?.classList.toggle("hidden", enabled);
+  $("#anima-outputs-field")?.classList.toggle("hidden", enabled);
+  const storyboardBatch = enabled && $("#studioMode")?.value === "storyboard";
+  $("#storyboard-shot-count-field")?.classList.toggle("hidden", storyboardBatch);
+  $("#shot-fields")?.classList.toggle("hidden", storyboardBatch);
+  if ($("#studio-prompt-batch-status")) {
+    $("#studio-prompt-batch-status").textContent = summary.exceedsLimit
+      ? `${summary.count} scene · massimo ${MAX_PROMPT_BATCH}`
+      : `${summary.count} ${summary.count === 1 ? "scena" : "scene"}`;
+    $("#studio-prompt-batch-status").classList.toggle("invalid", Boolean(summary.exceedsLimit));
+  }
+  if ($("#studio-submit span")) {
+    $("#studio-submit span").textContent = enabled && summary.count
+      ? `Genera ${summary.count} scene`
+      : "Crea progetto";
+  }
+  for (const selector of ["#studio-prompt-assistant", "#studio-qwen-edit-prompt", "#studio-klein-prompt"]) {
+    if ($(selector)) $(selector).disabled = enabled;
+  }
+  if (enabled) $("#studio-prompt-assistant-status").textContent = "In modalità elenco i prompt già preparati non vengono riscritti.";
+}
+$("#studioPromptMode").addEventListener("change", updatePromptBatchUi);
 $("#mask-draw").addEventListener("click", () => {
   state.erase = false;
   state.maskTool = "draw";
@@ -1236,6 +1524,8 @@ $("#mask-canvas").addEventListener("pointerup", endMask);
 $("#mask-canvas").addEventListener("pointercancel", endMask);
 $("#studio-add-lora").addEventListener("click", addLora);
 $("#studio-form").addEventListener("submit", submitProject);
+$("#studio-archive-completed").addEventListener("click", (event) => cleanProjects(event.currentTarget, true));
+$("#studio-clear-projects").addEventListener("click", (event) => cleanProjects(event.currentTarget, false));
 $("#studio-projects").addEventListener("click", (event) => {
   const cancel = event.target.closest("[data-cancel-job]");
   if (cancel) {

@@ -9,8 +9,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css">
-  <script type="module" src="/studio.js?v=20260823-krea2-selector"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260909-krea-triple-stages">
+  <script type="module" src="/studio.js?v=20260909-krea-triple-stages"></script>
+  <script type="module" src="/generation-console.js?v=20260908-live-progress"></script>
   <script type="module" src="/scene-integration.js"></script>
 </head>
 <body>
@@ -24,6 +25,7 @@
         <a href="/same-place.html">Same Place</a>
         <a class="active" href="/studio.html">Image Studio</a>
         <a href="/video-studio.html">Video Studio</a>
+        <a href="/audio-studio.html">Audio Studio</a>
         <a href="/characters.html">Character Library</a>
         <a href="/workflow-guide.html">Guida</a>
         <a href="/generations.html">Generazioni</a>
@@ -66,7 +68,7 @@
           <input id="projectName" name="projectName" placeholder="Es. Piscina · scena tramonto">
         </div>
 
-        <div class="field">
+        <div id="studio-character-section" class="field">
           <label for="studioCharacterId">Personaggio</label>
           <select id="studioCharacterId" name="characterId">
             <option value="">Nessuna</option>
@@ -94,6 +96,165 @@
           </div>
         </section>
 
+        <section id="duo-scene-section" class="studio-subpanel hidden">
+          <div class="guided-step-heading">
+            <span>2×</span>
+            <div>
+              <p class="subpanel-title">Due identità, una sola scena anime</p>
+              <p class="hint">Uomo e donna sono obbligatori. Ambiente e stile sono facoltativi e hanno ruoli separati, così Flux.2 non mescola i personaggi.</p>
+            </div>
+          </div>
+          <div class="reference-grid duo-reference-grid">
+            <label class="compact-file">
+              <span>1 · Uomo / identità</span>
+              <input id="duo-male" name="duoMale" type="file" accept="image/png,image/jpeg,image/webp">
+              <small>Volto leggibile; meglio testa e spalle o mezzo busto.</small>
+            </label>
+            <label class="compact-file">
+              <span>2 · Donna / identità</span>
+              <input id="duo-female" name="duoFemale" type="file" accept="image/png,image/jpeg,image/webp">
+              <small>Una sola persona, senza collage o filtri pesanti.</small>
+            </label>
+            <label class="compact-file">
+              <span>3 · Ambientazione / opzionale</span>
+              <input id="duo-environment" name="duoEnvironment" type="file" accept="image/png,image/jpeg,image/webp">
+              <small>Definisce luogo, camera, spazio e direzione della luce.</small>
+            </label>
+            <label class="compact-file">
+              <span>4 · Stile anime / opzionale</span>
+              <input id="duo-style" name="duoStyle" type="file" accept="image/png,image/jpeg,image/webp">
+              <small>Definisce soltanto linee, palette e shading.</small>
+            </label>
+          </div>
+          <input id="duo-has-female" name="duoHasFemale" type="hidden" value="false">
+          <input id="duo-has-environment" name="duoHasEnvironment" type="hidden" value="false">
+          <input id="duo-has-style" name="duoHasStyle" type="hidden" value="false">
+          <div class="field-grid">
+            <div id="anima-outputs-field" class="field">
+              <label for="duoStylePreset">Look anime</label>
+              <select id="duoStylePreset" name="duoStylePreset">
+                <option value="cinematic" selected>Anime cinematografico</option>
+                <option value="romantic">Anime romantico</option>
+                <option value="action">Shōnen / action</option>
+                <option value="manga">Manga grafico</option>
+                <option value="realistic">Anime semi-realistico</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="duoAspectRatio">Formato scena</label>
+              <select id="duoAspectRatio" name="duoAspectRatio">
+                <option value="portrait">Verticale · 896×1152</option>
+                <option value="square">Quadrato · 1024×1024</option>
+                <option value="landscape" selected>Orizzontale · 1216×832</option>
+                <option value="cinema">Cinema · 1344×768</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-grid">
+            <div class="field"><label for="duoMalePlacement">Uomo · posizione/azione</label><input id="duoMalePlacement" name="duoMalePlacement" placeholder="Es. a sinistra, guarda la donna, una mano in tasca"></div>
+            <div class="field"><label for="duoFemalePlacement">Donna · posizione/azione</label><input id="duoFemalePlacement" name="duoFemalePlacement" placeholder="Es. a destra, sorride e gli prende il braccio"></div>
+          </div>
+          <p class="hint">Il prompt globale descrive scena, abiti, relazione, atmosfera e inquadratura. Le identità vengono assegnate automaticamente agli ingressi 1 e 2.</p>
+        </section>
+
+        <section id="anima-section" class="studio-subpanel hidden">
+          <div class="guided-step-heading">
+            <span>AN</span>
+            <div>
+              <p class="subpanel-title">ANIMA · generazione anime nativa</p>
+              <p class="hint">Generazione solo prompt oppure personaggi coerenti da profili/reference sheet, con ambientazione facoltativa.</p>
+            </div>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label for="animaInputMode">Sorgente della scena</label>
+              <select id="animaInputMode" name="animaInputMode">
+                <option value="references" selected>Personaggi da reference</option>
+                <option value="text">Solo prompt</option>
+              </select>
+            </div>
+            <div id="anima-reference-strength-field" class="field">
+              <label for="animaReferenceStrength">Resa ANIMA / identità</label>
+              <select id="animaReferenceStrength" name="animaReferenceStrength">
+                <option value="0.35">Identità forte</option>
+                <option value="0.50" selected>Bilanciata</option>
+                <option value="0.65">Stile ANIMA forte</option>
+              </select>
+            </div>
+          </div>
+          <div id="anima-reference-inputs">
+            <div class="reference-grid duo-reference-grid">
+              <label class="compact-file">
+                <span>1 · Personaggio principale</span>
+                <input id="anima-character-1" name="animaCharacter1" type="file" accept="image/png,image/jpeg,image/webp">
+                <small>Foto profilo oppure reference sheet. Obbligatoria in questa modalità.</small>
+              </label>
+              <label class="compact-file">
+                <span>2 · Secondo personaggio / opzionale</span>
+                <input id="anima-character-2" name="animaCharacter2" type="file" accept="image/png,image/jpeg,image/webp">
+                <small>Identità separata: profilo o reference sheet.</small>
+              </label>
+              <label class="compact-file">
+                <span>3 · Terzo personaggio / opzionale</span>
+                <input id="anima-character-3" name="animaCharacter3" type="file" accept="image/png,image/jpeg,image/webp">
+                <small>Usalo solo se il terzo personaggio deve essere riconoscibile.</small>
+              </label>
+              <label class="compact-file">
+                <span>4 · Ambientazione / opzionale</span>
+                <input id="anima-environment" name="animaEnvironment" type="file" accept="image/png,image/jpeg,image/webp">
+                <small>Fissa luogo, composizione, camera e luce fra immagini diverse.</small>
+              </label>
+            </div>
+            <input id="anima-has-character-2" name="animaHasCharacter2" type="hidden" value="false">
+            <input id="anima-has-character-3" name="animaHasCharacter3" type="hidden" value="false">
+            <input id="anima-has-environment" name="animaHasEnvironment" type="hidden" value="false">
+            <div class="field-grid">
+              <div class="field"><label for="animaCharacter1Direction">Personaggio 1 · ruolo/azione</label><input id="animaCharacter1Direction" name="animaCharacter1Direction" placeholder="Es. protagonista a sinistra, sguardo verso camera"></div>
+              <div class="field"><label for="animaCharacter2Direction">Personaggio 2 · ruolo/azione</label><input id="animaCharacter2Direction" name="animaCharacter2Direction" placeholder="Es. coprotagonista a destra, prende la sua mano"></div>
+              <div class="field"><label for="animaCharacter3Direction">Personaggio 3 · ruolo/azione</label><input id="animaCharacter3Direction" name="animaCharacter3Direction" placeholder="Es. sullo sfondo, posa dinamica"></div>
+            </div>
+            <p class="hint">Flux.2 compone le reference senza fonderle; il checkpoint selezionato esegue poi il render ANIMA finale. Le reference sheet vengono trattate come identità, mai come layout o collage.</p>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label for="animaModel">Checkpoint ANIMA</label>
+              <select id="animaModel" name="animaModel"></select>
+              <p id="anima-model-hint" class="hint"></p>
+            </div>
+            <div class="field">
+              <label for="animaAspectRatio">Formato</label>
+              <select id="animaAspectRatio" name="animaAspectRatio">
+                <option value="portrait">Verticale · 896×1152</option>
+                <option value="square" selected>Quadrato · 1024×1024</option>
+                <option value="landscape">Orizzontale · 1216×832</option>
+                <option value="cinema">Cinema · 1344×768</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="animaOutputs">Varianti indipendenti</label>
+              <select id="animaOutputs" name="animaOutputs">
+                <option value="1" selected>1</option>
+                <option value="2">2</option>
+                <option value="4">4</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="animaQuality">Qualità ANIMA</label>
+              <select id="animaQuality" name="animaQuality">
+                <option value="fast">FAST · 1 sampler</option>
+                <option value="balanced" selected>BALANCED · 2 sampler</option>
+                <option value="max">MAX · 3 sampler</option>
+              </select>
+              <p class="hint">I passaggi successivi usano denoise progressivamente più basso.</p>
+            </div>
+            <div class="field">
+              <label for="animaSeed">Seed</label>
+              <input id="animaSeed" name="animaSeed" inputmode="numeric" placeholder="Random">
+            </div>
+          </div>
+          <p id="anima-runtime-status" class="hint"></p>
+        </section>
+
         <section id="qwen-krea-klein-section" class="studio-subpanel hidden">
           <div class="guided-step-heading">
             <span>QK</span>
@@ -109,7 +270,7 @@
             <span>KT</span>
             <div>
               <p class="subpanel-title">Krea Triple Studio</p>
-              <p class="hint">Pipeline Krea → Z-Image → Flux2 Klein → SeedVR2 con tre template API separati.</p>
+              <p class="hint">Pipeline Krea RAW entro 1 MP → Z-Image conservativo → Flux2 Klein → SeedVR2. Gli stadi intermedi restano anteprime e non vengono archiviati come risultati.</p>
             </div>
           </div>
           <div class="field-grid">
@@ -132,6 +293,73 @@
               <p class="hint">Basso conserva molto l'immagine; alto modifica più forte.</p>
             </div>
           </div>
+          <div class="krea-triple-stage-list" aria-label="Stadi Krea Triple">
+            <div class="krea-triple-stage mandatory">
+              <span class="stage-index">1</span>
+              <div><strong>Krea 2 RAW</strong><small>Generazione iniziale obbligatoria · shift RAW dinamico</small></div>
+              <span class="stage-state">SEMPRE</span>
+            </div>
+            <label class="krea-triple-stage">
+              <input id="kreaTripleUseZImage" name="kreaTripleUseZImage" type="checkbox" value="true" checked>
+              <span class="stage-index">2</span>
+              <div><strong>Z-Image Refine</strong><small>Passaggio conservativo per dettaglio e materia</small></div>
+              <span class="stage-state">ATTIVO</span>
+            </label>
+            <label class="krea-triple-stage">
+              <input id="kreaTripleUseKlein" name="kreaTripleUseKlein" type="checkbox" value="true" checked>
+              <span class="stage-index">3</span>
+              <div><strong>Flux 2 Klein</strong><small>Ricostruzione fotografica e coerenza finale</small></div>
+              <span class="stage-state">ATTIVO</span>
+            </label>
+            <label class="krea-triple-stage">
+              <input id="kreaTripleUseSeedVR2" name="kreaTripleUseSeedVR2" type="checkbox" value="true" checked>
+              <span class="stage-index">4</span>
+              <div><strong>SeedVR2 finale</strong><small>Upscale AI a tile; disattivalo per ottenere il master prima dell’upscale</small></div>
+              <span class="stage-state">ATTIVO</span>
+            </label>
+          </div>
+          <p id="krea-triple-stage-status" class="hint">Output: Krea RAW → Z-Image → Flux 2 Klein → SeedVR2.</p>
+        </section>
+
+        <section id="krea-raw-master-section" class="studio-subpanel hidden">
+          <div class="guided-step-heading">
+            <span>KR</span>
+            <div>
+              <p class="subpanel-title">Krea 2 RAW Master</p>
+              <p class="hint">Raw BF16 → Turbo 0.6 → Filter Bypass 1.0 → FameGrid 1.0 → doppio RES4LYF → Color Finish 1.0/0.2, con Resolution Selector collegato al latent.</p>
+            </div>
+          </div>
+          <div class="field-grid">
+            <div class="field"><label>Ricetta</label><input value="ORIGINALE · RES 2M 6 step + DEIS 3M 2 step" readonly></div>
+            <div class="field">
+              <label for="kreaRawAspectRatio">Formato nativo</label>
+              <select id="kreaRawAspectRatio" name="kreaRawAspectRatio">
+                <option value="1:1 (Square)">1:1 · Quadrato</option>
+                <option value="2:3 (Portrait Photo)">2:3 · Ritratto fotografico</option>
+                <option value="3:2 (Photo)">3:2 · Fotografico</option>
+                <option value="3:4 (Portrait Standard)">3:4 · Ritratto standard</option>
+                <option value="4:3 (Standard)">4:3 · Standard</option>
+                <option value="9:16 (Portrait Widescreen)" selected>9:16 · Verticale widescreen</option>
+                <option value="16:9 (Widescreen)">16:9 · Widescreen</option>
+                <option value="21:9 (Ultrawide)">21:9 · Ultrawide</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="kreaRawMegapixels">Megapixel</label>
+              <select id="kreaRawMegapixels" name="kreaRawMegapixels">
+                <option value="0.8">0,8 MP</option>
+                <option value="1">1,0 MP</option>
+                <option value="1.2" selected>1,2 MP · originale selector</option>
+                <option value="1.5">1,5 MP</option>
+                <option value="2">2,0 MP</option>
+                <option value="3">3,0 MP</option>
+                <option value="4">4,0 MP</option>
+              </select>
+            </div>
+            <div class="field"><label>Stack fisso originale</label><input value="Turbo .6 · Bypass 1 · FameGrid 1" readonly></div>
+            <div class="field"><label>Color Finish</label><input value="Colore 1.0 · Sharpen 0.2" readonly></div>
+          </div>
+          <p id="krea-raw-runtime-status" class="hint"></p>
         </section>
 
         <section id="guided-edit-section" class="studio-subpanel hidden">
@@ -350,7 +578,7 @@
           <div class="label-row">
             <label for="studio-prompt">Prompt globale / istruzione</label>
             <div class="prompt-assistant-tools">
-              <button id="studio-prompt-assistant" class="prompt-assistant-button" type="button">✦ IA + Genera</button>
+              <button id="studio-prompt-assistant" class="prompt-assistant-button" type="button">✦ Migliora prompt</button>
               <button id="studio-qwen-edit-prompt" class="prompt-assistant-button hidden" type="button">✦ Qwen Edit</button>
               <button id="studio-klein-prompt" class="prompt-assistant-button hidden" type="button">✦ Klein</button>
               <span id="studio-prompt-count">0</span>
@@ -358,6 +586,20 @@
           </div>
           <textarea id="studio-prompt" name="prompt" rows="6" placeholder="Descrivi il risultato e specifica ciò che deve rimanere invariato…"></textarea>
           <p id="studio-prompt-assistant-status" class="prompt-assistant-status">Analizza la foto sorgente quando presente</p>
+          <div class="field-grid compact-grid studio-prompt-batch-controls">
+            <div class="field">
+              <label for="studioPromptMode">Modalità prompt</label>
+              <select id="studioPromptMode">
+                <option value="single" selected>Prompt singolo</option>
+                <option value="batch">Elenco scene · generazione automatica</option>
+              </select>
+            </div>
+            <div id="studio-prompt-batch-help" class="field hidden">
+              <label>Scene riconosciute</label>
+              <p id="studio-prompt-batch-status" class="prompt-batch-status">0 scene</p>
+            </div>
+          </div>
+          <p id="studio-prompt-batch-hint" class="hint hidden">Incolla una lista numerata, un prompt per riga, un array JSON oppure separa i prompt multilinea con una riga <code>---</code>. Massimo 50 scene.</p>
           <div id="edit-wildcard-panel" class="edit-wildcard-panel">
             <div class="field-grid compact-grid">
               <div class="field">
@@ -391,8 +633,8 @@
 
         <section id="storyboard-section" class="studio-subpanel hidden">
           <div class="field-grid">
-            <div class="field"><label for="shotCount">Numero shot</label><select id="shotCount"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option></select></div>
-            <div class="field"><label for="storyboardFamily">Motore storyboard</label><select id="storyboardFamily" name="storyboardFamily"><option value="klein">BigLove Klein 4</option><option value="gwen">BigLove Gwen 2</option></select></div>
+            <div id="storyboard-shot-count-field" class="field"><label for="shotCount">Numero shot</label><select id="shotCount"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option></select></div>
+            <div class="field"><label for="storyboardFamily">Motore immagini</label><select id="storyboardFamily" name="storyboardFamily"></select></div>
           </div>
           <p id="storyboard-model-status" class="hint"></p>
           <div class="field"><label for="globalStyle">Look globale bloccato</label><input id="globalStyle" name="globalStyle" placeholder="Golden hour, Kodak Portra, 35 mm, contrasto morbido"></div>
@@ -423,8 +665,8 @@
 
         <div id="common-settings" class="field-grid">
           <div class="field"><label for="editPreset">Comportamento</label><select id="editPreset" name="editPreset"><option value="conservative">Conservativo</option><option value="balanced" selected>Bilanciato</option><option value="creative">Creativo</option></select></div>
-          <div class="field"><label for="alternatives">Alternative</label><select id="alternatives" name="alternatives"><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
-          <div class="field"><label for="editScope">Ambito</label><select id="editScope" name="editScope"><option value="local">Locale / maschera</option><option value="global">Globale</option></select></div>
+          <div id="alternatives-field" class="field"><label for="alternatives">Alternative</label><select id="alternatives" name="alternatives"><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
+          <div id="edit-scope-field" class="field"><label for="editScope">Ambito</label><select id="editScope" name="editScope"><option value="local">Locale / maschera</option><option value="global">Globale</option></select></div>
           <div class="field"><label for="studio-seed">Seed</label><input id="studio-seed" name="seed" inputmode="numeric" placeholder="Random"></div>
         </div>
 
@@ -488,6 +730,7 @@
                 <option value="seed7">SeedVR2 Massimo · 7B FP16</option>
                 <option value="rtx">RTX VSR · veloce e fedele</option>
                 <option value="realesrgan">RealESRGAN 2× · tradizionale</option>
+                <option value="animeSharp">4x-AnimeSharp · linee anime</option>
               </select>
             </div>
             <label class="inline-check"><input name="saveOriginal" type="checkbox" checked> Conserva anche lo stadio prima dell’upscale</label>
@@ -495,7 +738,7 @@
         </section>
 
         <section id="studio-lora-section" class="studio-subpanel">
-          <div class="subpanel-heading"><div><p class="subpanel-title">LoRA aggiuntive</p><p class="hint">Filtrate per la famiglia usata nello stadio.</p></div><button id="studio-add-lora" class="chip-button" type="button">＋ LoRA</button></div>
+          <div class="subpanel-heading"><div><p class="subpanel-title">LoRA aggiuntive</p><p class="hint">Filtrate per la famiglia usata nello stadio. Per ANIMA usa esclusivamente LoRA nella cartella ANIMA.</p></div><button id="studio-add-lora" class="chip-button" type="button">＋ LoRA</button></div>
           <div id="studio-loras"></div>
           <input id="studio-loras-json" name="loras" type="hidden" value="[]">
         </section>
@@ -512,6 +755,10 @@
         <div class="panel studio-projects-panel">
           <div class="section-heading compact">
             <span>02</span><div><h2>Progetti guidati</h2><p>Bozze, selezioni, master e clip</p></div>
+          </div>
+          <div class="studio-project-toolbar" aria-label="Pulizia progetti">
+            <button id="studio-archive-completed" class="chip-button" type="button">Archivia completate</button>
+            <button id="studio-clear-projects" class="chip-button danger-subtle" type="button">Ripulisci pannello</button>
           </div>
           <div id="studio-projects"></div>
           <p id="studio-empty" class="hint">Nessun progetto Studio.</p>

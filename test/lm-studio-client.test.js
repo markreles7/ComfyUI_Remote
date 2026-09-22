@@ -1032,11 +1032,11 @@ test("planInteractiveCast chiede mode conservativo per ogni evento", async () =>
   ]);
 });
 
-test("espone i preset puliti per ciascuna famiglia generativa e il contratto Eros Max", () => {
+test("espone una sola istruzione MiniMax H3 per ogni modalità", () => {
   assert.deepEqual(LM_STUDIO_SYSTEM_PROMPT_CATALOG.map((profile) => profile.family), ["minimax_h3", "ltx", "qwen", "flux"]);
-  assert.equal(LM_STUDIO_SYSTEM_PROMPT_CATALOG.flatMap((profile) => profile.presets).length, 17);
+  assert.equal(LM_STUDIO_SYSTEM_PROMPT_CATALOG.flatMap((profile) => profile.presets).length, 13);
   assert.deepEqual(Object.keys(PRESETS), [
-    "h3_general", "h3_image_to_video", "h3_eros_max", "h3_action", "h3_dialogue",
+    "h3_general",
     "ltx_general", "ltx_image_to_video", "ltx_multi_shot", "ltx_dialogue",
     "qwen_general", "qwen_human", "qwen_cinematic", "qwen_text",
     "flux_general", "flux_photo", "flux_json", "flux_reference",
@@ -1047,10 +1047,10 @@ test("espone i preset puliti per ciascuna famiglia generativa e il contratto Ero
     target: "minimax_h3",
     preset: "h3_general",
     mode: "image",
-  }).id, "h3_image_to_video");
-  assert.match(PRESETS.h3_dialogue.systemPrompt, /<d>\[Italian\]/);
-  assert.match(PRESETS.h3_eros_max.systemPrompt, /single uploaded image is always <Picture 1>/);
-  assert.match(PRESETS.h3_eros_max.systemPrompt, /six fields/);
+  }).id, "h3_general");
+  assert.equal(resolveGenerationSystemPrompt({ target: "minimax_h3_action" }).systemPrompt, PRESETS.h3_general.systemPrompt);
+  assert.equal(resolveGenerationSystemPrompt({ target: "minimax_h3_director_sequence" }).systemPrompt, PRESETS.h3_general.systemPrompt);
+  assert.match(PRESETS.h3_general.systemPrompt, /REFERENCE GENERATION \/ Ref2V/);
   assert.match(PRESETS.flux_json.systemPrompt, /Return ONLY valid JSON/);
 });
 
@@ -1157,6 +1157,37 @@ non\_diegetic\_music: N/A`;
 test("MiniMax H3 misura la fine reale della timeline", () => {
   assert.equal(h3TimelineEndSeconds("At 00:01.500 she moves. At 00:03.000 she pauses."), 3);
   assert.equal(h3TimelineEndSeconds("From 0-5s the camera tracks; by 7.6 seconds it settles."), 7.6);
+  assert.equal(h3TimelineEndSeconds("[00:00.000] Opening. [00:08.500] Reaction. [00:10.000] Final state."), 10);
+  assert.equal(h3TimelineEndSeconds("Use MM:SS.mmm placeholders only."), 0);
+});
+
+test("MiniMax H3 Eros accetta i timestamp screenplay tra parentesi quadre", async () => {
+  let chatCalls = 0;
+  const client = new LmStudioClient({
+    model: "eros-vision-model",
+    fetchImpl: async (url, options = {}) => {
+      const path = new URL(url).pathname;
+      if (path === "/api/v1/models") return response({ models: [{ key: "eros-vision-model", display_name: "Eros Vision", capabilities: { vision: true }, loaded_instances: [] }] });
+      if (path === "/api/v1/models/load") return response({ model_instance_id: "eros-duration" });
+      if (path === "/api/v1/chat") {
+        chatCalls += 1;
+        return response({ output: [{ type: "message", content: "subject_definitions: <Picture 1> defines the adult subject.\n\nsummary: A complete ten-second scene.\n\nretention_analysis: Identity is fully preserved.\n\ndetailed_description: [Shot 1] [00:00.000] The adult subject begins the requested action. [00:05.000] The action develops continuously. [00:09.500] The subject reaches the final stable state.\n\noverall_soundscape: Soft room ambience.\n\nnon_diegetic_music: N/A" }] });
+      }
+      if (path === "/api/v1/models/unload") return response({});
+      throw new Error(`Unexpected path ${path}`);
+    },
+  });
+  const result = await client.enhance({
+    text: "Animate the adult subject for the complete clip.",
+    target: "minimax_h3",
+    promptPreset: "h3_eros_reference",
+    mode: "references",
+    duration: 10,
+    image: { mimetype: "image/png", buffer: Buffer.from("image") },
+  });
+  assert.equal(chatCalls, 1);
+  assert.equal(result.timelineRepairApplied, false);
+  assert.match(result.prompt, /\[00:09\.500\]/);
 });
 
 test("MiniMax H3 riscrive automaticamente un prompt da 8 secondi fermo a 3 secondi", async () => {
@@ -1214,10 +1245,10 @@ test("MiniMax H3 invia fino a nove reference vision a LM Studio nell'ordine Pict
         assert.equal(body.input[0].content, "Tre frame cinematografici");
         assert.match(body.input[1].data_url, /base64,b25l/);
         assert.match(body.input[3].data_url, /base64,dGhyZWU=/);
-        assert.match(body.system_prompt, /integrated_multimodal_description:/i);
+        assert.match(body.system_prompt, /\[reference generation\]/i);
         assert.doesNotMatch(body.system_prompt, /strict JSON/i);
         assert.doesNotMatch(body.system_prompt, /4,500-6,500 characters/i);
-        assert.match(body.system_prompt, /Focus primarily on what CHANGES after the first frame/i);
+        assert.match(body.system_prompt, /A reference image is NOT automatically the literal first frame/i);
         assert.doesNotMatch(body.system_prompt, /binding action contract/i);
         assert.equal(body.temperature, 0.15);
         return response({ output: [{ type: "message", content: "integrated_multimodal_description[0-5s: truck right.]\noverall_soundscape[Footsteps.]\nnon_diegetic_music[N/A]" }] });
@@ -1235,7 +1266,7 @@ test("MiniMax H3 invia fino a nove reference vision a LM Studio nell'ordine Pict
   assert.equal(result.usedVision, true);
   assert.equal(result.usedImageCount, 3);
   assert.equal(result.negativePrompt, "");
-  assert.match(result.prompt, /^integrated_multimodal_description:/);
+  assert.match(result.prompt, /^integrated_multimodal_description\[/);
 });
 
 test("MiniMax H3 ricarica a 16K un'istanza Vision preesistente a 8K", async () => {

@@ -3,11 +3,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildWorkflow } from "./workflows.js";
-import { buildMiniMaxH3Workflow } from "./minimax-h3-workflows.js";
+import { buildMiniMaxH3FastWorkflow, buildMiniMaxH3SeamlessChainWorkflow, buildMiniMaxH3Workflow } from "./minimax-h3-workflows.js";
+import { buildMiniMaxH3DirectorWorkflow } from "./minimax-h3-director-workflows.js";
+import { buildMiniMaxH3SparseV9Workflow } from "./minimax-h3-sparse-workflows.js";
 import { buildLtx25Workflow } from "./ltx25-workflows.js";
-import { H3_PREVIEW_FINISHING_NODES } from "./h3-preview-workflows.js";
+import { H3_PREVIEW_FINISHING_REQUIREMENTS } from "./h3-preview-workflows.js";
 import { loraTriggerMetadata } from "./lora-trigger-catalog.js";
 import { normalizeDynamicInputs } from "./workflow-normalization.js";
+import { H3_ACTION_PRESETS } from "./h3-action-presets.js";
 
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
 const workflowDirectory = path.resolve(moduleDirectory, "..", "workflows");
@@ -65,6 +68,29 @@ const REQUIRED_NODES = {
     "VAEEncodeAudio",
     "LTXVConcatAVLatent",
   ],
+  minimaxH3Fast: [
+    "CLIPLoader", "VAELoader", "UNETLoader", "LoraLoaderModelOnly", "ModelAttentionBackend",
+    "MiniMaxH3ImageToVideo", "MiniMaxH3DualClockSamplerT8", "ResolutionSelector", "LoadImage",
+    "ImageResizeKJv2", "RandomNoise", "SplitSigmas", "BasicGuider", "SamplerCustomAdvanced",
+    "LTXVSeparateAVLatent", "MinimaxH3LatentUpscaler3D", "LTXVConcatAVLatent", "KSamplerSelect",
+    "ManualSigmas", "VAEDecode", "VAEDecodeAudio", "VHS_VideoCombine",
+  ],
+  minimaxH3Director: [
+    "CLIPLoader", "VAELoader", "UNETLoader", "LoraLoaderModelOnly",
+    "MiniMaxH3MemoryEfficientSageAttentionPatch", "MiniMaxH3Director",
+    "MiniMaxH3DirectorRefine", "BasicScheduler", "CreateVideo", "SaveVideo", "PreviewAny",
+  ],
+  minimaxH3SeamlessChain: ["H3MultishotSampler", "CLIPLoader", "VAELoader", "UNETLoader", "LoraLoaderModelOnly", "MiniMaxH3MemoryEfficientSageAttentionPatch", "ResolutionSelector", "VHS_VideoCombine", "DisTorchPurgeVRAMV2"],
+  minimaxH3SparseV9: [
+    "CLIPLoader", "VAELoader", "UNETLoader", "MiniMaxH3ImageToVideo", "MiniMaxH3ReferenceToVideo",
+    "MiniMaxH3Director", "PreviewAny",
+    "H3SLAAttention", "H3MiniMaxCache", "MiniMaxLowVRAMAttention", "MiniMaxChunkFeedForward",
+    "LTX_lora_loader", "H3AdaLNLoRAFix", "MiniMaxH3SigmaShift", "ModelPreviewOverrideKJ",
+    "SamplerER_SDE", "BasicScheduler", "SamplerCustomAdvanced", "VAEDecode", "VAEDecodeAudio",
+    "MMH3UltimateUpscale", "MMH3LatentUpscaleWithModelParams", "MMH3TemporalSplitParams",
+    "MMH3SpatialSplitParams", "FrameInterpolationModelLoader", "FrameInterpolate",
+    "RTXVideoSuperResolution", "RemoteChunkedRCAS", "RemoteUnloadCLIP", "DisTorchPurgeVRAMV2", "CreateVideo", "SaveVideo",
+  ],
   ltx25: [
     "UNETLoader",
     "CLIPLoader",
@@ -118,7 +144,18 @@ const MODEL_CANDIDATES = {
   h3AudioVae: ["minimax_h3_audio_vae_fp32.safetensors"],
   h3Turbo: ["minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors"],
   h3Combat: ["STY_Combat.safetensors", "H3_Combat_V2.safetensors"],
-  h3LatentUpscaler: ["minimax_h3_latent_upscaler_3d_bf16.safetensors"],
+  h3WeaponCombat: ["MOT_Weapon_Combat_H3_trigger-BUNNY.safetensors", "Bunny_weapon_combatV1.safetensors"],
+  h3MotionRepair: ["MOT_Continuity_Repair_H3_trigger-bunny_crisp_motion.safetensors", "Motion_Repair.safetensors"],
+  h3LatentUpscaler: ["minimax_h3_latent_upscaler_3d_fp16.safetensors", "minimax_h3_latent_upscaler_3d_bf16.safetensors"],
+  h3FastHybrid: ["minimax_h3_hybrid_fl2va_ref2va_b25-49-int8.safetensors"],
+  h3FastTurbo: [
+    "minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy.safetensors",
+    "minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors",
+    "minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors",
+  ],
+  h3SparseHybrid: ["minimax_h3_hybrid_fl2va_ref2va_b30-49-int8.safetensors"],
+  h3ParasyteTurbo: ["H3-PK-Parasyte-Turbo.safetensors"],
+  h3Fast6Turbo: ["fasth3_6step.safetensors"],
   ltx25Transformer: ["ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors"],
   ltx25RedGraft: [
     "redgraftLTX25Fast2K_ltx25RedgraftNSFW.safetensors",
@@ -187,6 +224,21 @@ export const VIDEO_STUDIO_MODES = {
     name: "MiniMax H3 Studio",
     description: "T2V, singola immagine, first/last frame e reference multimodali con sampling diretto o doppio passaggio.",
   },
+  minimaxH3Fast: {
+    id: "minimaxH3Fast",
+    name: "Minimax H3 Fast",
+    description: "T2V/I2V rapido in due stadi con Turbo, oppure nativo a 0,9 MP e 25 step senza Turbo.",
+  },
+  minimaxH3AllInOne: {
+    id: "minimaxH3AllInOne",
+    name: "AllInOne",
+    description: "Director Station multi-segmento: T2V, I2V, First/Last e reference con continuità, cache e refine opzionale.",
+  },
+  h3SparseV9: {
+    id: "h3SparseV9",
+    name: "PlagueKind H3 Sparse V9",
+    description: "Workflow V9 originale: hybrid b30-49 INT8, SLA Sparse Attention, Parasyte, TAE e finitura modulare.",
+  },
   seedHunterH3: {
     id: "seedHunterH3",
     name: "Seed Hunter H3",
@@ -195,7 +247,17 @@ export const VIDEO_STUDIO_MODES = {
   actionH3: {
     id: "actionH3",
     name: "ACTION H3",
-    description: "FL2VA dedicato a combattimenti e azioni frenetiche con Combat V2, res_multistep e scheduler simple.",
+    description: "Hybrid b25-49 dedicato all’azione con preset Combat V2 o Weapon BUNNY, res_multistep e scheduler simple.",
+  },
+  h3SeamlessChain: {
+    id: "h3SeamlessChain",
+    name: "H3 Seamless Chain",
+    description: "Da 2 a 8 take: una sola immagine iniziale, poi ogni segmento eredita automaticamente il frame finale del precedente.",
+  },
+  weaponCombatH3: {
+    id: "weaponCombatH3",
+    name: "Weapon Combat",
+    description: "Coreografie ad alta velocità con armi, LoRA BUNNY e doppio passaggio conservativo.",
   },
   ltx25Aio: {
     id: "ltx25Aio",
@@ -223,6 +285,11 @@ function findInstalled(installed, candidates) {
 function missingNodes(availableNodes, required) {
   const nodes = new Set(availableNodes);
   return required.filter((name) => !nodes.has(name));
+}
+
+function isMiniMaxH3DiffusionModel(name) {
+  const base = normalizedBaseName(name);
+  return /minimax.*h3|h3.*(?:fl2va|ref2va|hybrid|eros)|pinkcherry.*(?:mmh3|h3)/i.test(base);
 }
 
 export function videoStudioConfig({
@@ -257,7 +324,14 @@ export function videoStudioConfig({
     h3AudioVae: findInstalled(installedVaes, MODEL_CANDIDATES.h3AudioVae),
     h3Turbo: findInstalled(installedLoras, MODEL_CANDIDATES.h3Turbo),
     h3Combat: findInstalled(installedLoras, MODEL_CANDIDATES.h3Combat),
+    h3WeaponCombat: findInstalled(installedLoras, MODEL_CANDIDATES.h3WeaponCombat),
+    h3MotionRepair: findInstalled(installedLoras, MODEL_CANDIDATES.h3MotionRepair),
     h3LatentUpscaler: findInstalled(installedLatentUpscalers, MODEL_CANDIDATES.h3LatentUpscaler),
+    h3FastHybrid: findInstalled(installedDiffusionModels, MODEL_CANDIDATES.h3FastHybrid),
+    h3FastTurbo: findInstalled(installedLoras, MODEL_CANDIDATES.h3FastTurbo),
+    h3SparseHybrid: findInstalled(installedDiffusionModels, MODEL_CANDIDATES.h3SparseHybrid),
+    h3ParasyteTurbo: findInstalled(installedLoras, MODEL_CANDIDATES.h3ParasyteTurbo),
+    h3Fast6Turbo: findInstalled(installedLoras, MODEL_CANDIDATES.h3Fast6Turbo),
     ltx25Transformer: findInstalled(installedDiffusionModels, MODEL_CANDIDATES.ltx25Transformer),
     ltx25RedGraft: findInstalled(installedDiffusionModels, MODEL_CANDIDATES.ltx25RedGraft),
     ltx25TextEncoder: findInstalled(installedClips, MODEL_CANDIDATES.ltx25TextEncoder),
@@ -273,11 +347,23 @@ export function videoStudioConfig({
     ltx25Msr: findInstalled(installedLoras, MODEL_CANDIDATES.ltx25Msr),
     ltx25PixelUpscaler: findInstalled(installedLoras, MODEL_CANDIDATES.ltx25PixelUpscaler),
   };
+  const h3DiffusionModels = [...new Set(installedDiffusionModels.filter(isMiniMaxH3DiffusionModel))]
+    .sort((left, right) => {
+      if (left === files.h3SparseHybrid) return -1;
+      if (right === files.h3SparseHybrid) return 1;
+      return left.localeCompare(right, "it", { sensitivity: "base" });
+    });
   const commonReady = Boolean(files.checkpoint && files.textEncoder && files.distilled);
   const capabilities = Object.fromEntries(Object.entries(REQUIRED_NODES).map(([id, nodes]) => {
     const missing = missingNodes(availableNodes, nodes);
     const modelReady = id === "minimaxH3"
       ? Boolean(files.h3Fl2va && files.h3Ref2va && files.h3Clip && files.h3VideoVae && files.h3AudioVae && files.h3Turbo)
+      : id === "minimaxH3Director" || id === "minimaxH3SeamlessChain"
+        ? Boolean(files.h3Fl2va && files.h3Ref2va && files.h3Clip && files.h3VideoVae && files.h3AudioVae && files.h3Turbo)
+      : id === "minimaxH3SparseV9"
+        ? Boolean(files.h3SparseHybrid && files.h3ParasyteTurbo && files.h3Fast6Turbo && files.h3Clip && files.h3VideoVae && files.h3AudioVae && files.h3LatentUpscaler)
+      : id === "minimaxH3Fast"
+        ? Boolean(files.h3FastHybrid && files.h3FastTurbo && files.h3Clip && files.h3VideoVae && files.h3AudioVae && files.h3LatentUpscaler)
       : id === "ltx25"
         ? Boolean((files.ltx25Transformer || files.ltx25RedGraft) && files.ltx25TextEncoder && files.ltx25VideoVaeConv && files.ltx25AudioVae)
       : id === "temporalUpscale"
@@ -285,7 +371,7 @@ export function videoStudioConfig({
       : id === "autoMask"
         ? Boolean(files.sam3)
         : Boolean(files[id]);
-    const requiresBase = !["temporalUpscale", "autoMask", "minimaxH3", "ltx25"].includes(id);
+    const requiresBase = !["temporalUpscale", "autoMask", "minimaxH3", "minimaxH3Fast", "minimaxH3Director", "minimaxH3SeamlessChain", "minimaxH3SparseV9", "ltx25"].includes(id);
     return [id, {
       available: (!requiresBase || commonReady) && modelReady && missing.length === 0,
       modelReady,
@@ -294,7 +380,7 @@ export function videoStudioConfig({
   }));
   const installedH3Loras = installedLoras.filter((name) => /(^|[\\/])H3[\\/]/i.test(name));
   const disabledH3Loras = [];
-  const h3Loras = installedH3Loras;
+  const h3Loras = installedH3Loras.filter((name) => !/(^|[\\/])turbo[\\/]/i.test(name));
   const h3RefineAvailability = {
     latentLearned: availableNodes.includes("MinimaxH3LatentUpscaler3D") && Boolean(files.h3LatentUpscaler),
     h3Balanced: true,
@@ -304,7 +390,11 @@ export function videoStudioConfig({
       .every((name) => availableNodes.includes(name)),
     rtx: availableNodes.includes("DaSiWa_RTX_UpscalerRefiner"),
   };
-  const h3PreviewFinishingMissingNodes = missingNodes(availableNodes, H3_PREVIEW_FINISHING_NODES);
+  const h3PreviewFinishingMissingNodes = missingNodes(availableNodes, H3_PREVIEW_FINISHING_REQUIREMENTS.all);
+  const h3PreviewFinishingModes = Object.fromEntries(Object.entries(H3_PREVIEW_FINISHING_REQUIREMENTS).map(([id, nodes]) => {
+    const missing = missingNodes(availableNodes, nodes);
+    return [id, { available: missing.length === 0, missingNodes: missing }];
+  }));
   const attentionAvailability = {
     memoryEfficient: availableNodes.includes("MiniMaxH3MemoryEfficientSageAttentionPatch"),
     comfyKitchen: availableNodes.includes("ModelAttentionBackend"),
@@ -315,7 +405,7 @@ export function videoStudioConfig({
     capabilities,
     files,
     ltxLoras: installedLoras.filter((name) =>
-      /(^|[\\/])LTX2\.3[\\/]/i.test(name)
+      /(^|[\\/])LTX2\.(?:3|5)[\\/]/i.test(name)
       && !/(^|[\\/_-])ic([\\/_-]|lora)|distilled|ic_hdr|sulphur/i.test(name)
     ),
     h3Loras,
@@ -345,8 +435,65 @@ export function videoStudioConfig({
         videoVae: files.h3VideoVae,
         audioVae: files.h3AudioVae,
         turbo: files.h3Turbo,
+        hybridB25: files.h3FastHybrid,
         combat: files.h3Combat,
+        weaponCombat: files.h3WeaponCombat,
+        motionRepair: files.h3MotionRepair,
         latentUpscaler: files.h3LatentUpscaler,
+      },
+      fast: {
+        available: capabilities.minimaxH3Fast.available,
+        reason: capabilities.minimaxH3Fast.available
+          ? null
+          : capabilities.minimaxH3Fast.modelReady
+            ? `Nodi MiniMax H3 Fast mancanti: ${capabilities.minimaxH3Fast.missingNodes.join(", ")}`
+            : "Mancano checkpoint hybrid H3, Turbo 4-step o upscaler latent 3D.",
+        files: {
+          hybrid: files.h3FastHybrid,
+          turbo: files.h3FastTurbo,
+          latentUpscaler: files.h3LatentUpscaler,
+          clip: files.h3Clip,
+          videoVae: files.h3VideoVae,
+          audioVae: files.h3AudioVae,
+        },
+        defaults: { firstMegapixels: 0.2, targetMegapixels: 0.98, dualClockSteps: 12, splitStep: 6, turboStrength: 0.75 },
+      },
+      director: {
+        available: capabilities.minimaxH3Director.available,
+        reason: capabilities.minimaxH3Director.available
+          ? null
+          : capabilities.minimaxH3Director.modelReady
+            ? `Nodi MiniMax H3 Director mancanti: ${capabilities.minimaxH3Director.missingNodes.join(", ")}`
+            : "Mancano uno o più pesi MiniMax H3, Qwen3-VL, VAE o Turbo LoRA.",
+        tasks: ["t2v", "i2v", "fl2v", "r2v"],
+        continuityFrames: [5, 22, 39, 56],
+        maxSegments: 24,
+      },
+      sparseV9: {
+        available: capabilities.minimaxH3SparseV9.available,
+        reason: capabilities.minimaxH3SparseV9.available
+          ? null
+          : capabilities.minimaxH3SparseV9.modelReady
+            ? `Nodi PlagueKind H3 Sparse V9 mancanti: ${capabilities.minimaxH3SparseV9.missingNodes.join(", ")}`
+            : "Mancano hybrid b30-49, Parasyte/Fast6, Qwen3-VL, VAE o upscaler latente H3.",
+        files: {
+          hybrid: files.h3SparseHybrid,
+          parasyteTurbo: files.h3ParasyteTurbo,
+          fast6Turbo: files.h3Fast6Turbo,
+          clip: files.h3Clip,
+          videoVae: files.h3VideoVae,
+          audioVae: files.h3AudioVae,
+          latentUpscaler: files.h3LatentUpscaler,
+          film: "film_net_fp16.safetensors",
+          tinyVae: "taeh3.safetensors",
+          adaLn: "h3_silu_temb_grid.safetensors",
+        },
+        modelOptions: h3DiffusionModels,
+        defaults: {
+          aspectRatio: "4:3 (Standard)", megapixels: 0.98, duration: 8, steps: 8,
+          sampler: "er_sde", scheduler: "beta57", sparsity: 0.7, lowVram: true,
+        },
+        continuity: { available: true, maxSegments: 8, overlapFrames: [5, 22, 39, 56], defaultOverlapFrames: 22 },
       },
       limits: { images: 9, videos: 3, audios: 3, durationMin: 4, durationMax: 15 },
       modelProfiles: {
@@ -384,20 +531,33 @@ export function videoStudioConfig({
         candidateCount: 3,
         selectionMode: "separateJobsBySeed",
       },
+      seamlessChain: {
+        available: capabilities.minimaxH3SeamlessChain.available,
+        reason: capabilities.minimaxH3SeamlessChain.available ? null : `Nodi Seamless Chain mancanti: ${capabilities.minimaxH3SeamlessChain.missingNodes.join(", ")}`,
+        maxSegments: 8,
+        source: "ComfyUI-H3-Multishot 2.7.2",
+      },
       orbitSheets: {
         available: ["OrbitSheetsCharacterPrompt", "OrbitSheetsLocationPrompt", "OrbitSheetsFrameSelect", "OrbitSheetsContactSheet", "OrbitSheetsAttentionBackend"].every((name) => availableNodes.includes(name)),
       },
       temporalDeRope: {
-        available: ["H3JerkOracle", "H3TimeSmear", "H3V2VInit", "H3InjectSchedule", "H3ExactRecover"].every((name) => availableNodes.includes(name)),
+        available: ["H3VideoFit", "H3JerkOracle", "H3TimeSmear", "H3V2VInit", "H3InjectSchedule", "H3ExactRecover", "H3AudioRecover"].every((name) => availableNodes.includes(name)),
       },
       refineAvailability: h3RefineAvailability,
       previewFinishing: {
-        available: h3PreviewFinishingMissingNodes.length === 0,
+        available: h3PreviewFinishingModes.all.available,
         missingNodes: h3PreviewFinishingMissingNodes,
         pipeline: ["FILM ×2", "RTX VSR ×2", "FSR RCAS"],
+        modes: h3PreviewFinishingModes,
       },
-      actionAvailable: capabilities.minimaxH3.available && Boolean(files.h3Combat),
-      actionReason: files.h3Combat ? null : "Manca la LoRA Combat V2 STY_Combat.safetensors.",
+      actionAvailable: capabilities.minimaxH3.available && Boolean(files.h3FastHybrid && files.h3Combat),
+      actionReason: !files.h3FastHybrid
+        ? "Manca minimax_h3_hybrid_fl2va_ref2va_b25-49-int8.safetensors."
+        : files.h3Combat ? null : "Manca la LoRA Combat V2 STY_Combat.safetensors.",
+      weaponCombatAvailable: capabilities.minimaxH3.available && Boolean(files.h3WeaponCombat),
+      weaponCombatReason: files.h3WeaponCombat ? null : "Manca la LoRA Weapon Combat H3.",
+      motionRepairAvailable: Boolean(files.h3MotionRepair),
+      actionPresets: H3_ACTION_PRESETS,
     },
     ltx25: {
       available: capabilities.ltx25.available,
@@ -438,8 +598,14 @@ export function videoStudioConfig({
           reason: files.ltx25Deblur ? null : "Manca ltx-2.3-22b-ic-lora-deblur-0.9.safetensors.",
         },
         h3Ltx2k: {
-          available: capabilities.ltx25.available && Boolean(files.ltx25PixelUpscaler),
-          reason: files.ltx25PixelUpscaler ? null : "Manca la IC-LoRA Pixel Spatial Upscaler x2 per LTX 2.5.",
+          available: capabilities.ltx25.available
+            && Boolean(files.ltx25PixelUpscaler)
+            && ["GetImageRangeFromBatch", "TrimAudioDuration", "DaSiWa_RTX_UpscalerRefiner"].every((name) => availableNodes.includes(name)),
+          reason: !files.ltx25PixelUpscaler
+            ? "Manca la IC-LoRA Pixel Spatial Upscaler x2 per LTX 2.5."
+            : ["GetImageRangeFromBatch", "TrimAudioDuration", "DaSiWa_RTX_UpscalerRefiner"].every((name) => availableNodes.includes(name))
+              ? null
+              : "Mancano i nodi per griglia temporale, audio trim o RTX VSR finale 2K.",
         },
         multiReferenceMsr: {
           available: capabilities.ltx25.available
@@ -1199,6 +1365,10 @@ export function buildVideoStudioInitialJob(mode, raw, uploads, loras, config) {
     throw new Error("Interactive Cast usa gli endpoint pipeline dedicati, non il builder ComfyUI diretto.");
   }
   if (mode === "minimaxH3") return buildMiniMaxH3Workflow(raw, uploads, loras, config);
+  if (mode === "minimaxH3Fast") return buildMiniMaxH3FastWorkflow(raw, uploads, loras, config);
+  if (mode === "minimaxH3AllInOne") return buildMiniMaxH3DirectorWorkflow(raw, uploads, loras, config);
+  if (mode === "h3SparseV9") return buildMiniMaxH3SparseV9Workflow(raw, uploads, loras, config);
+  if (mode === "h3SeamlessChain") return buildMiniMaxH3SeamlessChainWorkflow(raw, uploads, loras, config);
   if (mode === "seedHunterH3") {
     return buildMiniMaxH3Workflow({
       ...raw,
@@ -1209,10 +1379,13 @@ export function buildVideoStudioInitialJob(mode, raw, uploads, loras, config) {
       h3AspectRatio: raw.seedHunterH3AspectRatio,
       h3LookPreset: raw.seedHunterH3LookPreset || "neutral",
       h3AttentionBackend: raw.seedHunterH3AttentionBackend || "memoryEfficient",
-      h3FirstMegapixels: 0.25,
+      h3FirstMegapixels: booleanValue(raw.seedHunterH3UseTurbo, true) ? 0.25 : 0.9,
       h3RefineMode: "direct",
+      h3SamplerName: "er_sde",
+      h3SchedulerName: "beta",
+      h3FirstSteps: booleanValue(raw.seedHunterH3UseTurbo, true) ? 8 : 25,
       h3SecondPass: false,
-      h3UseTurbo: true,
+      h3UseTurbo: booleanValue(raw.seedHunterH3UseTurbo, true),
       h3PurgeAfter: true,
     }, uploads, loras, config);
   }
@@ -1221,19 +1394,43 @@ export function buildVideoStudioInitialJob(mode, raw, uploads, loras, config) {
     const quality = String(raw.actionH3Quality || "twoPass06");
     const requestedRunProfile = String(raw.actionH3RunProfile);
     const runProfile = requestedRunProfile === "preview" ? "preview" : "nativeFinal";
-    const sampling = quality === "direct09"
+    const sampling = quality === "max25"
+      ? { h3SecondPass: false, h3RefineMode: "direct", h3FirstMegapixels: 0.9, h3PurgeBetween: false, h3UseTurbo: false }
+      : quality === "direct09"
       ? { h3SecondPass: false, h3FirstMegapixels: 0.9, h3PurgeBetween: false }
-      : { h3SecondPass: true, h3FirstMegapixels: quality === "twoPass04" ? 0.4 : 0.6, h3SecondMegapixels: 1, h3PurgeBetween: true };
-    return buildMiniMaxH3Workflow({
+      : { h3SecondPass: true, h3RefineMode: "latentLearned", h3FirstMegapixels: quality === "twoPass04" ? 0.4 : 0.6, h3SecondMegapixels: 1, h3PurgeBetween: true, h3SecondSamplerName: "res_multistep", h3SecondSchedulerName: "simple", h3SecondStepsOverride: 4, h3SecondDenoiseOverride: 0.2 };
+    const job = buildMiniMaxH3Workflow({
       ...raw,
       ...sampling,
       h3Profile: "action",
       h3RunProfile: runProfile,
       h3Mode: raw.actionH3Mode || "text",
       h3AspectRatio: raw.actionH3AspectRatio,
-      h3UseTurbo: raw.h3UseTurbo === undefined ? true : raw.h3UseTurbo,
+      h3UseTurbo: quality === "max25" ? false : raw.h3UseTurbo === undefined ? true : raw.h3UseTurbo,
       h3PurgeAfter: true,
     }, uploads, loras, config);
+    job.metadata.actionQuality = quality;
+    return job;
+  }
+  if (mode === "weaponCombatH3") {
+    const quality = String(raw.weaponCombatQuality || "twoPass06");
+    const sampling = quality === "max25"
+      ? { h3SecondPass: false, h3RefineMode: "direct", h3FirstMegapixels: 0.9, h3PurgeBetween: false, h3UseTurbo: false }
+      : quality === "direct09"
+        ? { h3SecondPass: false, h3RefineMode: "direct", h3FirstMegapixels: 0.9, h3PurgeBetween: false }
+        : { h3SecondPass: true, h3RefineMode: "latentLearned", h3FirstMegapixels: quality === "twoPass04" ? 0.4 : 0.6, h3SecondMegapixels: 1, h3PurgeBetween: true, h3SecondSamplerName: "res_multistep", h3SecondSchedulerName: "simple", h3SecondStepsOverride: 4, h3SecondDenoiseOverride: 0.2 };
+    const job = buildMiniMaxH3Workflow({
+      ...raw,
+      ...sampling,
+      h3Profile: "weapon",
+      h3RunProfile: "nativeFinal",
+      h3Mode: raw.weaponCombatMode || "image",
+      h3AspectRatio: raw.weaponCombatAspectRatio,
+      h3UseTurbo: quality === "max25" ? false : raw.h3UseTurbo === undefined ? true : raw.h3UseTurbo,
+      h3PurgeAfter: true,
+    }, uploads, loras, config);
+    job.metadata.actionQuality = quality;
+    return job;
   }
   if (mode === "interactiveScene") return buildInteractiveScene(raw, uploads, loras, config);
   if (mode === "sceneTransform") return buildSceneTransform(raw, uploads, loras, config);

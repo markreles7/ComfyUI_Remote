@@ -1,0 +1,8 @@
+# directory|repository
+ComfyUI-PlagueKind-Nodes|https://github.com/PlagueKind/Comfyui-PlagueKind-Nodes.git
+ComfyUI_MiniMaxH3_Director|https://github.com/AIMixer/ComfyUI_MiniMaxH3_Director.git
+ComfyUI-KJNodes|https://github.com/kijai/ComfyUI-KJNodes.git
+rgthree-comfy|https://github.com/rgthree/rgthree-comfy.git
+RES4LYF|https://github.com/ClownsharkBatwing/RES4LYF.git
+Nvidia_RTX_Nodes_ComfyUI|https://github.com/Comfy-Org/Nvidia_RTX_Nodes_ComfyUI.git
+ComfyUI-VideoHelperSuite|https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git

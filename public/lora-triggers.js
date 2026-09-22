@@ -44,6 +44,15 @@ export function promptWithTriggerPrefix(prompt, triggers, previousTriggers = [])
 }
 
 export function promptWithH3IntegratedTriggers(prompt, triggers, previousTriggers = []) {
+  const timelineSegments = String(prompt || "")
+    .split(/^\s*---+\s*$/mu)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+  if (timelineSegments.length > 1) {
+    return timelineSegments
+      .map((segment) => promptWithH3IntegratedTriggers(segment, triggers, previousTriggers))
+      .join("\n\n---\n\n");
+  }
   const selected = uniquePromptTriggers(triggers);
   const removable = uniquePromptTriggers([...previousTriggers, ...selected]);
   let body = String(prompt || "").trim();
@@ -126,6 +135,7 @@ export function loraOptionLabel(name, metadata = {}) {
 export function loraFamily(name, metadata = {}) {
   const item = metadata[name] || {};
   const baseModel = String(item.baseModel || "").toLocaleLowerCase();
+  if (baseModel.includes("anima")) return "ANIMA";
   if (baseModel.includes("qwen")) return "QWEN";
   if (baseModel.includes("flux.2 klein")) return "FLUX2";
   if (baseModel.includes("krea 2") || baseModel.includes("flux.1")) return "FLUX";

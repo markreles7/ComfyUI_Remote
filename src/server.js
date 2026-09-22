@@ -9,7 +9,9 @@ import { promisify } from "node:util";
 import dotenv from "dotenv";
 import express from "express";
 import multer from "multer";
-import { ComfyClient, extractImages, extractVideos } from "./comfy-client.js";
+import { ComfyClient, extractAudios, extractImages, extractVideos } from "./comfy-client.js";
+import { audioStudioConfig, buildAudioStudioWorkflow } from "./audio-studio-workflows.js";
+import { parseDirectorNaturalSegments } from "./h3-director-prompt.js";
 import { editWildcardConfig, pickEditWildcardPrompt } from "./edit-wildcards.js";
 import { poseLibraryConfig, selectPose } from "./pose-library.js";
 import { cancelGeneration } from "./generation-cancellation.js";
@@ -51,6 +53,10 @@ import {
 } from "./studio-workflows.js";
 import { buildUpscaleWorkflow, upscaleConfig } from "./upscale-workflows.js";
 import {
+  buildSuperUpscaleWorkflow,
+  superUpscaleConfig,
+} from "./super-upscale-workflows.js";
+import {
   buildLtxUpscaleWorkflow,
   ltxUpscaleConfig,
   LTX_UPSCALE_REQUIRED_NODES,
@@ -73,6 +79,8 @@ import {
 import { buildOrbitSheetWorkflow } from "./orbit-sheets-workflows.js";
 import { buildH3DeRopeWorkflow } from "./h3-derope-workflows.js";
 import {
+  comfyHistoryError,
+  comfyOfflineGenerationPatch,
   comfyQueuePromptIds,
   missingGenerationPatch,
 } from "./generation-reconciliation.js";
@@ -164,6 +172,10 @@ import {
   IdentityEvaluationService,
   InsightFaceBuffaloLProvider,
 } from "./identity-evaluation.js";
+import {
+  automaticComfyCleanupFamily,
+  shouldAutomaticallyCleanComfy,
+} from "./automatic-comfy-cleanup.js";
 
 dotenv.config();
 
@@ -185,6 +197,7 @@ const clientId = crypto.randomUUID();
 const app = express();
 const events = new Set();
 const store = new HistoryStore(path.join(root, ".data", "history.json"));
+const generationProgressLogs = new Map();
 const studioStore = new HistoryStore(path.join(root, ".data", "studio-projects.json"));
 const videoStudioStore = new HistoryStore(path.join(root, ".data", "video-studio-projects.json"));
 
@@ -327,6 +340,52 @@ function promptIdFromEvent(event) {
   return event?.data?.prompt_id || event?.data?.promptId || null;
 }
 
+function progressEventLabel(event, record) {
+  const nodeId = event.data?.node != null ? String(event.data.node) : "";
+  const nodeTitle = nodeId ? record?.nodeTitles?.[nodeId] || "" : "";
+  if (event.type === "progress") {
+    const value = Number(event.data?.value || 0);
+    const max = Math.max(1, Number(event.data?.max || 1));
+    return `${nodeTitle || (nodeId ? `Nodo ${nodeId}` : "Sampling")}: ${value}/${max}`;
+  }
+  if (event.type === "queued") return "Workflow aggiunto alla coda ComfyUI";
+  if (event.type === "executing") return nodeId ? `Avvio ${nodeTitle || `nodo ${nodeId}`}` : "Esecuzione completata";
+  if (event.type === "execution_cached") return "Nodi già disponibili in cache";
+  if (event.type === "execution_start") return "ComfyUI ha avviato il workflow";
+  if (event.type === "execution_success") return "Workflow completato";
+  if (event.type === "execution_interrupted") return "Generazione interrotta";
+  if (event.type === "execution_error") return event.data?.exception_message || "Errore durante la generazione";
+  return event.type;
+}
+
+function appendGenerationProgress(generationId, event, record) {
+  if (!generationId) return;
+  const relevant = new Set(["queued", "progress", "executing", "execution_cached", "execution_start", "execution_success", "execution_interrupted", "execution_error"]);
+  if (!relevant.has(event.type)) return;
+  const rows = generationProgressLogs.get(generationId) || [];
+  const nodeId = event.data?.node != null ? String(event.data.node) : null;
+  const next = {
+    time: new Date().toISOString(),
+    type: event.type,
+    nodeId,
+    nodeTitle: nodeId ? record?.nodeTitles?.[nodeId] || null : null,
+    value: event.type === "progress" ? Number(event.data?.value || 0) : null,
+    max: event.type === "progress" ? Number(event.data?.max || 1) : null,
+    message: progressEventLabel(event, record),
+  };
+  const previous = rows.at(-1);
+  if (event.type === "progress" && previous?.type === "progress" && previous.nodeId === nodeId) rows[rows.length - 1] = next;
+  else rows.push(next);
+  generationProgressLogs.set(generationId, rows.slice(-80));
+}
+
+function workflowNodeTitles(workflow) {
+  return Object.fromEntries(Object.entries(workflow || {}).map(([id, entry]) => [
+    id,
+    entry?._meta?.title || entry?.class_type || `Nodo ${id}`,
+  ]));
+}
+
 const comfy = new ComfyClient({
   httpUrl: process.env.COMFY_URL || "http://127.0.0.1:8188",
   wsUrl: process.env.COMFY_WS || "ws://127.0.0.1:8188",
@@ -335,6 +394,7 @@ const comfy = new ComfyClient({
     const promptId = promptIdFromEvent(event);
     const record = promptId ? store.list().find((item) => item.promptId === promptId) : null;
     if (record) {
+      appendGenerationProgress(record.id, event, record);
       if (event.type === "progress") {
         const value = Number(event.data?.value || 0);
         const max = Number(event.data?.max || 1);
@@ -346,17 +406,32 @@ const comfy = new ComfyClient({
             status: "running",
             progress,
             startedAt: new Date().toISOString(),
+            progressValue: value,
+            progressMax: max,
+            currentNode: event.data?.node != null ? String(event.data.node) : null,
+            currentNodeTitle: event.data?.node != null
+              ? record.nodeTitles?.[String(event.data.node)] || null
+              : null,
           });
         } else if (record.status !== "running" || record.progress !== progress) {
           // Gli aggiornamenti live successivi restano in memoria.
-          store.update(record.id, { status: "running", progress }, { persist: false });
+          store.update(record.id, {
+            status: "running",
+            progress,
+            progressValue: value,
+            progressMax: max,
+            currentNode: event.data?.node != null ? String(event.data.node) : record.currentNode || null,
+            currentNodeTitle: event.data?.node != null
+              ? record.nodeTitles?.[String(event.data.node)] || null
+              : record.currentNodeTitle || null,
+          }, { persist: false });
         }
       } else if (
         event.type === "executing"
         && event.data?.node
-        && record.status !== "running"
       ) {
-        const patch = { status: "running" };
+        const nodeId = String(event.data.node);
+        const patch = { status: "running", currentNode: nodeId, currentNodeTitle: record.nodeTitles?.[nodeId] || null };
         if (!record.startedAt) patch.startedAt = new Date().toISOString();
 
         // Il primo passaggio a running viene persistito una sola volta.
@@ -377,7 +452,7 @@ const comfy = new ComfyClient({
         syncCharacterReferenceGeneration(updated);
         continueCharacterMasterPipeline(updated);
         continueCharacterVideoPipeline(updated);
-        if (!updated.pipelineRootGenerationId && !updated.characterMasterPipeline) scheduleIdlePurge();
+        if (!updated.pipelineRootGenerationId && !updated.characterMasterPipeline) scheduleIdlePurge(updated);
       }
     }
     broadcast({ ...event, generationId: record?.id || null });
@@ -1005,6 +1080,25 @@ function comboOptions(specification) {
   return [];
 }
 
+const MAX_STUDIO_PROMPT_BATCH = 50;
+
+function studioPromptBatch(value, fallback) {
+  if (!value) return [String(fallback || "").trim()];
+  let parsed;
+  try {
+    parsed = JSON.parse(String(value));
+  } catch {
+    throw new Error("L’elenco dei prompt non è valido. Ricontrolla la modalità Elenco scene.");
+  }
+  if (!Array.isArray(parsed)) throw new Error("L’elenco scene deve contenere una lista di prompt.");
+  const prompts = parsed.map((item) => String(item || "").trim()).filter(Boolean);
+  if (!prompts.length) throw new Error("Inserisci almeno un prompt nell’elenco scene.");
+  if (prompts.length > MAX_STUDIO_PROMPT_BATCH) {
+    throw new Error(`Puoi avviare al massimo ${MAX_STUDIO_PROMPT_BATCH} scene per volta.`);
+  }
+  return prompts;
+}
+
 function studioProjectView(project) {
   const generations = (project.generationIds || [])
     .map((id) => store.get(id))
@@ -1045,7 +1139,7 @@ function removeGeneratedMediaFiles(generations) {
   const skipped = [];
   const seen = new Set();
   for (const generation of generations) {
-    for (const file of [...(generation.images || []), ...(generation.videos || [])]) {
+    for (const file of [...(generation.images || []), ...(generation.videos || []), ...(generation.audios || [])]) {
       const match = resolveMediaFile(outputDirectory, file);
       if (!match?.path || seen.has(match.path)) continue;
       seen.add(match.path);
@@ -1071,6 +1165,7 @@ function cleanupGenerationMedia(generations) {
     patches.set(generation.id, {
       images: [],
       videos: [],
+      audios: [],
       mediaDeleted: true,
       mediaDeletedAt: new Date().toISOString(),
     });
@@ -1098,15 +1193,32 @@ async function videoStudioRuntimeConfig(infoOverride = null) {
   }
 }
 
+async function audioStudioRuntimeConfig(infoOverride = null) {
+  const info = infoOverride || await comfy.objectInfo();
+  const videoStudio = await videoStudioRuntimeConfig(info);
+  return {
+    audioStudio: audioStudioConfig(videoStudio, info),
+    videoStudio,
+  };
+}
+
 async function validateStudioModels(jobs) {
-  const [info, checkpointInfo, patchInfo] = await Promise.all([
+  const [info, checkpointInfo, patchInfo, loraInfo, clipInfo, vaeInfo, res4lyfInfo, fameGridInfo] = await Promise.all([
     comfy.objectInfo("UNETLoader"),
     comfy.objectInfo("CheckpointLoaderSimple"),
     comfy.objectInfo("ModelPatchLoader"),
+    comfy.objectInfo("LoraLoaderModelOnly"),
+    comfy.objectInfo("CLIPLoader"),
+    comfy.objectInfo("VAELoader"),
+    comfy.objectInfo("ClownsharKSampler_Beta"),
+    comfy.objectInfo("FameGridColorFinish"),
   ]);
   const installed = comboOptions(info?.UNETLoader?.input?.required?.unet_name);
   const installedCheckpoints = comboOptions(checkpointInfo?.CheckpointLoaderSimple?.input?.required?.ckpt_name);
   const installedPatches = comboOptions(patchInfo?.ModelPatchLoader?.input?.required?.name);
+  const installedLoras = comboOptions(loraInfo?.LoraLoaderModelOnly?.input?.required?.lora_name);
+  const installedClips = comboOptions(clipInfo?.CLIPLoader?.input?.required?.clip_name);
+  const installedVaes = comboOptions(vaeInfo?.VAELoader?.input?.required?.vae_name);
   for (const job of jobs) {
     const requiredUnets = new Set([
       ...Object.values(job.workflow || {})
@@ -1144,6 +1256,23 @@ async function validateStudioModels(jobs) {
         throw new Error(`La guida strutturale Qwen non è installata: ${item.inputs.name}`);
       }
     }
+    for (const item of Object.values(job.workflow || {})) {
+      if (item.class_type === "LoraLoaderModelOnly" && !installedLoras.some((name) =>
+        String(name).toLowerCase() === String(item.inputs.lora_name).toLowerCase()
+      )) throw new Error(`La LoRA richiesta non è installata: ${item.inputs.lora_name}`);
+      if (item.class_type === "CLIPLoader" && !installedClips.some((name) =>
+        String(name).toLowerCase() === String(item.inputs.clip_name).toLowerCase()
+      )) throw new Error(`Il text encoder richiesto non è installato: ${item.inputs.clip_name}`);
+      if (item.class_type === "VAELoader" && !installedVaes.some((name) =>
+        String(name).toLowerCase() === String(item.inputs.vae_name).toLowerCase()
+      )) throw new Error(`Il VAE richiesto non è installato: ${item.inputs.vae_name}`);
+      if (item.class_type === "ClownsharKSampler_Beta" && !res4lyfInfo?.ClownsharKSampler_Beta) {
+        throw new Error("Il nodo RES4LYF ClownsharKSampler non è installato.");
+      }
+      if (item.class_type === "FameGridColorFinish" && !fameGridInfo?.FameGridColorFinish) {
+        throw new Error("Il nodo FameGridColorFinish non è installato oppure ComfyUI deve essere riavviato.");
+      }
+    }
   }
 }
 
@@ -1161,9 +1290,15 @@ async function queueStudioJob(job, projectId) {
     progress: 0,
     videos: [],
     images: [],
+    audios: [],
     createdAt: new Date().toISOString(),
     finishedAt: null,
+    nodeTitles: workflowNodeTitles(job.workflow),
     ...job.metadata,
+  });
+  appendGenerationProgress(item.id, { type: "queued", data: {} }, {
+    ...item,
+    nodeTitles: item.nodeTitles,
   });
   broadcast({ type: "generation_created", generationId: item.id, projectId, data: item });
   return item;
@@ -1355,6 +1490,14 @@ function studioFilesByRole(files) {
     guide: files.find((file) => file.fieldname === "guideImage") || null,
     firstFrame: files.find((file) => file.fieldname === "firstFrame") || null,
     lastFrame: files.find((file) => file.fieldname === "lastFrame") || null,
+    duoMale: files.find((file) => file.fieldname === "duoMale") || null,
+    duoFemale: files.find((file) => file.fieldname === "duoFemale") || null,
+    duoEnvironment: files.find((file) => file.fieldname === "duoEnvironment") || null,
+    duoStyle: files.find((file) => file.fieldname === "duoStyle") || null,
+    animaCharacter1: files.find((file) => file.fieldname === "animaCharacter1") || null,
+    animaCharacter2: files.find((file) => file.fieldname === "animaCharacter2") || null,
+    animaCharacter3: files.find((file) => file.fieldname === "animaCharacter3") || null,
+    animaEnvironment: files.find((file) => file.fieldname === "animaEnvironment") || null,
     references: files
       .filter((file) => /^reference[1-4]$/.test(file.fieldname))
       .sort((a, b) => a.fieldname.localeCompare(b.fieldname)),
@@ -1369,6 +1512,14 @@ async function uploadStudioFiles(files) {
     ["guide", roles.guide],
     ["firstFrame", roles.firstFrame],
     ["lastFrame", roles.lastFrame],
+    ["duoMale", roles.duoMale],
+    ["duoFemale", roles.duoFemale],
+    ["duoEnvironment", roles.duoEnvironment],
+    ["duoStyle", roles.duoStyle],
+    ["animaCharacter1", roles.animaCharacter1],
+    ["animaCharacter2", roles.animaCharacter2],
+    ["animaCharacter3", roles.animaCharacter3],
+    ["animaEnvironment", roles.animaEnvironment],
   ];
   const uploaded = {};
   for (const [key, file] of entries) {
@@ -1451,15 +1602,24 @@ async function uploadVideoStudioFiles(files) {
     h3ReferenceImages: files.filter((file) => file.fieldname === "h3ReferenceImages"),
     h3ReferenceVideos: files.filter((file) => file.fieldname === "h3ReferenceVideos"),
     h3ReferenceAudios: files.filter((file) => file.fieldname === "h3ReferenceAudios"),
+    directorStartImages: files.filter((file) => file.fieldname === "directorStartImages"),
+    directorEndImages: files.filter((file) => file.fieldname === "directorEndImages"),
+    directorReferenceImages: files.filter((file) => file.fieldname === "directorReferenceImages"),
+    directorReferenceVideos: files.filter((file) => file.fieldname === "directorReferenceVideos"),
+    directorReferenceAudios: files.filter((file) => file.fieldname === "directorReferenceAudios"),
   };
   if (referenceGroups.h3ReferenceImages.length > 9 || referenceGroups.h3ReferenceVideos.length > 3 || referenceGroups.h3ReferenceAudios.length > 3) {
     throw new Error("MiniMax H3 accetta massimo 9 immagini, 3 video e 3 audio reference.");
   }
   for (const [key, group] of Object.entries(referenceGroups)) {
+    const limit = key === "directorStartImages" || key === "directorEndImages"
+      ? 24
+      : key.endsWith("Images") ? 9 : 3;
+    if (group.length > limit) throw new Error(`Troppi file per ${key}: massimo ${limit}.`);
     uploaded[key] = [];
     for (const file of group) {
-      const isVideo = key === "h3ReferenceVideos";
-      const isAudio = key === "h3ReferenceAudios";
+      const isVideo = key.endsWith("Videos");
+      const isAudio = key.endsWith("Audios");
       if (isVideo && !file.mimetype.startsWith("video/")) throw new Error("Le reference video MiniMax H3 devono essere video.");
       if (isAudio && !file.mimetype.startsWith("audio/")) throw new Error("Le reference audio MiniMax H3 devono essere file audio.");
       if (!isVideo && !isAudio && !file.mimetype.startsWith("image/")) throw new Error("Le reference immagine MiniMax H3 devono essere PNG, JPG o WebP.");
@@ -1572,8 +1732,9 @@ function cancelIdlePurge() {
   idlePurgeTimer = null;
 }
 
-function scheduleIdlePurge() {
-  if (!autoPurgeIdle) return;
+function scheduleIdlePurge(generation) {
+  if (!autoPurgeIdle || !shouldAutomaticallyCleanComfy(generation)) return;
+  const family = automaticComfyCleanupFamily(generation);
   cancelIdlePurge();
   idlePurgeTimer = setTimeout(async () => {
     idlePurgeTimer = null;
@@ -1581,11 +1742,15 @@ function scheduleIdlePurge() {
       const queue = await comfy.queueStatus();
       const busy = (queue?.queue_running?.length || 0) + (queue?.queue_pending?.length || 0) > 0;
       if (busy) {
-        scheduleIdlePurge();
+        scheduleIdlePurge(generation);
         return;
       }
       await comfy.free({ unloadModels: true, freeMemory: true });
-      broadcast({ type: "idle_purge", data: { completed: true } });
+      broadcast({
+        type: "idle_purge",
+        generationId: generation.id || null,
+        data: { completed: true, family, unloadModels: true, freeMemory: true },
+      });
     } catch {
       // Un purge automatico non deve interferire con generazioni o disponibilità della webapp.
     }
@@ -2321,6 +2486,16 @@ async function buildAppConfig(infoOverride = null) {
     installedSeedvr2Models: comboOptions(info.SeedVR2LoadDiTModel?.input?.required?.model),
     installedVaes: comboOptions(info.SeedVR2LoadVAEModel?.input?.required?.model),
   });
+  const superUpscale = superUpscaleConfig({
+    availableNodes: Object.keys(info),
+    installedSeedvr2Models: comboOptions(info.SeedVR2LoadDiTModel?.input?.required?.model),
+    installedSeedvr2Vaes: comboOptions(info.SeedVR2LoadVAEModel?.input?.required?.model),
+    installedDiffusionModels: installedImageModels,
+    installedClips: installedImageClips,
+    installedVaes: installedImageVaes,
+    installedModelPatches,
+    installedUpscaleModels: comboOptions(info.UpscaleModelLoader?.input?.required?.model_name),
+  });
   const [enhancements, upscaling, videoStudio] = await Promise.all([
     imageEnhancementCapabilities(info),
     standaloneUpscaleCapabilities(info, null),
@@ -2370,6 +2545,7 @@ async function buildAppConfig(infoOverride = null) {
     maxVideoUploadMb,
     imageEnhancements: enhancements,
     upscaling,
+    superUpscale,
     ltxUpscale: ltxUpscaleConfig({
       availableNodes: availableLtxUpscaleNodes,
       installedCheckpoints: [...installedImageModels, ...installedImageCheckpoints],
@@ -2400,6 +2576,10 @@ async function buildAppConfig(infoOverride = null) {
       modelPatches: installedModelPatches,
       preprocessors: studioPreprocessors,
       imageModels: installedImageModels,
+      textEncoders: installedImageClips,
+      vaes: installedImageVaes,
+      loras: installedLoras,
+      availableNodes: Object.keys(info),
     }),
     videoStudio,
     interactiveCast: interactiveCastCapabilitiesCache.value
@@ -3438,8 +3618,7 @@ function characterMasterRuntime() {
   const imageModels = appConfigCache.value?.imageModels || [];
   const krea2 = imageModels.find((item) => item.id === "fluxKrea2" && item.available);
   const flux2 = imageModels.find((item) => item.id === "flux2" && item.available);
-  const kreaModel = krea2?.models?.find((model) => /moodykrea2mix_v50/i.test(model.file))
-    || krea2?.models?.find((model) => /krea/i.test(model.file));
+  const kreaModel = krea2?.models?.find((model) => /krea2_raw_bf16/i.test(model.file));
   const kleinModel = flux2?.models?.find((model) => /flux2klein_9bbase/i.test(model.file))
     || flux2?.models?.find((model) => !/turbo/i.test(model.file))
     || flux2?.models?.[0];
@@ -3543,7 +3722,7 @@ async function finalizeCharacterMasterPipeline(rootGeneration, pipeline) {
     output: masterGeneration.images || [],
   });
   broadcast({ type: "generation_updated", generationId: updated.id, data: updated });
-  scheduleIdlePurge();
+  scheduleIdlePurge(updated);
   return updated;
 }
 
@@ -3750,7 +3929,7 @@ function continueCharacterMasterPipeline(generation) {
       },
     });
     broadcast({ type: "generation_updated", generationId: updated.id, data: updated });
-    scheduleIdlePurge();
+    scheduleIdlePurge(updated);
   });
 }
 
@@ -4684,7 +4863,7 @@ function completeCharacterVideoPipeline(rootGeneration, pipeline) {
       finishedAt: new Date().toISOString(),
     });
     broadcast({ type: "generation_updated", generationId: updated.id, data: updated });
-    scheduleIdlePurge();
+    scheduleIdlePurge(updated);
     return updated;
   }
   let finished = updateCharacterVideoStage(pipeline, "master", {
@@ -4705,7 +4884,7 @@ function completeCharacterVideoPipeline(rootGeneration, pipeline) {
     finishedAt: new Date().toISOString(),
   });
   broadcast({ type: "generation_updated", generationId: updated.id, data: updated });
-  scheduleIdlePurge();
+  scheduleIdlePurge(updated);
   return updated;
 }
 
@@ -4977,6 +5156,53 @@ app.get("/api/events", (request, response) => {
   });
 });
 
+app.get("/api/generation-progress", async (request, response) => {
+  const limit = Math.max(1, Math.min(50, Number(request.query.limit || 16)));
+  let runningIds = new Set();
+  let queuePositions = new Map();
+  try {
+    const queue = await comfy.queueStatus();
+    const running = Array.isArray(queue?.queue_running) ? queue.queue_running : [];
+    const pending = Array.isArray(queue?.queue_pending) ? queue.queue_pending : [];
+    runningIds = new Set(running.map((entry) => String(Array.isArray(entry) ? entry[1] : entry?.prompt_id || "")).filter(Boolean));
+    queuePositions = new Map(pending.map((entry, index) => [
+      String(Array.isArray(entry) ? entry[1] : entry?.prompt_id || ""),
+      index + 1,
+    ]));
+  } catch {
+    // I dati salvati restano consultabili anche durante una riconnessione ComfyUI.
+  }
+  const all = store.list();
+  const activeStatuses = new Set(["orchestrating", "queued", "running"]);
+  const active = all.filter((item) => activeStatuses.has(item.status));
+  const recent = all.filter((item) => !activeStatuses.has(item.status)).slice(0, limit);
+  const seen = new Set();
+  const generations = [...active, ...recent].filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  }).slice(0, Math.max(limit, active.length)).map((item) => ({
+    id: item.id,
+    promptId: item.promptId || null,
+    projectId: item.projectId || null,
+    workflowName: item.workflowName || item.videoStudioLabel || item.workflowId || "Generazione",
+    status: item.status,
+    progress: Number(item.progress || 0),
+    progressValue: item.progressValue ?? null,
+    progressMax: item.progressMax ?? null,
+    currentNode: item.currentNode || null,
+    currentNodeTitle: item.currentNodeTitle || (item.currentNode ? item.nodeTitles?.[item.currentNode] : null) || null,
+    createdAt: item.createdAt || null,
+    startedAt: item.startedAt || null,
+    finishedAt: item.finishedAt || null,
+    error: item.error || null,
+    queuePosition: item.promptId && queuePositions.has(String(item.promptId)) ? queuePositions.get(String(item.promptId)) : null,
+    comfyRunning: item.promptId ? runningIds.has(String(item.promptId)) : false,
+    logs: generationProgressLogs.get(item.id) || [],
+  }));
+  response.json({ generations, connected: comfy.socket?.readyState === 1 });
+});
+
 app.post("/api/edit-wildcards/random", (request, response, next) => {
   try {
     const result = pickEditWildcardPrompt(root, {
@@ -5098,6 +5324,51 @@ app.get("/api/studio/projects", (_request, response) => {
   response.json(studioStore.list().slice(0, limit).map(studioProjectView));
 });
 
+app.post("/api/studio/projects/cleanup", (request, response) => {
+  try {
+    const archive = request.body?.archive === true;
+    const projects = studioStore.list();
+    const removable = projects.filter((project) => {
+      const generationIds = project.generationIds || [];
+      const generations = generationIds.map((id) => store.get(id)).filter(Boolean);
+      if (generations.some((item) => isActiveStatus(item.status))) return false;
+      return generationIds.length > 0 || !isActiveStatus(project.status);
+    });
+    const generationIds = [...new Set(removable.flatMap((project) => project.generationIds || []))]
+      .filter((id) => store.get(id));
+    let archivedGenerations = [];
+    if (archive) {
+      for (let index = 0; index < generationIds.length; index += 500) {
+        archivedGenerations.push(...setGenerationsArchived({
+          store,
+          ids: generationIds.slice(index, index + 500),
+          archived: true,
+        }));
+      }
+      for (const generation of archivedGenerations) {
+        broadcast({
+          type: "generation_updated",
+          generationId: generation.id,
+          projectId: generation.projectId || null,
+          data: generation,
+        });
+      }
+    }
+    const removed = studioStore.deleteMany(removable.map((project) => project.id));
+    broadcast({
+      type: "studio_projects_cleaned",
+      data: { projectIds: removed.map((project) => project.id), archive },
+    });
+    response.json({
+      projectsRemoved: removed.length,
+      generationsArchived: archivedGenerations.length,
+      activeProjectsPreserved: projects.length - removable.length,
+    });
+  } catch (error) {
+    response.status(error.statusCode || 500).json({ error: error.message });
+  }
+});
+
 app.get("/api/studio/projects/:id", (request, response) => {
   const project = studioStore.get(request.params.id);
   if (!project) return response.status(404).json({ error: "Progetto Studio non trovato." });
@@ -5137,6 +5408,42 @@ app.post("/api/studio/projects/:id/retry", async (request, response, next) => {
     });
     broadcast({ type: "studio_project_retried", projectId: project.id, data: studioProjectView(updated) });
     response.status(202).json(studioProjectView(updated));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/audio-studio/config", async (_request, response, next) => {
+  try {
+    const config = await audioStudioRuntimeConfig();
+    response.json(config.audioStudio);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/audio-studio/generations", (request, response) => {
+  const limit = Math.max(1, Math.min(100, Number(request.query.limit || 30)));
+  response.json(store.list()
+    .filter((item) => item.generationType === "audioStudio" && !item.archived)
+    .slice(0, limit));
+});
+
+app.post("/api/audio-studio/generate", async (request, response, next) => {
+  try {
+    cancelIdlePurge();
+    await comfy.health();
+    const config = await audioStudioRuntimeConfig();
+    const capability = config.audioStudio.engines.find((item) => item.id === request.body?.audioEngine);
+    if (capability && !capability.available) {
+      const error = new Error(capability.reason || `${capability.name} non disponibile.`);
+      error.statusCode = 409;
+      throw error;
+    }
+    const job = buildAudioStudioWorkflow(request.body || {}, config);
+    await validateStudioModels([job]);
+    const generation = await queueStudioJob(job, `audio-studio:${crypto.randomUUID()}`);
+    response.status(202).json(generation);
   } catch (error) {
     next(error);
   }
@@ -5687,7 +5994,7 @@ app.post("/api/video-studio/projects", upload.any(), async (request, response, n
     await comfy.health();
     const config = await videoStudioRuntimeConfig();
     const selectedLoras = parseLoras(request.body.loras);
-    const allowedLoras = ["minimaxH3", "actionH3", "seedHunterH3"].includes(request.body.videoStudioMode) ? config.h3Loras : config.ltxLoras;
+    const allowedLoras = ["minimaxH3", "minimaxH3Fast", "minimaxH3AllInOne", "h3SparseV9", "h3SeamlessChain", "actionH3", "weaponCombatH3", "seedHunterH3"].includes(request.body.videoStudioMode) ? config.h3Loras : config.ltxLoras;
     if (selectedLoras.length) validateLoras(selectedLoras, allowedLoras);
     const uploaded = await uploadVideoStudioFiles(request.files || []);
     const characterSelection = await uploadCharacterSelection(
@@ -5780,8 +6087,10 @@ app.post("/api/video-studio/projects/:id/promote-preview", async (request, respo
     cancelIdlePurge();
     const project = videoStudioStore.get(request.params.id);
     if (!project) return response.status(404).json({ error: "Progetto Video Studio non trovato." });
-    if (!["minimaxH3", "actionH3"].includes(project.videoStudioMode) || !project.sceneRecipe) {
-      return response.status(409).json({ error: "La promozione è disponibile soltanto per un progetto MiniMax H3 o ACTION H3 con ricetta salvata." });
+    const sparseFinishing = project.videoStudioMode === "h3SparseV9";
+    if (!["minimaxH3", "actionH3", "h3SparseV9"].includes(project.videoStudioMode)
+      || (!sparseFinishing && !project.sceneRecipe)) {
+      return response.status(409).json({ error: "Il miglioramento finale è disponibile soltanto per un progetto MiniMax H3 compatibile." });
     }
     if (videoStudioProjectIsActive(project)) {
       return response.status(409).json({ error: "Attendi o annulla la generazione attiva prima di promuovere l’anteprima." });
@@ -5789,14 +6098,61 @@ app.post("/api/video-studio/projects/:id/promote-preview", async (request, respo
     const requested = request.body?.generationId ? store.get(String(request.body.generationId)) : null;
     const generations = videoStudioProjectGenerations(project);
     const generation = requested || [...generations].reverse().find((item) =>
-      item.status === "completed" && item.h3Stage === "preview" && item.videos?.length
+      item.status === "completed" && item.videos?.length
+        && (sparseFinishing
+          ? item.workflowId === "videoStudio:h3SparseV9" && item.videoStudioStage === "generation"
+          : item.h3Stage === "preview")
     );
-    if (!generation || generation.projectId !== project.id || generation.h3Stage !== "preview" || !generation.videos?.length) {
-      return response.status(409).json({ error: "Completa prima un’anteprima MiniMax H3 del progetto." });
+    if (!generation || generation.projectId !== project.id || generation.status !== "completed"
+      || (sparseFinishing
+        ? generation.workflowId !== "videoStudio:h3SparseV9" || generation.videoStudioStage !== "generation"
+        : generation.h3Stage !== "preview") || !generation.videos?.length) {
+      return response.status(409).json({ error: sparseFinishing
+        ? "Completa prima il video PlagueKind da migliorare."
+        : "Completa prima un’anteprima MiniMax H3 del progetto." });
     }
     const config = await videoStudioRuntimeConfig();
-    if (!config.h3.previewFinishing.available) {
-      throw new Error(`Finishing anteprima non disponibile. Nodi mancanti: ${config.h3.previewFinishing.missingNodes.join(", ")}`);
+    const finishingMode = String(request.body?.finishingMode || "all");
+    if (finishingMode === "latent") {
+      if (!sparseFinishing) {
+        return response.status(409).json({ error: "H3 Latent Upscale + Refine dopo la generazione è disponibile per PlagueKind H3 Sparse V9." });
+      }
+      if (generation.multiSequence || String(project.settings?.h3SparseMultiSequence || "false") === "true") {
+        return response.status(409).json({ error: "H3 Latent Upscale + Refine richiede una singola clip PlagueKind; non è compatibile con le sequenze continuative." });
+      }
+      if (!config.h3.sparseV9.available) {
+        throw new Error(config.h3.sparseV9.reason || "H3 Latent Upscale + Refine non è disponibile nell’istanza ComfyUI attiva.");
+      }
+      const job = buildVideoStudioInitialJob("h3SparseV9", {
+        ...project.settings,
+        seed: generation.seed,
+        h3SparseLatentUpscale: true,
+        h3SparseMultiSequence: false,
+      }, project.uploads || {}, project.loras || [], config);
+      job.metadata = {
+        ...job.metadata,
+        workflowId: "videoStudio:h3SparseV9:latentRefine",
+        workflowName: "Video Studio · PlagueKind H3 Sparse V9 · H3 Latent Upscale + Refine",
+        videoStudioStage: "previewFinishing",
+        videoStudioLabel: "Miglioramento · H3 Latent Upscale + Refine · stesso seed",
+        h3Stage: "promotedFinal",
+        finishingMode,
+        sourcePreviewGenerationId: generation.id,
+        sceneRecipeSeed: generation.seed,
+      };
+      const created = await queueStudioJob(job, project.id);
+      const updated = videoStudioStore.update(project.id, {
+        generationIds: [...(project.generationIds || []), created.id],
+        updatedAt: new Date().toISOString(),
+      });
+      return response.status(202).json(videoStudioProjectView(updated));
+    }
+    const finishingCapability = config.h3.previewFinishing.modes?.[finishingMode];
+    if (!finishingCapability) {
+      return response.status(400).json({ error: "Modalità di miglioramento H3 non riconosciuta." });
+    }
+    if (!finishingCapability.available) {
+      throw new Error(`Miglioramento ${finishingMode} non disponibile. Nodi mancanti: ${finishingCapability.missingNodes.join(", ")}`);
     }
     const selectedUpload = await comfy.reuseOutputFile(
       generation.videos.at(-1),
@@ -5806,13 +6162,15 @@ app.post("/api/video-studio/projects/:id/promote-preview", async (request, respo
     const job = buildH3PreviewFinishingWorkflow(selectedUpload, {
       ...(request.body || {}),
       videoStudioMode: project.videoStudioMode,
-      aspectRatio: project.sceneRecipe.aspectRatio,
+      aspectRatio: sparseFinishing
+        ? generation.aspectRatio || project.settings?.h3SparseAspectRatio
+        : project.sceneRecipe.aspectRatio,
     });
     job.metadata = {
       ...job.metadata,
       sourcePreviewGenerationId: generation.id,
-      sceneRecipeSeed: project.sceneRecipe.seed,
-      h3Mode: project.sceneRecipe.h3Mode,
+      sceneRecipeSeed: sparseFinishing ? generation.seed : project.sceneRecipe.seed,
+      h3Mode: sparseFinishing ? generation.mode : project.sceneRecipe.h3Mode,
     };
     const created = await queueStudioJob(job, project.id);
     const updated = videoStudioStore.update(project.id, {
@@ -5859,11 +6217,20 @@ app.post("/api/video-studio/projects/:id/regenerate-native", async (request, res
         h3AspectRatio: project.settings.seedHunterH3AspectRatio || project.sceneRecipe.aspectRatio,
         h3LookPreset: project.settings.seedHunterH3LookPreset || project.sceneRecipe.lookPreset,
         h3AttentionBackend: project.settings.seedHunterH3AttentionBackend || "memoryEfficient",
-        h3RefineMode: project.settings.seedHunterH3FinalRefine || "h3Balanced",
-        h3FirstMegapixels: 0.25,
+        h3RefineMode: project.settings.seedHunterH3FinalRefine || "latentLearned",
+        h3FirstMegapixels: String(project.settings.seedHunterH3UseTurbo ?? "true") === "true" ? 0.25 : 0.9,
+        h3SamplerName: "er_sde",
+        h3SchedulerName: "beta",
+        h3FirstSteps: String(project.settings.seedHunterH3UseTurbo ?? "true") === "true" ? 8 : 25,
+        ...(String(project.settings.seedHunterH3FinalRefine || "latentLearned") === "latentLearned" ? {
+          h3SecondSamplerName: "er_sde",
+          h3SecondSchedulerName: "linear_quadratic",
+          h3SecondStepsOverride: 6,
+          h3SecondDenoiseOverride: 0.4,
+        } : {}),
         h3SecondMegapixels: 0.9,
         h3SecondPass: true,
-        h3UseTurbo: true,
+        h3UseTurbo: String(project.settings.seedHunterH3UseTurbo ?? "true") === "true",
       } : {}),
     };
     const job = buildVideoStudioInitialJob(
@@ -5931,7 +6298,7 @@ app.post("/api/video-studio/projects/:id/h3-ltx2k", async (request, response, ne
     cancelIdlePurge();
     await comfy.health();
     const project = videoStudioStore.get(request.params.id);
-    if (!project || !["minimaxH3", "actionH3"].includes(project.videoStudioMode)) {
+    if (!project || !["minimaxH3", "actionH3", "seedHunterH3"].includes(project.videoStudioMode)) {
       return response.status(404).json({ error: "Progetto MiniMax H3 non trovato." });
     }
     if (videoStudioProjectIsActive(project)) throw new Error("Attendi o annulla la generazione attiva.");
@@ -5969,7 +6336,7 @@ app.post("/api/video-studio/projects/:id/temporal-derope", async (request, respo
     cancelIdlePurge();
     await comfy.health();
     const project = videoStudioStore.get(request.params.id);
-    if (!project || !["minimaxH3", "actionH3"].includes(project.videoStudioMode)) return response.status(404).json({ error: "Progetto H3 non trovato." });
+    if (!project || !["minimaxH3", "actionH3", "seedHunterH3"].includes(project.videoStudioMode)) return response.status(404).json({ error: "Progetto H3 non trovato." });
     if (videoStudioProjectIsActive(project)) throw new Error("Attendi o annulla la generazione attiva.");
     const generations = videoStudioProjectGenerations(project);
     const sourceGeneration = request.body?.generationId ? store.get(String(request.body.generationId)) : [...generations].reverse().find((item) => item.status === "completed" && item.videos?.length);
@@ -6004,7 +6371,15 @@ app.post("/api/studio/projects", upload.any(), async (request, response, next) =
       );
     }
     const uploaded = await uploadStudioFiles(request.files || []);
-    const characterSelection = await uploadCharacterSelection(
+    if (request.body.studioMode === "duoScene") {
+      uploaded.source = uploaded.duoMale || null;
+      uploaded.references = [uploaded.duoFemale, uploaded.duoEnvironment, uploaded.duoStyle].filter(Boolean);
+    }
+    if (request.body.studioMode === "anima" && request.body.animaInputMode !== "text") {
+      uploaded.source = uploaded.animaCharacter1 || null;
+      uploaded.references = [uploaded.animaCharacter2, uploaded.animaCharacter3, uploaded.animaEnvironment].filter(Boolean);
+    }
+    const characterSelection = request.body.studioMode === "duoScene" ? null : await uploadCharacterSelection(
       request.body,
       {
         generationType: "studio",
@@ -6012,7 +6387,6 @@ app.post("/api/studio/projects", upload.any(), async (request, response, next) =
       },
       4,
     );
-    if (characterSelection) request.body = withCharacterPrompt(request.body, characterSelection.adapter);
     if (characterSelection?.uploads.length) {
       if (!uploaded.source?.name && ["bible", "qwenKreaKlein", "animeToReal", "kreaTriple"].includes(request.body.studioMode)) {
         uploaded.source = characterSelection.uploads[0];
@@ -6021,7 +6395,34 @@ app.post("/api/studio/projects", upload.any(), async (request, response, next) =
         uploaded.references = [...characterSelection.uploads, ...(uploaded.references || [])].slice(0, 3);
       }
     }
-    let jobs = buildStudioJobs(request.body.studioMode, request.body, uploaded, selectedLoras);
+    const promptBatch = studioPromptBatch(request.body.promptBatch, request.body.prompt);
+    const sceneBodies = promptBatch.map((prompt) => {
+      const body = {
+        ...request.body,
+        prompt,
+        promptBatch: undefined,
+        ...(promptBatch.length > 1 ? {
+          promptBatchItem: "true",
+          alternatives: "1",
+          animaOutputs: "1",
+        } : {}),
+      };
+      return characterSelection ? withCharacterPrompt(body, characterSelection.adapter) : body;
+    });
+    let jobs = sceneBodies.flatMap((body, sceneIndex) =>
+      buildStudioJobs(body.studioMode, body, uploaded, selectedLoras).map((job) => ({
+        ...job,
+        metadata: {
+          ...job.metadata,
+          ...(promptBatch.length > 1 ? {
+            batchPrompt: promptBatch[sceneIndex],
+            batchSceneIndex: sceneIndex + 1,
+            batchSceneCount: promptBatch.length,
+            studioLabel: `Scena ${String(sceneIndex + 1).padStart(2, "0")} · ${job.metadata?.studioLabel || job.metadata?.workflowName || "Generazione"}`,
+          } : {}),
+        },
+      })),
+    );
     if (request.body.studioMode === "guidedEdit") {
       const definitions = await workflowPreflight.definitions();
       let placement = null;
@@ -6044,7 +6445,7 @@ app.post("/api/studio/projects", upload.any(), async (request, response, next) =
           subjectInsertion: planSubjectInsertion({
             sourceFile: job.metadata?.sourceImage || uploaded.source?.name,
             operation: request.body.editAction,
-            prompt: request.body.prompt,
+            prompt: job.metadata?.batchPrompt || request.body.prompt,
             interaction: request.body.subjectInteraction,
             contact: request.body.contactInstruction,
             preserve: request.body.preserveInstruction,
@@ -6088,17 +6489,21 @@ app.post("/api/studio/projects", upload.any(), async (request, response, next) =
         },
       }));
     }
-    jobs = await Promise.all(jobs.map((job) => integrateSceneJob(job, request.body, {
-      maskUpload: job.metadata?.compositionPolicy === "recomposeGroup" ? null : uploaded.mask || null,
-      structureGuideAvailable: Boolean(uploaded.guide),
-      subjectType: job.metadata?.subjectInsertion?.subjectType || null,
-    })));
+    jobs = await Promise.all(jobs.map((job) => {
+      const sceneBody = sceneBodies[Math.max(0, Number(job.metadata?.batchSceneIndex || 1) - 1)] || request.body;
+      return integrateSceneJob(job, sceneBody, {
+        maskUpload: job.metadata?.compositionPolicy === "recomposeGroup" ? null : uploaded.mask || null,
+        structureGuideAvailable: Boolean(uploaded.guide),
+        subjectType: job.metadata?.subjectInsertion?.subjectType || null,
+      });
+    }));
     await validateStudioModels(jobs);
     project = studioStore.add({
       id: crypto.randomUUID(),
       studioMode: request.body.studioMode,
       name: String(request.body.projectName || jobs[0]?.metadata?.workflowName || "Progetto Studio").trim(),
-      prompt: String(request.body.prompt || "").trim(),
+      prompt: promptBatch[0],
+      promptBatch: promptBatch.length > 1 ? promptBatch : undefined,
       executionMode: "guided",
       autoState: "drafts",
       settings: { ...request.body, loras: undefined },
@@ -6162,11 +6567,13 @@ app.post("/api/studio/projects/:id/continue", async (request, response, next) =>
       ...project.settings,
       ...request.body,
       studioMode: project.studioMode,
-      prompt: request.body.prompt || project.prompt,
+      prompt: request.body.prompt || generation.batchPrompt || project.prompt,
       editScope: request.body.editScope || project.settings?.editScope,
       maskUpload: project.uploads?.mask,
       maskTarget: request.body.maskTarget || project.settings?.maskTarget,
-      referenceUploads: project.uploads?.references || [],
+      referenceUploads: project.studioMode === "duoScene"
+        ? [project.uploads?.source, ...(project.uploads?.references || [])].filter(Boolean).slice(0, 3)
+        : project.uploads?.references || [],
     }, selectedUpload, selectedLoras);
     await validateStudioModels([job]);
     const created = await queueStudioJob(job, project.id);
@@ -6262,12 +6669,14 @@ app.post("/api/generations", upload.any(), async (request, response, next) => {
       ? "image"
       : request.body.generationType === "upscale"
         ? "upscale"
+        : request.body.generationType === "superUpscale"
+          ? "superUpscale"
         : request.body.generationType === "ltxUpscale"
           ? "ltxUpscale"
           : request.body.generationType === "seedvr2VideoUpscale"
             ? "seedvr2VideoUpscale"
             : "video";
-    const selectedLoras = ["upscale", "ltxUpscale", "seedvr2VideoUpscale"].includes(generationType)
+    const selectedLoras = ["upscale", "superUpscale", "ltxUpscale", "seedvr2VideoUpscale"].includes(generationType)
       ? []
       : parseLoras(request.body.loras);
     if (selectedLoras.length) {
@@ -6279,7 +6688,7 @@ app.post("/api/generations", upload.any(), async (request, response, next) => {
     let pulidUploaded = null;
     let directorScenes = [];
     let availableUpscaleModels = [];
-    const characterSelection = ["upscale", "ltxUpscale", "seedvr2VideoUpscale"].includes(generationType)
+    const characterSelection = ["upscale", "superUpscale", "ltxUpscale", "seedvr2VideoUpscale"].includes(generationType)
       ? null
       : await uploadCharacterSelection(
           request.body,
@@ -6375,6 +6784,50 @@ app.post("/api/generations", upload.any(), async (request, response, next) => {
       validateUploadSize(imageFile, maxUploadMb, "L'immagine");
       uploaded = await comfy.uploadImage(imageFile);
       availableUpscaleModels = capabilities.models;
+    } else if (generationType === "superUpscale") {
+      const info = await comfy.objectInfo();
+      const runtimeConfig = superUpscaleConfig({
+        availableNodes: Object.keys(info),
+        installedSeedvr2Models: comboOptions(info.SeedVR2LoadDiTModel?.input?.required?.model),
+        installedSeedvr2Vaes: comboOptions(info.SeedVR2LoadVAEModel?.input?.required?.model),
+        installedDiffusionModels: comboOptions(info.UNETLoader?.input?.required?.unet_name),
+        installedClips: comboOptions(info.CLIPLoader?.input?.required?.clip_name),
+        installedVaes: comboOptions(info.VAELoader?.input?.required?.vae_name),
+        installedModelPatches: comboOptions(info.ModelPatchLoader?.input?.required?.name),
+        installedUpscaleModels: comboOptions(info.UpscaleModelLoader?.input?.required?.model_name),
+      });
+      if (!runtimeConfig.available) {
+        const details = [
+          runtimeConfig.missingNodes.length ? `Nodi mancanti: ${runtimeConfig.missingNodes.join(", ")}` : "",
+          runtimeConfig.missingFiles.length ? `File mancanti: ${runtimeConfig.missingFiles.join(", ")}` : "",
+        ].filter(Boolean).join(" · ");
+        throw new Error(details || "La pipeline SUPER UPSCALE non è disponibile.");
+      }
+      const imageFile = files.find((file) => file.fieldname === "superUpscaleImage");
+      if (!imageFile || !imageFile.mimetype.startsWith("image/")) {
+        throw new Error("Carica una foto PNG, JPG o WebP per SUPER UPSCALE.");
+      }
+      validateUploadSize(imageFile, maxUploadMb, "L'immagine");
+      if (promptAssistant.publicConfig().enabled) {
+        try {
+          await releaseComfyMemoryIfIdle();
+          const vision = await promptAssistant.enhance({
+            text: "Describe every visible element literally and precisely for a high-fidelity photographic restoration. Preserve exact identity, anatomy, pose, clothing, objects, environment, composition, crop, colors and lighting. Emphasize authentic micro-textures without inventing content.",
+            target: "reverse_qwen",
+            mode: "image",
+            workflowName: "SUPER UPSCALE · Vision preflight",
+            image: imageFile,
+          });
+          request.body.superUpscaleVisionPrompt = vision.prompt;
+          request.body.superUpscaleVisionModel = vision.model;
+        } catch (error) {
+          request.body.superUpscaleVisionError = error.message;
+        } finally {
+          await releaseComfyMemoryIfIdle().catch(() => null);
+        }
+      }
+      uploaded = await comfy.uploadImage(imageFile);
+      request.body.superUpscaleModelPatch = runtimeConfig.modelPatch;
     
     } else if (generationType === "ltxUpscale") {
       const runtimeConfig = await (async () => {
@@ -6599,6 +7052,12 @@ app.post("/api/generations", upload.any(), async (request, response, next) => {
             uploaded,
             availableUpscaleModels,
           )
+        : generationType === "superUpscale"
+          ? buildSuperUpscaleWorkflow(
+              request.body,
+              uploaded,
+              { modelPatch: request.body.superUpscaleModelPatch },
+            )
         : generationType === "ltxUpscale"
           ? buildLtxUpscaleWorkflow(
               request.body,
@@ -6628,7 +7087,7 @@ app.post("/api/generations", upload.any(), async (request, response, next) => {
         },
       };
     }
-    if (!["upscale", "ltxUpscale", "seedvr2VideoUpscale"].includes(generationType)) {
+    if (!["upscale", "superUpscale", "ltxUpscale", "seedvr2VideoUpscale"].includes(generationType)) {
       job = await integrateSceneJob(job, request.body);
     }
     const { workflow, metadata } = job;
@@ -6647,8 +7106,10 @@ app.post("/api/generations", upload.any(), async (request, response, next) => {
       images: [],
       createdAt: new Date().toISOString(),
       finishedAt: null,
+      nodeTitles: workflowNodeTitles(workflow),
       ...metadata,
     });
+    appendGenerationProgress(item.id, { type: "queued", data: {} }, item);
     broadcast({ type: "generation_created", generationId: item.id, data: item });
     response.status(202).json(item);
   } catch (error) {
@@ -6744,8 +7205,10 @@ app.post("/api/image-series/:generationId/regenerate", async (request, response,
       images: [],
       createdAt: new Date().toISOString(),
       finishedAt: null,
+      nodeTitles: workflowNodeTitles(job.workflow),
       ...job.metadata,
     });
+    appendGenerationProgress(item.id, { type: "queued", data: {} }, item);
     store.update(source.id, { seriesSupersededBy: item.id });
     broadcast({ type: "generation_created", generationId: item.id, data: item });
     response.status(202).json(item);
@@ -6772,7 +7235,7 @@ async function cancelGenerationRoute(request, response, next) {
         data: result.generation,
       });
     }
-    scheduleIdlePurge();
+    scheduleIdlePurge(result.generation);
     response.json(result.generation);
   } catch (error) {
     next(error);
@@ -6817,6 +7280,9 @@ app.post("/api/prompt-assistant/enhance", upload.fields([
       "minimax_h3",
       "minimax_h3_action",
       "minimax_h3_fantasy_verite",
+      "minimax_h3_director_sequence",
+      "minimax_h3_director_segment",
+      "audio_music",
     ]);
     const body = request.body || {};
     const target = String(body.target || "").toLowerCase();
@@ -6833,7 +7299,49 @@ app.post("/api/prompt-assistant/enhance", upload.fields([
     }
 
     let characterContext = null;
-    let enhancementText = String(body.text || "").trim();
+    let characterPromptPrefix = "";
+    const rawEnhancementText = String(body.text || "").trim();
+    const allInOneSegments = String(body.videoStudioMode || "") === "minimaxH3AllInOne"
+      ? rawEnhancementText
+        .split(/^\s*---+\s*$/mu)
+        .map((segment) => segment.trim())
+        .filter(Boolean)
+      : [];
+    const directorNaturalSegments = String(body.videoStudioMode || "") === "minimaxH3AllInOne"
+      ? parseDirectorNaturalSegments(rawEnhancementText)
+      : [];
+    const directorRequestedCount = (() => {
+      if (allInOneSegments.length > 1) return allInOneSegments.length;
+      if (directorNaturalSegments.length > 1) return directorNaturalSegments.length;
+      if (String(body.videoStudioMode || "") !== "minimaxH3AllInOne") return 1;
+      const text = rawEnhancementText.toLocaleLowerCase("it");
+      const numeric = [...text.matchAll(/\b(\d{1,2})\s+(?:sequenz[ae]|segment[oi]|scen[ae]|clip)\b/gu)]
+        .map((match) => Number(match[1])).filter((value) => value >= 2 && value <= 24);
+      const named = { due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6, sette: 7, otto: 8, nove: 9, dieci: 10 };
+      for (const [word, value] of Object.entries(named)) {
+        if (new RegExp(`\\b${word}\\s+(?:sequenz[ae]|segment[oi]|scen[ae]|clip)\\b`, "u").test(text)) numeric.push(value);
+      }
+      const ordinals = ["prima", "seconda", "terza", "quarta", "quinta", "sesta", "settima", "ottava", "nona", "decima"];
+      ordinals.forEach((word, index) => {
+        if (new RegExp(`\\b${word}\\s+(?:sequenza|scena|segmento|clip)\\b`, "u").test(text)) numeric.push(index + 1);
+      });
+      const numberedLines = new Set([...rawEnhancementText.matchAll(/^\s*(\d{1,2})[.)\-:]\s+/gmu)].map((match) => Number(match[1])));
+      if (numberedLines.size > 1) numeric.push(Math.max(...numberedLines));
+      return Math.max(1, ...numeric);
+    })();
+    if (allInOneSegments.length > 24) {
+      return response.status(400).json({ error: "AllInOne accetta massimo 24 segmenti per progetto." });
+    }
+    let enhancementText = rawEnhancementText;
+    if (target === "minimax_h3_director_sequence" && directorNaturalSegments.length > 1) {
+      enhancementText = [
+        `MANDATORY EVENT MAP — output exactly ${directorNaturalSegments.length} segments in this order.`,
+        ...directorNaturalSegments.map((segment, index) => `SEGMENT ${index + 1} MUST COMPLETE THIS USER EVENT BEFORE ITS END: ${segment}`),
+        "Do not stretch an earlier event into a later segment. The final state of each event is the initial physical state of the next segment.",
+        "ORIGINAL COMPLETE REQUEST:",
+        rawEnhancementText,
+      ].join("\n");
+    }
     const characterId = String(body.characterId || "").trim();
     if (characterId) {
       const character = characterStore.getCharacter(characterId);
@@ -6851,27 +7359,103 @@ app.post("/api/prompt-assistant/enhance", upload.fields([
         },
       });
       characterContext = { id: character.id, name: character.name };
+      characterPromptPrefix = adapter.promptPrefix;
       enhancementText = [
         "CHARACTER IDENTITY CONTEXT: The named adult character below is the subject of the requested scene. Preserve these identity traits in the rewritten prompt, integrate them naturally once, and do not treat them as additional actions or dialogue.",
-        adapter.promptPrefix,
+        characterPromptPrefix,
         "SCENE REQUEST TO REWRITE:",
         enhancementText,
       ].join("\n");
     }
 
     const before = await releaseComfyMemoryIfIdle();
-    const result = await promptAssistant.enhance({
-      text: enhancementText,
-      target,
+    const enhancePrompt = (text, overrides = {}) => promptAssistant.enhance({
+      text,
+      target: overrides.target || target,
       promptPreset: String(body.promptPreset || ""),
       duration: Number(body.duration) || 0,
       mode: String(body.mode || "text"),
       workflowName: String(body.workflowName || ""),
-      image: sourceImages[0] || null,
-      images: sourceImages,
+      image: (overrides.images || sourceImages)[0] || null,
+      images: overrides.images || sourceImages,
       model: (target.startsWith("sulphur_") || target === "sulphur_prompt") ? sulphurPromptAssistantModel : "",
       includeNegative: String(body.includeNegative || "").toLowerCase() === "true",
     });
+    let result;
+    if (target === "minimax_h3_director_sequence" && directorNaturalSegments.length > 1) {
+      const enhancedSegments = [];
+      const segmentResults = [];
+      for (let index = 0; index < directorNaturalSegments.length; index += 1) {
+        const previous = enhancedSegments.at(-1) || "N/A — this is the first segment.";
+        const segmentResult = await enhancePrompt([
+          `SEGMENT ${index + 1} OF ${directorNaturalSegments.length}.`,
+          `Target duration: ${Number(body.duration) || 5} seconds. Director mode: ${String(body.mode || "text")}.`,
+          `MANDATORY EVENT — complete it before this segment ends: ${directorNaturalSegments[index]}`,
+          `PREVIOUS SEGMENT STATE: ${previous}`,
+          index === 0 && sourceImages.length
+            ? "The supplied source image is the authoritative initial state for this first segment."
+            : "Continue from the previous generated segment; do not request or assume another start image.",
+        ].join("\n"), {
+          target: "minimax_h3_director_segment",
+          images: index === 0 ? sourceImages : [],
+        });
+        enhancedSegments.push([
+          `MANDATORY USER EVENT TO COMPLETE IN THIS CLIP: ${directorNaturalSegments[index]}`,
+          segmentResult.prompt,
+        ].join("\n"));
+        segmentResults.push(segmentResult);
+      }
+      result = {
+        ...segmentResults.at(-1),
+        prompt: enhancedSegments.join("\n\n---\n\n"),
+        negativePrompt: "",
+        segmentCount: enhancedSegments.length,
+        usedVision: segmentResults.some((item) => item.usedVision),
+        usedImageCount: sourceImages.length,
+      };
+    } else if (allInOneSegments.length > 1 && target !== "minimax_h3_director_sequence") {
+      const enhancedSegments = [];
+      for (const segment of allInOneSegments) {
+        const segmentText = characterPromptPrefix
+          ? [
+              "CHARACTER IDENTITY CONTEXT: The named adult character below is the subject of the requested scene. Preserve these identity traits in the rewritten prompt, integrate them naturally once, and do not treat them as additional actions or dialogue.",
+              characterPromptPrefix,
+              "SCENE REQUEST TO REWRITE:",
+              segment,
+            ].join("\n")
+          : segment;
+        enhancedSegments.push(await enhancePrompt(segmentText));
+      }
+      const last = enhancedSegments.at(-1);
+      result = {
+        ...last,
+        prompt: enhancedSegments.map((item) => item.prompt).join("\n\n---\n\n"),
+        negativePrompt: "",
+        segmentCount: enhancedSegments.length,
+        timelineRepairApplied: enhancedSegments.some((item) => item.timelineRepairApplied),
+        usedVision: enhancedSegments.some((item) => item.usedVision),
+        usedImageCount: sourceImages.length,
+      };
+    } else {
+      result = await enhancePrompt(enhancementText);
+    }
+    if (target === "minimax_h3_director_sequence") {
+      const renderedSegments = String(result.prompt || "")
+        .split(/^\s*---+\s*$/mu)
+        .map((segment) => segment.trim())
+        .filter(Boolean);
+      if (directorRequestedCount > 1 && renderedSegments.length !== directorRequestedCount) {
+        result = await enhancePrompt([
+          `STRICT REPAIR: return exactly ${directorRequestedCount} segments, preserving their order and causal continuity.`,
+          "Put a standalone --- line between adjacent segments. Return no other text.",
+          enhancementText,
+        ].join("\n"));
+        const repairedCount = String(result.prompt || "").split(/^\s*---+\s*$/mu).map((segment) => segment.trim()).filter(Boolean).length;
+        if (repairedCount !== directorRequestedCount) {
+          throw new Error(`Il Director LLM ha restituito ${repairedCount} segmenti invece di ${directorRequestedCount}. Il prompt originale è rimasto invariato.`);
+        }
+      }
+    }
     const after = await releaseComfyMemoryIfIdle();
     if (result.unloadError) {
       throw new Error(`Prompt creato, ma LM Studio non ha scaricato il modello: ${result.unloadError}`);
@@ -6879,6 +7463,13 @@ app.post("/api/prompt-assistant/enhance", upload.fields([
     response.json({
       ...result,
       character: characterContext,
+      ...(target === "minimax_h3_director_sequence" ? {
+        sequenceInference: {
+          requestedCount: directorRequestedCount,
+          parsedEvents: directorNaturalSegments,
+          strategy: directorNaturalSegments.length > 1 ? "sequential-event-lock" : "single-timeline-pass",
+        },
+      } : {}),
       cleanup: {
         lmStudioModelUnloaded: true,
         comfyMemoryReleased: after.released,
@@ -6977,6 +7568,34 @@ app.get("/api/media/:generationId/:index", async (request, response, next) => {
   }
 });
 
+app.get("/api/audio/:generationId/:index", async (request, response, next) => {
+  try {
+    const item = store.get(request.params.generationId);
+    const file = item?.audios?.[Number(request.params.index)];
+    if (!file) return response.status(404).json({ error: "Audio non trovato." });
+    const download = request.query.download === "1";
+    const localFile = resolveMediaFile(outputDirectory, file);
+    if (localFile) {
+      streamMediaFile(request, response, localFile, file.filename, download);
+      return;
+    }
+    const upstreamUrl = new URL(comfy.mediaUrl(file));
+    const transport = upstreamUrl.protocol === "https:" ? https : http;
+    const headers = request.headers.range ? { range: request.headers.range } : {};
+    const upstreamRequest = transport.get(upstreamUrl, { headers }, (upstream) => {
+      for (const header of ["content-type", "content-length", "accept-ranges", "content-range"]) {
+        if (upstream.headers[header]) response.setHeader(header, upstream.headers[header]);
+      }
+      response.setHeader("content-disposition", mediaContentDisposition(file.filename, download));
+      response.status(upstream.statusCode || 200);
+      upstream.pipe(response);
+    });
+    upstreamRequest.on("error", next);
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/image/:generationId/:index", async (request, response, next) => {
   try {
     const item = store.get(request.params.generationId);
@@ -7008,10 +7627,14 @@ app.get("/api/image/:generationId/:index", async (request, response, next) => {
 app.use((error, _request, response, _next) => {
   console.error(error);
   const status = error instanceof multer.MulterError ? 400 : Number(error.statusCode) || 500;
-  response.status(status).json({ error: error.message || "Errore interno." });
+  const message = error instanceof multer.MulterError && error.code === "LIMIT_FILE_COUNT"
+    ? "Il modulo ha incluso troppi file. Ricarica Image Studio e riprova: gli allegati vuoti ora vengono esclusi automaticamente."
+    : error.message || "Errore interno.";
+  response.status(status).json({ error: message });
 });
 
 let polling = false;
+let comfyUnavailableSince = null;
 setInterval(async () => {
   if (polling) return;
   polling = true;
@@ -7020,11 +7643,23 @@ setInterval(async () => {
     let queueIds = null;
     try {
       queueIds = comfyQueuePromptIds(await comfy.queueStatus());
+      comfyUnavailableSince = null;
     } catch {
-      // Senza lo stato della coda non chiudiamo job potenzialmente ancora attivi.
+      comfyUnavailableSince ??= Date.now();
     }
     for (const item of pending) {
       try {
+        const offlinePatch = queueIds
+          ? null
+          : comfyOfflineGenerationPatch(item, { unavailableSince: comfyUnavailableSince });
+        if (offlinePatch) {
+          const updated = store.update(item.id, offlinePatch);
+          broadcast({ type: "generation_updated", generationId: item.id, data: updated });
+          syncCharacterReferenceGeneration(updated);
+          continueCharacterMasterPipeline(updated);
+          continueCharacterVideoPipeline(updated);
+          continue;
+        }
         const payload = await comfy.history(item.promptId);
         const entry = payload?.[item.promptId];
         if (!entry) {
@@ -7039,19 +7674,20 @@ setInterval(async () => {
               continueCharacterMasterPipeline(updated);
               continueCharacterVideoPipeline(updated);
             }
-            if (patch.finishedAt && !updated.pipelineRootGenerationId) scheduleIdlePurge();
+            if (patch.finishedAt && !updated.pipelineRootGenerationId) scheduleIdlePurge(updated);
           }
           continue;
         }
         const videos = extractVideos(entry);
         const images = extractImages(entry);
+        const audios = extractAudios(entry);
         const completed = entry.status?.completed === true;
         const statusText = entry.status?.status_str;
-        if (videos.length || images.length) {
+        if (videos.length || images.length || audios.length) {
           const finishedAt = new Date().toISOString();
           const startedAtMs = Date.parse(item.startedAt || "");
           const isImageGeneration = item.mediaType === "image"
-            || ["image", "upscale"].includes(item.generationType);
+            || ["image", "upscale", "superUpscale"].includes(item.generationType);
           const inspectedImages = isImageGeneration
             ? inspectImageFiles(outputDirectory, images)
             : [];
@@ -7066,6 +7702,7 @@ setInterval(async () => {
               progress: 100,
               videos,
               images,
+              audios,
               imageDimensions: inspectedImages.map(({ file, width, height }) => ({
                 filename: file.filename,
                 width: width ?? null,
@@ -7082,7 +7719,7 @@ setInterval(async () => {
             await advanceInteractiveCastGeneration(updated);
             continueCharacterMasterPipeline(updated);
             continueCharacterVideoPipeline(updated);
-            if (!updated.pipelineRootGenerationId) scheduleIdlePurge();
+            if (!updated.pipelineRootGenerationId) scheduleIdlePurge(updated);
             continue;
           }
           const primaryImage = inspectedImages.find((imageInfo) => imageInfo.width && imageInfo.height);
@@ -7098,6 +7735,7 @@ setInterval(async () => {
             progress: 100,
             videos,
             images,
+            audios,
             imageDimensions: inspectedImages.map(({ file, width, height }) => ({
               filename: file.filename,
               width: width ?? null,
@@ -7157,7 +7795,7 @@ setInterval(async () => {
             // non deve bloccare il polling globale né l'aggiornamento della pagina.
             void finalizeSceneIntegration(updated, mediaFile, localPath);
           }
-          if (!updated.pipelineRootGenerationId) scheduleIdlePurge();
+          if (!updated.pipelineRootGenerationId) scheduleIdlePurge(updated);
         } else if (completed) {
           const finishedAt = new Date().toISOString();
           const startedAtMs = Date.parse(item.startedAt || "");
@@ -7174,13 +7812,13 @@ setInterval(async () => {
           await advanceInteractiveCastGeneration(updated);
           continueCharacterMasterPipeline(updated);
           continueCharacterVideoPipeline(updated);
-          if (!updated.pipelineRootGenerationId) scheduleIdlePurge();
+          if (!updated.pipelineRootGenerationId) scheduleIdlePurge(updated);
         } else if (statusText === "error") {
           const finishedAt = new Date().toISOString();
           const startedAtMs = Date.parse(item.startedAt || "");
           const updated = store.update(item.id, {
             status: "error",
-            error: "ComfyUI ha terminato il workflow con un errore.",
+            error: comfyHistoryError(entry),
             finishedAt,
             durationMs: Number.isFinite(startedAtMs)
               ? Math.max(0, Date.parse(finishedAt) - startedAtMs)
@@ -7191,7 +7829,7 @@ setInterval(async () => {
           await advanceInteractiveCastGeneration(updated);
           continueCharacterMasterPipeline(updated);
           continueCharacterVideoPipeline(updated);
-          if (!updated.pipelineRootGenerationId) scheduleIdlePurge();
+          if (!updated.pipelineRootGenerationId) scheduleIdlePurge(updated);
         }
       } catch {
         // ComfyUI può essere temporaneamente occupato o non raggiungibile.

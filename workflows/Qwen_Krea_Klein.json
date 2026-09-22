@@ -3622,12 +3622,12 @@
         "enable",
         653084406055646,
         "randomize",
-        40,
-        1,
+        52,
+        3.5,
         "euler",
         "simple",
-        32,
-        40,
+        42,
+        52,
         "enable"
       ]
     },
@@ -3678,7 +3678,7 @@
         "widget_ue_connectable": {}
       },
       "widgets_values": [
-        "FluxKrea2\\moodyKrea2Mix_v50.safetensors",
+        "FluxKrea2\\krea2_raw_bf16.safetensors",
         "default"
       ]
     },

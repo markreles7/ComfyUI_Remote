@@ -1,4 +1,5 @@
 export const DEFAULT_STALE_GENERATION_GRACE_MS = 60_000;
+export const DEFAULT_COMFY_OFFLINE_GRACE_MS = 30_000;
 
 function promptIds(entries) {
   return new Set((entries || [])
@@ -34,4 +35,29 @@ export function missingGenerationPatch(item, {
     error: "La generazione non è più presente nella coda o nella cronologia di ComfyUI. È stata chiusa automaticamente.",
     finishedAt: new Date(now).toISOString(),
   };
+}
+
+export function comfyOfflineGenerationPatch(item, {
+  unavailableSince,
+  now = Date.now(),
+  graceMs = DEFAULT_COMFY_OFFLINE_GRACE_MS,
+} = {}) {
+  if (!item || !["queued", "running"].includes(item.status)) return null;
+  if (!Number.isFinite(unavailableSince) || now - unavailableSince < graceMs) return null;
+  return {
+    status: "error",
+    error: "ComfyUI si è arrestato o non è raggiungibile: la generazione è stata chiusa automaticamente invece di restare bloccata.",
+    finishedAt: new Date(now).toISOString(),
+  };
+}
+
+export function comfyHistoryError(entry, fallback = "ComfyUI ha terminato il workflow con un errore.") {
+  const messages = Array.isArray(entry?.status?.messages) ? entry.status.messages : [];
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (!Array.isArray(message) || message[0] !== "execution_error") continue;
+    const detail = String(message[1]?.exception_message || message[1]?.exception_type || "").trim();
+    if (detail) return detail;
+  }
+  return fallback;
 }

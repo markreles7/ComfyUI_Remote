@@ -8,6 +8,7 @@ const styles = fs.readFileSync(new URL("../public/styles.css", import.meta.url),
 const assistant = fs.readFileSync(new URL("../public/prompt-assistant.js", import.meta.url), "utf8");
 const server = fs.readFileSync(new URL("../src/server.js", import.meta.url), "utf8");
 const guides = fs.readFileSync(new URL("../public/workflow-guides.js", import.meta.url), "utf8");
+const actionPresets = fs.readFileSync(new URL("../src/h3-action-presets.js", import.meta.url), "utf8");
 
 const expectedModes = [
   "actorReplacement",
@@ -20,7 +21,8 @@ const expectedModes = [
 test("Video Studio espone MiniMax H3 con quattro modalità, reference multimodali e profili sampling", () => {
   assert.match(html, /value="minimaxH3"/);
   assert.match(html, /id="h3ModelProfile"[\s\S]*H3 Eros Max beta3/);
-  assert.match(html, /value="h3_eros_max"/);
+  assert.match(html, /value="h3_general">H3 Reference Generation/);
+  assert.doesNotMatch(html, /value="h3_eros_max"/);
   for (const h3Mode of ["text", "image", "firstLast", "references"]) {
     assert.match(html, new RegExp(`option value="${h3Mode}"`));
   }
@@ -34,13 +36,15 @@ test("Video Studio espone MiniMax H3 con quattro modalità, reference multimodal
   assert.match(html, /Amatoriale handheld realistico/);
   assert.match(html, /id="h3ScenePreset"/);
   assert.match(html, /Fantasy vérité · avventuriera amatoriale/);
+  assert.match(html, /NSFW realistico generale · AIO/);
+  assert.match(html, /Anime NSFW moderno · 2D stabile/);
+  assert.match(html, /POV Breast Play Pro · GalaxyAce \+ VBVR/);
   assert.match(html, /id="h3ApplyScenePreset"/);
   assert.match(script, /h3Loras/);
   assert.match(script, /minimax_h3: "H3 Prompt"/);
   assert.match(script, /sourceFiles: \(\) =>/);
   assert.match(script, /Eros Single Reference \(Ref2VA with <Picture 1>/);
-  assert.match(script, /h3ModelProfile"\)\?\.value === "erosMax"[\s\S]*\? "h3_eros_max"/);
-  assert.match(script, /\["image", "firstLast"\]\.includes\(h3Mode\)[\s\S]*h3_image_to_video/);
+  assert.match(script, /promptPreset: \(\) => "h3_general"/);
   assert.match(script, /h3ModelProfile"\)\?\.value === "erosMax" && h3Mode === "image"\) return "references"/);
   assert.match(script, /Turbo Eros integrato a 6 step/);
   assert.match(assistant, /data\.append\("sourceImages"/);
@@ -51,8 +55,8 @@ test("Video Studio espone MiniMax H3 con quattro modalità, reference multimodal
 
 test("il comando Crea progetto resta cliccabile e recupera le capability H3 online", () => {
   assert.match(html, /id="video-studio-submit"[^>]*type="submit"/);
-  assert.match(html, /video-studio\.js\?v=20260827-h3-character-context/);
-  assert.match(html, /styles\.css\?v=20260822-h3-lora-picker-fix/);
+  assert.match(html, /video-studio\.js\?v=20260918-plague-scene-loras/);
+  assert.match(html, /styles\.css\?v=20260917-video-mode-groups/);
   assert.match(script, /submit\.disabled = false/);
   assert.match(script, /state\.config = await getAppConfig\(\{ force: true \}\)/);
   assert.match(script, /shouldRefreshCapabilities/);
@@ -68,6 +72,16 @@ test("i preset H3 preparano anteprima, LoRA compatibili e finitura conservativa"
   assert.match(script, /urbanPhoneDiary/);
   assert.match(script, /documentaryPortrait/);
   assert.match(script, /dynamicTracking/);
+  assert.match(script, /adultRealisticGeneral/);
+  assert.match(script, /adultStableMotion/);
+  assert.match(script, /adultAnime/);
+  assert.match(script, /adultBreastPlayReasoning/);
+  assert.match(script, /breastPlay.*0\.75[\s\S]*galaxyAce.*0\.55[\s\S]*vbvrPro.*0\.8[\s\S]*bounceFl2va.*0\.6/);
+  assert.match(script, /preserveTurbo: true/);
+  assert.match(script, /sampler: "res_2s", scheduler: "beta57"/);
+  assert.match(script, /selectedMode === "minimaxH3"[\s\S]*forcedTriggers/);
+  assert.match(script, /H3_SCENE_MANAGED_LORA_TYPES/);
+  assert.match(script, /forcedTriggers: \["her breast is bouncing up and down"\]/);
   assert.match(script, /h3UseTurbo"\)\.checked = false/);
   assert.match(script, /STY_Realism_People/);
   assert.match(script, /STY_Motion_Booster/);
@@ -107,7 +121,30 @@ test("i trigger verificati delle LoRA Video vengono aggiunti dopo LM Studio e ga
   assert.match(script, /r34l1sm: favor natural human appearance/);
   assert.match(script, /dynv2: describe one readable continuous motion path/);
   assert.match(script, /config\.text\?\.\(selectedPromptTriggers\)/);
-  assert.match(script, /includeNegative: !\["minimaxH3", "actionH3", "seedHunterH3"\]\.includes\(selectedMode\)/);
+  assert.match(script, /includeNegative: !\["minimaxH3", "minimaxH3Fast", "minimaxH3AllInOne", "h3SparseV9", "h3SeamlessChain", "actionH3", "weaponCombatH3", "seedHunterH3"\]\.includes\(selectedMode\)/);
+});
+
+test("Minimax H3 Fast espone il workflow I2V sigma-split dedicato", () => {
+  assert.match(html, /value="minimaxH3Fast"/);
+  assert.match(html, /id="minimax-h3-fast-fields"/);
+  assert.match(html, /Dual Clock T8 12 step/);
+  assert.match(html, /id="h3FastFirstFrame"/);
+  assert.match(script, /Minimax H3 Fast pronto/);
+  assert.match(script, /minimaxH3Fast: "#minimax-h3-fast-fields"/);
+});
+
+test("PlagueKind Sparse V9 espone sequenze continuative con handoff automatico", () => {
+  assert.match(html, /id="h3SparseModel"/);
+  assert.match(script, /function renderH3SparseModels/);
+  assert.match(html, /id="h3SparseMultiSequence"/);
+  assert.match(html, /id="h3SparseContinuityFrames"[\s\S]*22 frame · bilanciato/);
+  assert.match(html, /id="h3-sparse-sequence-summary"/);
+  assert.match(html, /id="h3SparseLowVram"[^>]*checked disabled/);
+  assert.match(html, /Qwen viene scaricato dopo il conditioning/);
+  assert.match(script, /lowVram\.checked = true;[\s\S]*lowVram\.disabled = true;/);
+  assert.match(script, /PlagueKind continuativo richiede da 2 a 8 prompt/);
+  assert.match(script, /form\.set\("h3SparseSegmentCount"/);
+  assert.match(script, /selectedMode === "h3SparseV9"[\s\S]*target = "minimax_h3_director_sequence"/);
 });
 
 test("Seed Hunter H3 è un workflow autonomo con tre candidati selezionabili", () => {
@@ -118,17 +155,27 @@ test("Seed Hunter H3 è un workflow autonomo con tre candidati selezionabili", (
   assert.match(script, /data-h3-seed-promote/);
 });
 
-test("Video Studio separa ACTION H3 e blocca il profilo Combat FL2VA", () => {
+test("Video Studio condivide i preset Combat e Weapon tra ACTION H3 e AllInOne", () => {
   assert.match(html, /value="actionH3"/);
   assert.match(html, /id="action-h3-fields"/);
   assert.match(html, /Combat Base V2 automatica/);
   assert.match(html, /res_multistep \+ simple/);
   assert.match(html, /id="actionH3RunProfile"/);
-  assert.match(html, /id="actionH3Preset"[\s\S]*Rissa realistica[\s\S]*Mischia fantasy[\s\S]*Duello cinematografico[\s\S]*Finisher brutale[\s\S]*Combattimento di gruppo/);
-  assert.match(script, /const ACTION_H3_PRESETS[\s\S]*streetBrawlVerite[\s\S]*fantasyMelee[\s\S]*cinematicOneTake[\s\S]*brutalFinisher[\s\S]*readableGroupFight/);
+  assert.match(html, /id="actionH3PrimaryLora"[\s\S]*Combat Base V2[\s\S]*Weapon Combat BUNNY/);
+  assert.match(html, /id="directorActionPreset"/);
+  assert.match(script, /function renderH3ActionPresetSelect/);
+  assert.match(script, /function applyDirectorActionPreset/);
+  for (const preset of ["streetBrawlVerite", "fantasyMelee", "cinematicOneTake", "brutalFinisher", "readableGroupFight", "smoothChoreography", "impactCloseUp", "technicalCounter", "animeCombat", "swordDuel", "katanaHighSpeed", "parryCounter", "tacticalGunfight", "gunFuClose", "animeSwordFight"]) {
+    assert.match(actionPresets, new RegExp(`id: "${preset}"`));
+  }
   assert.match(script, /function applyActionH3Preset/);
   assert.match(html, /Anteprima rapida · 0,4 MP \/ stesso seed/);
-  assert.match(html, /actionH3Mode[\s\S]*Text to Video[\s\S]*Single Image[\s\S]*First \/ Last Frame/);
+  assert.match(html, /MAX · 0,9 MP · 25 step · Turbo OFF/);
+  assert.match(script, /actionH3Quality.*max25/);
+  assert.match(html, /actionH3Mode[\s\S]*Text to Video[\s\S]*Single Image[\s\S]*First \/ Last Frame[\s\S]*Reference Images to Video/);
+  assert.match(html, /id="actionH3ReferenceImages"[\s\S]*name="h3ReferenceImages"[\s\S]*multiple/);
+  assert.match(html, /&lt;Picture 1&gt;[\s\S]*&lt;Picture 2&gt;[\s\S]*&lt;Picture 3&gt;/);
+  assert.match(script, /actionMode === "references"[\s\S]*actionH3ReferenceImages/);
   assert.doesNotMatch(html.match(/<section id="action-h3-fields"[\s\S]*?<section id="retake-fields"/)?.[0] || "", /Multi Reference/);
   assert.match(script, /selectedMode === "actionH3"/);
   assert.match(script, /minimax_h3_action: "ACTION Prompt"/);
@@ -136,8 +183,24 @@ test("Video Studio separa ACTION H3 e blocca il profilo Combat FL2VA", () => {
   assert.match(script, /data-h3-promote/);
   assert.match(script, /data-h3-native/);
   assert.match(server, /promote-preview/);
+  assert.match(script, /H3 Latent Upscale \+ Refine · stesso seed/);
+  assert.match(script, /Solo RTX Super Resolution ×2/);
+  assert.match(script, /Solo RCAS · 0,30/);
+  assert.match(script, /Solo FILM ×2/);
+  assert.match(script, /Migliora finale · FILM ×2 → RTX VSR → RCAS/);
+  assert.match(server, /project\.videoStudioMode === "h3SparseV9"/);
+  assert.match(server, /h3SparseLatentUpscale: true/);
   assert.match(server, /regenerate-native/);
   assert.match(server, /"minimax_h3_action"/);
+});
+
+test("Video Studio espone Weapon Combat, Motion Repair e Seamless Chain", () => {
+  assert.match(html, /value="weaponCombatH3"/);
+  assert.match(html, /id="weaponCombatStrength"[\s\S]*value="0\.8"/);
+  assert.match(html, /id="actionH3MotionRepair"[\s\S]*bunny_crisp_motion/);
+  assert.match(html, /value="h3SeamlessChain"/);
+  assert.match(html, /id="h3ChainPrompt"/);
+  assert.match(script, /H3 Seamless Chain richiede da 2 a 8 prompt/);
 });
 
 test("Video Studio espone i tre prompt LTX nei cinque pannelli richiesti", () => {

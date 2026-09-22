@@ -18,9 +18,9 @@ test("promozione H3 applica FILM, purge, RTX VSR x2 e FSR RCAS nell'ordine", () 
   assert.equal(job.workflow["4"].inputs.scale, 2);
   assert.equal(job.workflow["4"].inputs.denoise, false);
   assert.equal(job.workflow["5"].class_type, "DisTorchPurgeVRAMV2");
-  assert.equal(job.workflow["6"].class_type, "ImageSharpenKJ");
-  assert.equal(job.workflow["6"].inputs.method, "rcas");
-  assert.equal(job.workflow["6"].inputs["method.strength"], 0.35);
+  assert.equal(job.workflow["6"].class_type, "RemoteChunkedRCAS");
+  assert.equal(job.workflow["6"].inputs.strength, 0.35);
+  assert.equal(job.workflow["6"].inputs.chunk_size, 2);
   assert.equal(job.workflow["7"].inputs.frame_rate, 48);
   assert.deepEqual(job.workflow["7"].inputs.audio, ["1", 2]);
   assert.equal(job.metadata.h3Stage, "promotedFinal");
@@ -93,5 +93,59 @@ test("finishing ACTION H3 usa cartella e metadata ACTION senza cambiare la pipel
   assert.match(job.workflow["7"].inputs.filename_prefix, /ActionH3/);
   assert.equal(job.workflow["2"].class_type, "FILM VFI");
   assert.equal(job.workflow["4"].class_type, "DaSiWa_RTX_UpscalerRefiner");
-  assert.equal(job.workflow["6"].class_type, "ImageSharpenKJ");
+  assert.equal(job.workflow["6"].class_type, "RemoteChunkedRCAS");
+});
+
+test("finishing PlagueKind è un job manuale separato con RCAS 0,30 memory-safe", () => {
+  const job = buildH3PreviewFinishingWorkflow(sourceVideo, {
+    videoStudioMode: "h3SparseV9",
+    aspectRatio: "16:9 (Widescreen)",
+  });
+  assert.equal(job.metadata.videoStudioMode, "h3SparseV9");
+  assert.match(job.metadata.workflowId, /h3SparseV9/);
+  assert.match(job.workflow["7"].inputs.filename_prefix, /PlagueKindH3SparseV9/);
+  assert.equal(job.workflow["2"].class_type, "FILM VFI");
+  assert.equal(job.workflow["4"].class_type, "DaSiWa_RTX_UpscalerRefiner");
+  assert.deepEqual(job.workflow["6"].inputs, { image: ["5", 0], strength: 0.3, chunk_size: 2 });
+});
+
+test("PlagueKind può applicare solo RTX Super Resolution senza FILM o RCAS", () => {
+  const job = buildH3PreviewFinishingWorkflow(sourceVideo, {
+    videoStudioMode: "h3SparseV9",
+    finishingMode: "rtx",
+  });
+  assert.equal(job.workflow["2"].class_type, "RTXVideoSuperResolution");
+  assert.equal(job.workflow["2"].inputs["resize_type.scale"], 2);
+  assert.equal(job.workflow["2"].inputs.quality, "ULTRA");
+  assert.equal(Object.values(job.workflow).some((item) => item.class_type === "FILM VFI"), false);
+  assert.equal(Object.values(job.workflow).some((item) => item.class_type === "RemoteChunkedRCAS"), false);
+  assert.equal(job.workflow["3"].inputs.frame_rate, 24);
+  assert.equal(job.metadata.finishingMode, "rtx");
+});
+
+test("PlagueKind può applicare solo RCAS conservando FPS e audio", () => {
+  const job = buildH3PreviewFinishingWorkflow(sourceVideo, {
+    videoStudioMode: "h3SparseV9",
+    finishingMode: "rcas",
+    rcasStrength: 0.2,
+  });
+  assert.equal(job.workflow["2"].class_type, "RemoteChunkedRCAS");
+  assert.deepEqual(job.workflow["2"].inputs, { image: ["1", 0], strength: 0.2, chunk_size: 2 });
+  assert.equal(job.workflow["3"].inputs.frame_rate, 24);
+  assert.deepEqual(job.workflow["3"].inputs.audio, ["1", 2]);
+  assert.equal(job.metadata.finishingMode, "rcas");
+});
+
+test("PlagueKind può applicare solo FILM x2 conservando l'audio", () => {
+  const job = buildH3PreviewFinishingWorkflow(sourceVideo, {
+    videoStudioMode: "h3SparseV9",
+    finishingMode: "film",
+  });
+  assert.equal(job.workflow["2"].class_type, "FILM VFI");
+  assert.equal(job.workflow["2"].inputs.multiplier, 2);
+  assert.equal(job.workflow["3"].class_type, "DisTorchPurgeVRAMV2");
+  assert.equal(job.workflow["4"].inputs.frame_rate, 48);
+  assert.deepEqual(job.workflow["4"].inputs.audio, ["1", 2]);
+  assert.equal(Object.values(job.workflow).some((item) => item.class_type === "RTXVideoSuperResolution"), false);
+  assert.equal(job.metadata.finishingMode, "film");
 });

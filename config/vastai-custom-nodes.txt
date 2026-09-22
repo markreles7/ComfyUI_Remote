@@ -1,0 +1,25 @@
+# tier|directory|repository
+# core = necessario ai workflow principali; extended = funzioni Studio/upscale opzionali.
+core|comfyui-manager|https://github.com/ltdrdata/ComfyUI-Manager.git
+core|ComfyUI-LTXVideo|https://github.com/Lightricks/ComfyUI-LTXVideo.git
+core|comfyui-kjnodes|https://github.com/kijai/ComfyUI-KJNodes.git
+core|comfyui-videohelpersuite|https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git
+core|comfyui_essentials|https://github.com/cubiq/ComfyUI_essentials.git
+core|rgthree-comfy|https://github.com/rgthree/rgthree-comfy.git
+core|RES4LYF|https://github.com/ClownsharkBatwing/RES4LYF.git
+core|ComfyUI-GGUF|https://github.com/city96/ComfyUI-GGUF.git
+core|ComfyUI-LTX2.5-MSR|https://github.com/liconstudio/ComfyUI-LTX2.5-MSR.git
+extended|comfyui-impact-pack|https://github.com/ltdrdata/ComfyUI-Impact-Pack.git
+extended|comfyui-impact-subpack|https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git
+extended|comfyui_controlnet_aux|https://github.com/Fannovel16/comfyui_controlnet_aux.git
+extended|comfyui-frame-interpolation|https://github.com/Fannovel16/ComfyUI-Frame-Interpolation.git
+extended|seedvr2_videoupscaler|https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler.git
+extended|ComfyUI-DaSiWa-Nodes|https://github.com/darksidewalker/ComfyUI-DaSiWa-Nodes.git
+extended|Nvidia_RTX_Nodes_ComfyUI|https://github.com/Comfy-Org/Nvidia_RTX_Nodes_ComfyUI.git
+extended|Comfyui_Minimax_h3_latent_Upscaler|https://github.com/LBH-123-AI/Comfyui_Minimax_h3_latent_Upscaler.git
+extended|minimax-h3-audio-T8|https://github.com/T8mars/comfyui-minimax-h3-audio-T8.git
+extended|minimax-h3-voice-api|https://github.com/Deveraux-Parker/minimax-h3-voice-api.git
+extended|ComfyUI-PuLID-Flux2|https://github.com/iFayens/ComfyUI-PuLID-Flux2.git
+extended|comfyui_layerstyle|https://github.com/chflame163/ComfyUI_LayerStyle.git
+extended|comfy-mtb|https://github.com/melMass/comfy_mtb.git
+extended|comfyui-easy-use|https://github.com/yolain/ComfyUI-Easy-Use.git

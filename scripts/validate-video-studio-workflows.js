@@ -89,6 +89,42 @@ if (config.h3.available) {
     cases.push(["minimaxH3/kitchen", { ...h3Base, h3RefineMode: "direct", h3FirstMegapixels: 0.9, h3AttentionBackend: "comfyKitchen" }, {}]);
   }
 }
+if (config.h3.fast.available) {
+  cases.push(["minimaxH3Fast/i2v-sigma-split", {
+    prompt: "The subject performs one fast coherent action while the camera tracks continuously.",
+    duration: 5,
+    h3FastAspectRatio: "16:9 (Widescreen)",
+    h3FastFirstMegapixels: 0.2,
+    h3FastTargetMegapixels: 0.98,
+    h3FastSplitStep: 6,
+    h3FastTurboStrength: 0.75,
+    seed: 123,
+  }, { h3FirstFrame: image }]);
+}
+if (config.h3.sparseV9.available) {
+  const sparseBase = {
+    prompt: "A chronological cinematic scene with coherent motion, camera and native sound.",
+    duration: 8,
+    h3SparseMode: "image",
+    h3SparseAspectRatio: "4:3 (Standard)",
+    h3SparseMegapixels: 0.98,
+    h3SparseSparsity: 0.7,
+    h3SparseSteps: 8,
+    seed: 123,
+  };
+  cases.push(
+    ["h3SparseV9/original-bypass", sparseBase, { h3FirstFrame: image }],
+    ["h3SparseV9/full-finish", {
+      ...sparseBase,
+      h3SparseLatentUpscale: true,
+      h3SparseTemporalChunks: true,
+      h3SparseSpatialTiling: true,
+      h3SparseFilm: true,
+      h3SparseRtx: true,
+      h3SparseSharpen: true,
+    }, { h3FirstFrame: image }],
+  );
+}
 
 const workflows = cases.map(([mode, raw, uploads]) => [
   mode,

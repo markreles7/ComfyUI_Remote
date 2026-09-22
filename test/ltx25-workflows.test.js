@@ -12,6 +12,8 @@ const baseNodes = [
   "RepeatImageBatch", "LTXAddVideoICLoRAGuide", "LTXVSparseTrackEditor", "LTXVDrawTracks",
   "CannyEdgePreprocessor", "DWPreprocessor",
   "ComfyUILTX25MSRICLoRALoader", "ComfyUILTX25MSRMultiReferenceGuide", "LTXVCropGuides",
+  "LoadVideo", "GetVideoComponents", "ImageFromBatch",
+  "GetImageRangeFromBatch", "TrimAudioDuration", "DaSiWa_RTX_UpscalerRefiner",
 ];
 
 const config = videoStudioConfig({
@@ -22,6 +24,7 @@ const config = videoStudioConfig({
     "LTX2.3\\ltx-2.3-22b-ic-lora-union-control-ref0.5.safetensors",
     "LTX2.3\\ltx-2.3-22b-ic-lora-deblur-0.9.safetensors",
     "LTX2.5\\LTX-2.5-Licon-MSR-V1.safetensors",
+    "LTX2.5\\ltx-2.5-22b-ic-lora-pixel-spatial-upscaler-x2-1.0.safetensors",
   ],
   installedDiffusionModels: [
     "ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
@@ -141,6 +144,38 @@ test("blocca modalità opzionali non installate e input obbligatori mancanti", (
   assert.doesNotThrow(() => build("v2vDeblur"));
   assert.throws(() => buildVideoStudioInitialJob("ltx25Aio", { ltx25Mode: "image", prompt: "x" }, {}, [], config), /immagine iniziale/i);
   assert.throws(() => buildVideoStudioInitialJob("ltx25Aio", { ltx25Mode: "text", prompt: "" }, {}, [], config), /prompt/i);
+});
+
+test("H3 verso LTX 2.5 ricava il frame guida dal video senza LoadImage vuoti", () => {
+  const job = build("h3Ltx2k", { ltx25Profile: "maximum" });
+  const videoComponents = Object.entries(job.workflow).find(([, node]) => node.class_type === "GetVideoComponents");
+  const firstFrame = Object.values(job.workflow).find((node) =>
+    node.class_type === "ImageFromBatch" && node._meta?.title?.includes("primo frame dal video sorgente")
+  );
+  assert.ok(videoComponents);
+  assert.ok(firstFrame);
+  assert.equal(firstFrame.inputs.batch_index, 0);
+  assert.equal(Object.values(job.workflow).some((node) => node.class_type === "LoadImage" && !node.inputs.image), false);
+  const trimFrames = Object.values(job.workflow).find((node) => node.class_type === "GetImageRangeFromBatch");
+  const trimAudio = Object.values(job.workflow).find((node) => node.class_type === "TrimAudioDuration");
+  const target = Object.values(job.workflow).find((node) => node.class_type === "EmptyLTXVLatentVideo");
+  const sourceResize = Object.values(job.workflow).find((node) =>
+    node.class_type === "ResizeImageMaskNode" && node.inputs.resize_type === "scale dimensions"
+  );
+  const rtx = Object.values(job.workflow).find((node) => node.class_type === "DaSiWa_RTX_UpscalerRefiner");
+  const createVideo = Object.values(job.workflow).find((node) => node.class_type === "CreateVideo");
+  const trimFramesId = Object.entries(job.workflow).find(([, node]) => node === trimFrames)[0];
+  assert.deepEqual(firstFrame.inputs.image, [trimFramesId, 0]);
+  assert.equal(trimFrames.inputs.num_frames, 121);
+  assert.equal(trimAudio.inputs.duration, 121 / 24);
+  assert.deepEqual([target.inputs.width, target.inputs.height, target.inputs.length], [1024, 576, 121]);
+  assert.equal(sourceResize.inputs["resize_type.width"], 1024);
+  assert.equal(sourceResize.inputs["resize_type.height"], 576);
+  assert.equal(rtx.inputs.width, 2048);
+  assert.equal(rtx.inputs.height, 1152);
+  assert.equal(rtx.inputs.divisible_by, "64");
+  const rtxId = Object.entries(job.workflow).find(([, node]) => node === rtx)[0];
+  assert.deepEqual(createVideo.inputs.images, [rtxId, 0]);
 });
 
 test("seed vuoto, null o multiplo viene trasformato in un seed valido", () => {

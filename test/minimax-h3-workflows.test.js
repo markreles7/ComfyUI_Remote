@@ -12,19 +12,27 @@ const h3Nodes = [
   "LTXVConcatAVLatent",
   "SeedVR2LoadDiTModel", "SeedVR2LoadVAEModel", "SeedVR2VideoUpscaler",
   "DaSiWa_RTX_UpscalerRefiner",
+  "MiniMaxH3DualClockSamplerT8", "SplitSigmas", "ManualSigmas", "LTXVSeparateAVLatent",
+  "MinimaxH3LatentUpscaler3D", "LoadImage",
+  "H3MultishotSampler",
 ];
 
 const h3Lora = "H3\\STY_Motion_Booster.safetensors";
 const combatLora = "H3\\STY_Combat.safetensors";
 const realismLora = "H3\\STY_Realism_People.safetensors";
 const galaxyLora = "H3\\STY_GalaxyAce.safetensors";
+const weaponLora = "H3\\MOT_Weapon_Combat_H3_trigger-BUNNY.safetensors";
+const motionRepairLora = "H3\\MOT_Continuity_Repair_H3_trigger-bunny_crisp_motion.safetensors";
 const config = videoStudioConfig({
   installedLoras: [
     "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
+    "minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy.safetensors",
     h3Lora,
     combatLora,
     realismLora,
     galaxyLora,
+    weaponLora,
+    motionRepairLora,
     "LTX2.3\\not_h3.safetensors",
   ],
   installedDiffusionModels: [
@@ -32,12 +40,15 @@ const config = videoStudioConfig({
     "minimaxH3INT8INT4_ref2vaINT8Pruned.safetensors",
     "h3ErosMax_beta3.safetensors",
     "pinkcherryMMH3Fl2va_06Beta.safetensors",
+    "minimax_h3_hybrid_fl2va_ref2va_b25-49-int8.safetensors",
+    "minimax_h3_hybrid_fl2va_ref2va_b30-49-int8.safetensors",
   ],
   installedClips: ["qwen3vl_32b_minimax_h3_int8_convrot.safetensors"],
   installedVaes: [
     "minimax_h3_video_vae_int8_convrot.safetensors",
     "minimax_h3_audio_vae_fp32.safetensors",
   ],
+  installedLatentUpscalers: ["minimax_h3_latent_upscaler_3d_fp16.safetensors"],
   availableNodes: h3Nodes,
 });
 
@@ -59,7 +70,7 @@ function build(h3Mode, raw = {}, uploads = {}, loras = []) {
 test("rileva pesi INT8, nodi e sole LoRA della cartella H3", () => {
   assert.equal(config.h3.available, true);
   assert.equal(config.capabilities.minimaxH3.available, true);
-  assert.deepEqual(config.h3Loras, [h3Lora, combatLora, realismLora, galaxyLora]);
+  assert.deepEqual(config.h3Loras, [h3Lora, combatLora, realismLora, galaxyLora, weaponLora, motionRepairLora]);
   assert.deepEqual(config.disabledH3Loras, []);
   assert.deepEqual(config.h3LoraCompatibility[galaxyLora].allowedModelProfiles, ["base", "erosMax"]);
   assert.equal(config.h3LoraMetadata[h3Lora].trigger, "dynv2");
@@ -67,13 +78,97 @@ test("rileva pesi INT8, nodi e sole LoRA della cartella H3", () => {
   assert.deepEqual(config.h3LoraMetadata[combatLora].triggerOptions, ["prfight2", "prfin1"]);
   assert.equal(config.h3LoraMetadata[combatLora].automatic, false);
   assert.equal(config.h3.actionAvailable, true);
+  assert.equal(config.h3.weaponCombatAvailable, true);
+  assert.equal(config.h3.motionRepairAvailable, true);
+  assert.equal(config.h3.seamlessChain.available, true);
   assert.equal(config.h3.refineAvailability.seedvr2, true);
   assert.equal(config.h3.refineAvailability.rtx, true);
   assert.equal(config.h3.attentionAvailability.comfyKitchen, true);
   assert.equal(config.h3.files.fl2va, "minimaxH3INT8INT4_fl2vaINT8Pruned.safetensors");
   assert.equal(config.h3.files.ref2va, "minimaxH3INT8INT4_ref2vaINT8Pruned.safetensors");
+  assert.equal(config.h3.files.hybridB25, "minimax_h3_hybrid_fl2va_ref2va_b25-49-int8.safetensors");
   assert.equal(config.h3.files.erosMax, "h3ErosMax_beta3.safetensors");
   assert.equal(config.h3.modelProfiles.erosMax.available, true);
+  assert.equal(config.h3.fast.available, true);
+  assert.equal(config.h3.sparseV9.modelOptions[0], "minimax_h3_hybrid_fl2va_ref2va_b30-49-int8.safetensors");
+  assert.deepEqual(new Set(config.h3.sparseV9.modelOptions), new Set([
+    "minimax_h3_hybrid_fl2va_ref2va_b30-49-int8.safetensors", "h3ErosMax_beta3.safetensors",
+    "minimax_h3_hybrid_fl2va_ref2va_b25-49-int8.safetensors", "minimaxH3INT8INT4_fl2vaINT8Pruned.safetensors",
+    "minimaxH3INT8INT4_ref2vaINT8Pruned.safetensors", "pinkcherryMMH3Fl2va_06Beta.safetensors",
+  ]));
+});
+
+test("Minimax H3 Fast conserva Dual Clock, sigma split e upscale del solo latent video", () => {
+  const job = buildVideoStudioInitialJob("minimaxH3Fast", {
+    prompt: "The subject launches into a fast coherent chase while the camera tracks laterally.",
+    duration: 5,
+    h3FastAspectRatio: "16:9 (Widescreen)",
+    h3FastFirstMegapixels: 0.2,
+    h3FastTargetMegapixels: 0.98,
+    h3FastSplitStep: 6,
+    h3FastTurboStrength: 0.75,
+    h3FastUseTurbo: true,
+    seed: 4242,
+  }, { h3FirstFrame: image }, [{ name: h3Lora, strength: 0.6 }], config);
+
+  assert.equal(job.workflow["4"].inputs.unet_name, "minimax_h3_hybrid_fl2va_ref2va_b25-49-int8.safetensors");
+  assert.equal(job.workflow["18"].inputs.lora_name, "minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy.safetensors");
+  assert.equal(job.workflow["18"].inputs.strength_model, 0.75);
+  assert.equal(job.workflow["23"].class_type, "MiniMaxH3DualClockSamplerT8");
+  assert.equal(job.workflow["23"].inputs.steps, 12);
+  assert.deepEqual(job.workflow["24"].inputs.sigmas, ["23", 2]);
+  assert.equal(job.workflow["24"].inputs.step, 6);
+  assert.deepEqual(job.workflow["27"].inputs.av_latent, ["26", 1]);
+  assert.deepEqual(job.workflow["28"].inputs.latent, ["27", 0]);
+  assert.deepEqual(job.workflow["29"].inputs.audio_latent, ["27", 1]);
+  assert.equal(job.workflow["32"].inputs.sigmas, "0.9035, 0.6316, 0.3158, 0.0000");
+  assert.deepEqual(job.workflow["33"].inputs.latent_image, ["29", 0]);
+  assert.equal(job.metadata.videoStudioMode, "minimaxH3Fast");
+  assert.equal(job.metadata.seed, 4242);
+  assert.equal(job.metadata.firstMegapixels, 0.2);
+  assert.equal(job.metadata.secondMegapixels, 0.98);
+});
+
+test("Minimax H3 Fast supporta T2V Turbo senza richiedere il primo frame", () => {
+  const job = buildVideoStudioInitialJob("minimaxH3Fast", {
+    h3FastMode: "text",
+    h3FastUseTurbo: true,
+    prompt: "A cinematic train crosses a stormy valley with synchronized native audio.",
+    duration: 5,
+  }, {}, [], config);
+  assert.equal(job.workflow["7"], undefined);
+  assert.equal(job.workflow["20"].inputs.first_frame, undefined);
+  assert.equal(job.workflow["18"].inputs.lora_name, config.h3.fast.files.turbo);
+  assert.equal(job.workflow["23"].inputs.steps, 12);
+  assert.equal(job.metadata.h3Mode, "text");
+  assert.equal(job.metadata.useTurbo, true);
+});
+
+test("Minimax H3 Fast Turbo OFF usa 0,9 MP e 25 step senza loader Turbo", () => {
+  const job = buildVideoStudioInitialJob("minimaxH3Fast", {
+    h3FastMode: "text",
+    h3FastUseTurbo: false,
+    prompt: "A natural cinematic street scene with native ambience.",
+    duration: 5,
+  }, {}, [], config);
+  assert.equal(job.workflow["5"].inputs.megapixels, 0.9);
+  assert.equal(job.workflow["6"].inputs.megapixels, 0.9);
+  assert.equal(job.workflow["18"], undefined);
+  assert.equal(job.workflow["23"], undefined);
+  assert.equal(job.workflow["28"], undefined);
+  assert.equal(job.workflow["32"].class_type, "BasicScheduler");
+  assert.equal(job.workflow["32"].inputs.steps, 25);
+  assert.equal(job.metadata.useTurbo, false);
+});
+
+test("Minimax H3 Fast richiede immagine e dipendenze dedicate", () => {
+  assert.throws(() => buildVideoStudioInitialJob("minimaxH3Fast", {
+    prompt: "Fast action.",
+  }, {}, [], config), /immagine iniziale/i);
+
+  const unavailable = videoStudioConfig({ availableNodes: h3Nodes });
+  assert.equal(unavailable.h3.fast.available, false);
+  assert.match(unavailable.h3.fast.reason, /checkpoint hybrid|Turbo 4-step|upscaler/i);
 });
 
 test("PinkCherry usa il checkpoint FL2VA INT8 unpruned senza Turbo", () => {
@@ -203,6 +298,19 @@ test("sampling diretto 0,9 salta refine e purge intermedio, ma conserva quello f
   assert.equal(job.metadata.secondPass, false);
 });
 
+test("MiniMax H3 Studio Turbo OFF forza sempre 0,9 MP e 25 step senza Turbo LoRA", () => {
+  const job = build("text", {
+    h3UseTurbo: false,
+    h3RunProfile: "nativeFinal",
+    h3FirstMegapixels: 0.4,
+    h3RefineMode: "direct",
+  });
+  assert.equal(job.workflow["20"].inputs.megapixels, 0.9);
+  assert.equal(job.workflow["10"], undefined);
+  assert.equal(job.workflow["33"].inputs.steps, 25);
+  assert.equal(job.metadata.useTurbo, false);
+});
+
 test("anteprima H3 forza 0,4 MP, conserva seed e salta ogni refine pesante", () => {
   const job = build("text", {
     h3RunProfile: "preview",
@@ -239,7 +347,22 @@ test("Seed Hunter H3 costruisce un solo candidato per job senza SaveLatent sul N
   assert.match(job.workflow["52"].inputs.filename_prefix, /candidate_2_seed_700/);
 });
 
-test("anteprima Fantasy verite usa Turbo solo temporaneamente e conserva il finale senza Turbo", () => {
+test("Seed Hunter H3 Turbo OFF genera candidati nativi a 0,9 MP e 25 step", () => {
+  const job = buildVideoStudioInitialJob("seedHunterH3", {
+    seedHunterH3Mode: "text",
+    seedHunterH3UseTurbo: false,
+    prompt: "A complete native action with synchronized ambient audio.",
+    duration: 5,
+    seed: 900,
+  }, {}, [], config);
+  assert.equal(job.workflow["20"].inputs.megapixels, 0.9);
+  assert.equal(job.workflow["10"], undefined);
+  assert.equal(job.workflow["33"].inputs.steps, 25);
+  assert.equal(job.metadata.videoStudioMode, "seedHunterH3");
+  assert.equal(job.metadata.useTurbo, false);
+});
+
+test("anteprima Fantasy verite rispetta Turbo OFF a 0,9 MP e 25 step", () => {
   const job = build("image", {
     h3RunProfile: "preview",
     h3ScenePreset: "fantasyVerite",
@@ -248,10 +371,10 @@ test("anteprima Fantasy verite usa Turbo solo temporaneamente e conserva il fina
     h3RefineMode: "rtx",
     seed: 24680,
   }, { h3FirstFrame: image }, [{ name: realismLora, strength: 0.7 }]);
-  assert.equal(job.workflow["20"].inputs.megapixels, 0.4);
-  assert.equal(job.workflow["10"].inputs.lora_name, config.h3.files.turbo);
-  assert.equal(job.workflow["33"].inputs.steps, 8);
-  assert.equal(job.metadata.useTurbo, true);
+  assert.equal(job.workflow["20"].inputs.megapixels, 0.9);
+  assert.equal(job.workflow["10"].inputs.lora_name, realismLora);
+  assert.equal(job.workflow["33"].inputs.steps, 25);
+  assert.equal(job.metadata.useTurbo, false);
   assert.equal(job.metadata.nativeUseTurbo, false);
   assert.equal(job.metadata.scenePreset, "fantasyVerite");
   assert.match(job.workflow["25"].inputs.prompt, /Naturalistic fantasy-verite footage/);
@@ -264,6 +387,13 @@ test("profilo H3 bilanciato usa 0,9 MP, 3 step e denoise 0,15", () => {
   assert.equal(job.workflow["48"].inputs.steps, 3);
   assert.equal(job.workflow["48"].inputs.denoise, 0.15);
   assert.equal(job.metadata.refineMode, "h3Balanced");
+});
+
+test("latent learned serializza il COMFY_DYNAMICCOMBO nel formato accettato da ComfyUI", () => {
+  const job = build("text", { h3RefineMode: "latentLearned", h3SecondMegapixels: 0.9 });
+  assert.equal(job.workflow["42"].inputs.mode, "megapixels");
+  assert.equal(job.workflow["42"].inputs["mode.megapixels"], 0.9);
+  assert.equal(job.workflow["42"].inputs.enable_chunking, true);
 });
 
 test("look amatoriale aggiunge imperfezioni organiche senza spostare il trigger LoRA", () => {
@@ -308,7 +438,31 @@ test("concatena Turbo e LoRA H3 sul modello della modalità", () => {
   assert.deepEqual(job.workflow["31"].inputs.model, ["11", 0]);
 });
 
-test("ACTION H3 usa FL2VA, Combat V2 automatica e res_multistep + simple", () => {
+test("Breast Play Pro usa lo stack verificato senza includere la Turbo quando disattivata", () => {
+  const presetLoras = [
+    { name: "H3\\NSFW_breastplayjiggle_h3_v2.safetensors", strength: 0.75 },
+    { name: "H3\\STY_GalaxyAce.safetensors", strength: 0.55 },
+    { name: "H3\\STY_H3_VBVR_Pro_attn_only.safetensors", strength: 0.8 },
+    { name: "H3\\NSFW_bounceV07_fl2va-000230_Intense.safetensors", strength: 0.6 },
+  ];
+  const job = buildVideoStudioInitialJob("minimaxH3", {
+    h3Mode: "image",
+    h3UseTurbo: false,
+    h3RunProfile: "nativeFinal",
+    h3RefineMode: "direct",
+    h3SamplerName: "res_2s",
+    h3SchedulerName: "beta57",
+    prompt: "her breast is bouncing from left to right. POV video of one clearly adult consenting woman.",
+  }, { h3FirstFrame: image }, presetLoras, config);
+  const applied = Object.values(job.workflow).filter((entry) => entry.class_type === "LoraLoaderModelOnly");
+  assert.equal(applied.some((entry) => entry.inputs.lora_name === config.h3.files.turbo), false);
+  assert.deepEqual(applied.map((entry) => [entry.inputs.lora_name, entry.inputs.strength_model]), presetLoras.map((entry) => [entry.name, entry.strength]));
+  assert.equal(job.workflow["32"].inputs.sampler_name, "res_2s");
+  assert.equal(job.workflow["33"].inputs.scheduler, "beta57");
+  assert.equal(job.workflow["33"].inputs.steps, 25);
+});
+
+test("ACTION H3 usa Hybrid b25-49, Combat V2 automatica e res_multistep + simple", () => {
   const job = buildVideoStudioInitialJob("actionH3", {
     actionH3Mode: "text",
     prompt: "Two adult fighters exchange a short, physically coherent combination.",
@@ -318,7 +472,7 @@ test("ACTION H3 usa FL2VA, Combat V2 automatica e res_multistep + simple", () =>
     actionH3Trigger: "prfight2",
     actionH3CombatStrength: 0.8,
   }, {}, [], config);
-  assert.equal(job.workflow["4"].inputs.unet_name, config.h3.files.fl2va);
+  assert.equal(job.workflow["4"].inputs.unet_name, config.h3.files.hybridB25);
   assert.equal(job.workflow["10"].inputs.lora_name, config.h3.files.turbo);
   assert.equal(job.workflow["11"].inputs.lora_name, combatLora);
   assert.equal(job.workflow["11"].inputs.strength_model, 0.8);
@@ -332,6 +486,56 @@ test("ACTION H3 usa FL2VA, Combat V2 automatica e res_multistep + simple", () =>
   assert.match(job.workflow["52"].inputs.filename_prefix, /ActionH3/);
 });
 
+test("ACTION H3 può usare Weapon BUNNY e i preset condivisi senza caricare Combat", () => {
+  const job = buildVideoStudioInitialJob("actionH3", {
+    actionH3Mode: "text",
+    actionH3PrimaryLora: "weapon",
+    actionH3Preset: "katanaHighSpeed",
+    prompt: "The adult swordswoman draws and completes one counterattack.",
+    duration: 6,
+    actionH3Quality: "direct09",
+  }, {}, [], config);
+  const applied = Object.values(job.workflow).filter((entry) => entry.class_type === "LoraLoaderModelOnly");
+  assert.equal(applied.some((entry) => entry.inputs?.lora_name === combatLora), false);
+  assert.equal(applied.some((entry) => entry.inputs?.lora_name === weaponLora), true);
+  assert.match(job.workflow["25"].inputs.prompt, /BUNNY/);
+  assert.match(job.workflow["25"].inputs.prompt, /High-speed katana choreography/);
+  assert.equal(job.metadata.actionLoraType, "weapon");
+  assert.equal(job.metadata.actionPreset, "katanaHighSpeed");
+});
+
+test("ACTION H3 MAX usa 25 step reali senza Turbo e FlatAnime blocca lo stile 2D", () => {
+  const flatAnime = "H3\\STY_Flat_Anime_H3.safetensors";
+  const job = buildVideoStudioInitialJob("actionH3", {
+    actionH3Mode: "image",
+    actionH3RunProfile: "nativeFinal",
+    actionH3Quality: "max25",
+    prompt: "The anime swordswoman defeats two attackers in one continuous shot.",
+    actionH3Trigger: "prfight2",
+    seed: 12345,
+  }, { h3FirstFrame: image }, [{ name: flatAnime, strength: 0.8 }], config);
+  assert.equal(Object.values(job.workflow).some((node) => node.inputs?.lora_name === config.h3.files.turbo), false);
+  assert.equal(job.workflow["33"].inputs.steps, 25);
+  assert.equal(job.workflow["33"].inputs.denoise, 1);
+  assert.equal(job.workflow["40"], undefined);
+  assert.match(job.workflow["25"].inputs.prompt, /ANIME STYLE LOCK/);
+  assert.match(job.workflow["25"].inputs.prompt, /Do not transition toward volumetric 3D/);
+  assert.equal(job.metadata.actionQuality, "max25");
+  assert.equal(job.metadata.animeStyleLock, true);
+});
+
+test("seed ACTION vuoto resta casuale mentre lo stesso seed esplicito viene conservato", () => {
+  const random = buildVideoStudioInitialJob("actionH3", {
+    actionH3Mode: "text", prompt: "A short fight.", seed: "",
+  }, {}, [], config);
+  const fixed = buildVideoStudioInitialJob("actionH3", {
+    actionH3Mode: "text", prompt: "A short fight.", seed: "4567",
+  }, {}, [], config);
+  assert.ok(Number.isInteger(random.metadata.seed));
+  assert.notEqual(random.metadata.seed, 0);
+  assert.equal(fixed.metadata.seed, 4567);
+});
+
 test("i preset ACTION H3 aggiungono una regia dedicata e vengono salvati nei metadata", () => {
   const cinematic = buildVideoStudioInitialJob("actionH3", {
     actionH3Mode: "text",
@@ -341,7 +545,7 @@ test("i preset ACTION H3 aggiungono una regia dedicata e vengono salvati nei met
   }, {}, [{ name: realismLora, strength: 0.5 }, { name: h3Lora, strength: 0.35 }], config);
   assert.equal(cinematic.metadata.actionPreset, "cinematicOneTake");
   assert.match(cinematic.workflow["25"].inputs.prompt, /Cinematic continuous-take duel/);
-  assert.match(cinematic.workflow["25"].inputs.prompt, /Do not invent cuts/);
+  assert.match(cinematic.workflow["25"].inputs.prompt, /No invented cuts/);
 
   const fallback = buildVideoStudioInitialJob("actionH3", {
     actionH3Mode: "text",
@@ -388,7 +592,7 @@ test("ACTION H3 Single Image ricostruisce il conditioning alla risoluzione del s
   assert.deepEqual(job.workflow["46"].inputs.conditioning, ["54", 0]);
 });
 
-test("ACTION H3 espone soltanto T2V, I2V e First Last e non duplica Combat", () => {
+test("ACTION H3 espone T2V, I2V, First Last e Reference Images senza duplicare Combat", () => {
   const imageJob = buildVideoStudioInitialJob("actionH3", {
     actionH3Mode: "image",
     prompt: "The adult fighter rolls under one controlled strike and regains stance.",
@@ -398,8 +602,56 @@ test("ACTION H3 espone soltanto T2V, I2V e First Last e non duplica Combat", () 
   assert.equal(Object.values(imageJob.workflow).filter((entry) => entry.inputs?.lora_name === combatLora).length, 1);
   assert.deepEqual(imageJob.workflow["25"].inputs.first_frame, ["21", 0]);
   assert.equal(imageJob.workflow["40"], undefined);
+  const referenceJob = buildVideoStudioInitialJob("actionH3", {
+    actionH3Mode: "references",
+    prompt: "<Picture 1> and <Picture 2> are adult fighters. They exchange one controlled combination.",
+  }, { h3ReferenceImages: [image, { ...image, name: "fighter-two.png" }] }, [], config);
+  assert.equal(referenceJob.workflow["4"].inputs.unet_name, config.h3.files.hybridB25);
+  assert.equal(referenceJob.workflow["25"].class_type, "MiniMaxH3ReferenceToVideo");
+  assert.deepEqual(referenceJob.workflow["25"].inputs["ref_images.ref_image_0"], ["60", 0]);
+  assert.deepEqual(referenceJob.workflow["25"].inputs["ref_images.ref_image_1"], ["61", 0]);
+  assert.equal(Object.values(referenceJob.workflow).filter((entry) => entry.inputs?.lora_name === combatLora).length, 1);
+  assert.equal(referenceJob.metadata.modelFamily, "ref2va");
+  assert.deepEqual(referenceJob.metadata.references.images, ["remote/first.png", "remote/fighter-two.png"]);
   assert.throws(() => buildVideoStudioInitialJob("actionH3", {
     actionH3Mode: "references",
     prompt: "Combat",
-  }, { h3ReferenceImages: [image] }, [], config), /soltanto Text to Video|FL2VA/);
+  }, {}, [], config), /almeno una reference immagine/i);
+});
+
+test("ACTION H3 integra Motion Repair con forza diversa nei due passaggi", () => {
+  const job = buildVideoStudioInitialJob("actionH3", {
+    actionH3Mode: "text", actionH3RunProfile: "nativeFinal", actionH3Quality: "twoPass06",
+    actionH3Trigger: "prfight2", prompt: "Two adult fighters complete a coherent exchange.",
+    h3MotionRepair: true, h3MotionRepairStrength: 0.6, h3MotionRepairSecondStrength: 0.25,
+  }, {}, [], config);
+  const repairNodes = Object.values(job.workflow).filter((entry) => entry.inputs?.lora_name === motionRepairLora);
+  assert.deepEqual(repairNodes.map((entry) => entry.inputs.strength_model), [0.6, 0.25]);
+  assert.match(job.workflow["25"].inputs.prompt, /bunny_crisp_motion/);
+  assert.equal(job.metadata.motionRepairEnabled, true);
+  assert.equal(job.workflow["42"].class_type, "MinimaxH3LatentUpscaler3D");
+});
+
+test("Weapon Combat applica BUNNY automaticamente e usa il refine latente", () => {
+  const job = buildVideoStudioInitialJob("weaponCombatH3", {
+    weaponCombatMode: "image", weaponCombatQuality: "twoPass06", weaponCombatStrength: 0.8,
+    weaponCombatAspectRatio: "16:9 (Widescreen)", prompt: "A swordswoman parries and completes one counterattack.",
+  }, { h3FirstFrame: image }, [], config);
+  assert.equal(Object.values(job.workflow).find((entry) => entry.inputs?.lora_name === weaponLora).inputs.strength_model, 0.8);
+  assert.match(job.workflow["25"].inputs.prompt, /BUNNY/);
+  assert.equal(job.workflow["42"].class_type, "MinimaxH3LatentUpscaler3D");
+  assert.equal(job.metadata.videoStudioMode, "weaponCombatH3");
+});
+
+test("H3 Seamless Chain usa una sola start image e delega gli handoff al nodo multishot", () => {
+  const job = buildVideoStudioInitialJob("h3SeamlessChain", {
+    prompt: "First complete take.\n---\nSecond causal continuation.\n---\nThird resolution.",
+    duration: 5, h3ChainAspectRatio: "16:9 (Widescreen)", h3ChainUseTurbo: true, seed: 88,
+  }, { h3FirstFrame: image }, [], config);
+  assert.equal(job.workflow["30"].class_type, "H3MultishotSampler");
+  assert.deepEqual(job.workflow["30"].inputs.start_image, ["7", 0]);
+  assert.equal(job.workflow["30"].inputs.shot_count, 0);
+  assert.equal(job.workflow["30"].inputs.steps, 8);
+  assert.equal(job.metadata.segments, 3);
+  assert.equal(job.metadata.totalDuration, 15);
 });

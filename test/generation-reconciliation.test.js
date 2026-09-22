@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  comfyHistoryError,
+  comfyOfflineGenerationPatch,
   comfyQueuePromptIds,
   missingGenerationPatch,
 } from "../src/generation-reconciliation.js";
@@ -58,4 +60,31 @@ test("conserva un job appena creato e non decide senza lo stato della coda", () 
     pending: null,
     now: Date.parse("2026-07-28T12:00:00.000Z"),
   }), null);
+});
+
+test("chiude un job attivo quando ComfyUI resta offline oltre la soglia", () => {
+  const item = { status: "running", promptId: "crashed" };
+  assert.equal(comfyOfflineGenerationPatch(item, {
+    unavailableSince: Date.parse("2026-09-11T20:00:00.000Z"),
+    now: Date.parse("2026-09-11T20:00:20.000Z"),
+  }), null);
+  const patch = comfyOfflineGenerationPatch(item, {
+    unavailableSince: Date.parse("2026-09-11T20:00:00.000Z"),
+    now: Date.parse("2026-09-11T20:00:31.000Z"),
+  });
+  assert.equal(patch.status, "error");
+  assert.match(patch.error, /arrestato|non è raggiungibile/i);
+  assert.equal(patch.finishedAt, "2026-09-11T20:00:31.000Z");
+});
+
+test("estrae il messaggio reale dalla cronologia ComfyUI", () => {
+  assert.equal(comfyHistoryError({
+    status: {
+      messages: [
+        ["execution_start", { prompt_id: "x" }],
+        ["execution_error", { exception_type: "RuntimeError", exception_message: "aimdo memory compile error: could not start recording\n" }],
+      ],
+    },
+  }), "aimdo memory compile error: could not start recording");
+  assert.match(comfyHistoryError({ status: { messages: [] } }), /ComfyUI ha terminato/);
 });

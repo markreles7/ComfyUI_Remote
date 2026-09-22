@@ -67,6 +67,21 @@ test("rileva separatamente le dipendenze degli stadi Video Studio attivi", () =>
   assert.equal(Object.keys(videoStudioTemplateClasses()).length, 6);
 });
 
+test("Video Studio accetta LoRA creative sia da LTX2.3 sia da LTX2.5", () => {
+  const loraConfig = videoStudioConfig({
+    ...installed,
+    installedLoras: [
+      ...installed.installedLoras,
+      "LTX2.3\\Fantasy_Anime.safetensors",
+      "LTX2.5\\3dsrx_1250.safetensors",
+      "LTX2.5\\ltx-2.5-22b-ic-lora-pixel-spatial-upscaler-x2-1.0.safetensors",
+    ],
+  });
+  assert.ok(loraConfig.ltxLoras.includes("LTX2.3\\Fantasy_Anime.safetensors"));
+  assert.ok(loraConfig.ltxLoras.includes("LTX2.5\\3dsrx_1250.safetensors"));
+  assert.ok(!loraConfig.ltxLoras.some((name) => /pixel-spatial-upscaler/i.test(name)));
+});
+
 test("Actor Replacement solo viso usa LTX 2.3 tracked inpaint", () => {
   const job = buildVideoStudioInitialJob("actorReplacement", {
     actorEngine: "trackedInpaint",

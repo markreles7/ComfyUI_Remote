@@ -25,21 +25,28 @@ const purgeInputs = Object.freeze({
   Ollama: false,
 });
 
+export const H3_PREVIEW_FINISHING_REQUIREMENTS = Object.freeze({
+  all: Object.freeze(["VHS_LoadVideo", "FILM VFI", "DisTorchPurgeVRAMV2", "LayerUtility: PurgeVRAM", "DaSiWa_RTX_UpscalerRefiner", "RemoteChunkedRCAS", "VHS_VideoCombine"]),
+  film: Object.freeze(["VHS_LoadVideo", "FILM VFI", "DisTorchPurgeVRAMV2", "LayerUtility: PurgeVRAM", "VHS_VideoCombine"]),
+  rtx: Object.freeze(["VHS_LoadVideo", "RTXVideoSuperResolution", "LayerUtility: PurgeVRAM", "VHS_VideoCombine"]),
+  rcas: Object.freeze(["VHS_LoadVideo", "RemoteChunkedRCAS", "LayerUtility: PurgeVRAM", "VHS_VideoCombine"]),
+  kjLanczos: Object.freeze(["VHS_LoadVideo", "ImageResizeKJv2", "LayerUtility: PurgeVRAM", "VHS_VideoCombine"]),
+});
+
 export const H3_PREVIEW_FINISHING_NODES = Object.freeze([
-  "VHS_LoadVideo",
-  "FILM VFI",
-  "DisTorchPurgeVRAMV2",
-  "LayerUtility: PurgeVRAM",
-  "DaSiWa_RTX_UpscalerRefiner",
-  "ImageSharpenKJ",
-  "VHS_VideoCombine",
+  ...new Set(Object.values(H3_PREVIEW_FINISHING_REQUIREMENTS).flat()),
 ]);
 
 export function buildH3PreviewFinishingWorkflow(sourceVideo, raw = {}) {
-  if (!sourceVideo?.name) throw new Error("Il video anteprima MiniMax H3 non è disponibile.");
-  const finishingMode = String(raw.finishingMode || "rtx") === "kjLanczos" ? "kjLanczos" : "rtx";
-  const rcasStrength = number(raw.rcasStrength, 0.35, 0, 1);
-  const actionProfile = String(raw.videoStudioMode) === "actionH3";
+  if (!sourceVideo?.name) throw new Error("Il video MiniMax H3 da rifinire non è disponibile.");
+  const requestedMode = String(raw.finishingMode || "all");
+  const finishingMode = Object.hasOwn(H3_PREVIEW_FINISHING_REQUIREMENTS, requestedMode) ? requestedMode : "all";
+  const rcasStrength = number(raw.rcasStrength, 0.3, 0, 1);
+  const sourceMode = String(raw.videoStudioMode || "minimaxH3");
+  const actionProfile = sourceMode === "actionH3";
+  const sparseProfile = sourceMode === "h3SparseV9";
+  const profileName = sparseProfile ? "PlagueKind H3 Sparse V9" : actionProfile ? "ACTION H3" : "MiniMax H3";
+  const profileFolder = sparseProfile ? "PlagueKindH3SparseV9" : actionProfile ? "ActionH3" : "MiniMaxH3";
   const portrait = /^(9:16|3:4|2:3)/.test(String(raw.aspectRatio || ""));
   const square = String(raw.aspectRatio || "").startsWith("1:1");
   const width = square ? 1024 : portrait ? 720 : 1280;
@@ -56,7 +63,7 @@ export function buildH3PreviewFinishingWorkflow(sourceVideo, raw = {}) {
       }, "MiniMax H3 · KJ Lanczos conservativo"),
       "3": node("VHS_VideoCombine", {
         images: ["2", 0], audio: ["1", 2], frame_rate: 24, loop_count: 0,
-        filename_prefix: `VideoStudio/${actionProfile ? "ActionH3" : "MiniMaxH3"}/promoted_kj_lanczos`,
+        filename_prefix: `VideoStudio/${profileFolder}/promoted_kj_lanczos`,
         format: "video/h264-mp4", pix_fmt: "yuv420p", crf: 18, save_metadata: true,
         trim_to_audio: false, pingpong: false, save_output: true,
       }, "MiniMax H3 · salva KJ conservativo"),
@@ -67,9 +74,9 @@ export function buildH3PreviewFinishingWorkflow(sourceVideo, raw = {}) {
     return {
       workflow,
       metadata: {
-        workflowId: `videoStudio:${actionProfile ? "actionH3" : "minimaxH3"}:previewFinishing:kjLanczos`,
-        workflowName: `Video Studio · ${actionProfile ? "ACTION H3" : "MiniMax H3"} · KJ Lanczos conservativo`,
-        videoStudioMode: actionProfile ? "actionH3" : "minimaxH3",
+        workflowId: `videoStudio:${sourceMode}:previewFinishing:kjLanczos`,
+        workflowName: `Video Studio · ${profileName} · KJ Lanczos conservativo`,
+        videoStudioMode: sourceMode,
         videoStudioStage: "previewFinishing",
         videoStudioLabel: "Promozione conservativa · KJ Lanczos",
         h3Stage: "promotedFinal",
@@ -78,6 +85,71 @@ export function buildH3PreviewFinishingWorkflow(sourceVideo, raw = {}) {
         outputFps: 24,
         outputWidth: width,
         outputHeight: height,
+      },
+    };
+  }
+  if (["film", "rtx", "rcas"].includes(finishingMode)) {
+    const labels = {
+      film: "solo FILM ×2",
+      rtx: "solo RTX Super Resolution ×2",
+      rcas: "solo FSR RCAS",
+    };
+    const slugs = { film: "film_x2", rtx: "rtx_vsr_x2", rcas: "rcas" };
+    const workflow = {
+      "1": node("VHS_LoadVideo", {
+        video: inputPath(sourceVideo), force_rate: 24, custom_width: 0, custom_height: 0,
+        frame_load_cap: 0, skip_first_frames: 0, select_every_nth: 1, format: "AnimateDiff",
+      }, "MiniMax H3 · carica originale e audio nativo"),
+    };
+    let images;
+    let fps = 24;
+    let saveId;
+    if (finishingMode === "film") {
+      workflow["2"] = node("FILM VFI", {
+        ckpt_name: "film_net_fp32.pt", frames: ["1", 0], clear_cache_after_n_frames: 10, multiplier: 2,
+      }, "MiniMax H3 · solo FILM 24 → 48 FPS");
+      workflow["3"] = node("DisTorchPurgeVRAMV2", { anything: ["2", 0], ...purgeInputs }, "MiniMax H3 · purge dopo FILM");
+      images = ["3", 0];
+      fps = 48;
+      saveId = "4";
+    } else if (finishingMode === "rtx") {
+      workflow["2"] = node("RTXVideoSuperResolution", {
+        images: ["1", 0], resize_type: "scale by multiplier", "resize_type.scale": 2, quality: "ULTRA",
+      }, "MiniMax H3 · solo RTX Video Super Resolution ×2");
+      images = ["2", 0];
+      saveId = "3";
+    } else {
+      workflow["2"] = node("RemoteChunkedRCAS", {
+        image: ["1", 0], strength: rcasStrength, chunk_size: 2,
+      }, `MiniMax H3 · solo FSR RCAS ${rcasStrength.toFixed(2)} · memory safe`);
+      images = ["2", 0];
+      saveId = "3";
+    }
+    workflow[saveId] = node("VHS_VideoCombine", {
+      images, audio: ["1", 2], frame_rate: fps, loop_count: 0,
+      filename_prefix: `VideoStudio/${profileFolder}/promoted_${slugs[finishingMode]}`,
+      format: "video/h264-mp4", pix_fmt: "yuv420p", crf: 17, save_metadata: true,
+      trim_to_audio: false, pingpong: false, save_output: true,
+    }, `MiniMax H3 · salva ${labels[finishingMode]}`);
+    const purgeId = String(Number(saveId) + 1);
+    workflow[purgeId] = node("LayerUtility: PurgeVRAM", {
+      anything: [saveId, 0], purge_cache: true, purge_models: true,
+    }, "MiniMax H3 · libera VRAM finishing");
+    return {
+      workflow,
+      metadata: {
+        workflowId: `videoStudio:${sourceMode}:previewFinishing:${finishingMode}`,
+        workflowName: `Video Studio · ${profileName} · ${labels[finishingMode]}`,
+        videoStudioMode: sourceMode,
+        videoStudioStage: "previewFinishing",
+        videoStudioLabel: `Miglioramento · ${labels[finishingMode]}`,
+        h3Stage: "promotedFinal",
+        finishingMode,
+        sourceVideo: inputPath(sourceVideo),
+        outputFps: fps,
+        ...(finishingMode === "film" ? { filmMultiplier: 2 } : {}),
+        ...(finishingMode === "rtx" ? { rtxScale: 2 } : {}),
+        ...(finishingMode === "rcas" ? { rcasStrength } : {}),
       },
     };
   }
@@ -124,19 +196,17 @@ export function buildH3PreviewFinishingWorkflow(sourceVideo, raw = {}) {
       anything: ["4", 0],
       ...purgeInputs,
     }, "MiniMax H3 · purge dopo RTX VSR"),
-    "6": node("ImageSharpenKJ", {
+    "6": node("RemoteChunkedRCAS", {
       image: ["5", 0],
-      // ComfyUI V3 DynamicCombo inputs use flattened API paths. Passing an
-      // object here is accepted by /prompt but then omitted at execution.
-      method: "rcas",
-      "method.strength": rcasStrength,
-    }, "MiniMax H3 · FSR RCAS organico"),
+      strength: rcasStrength,
+      chunk_size: 2,
+    }, "MiniMax H3 · FSR RCAS 0,30 · memory safe"),
     "7": node("VHS_VideoCombine", {
       images: ["6", 0],
       audio: ["1", 2],
       frame_rate: 48,
       loop_count: 0,
-      filename_prefix: `VideoStudio/${actionProfile ? "ActionH3" : "MiniMaxH3"}/promoted_film_rtx2_rcas`,
+      filename_prefix: `VideoStudio/${profileFolder}/promoted_film_rtx2_rcas`,
       format: "video/h264-mp4",
       pix_fmt: "yuv420p",
       crf: 17,
@@ -158,9 +228,9 @@ export function buildH3PreviewFinishingWorkflow(sourceVideo, raw = {}) {
   return {
     workflow,
     metadata: {
-      workflowId: `videoStudio:${actionProfile ? "actionH3" : "minimaxH3"}:previewFinishing`,
-      workflowName: `Video Studio · ${actionProfile ? "ACTION H3" : "MiniMax H3"} · FILM → RTX ×2 → RCAS`,
-      videoStudioMode: actionProfile ? "actionH3" : "minimaxH3",
+      workflowId: `videoStudio:${sourceMode}:previewFinishing:all`,
+      workflowName: `Video Studio · ${profileName} · FILM → RTX ×2 → RCAS`,
+      videoStudioMode: sourceMode,
       videoStudioStage: "previewFinishing",
       videoStudioLabel: "Promozione anteprima · FILM → RTX ×2 → RCAS",
       h3Stage: "promotedFinal",

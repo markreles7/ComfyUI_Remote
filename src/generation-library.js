@@ -45,6 +45,7 @@ function matchesGeneration(item, filters = {}) {
   }
   if (mediaType === "image" && !(item.images || []).length) return false;
   if (mediaType === "video" && !(item.videos || []).length) return false;
+  if (mediaType === "audio" && !(item.audios || []).length) return false;
   if (dateFrom && createdAt < dateFrom) return false;
   if (dateTo && createdAt > dateTo) return false;
   return true;
@@ -95,7 +96,7 @@ export function estimateGenerationCleanup({ items = [], criteria = {}, resolveMe
   const seen = new Set();
   const files = [];
   for (const item of candidates) {
-    for (const media of [...(item.images || []), ...(item.videos || [])]) {
+    for (const media of [...(item.images || []), ...(item.videos || []), ...(item.audios || [])]) {
       const match = resolveMedia(media, item);
       if (!match?.path || seen.has(match.path)) continue;
       seen.add(match.path);
@@ -110,6 +111,7 @@ export function estimateGenerationCleanup({ items = [], criteria = {}, resolveMe
     generations: candidates.length,
     images: candidates.reduce((sum, item) => sum + (item.images || []).length, 0),
     videos: candidates.reduce((sum, item) => sum + (item.videos || []).length, 0),
+    audios: candidates.reduce((sum, item) => sum + (item.audios || []).length, 0),
     files: files.length,
     bytes: files.reduce((sum, file) => sum + file.bytes, 0),
     ids: candidates.map((item) => item.id),

@@ -15,6 +15,7 @@ test("Genera non espone più i due generatori serie", () => {
   assert.doesNotMatch(html, /<section id="image-series-results"/);
   assert.doesNotMatch(html, /legacy-image-series|imageSeriesMode|seriesCharacterLora/);
   assert.doesNotMatch(app, /imageSeriesMode|submitImageSeries|renderSeriesResults|selectSeriesAnchor/);
+  assert.doesNotMatch(app, /updateImageSeriesOptions/);
   assert.doesNotMatch(app, /Usa come Series Anchor/);
   assert.match(html, /href="\/random-influencer\.html"/);
   assert.match(html, /href="\/same-place\.html"/);

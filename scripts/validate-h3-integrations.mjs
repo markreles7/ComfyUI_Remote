@@ -1,4 +1,4 @@
-import { buildMiniMaxH3Workflow } from "../src/minimax-h3-workflows.js";
+import { buildMiniMaxH3FastWorkflow, buildMiniMaxH3Workflow } from "../src/minimax-h3-workflows.js";
 import { buildOrbitSheetWorkflow } from "../src/orbit-sheets-workflows.js";
 import { buildH3DeRopeWorkflow } from "../src/h3-derope-workflows.js";
 import { buildLtx25Workflow } from "../src/ltx25-workflows.js";
@@ -12,6 +12,8 @@ const image = { name: "validation-placeholder.png", subfolder: "remote" };
 const jobs = [
   buildMiniMaxH3Workflow({ prompt: "integrated_multimodal_description: [Shot 1] A person walks.\n\noverall_soundscape: footsteps\n\nnon_diegetic_music: N/A", h3Mode: "text", h3RunProfile: "seedHunter", duration: 4, seed: 10 }, {}, [], config),
   buildMiniMaxH3Workflow({ prompt: "integrated_multimodal_description: [Shot 1] A person walks.\n\noverall_soundscape: footsteps\n\nnon_diegetic_music: N/A", h3Mode: "text", h3RunProfile: "nativeFinal", h3RefineMode: "latentLearned", h3FirstMegapixels: 0.6, h3SecondMegapixels: 1, duration: 4, seed: 10 }, {}, [], config),
+  buildMiniMaxH3FastWorkflow({ prompt: "A person walks with synchronized footsteps.", h3FastMode: "text", h3FastUseTurbo: true, duration: 4, seed: 10 }, {}, [], config),
+  buildMiniMaxH3FastWorkflow({ prompt: "A person walks with synchronized footsteps.", h3FastMode: "text", h3FastUseTurbo: false, duration: 4, seed: 10 }, {}, [], config),
   buildOrbitSheetWorkflow({ kind: "character", description: "adult adventurer", seed: 10 }, image, config),
   buildOrbitSheetWorkflow({ kind: "location", description: "medieval village square", seed: 10 }, image, config),
   buildH3DeRopeWorkflow({ profile: "balanced", seed: 10 }, upload, config),

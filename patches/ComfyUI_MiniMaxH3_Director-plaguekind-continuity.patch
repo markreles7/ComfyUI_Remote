@@ -1,0 +1,681 @@
+diff --git a/director/core_sampling.py b/director/core_sampling.py
+index d6e52b2..4c8f9a7 100644
+--- a/director/core_sampling.py
++++ b/director/core_sampling.py
+@@ -62,6 +62,7 @@ def sample_single_stage(
+         CFGGuider,
+         KSamplerSelect,
+         RandomNoise,
++        SamplerER_SDE,
+         SamplerCustomAdvanced,
+     )
+     from comfy_extras.nodes_minimax_h3 import MiniMaxH3SigmaShift
+@@ -93,7 +94,16 @@ def sample_single_stage(
+         if remasked is not None:
+             model_use = remasked
+ 
+-    sampler_obj = _unpack_node_output(KSamplerSelect.execute(str(sampler_name)))[0]
++    # The standalone PlagueKind workflow uses the dedicated ER-SDE node in
++    # deterministic ODE mode. KSamplerSelect("er_sde") instead instantiates
++    # the generic/stochastic defaults, which is both slower and visibly
++    # different. Keep Director compatible with the source graph.
++    if str(sampler_name).lower() == "er_sde":
++        sampler_obj = _unpack_node_output(
++            SamplerER_SDE.execute("ODE", 3, 0.0, 1.0)
++        )[0]
++    else:
++        sampler_obj = _unpack_node_output(KSamplerSelect.execute(str(sampler_name)))[0]
+     noise_obj = _unpack_node_output(RandomNoise.execute(int(seed)))[0]
+ 
+     neg = negative if negative else []
+@@ -110,8 +120,29 @@ def sample_single_stage(
+         )
+         return _unpack_node_output(sampled)[0]
+ 
++    def _run_with_vbar_recovery() -> dict:
++        try:
++            return _run_official()
++        except RuntimeError as exc:
++            if "fault failed:" not in str(exc).lower():
++                raise
++            # DynamicVRAM/VBAR can remain faulted after a preceding OOM. Clear
++            # queued prefetch pins, unload the poisoned mapping, then retry the
++            # deterministic sample once from the original latent and seed.
++            log.warning("Aimdo VBAR fault detected; purging and retrying sampling once: %s", exc)
++            try:
++                import comfy.model_prefetch
++
++                comfy.model_prefetch.cleanup_prefetch_queues()
++            except Exception as cleanup_exc:
++                log.debug("Aimdo prefetch cleanup skipped: %s", cleanup_exc)
++            from .vram_cleanup import cleanup_segment_vram
++
++            cleanup_segment_vram(enabled=True, unload_models=True)
++            return _run_official()
++
+     if on_step_preview is None:
+-        out = _run_official()
++        out = _run_with_vbar_recovery()
+     else:
+         orig_sample = guider.sample
+         every = max(1, int(preview_every))
+@@ -138,7 +169,7 @@ def sample_single_stage(
+ 
+         guider.sample = sample_wrapped
+         try:
+-            out = _run_official()
++            out = _run_with_vbar_recovery()
+         finally:
+             guider.sample = orig_sample
+ 
+diff --git a/director/executor_core.py b/director/executor_core.py
+index 8f31812..a21fcaf 100644
+--- a/director/executor_core.py
++++ b/director/executor_core.py
+@@ -62,6 +62,7 @@ from .h3_motion_context import (
+     trim_export_tail,
+ )
+ from .segment_cache import (
++    av_latent_to_cpu,
+     load_first_pass_cache,
+     load_first_pass_frames_stale,
+     load_segment_audio,
+@@ -85,7 +86,7 @@ from .segment_continuity import (
+     is_continuity_active,
+     resolve_prev_segment_output,
+ )
+-from .vram_cleanup import cleanup_segment_vram
++from .vram_cleanup import cleanup_segment_vram, unload_clip_after_conditioning
+ 
+ log = logging.getLogger("ComfyUI-MiniMaxH3-Director.director.core")
+ 
+@@ -265,6 +266,70 @@ def _build_minimax_inputs(
+     return first_frame, last_frame, ref_images, ref_videos, ref_audios, ref_video_audios
+ 
+ 
++def _conditioning_prompt(plan: DirectorPlan, seg) -> str:
++    """Return the exact official-conditioning prompt for a timeline segment."""
++    positive_prompt = seg.prompt
++    if seg.task_key == "fl2v":
++        from .fl2v_timeline import reinforce_fl2v_prompt
++
++        has_start = any(getattr(r, "index", None) == 0 for r in (seg.refs or []))
++        has_end = any(getattr(r, "index", None) == 1 for r in (seg.refs or []))
++        if not has_start and not has_end and seg.refs:
++            has_start = True
++            has_end = len(seg.refs) >= 2
++        return reinforce_fl2v_prompt(
++            positive_prompt,
++            has_end_frame=has_end,
++            has_start_frame=has_start,
++        )
++    if seg.task_key == "r2v":
++        ref_idxs = [
++            int(getattr(r, "index", 0)) for r in (seg.refs or []) if r is not None
++        ]
++        vid_idxs = [
++            int(getattr(v, "index", 0))
++            for v in (getattr(seg, "ref_videos", None) or [])
++            if v is not None
++        ]
++        audio_idxs = usable_ref_audio_indices(
++            seg.ref_audios, cache=getattr(plan, "audio_decode_cache", None),
++        )
++        positive_prompt = drop_unusable_audio_prompt_tags(positive_prompt, audio_idxs)
++        return reinforce_r2v_prompt(
++            positive_prompt,
++            ref_indices=ref_idxs,
++            video_indices=vid_idxs,
++            audio_indices=audio_idxs,
++        )
++    if seg.task_key == "v2v":
++        return reinforce_v2v_prompt(positive_prompt)
++    if seg.task_key == "rv2v":
++        ref_idxs = [
++            int(getattr(r, "index", 0)) for r in (seg.refs or []) if r is not None
++        ]
++        audio_idxs = usable_ref_audio_indices(
++            seg.ref_audios, cache=getattr(plan, "audio_decode_cache", None),
++        )
++        positive_prompt = drop_unusable_audio_prompt_tags(positive_prompt, audio_idxs)
++        return reinforce_rv2v_prompt(
++            positive_prompt, ref_indices=ref_idxs, audio_indices=audio_idxs,
++        )
++    return positive_prompt
++
++
++def _conditioning_to_cpu(value):
++    """Move a conditioning/latent tree off CUDA without changing its structure."""
++    if isinstance(value, torch.Tensor):
++        return value.detach().cpu().contiguous()
++    if isinstance(value, dict):
++        return {key: _conditioning_to_cpu(item) for key, item in value.items()}
++    if isinstance(value, list):
++        return [_conditioning_to_cpu(item) for item in value]
++    if isinstance(value, tuple):
++        return tuple(_conditioning_to_cpu(item) for item in value)
++    return value
++
++
+ def _release_segment_file_ref_audios(plan: DirectorPlan, seg) -> None:
+     """Drop decoded per-segment file PCM; keep execution-shared/global slots.
+ 
+@@ -530,6 +595,19 @@ def execute_director_plan_core(
+     completed_av_latents: dict[int, dict] = {}
+     completed_av_handoff: dict[int, dict] = {}
+     completed_audios: dict[int, dict] = {}
++    conditioning_cache: dict[int, dict[str, Any]] = {}
++    raw_runtime = plan.raw or {}
++    full_sequential_run = run_list == list(range(len(all_segments)))
++    precondition_all_segments = (
++        bool(raw_runtime.get("preconditionAllSegments", False))
++        and len(run_list) > 1
++        and full_sequential_run
++        and not confirm_first_pass_enabled(plan)
++    )
++    keep_model_warm_between_segments = (
++        precondition_all_segments
++        and bool(raw_runtime.get("keepModelWarmBetweenSegments", False))
++    )
+     # Segments actually executed by _run_one_segment in THIS run.
+     # completed_* also get export-fill hydrations from disk; this set does not.
+     resampled_this_run: set[int] = set()
+@@ -696,46 +774,7 @@ def execute_director_plan_core(
+             phase="prepare", phase_value=1, phase_max=1, **meta,
+         )
+ 
+-        positive_prompt = seg.prompt
+-
+-        if seg.task_key == "fl2v":
+-            from .fl2v_timeline import reinforce_fl2v_prompt
+-
+-            has_start = any(getattr(r, "index", None) == 0 for r in (seg.refs or []))
+-            has_end = any(getattr(r, "index", None) == 1 for r in (seg.refs or []))
+-            if not has_start and not has_end and seg.refs:
+-                # Legacy packs without explicit indices: [start] or [start, end].
+-                has_start = True
+-                has_end = len(seg.refs) >= 2
+-            positive_prompt = reinforce_fl2v_prompt(
+-                positive_prompt,
+-                has_end_frame=has_end,
+-                has_start_frame=has_start,
+-            )
+-        elif seg.task_key == "r2v":
+-            ref_idxs = [int(getattr(r, "index", 0)) for r in (seg.refs or []) if r is not None]
+-            vid_idxs = [int(getattr(v, "index", 0)) for v in (getattr(seg, "ref_videos", None) or []) if v is not None]
+-            audio_idxs = usable_ref_audio_indices(
+-                seg.ref_audios, cache=getattr(plan, "audio_decode_cache", None),
+-            )
+-            positive_prompt = drop_unusable_audio_prompt_tags(positive_prompt, audio_idxs)
+-            positive_prompt = reinforce_r2v_prompt(
+-                positive_prompt,
+-                ref_indices=ref_idxs,
+-                video_indices=vid_idxs,
+-                audio_indices=audio_idxs,
+-            )
+-        elif seg.task_key == "v2v":
+-            positive_prompt = reinforce_v2v_prompt(positive_prompt)
+-        elif seg.task_key == "rv2v":
+-            ref_idxs = [int(getattr(r, "index", 0)) for r in (seg.refs or []) if r is not None]
+-            audio_idxs = usable_ref_audio_indices(
+-                seg.ref_audios, cache=getattr(plan, "audio_decode_cache", None),
+-            )
+-            positive_prompt = drop_unusable_audio_prompt_tags(positive_prompt, audio_idxs)
+-            positive_prompt = reinforce_rv2v_prompt(
+-                positive_prompt, ref_indices=ref_idxs, audio_indices=audio_idxs,
+-            )
++        positive_prompt = _conditioning_prompt(plan, seg)
+ 
+         report_director_progress(
+             node_id, segment_index=progress_index, segment_total=seg_total,
+@@ -773,25 +812,42 @@ def execute_director_plan_core(
+             raise ValueError("r2v/v2v/rv2v / reference conditioning requires audio_vae input.")
+ 
+         # Always build via official MiniMaxH3ImageToVideo / ReferenceToVideo.
+-        t_cond = time.perf_counter()
+-        positive, negative, latent, task_hint = run_minimax_conditioning(
+-            clip=clip,
+-            vae=vae,
+-            audio_vae=audio_vae,
+-            prompt=positive_prompt,
+-            width=ctx_w,
+-            height=ctx_h,
+-            length=sample_len,
+-            task_key=seg.task_key,
+-            first_frame=first_frame,
+-            last_frame=last_frame,
+-            ref_images=ref_images,
+-            ref_videos=ref_videos,
+-            ref_video_audios=ref_video_audios,
+-            ref_audios=ref_audios,
+-            ref_image_size=resolve_ref_image_size(seg, plan),
+-        )
+-        cond_s = time.perf_counter() - t_cond
++        # PlagueKind multi-sequence runs can materialize every official
++        # conditioning before sampling. This loads Qwen once instead of
++        # evicting/reloading Qwen and H3 at every boundary.
++        cached_cond = conditioning_cache.pop(seg.index, None)
++        if (
++            cached_cond is not None
++            and cached_cond.get("signature")
++            == (seg.task_key, positive_prompt, ctx_w, ctx_h, sample_len)
++        ):
++            positive = cached_cond["positive"]
++            negative = cached_cond["negative"]
++            latent = cached_cond["latent"]
++            task_hint = cached_cond["task_hint"]
++            cond_s = float(cached_cond.get("elapsed") or 0.0)
++        else:
++            t_cond = time.perf_counter()
++            positive, negative, latent, task_hint = run_minimax_conditioning(
++                clip=clip,
++                vae=vae,
++                audio_vae=audio_vae,
++                prompt=positive_prompt,
++                width=ctx_w,
++                height=ctx_h,
++                length=sample_len,
++                task_key=seg.task_key,
++                first_frame=first_frame,
++                last_frame=last_frame,
++                ref_images=ref_images,
++                ref_videos=ref_videos,
++                ref_video_audios=ref_video_audios,
++                ref_audios=ref_audios,
++                ref_image_size=resolve_ref_image_size(seg, plan),
++            )
++            cond_s = time.perf_counter() - t_cond
++            if bool(raw_runtime.get("unloadClipAfterConditioning", False)):
++                unload_clip_after_conditioning(clip)
+ 
+         trim_frames = 0
+         after_shift = None
+@@ -1027,9 +1083,9 @@ def execute_director_plan_core(
+             phase="context_encode", phase_value=1, phase_max=1, **meta,
+         )
+ 
+-        # Single / last segment: skip — official H3 also keeps models loaded.
+-        if clear_vram_between_segments and seg_total > 1:
+-            cleanup_segment_vram(enabled=True, unload_models=True)
++        # Cleanup is performed after a completed segment. Purging here also
++        # affected segment 1 and forced the freshly prepared model to reload
++        # immediately before sampling, causing severe first-step stalls.
+ 
+         def _report_sample_phase(phase: str, value: float) -> None:
+             report_director_progress(
+@@ -1290,7 +1346,10 @@ def execute_director_plan_core(
+             # False ⇒ next pin must use context_end_frame = trim+export.
+             "official_mc_length": False,
+         }
+-        completed_av_latents[seg.index] = samples
++        # The next segment only needs the latent tail. Holding the complete AV
++        # latent on CUDA prevents ComfyUI from reclaiming VRAM between scenes.
++        continuity_samples = av_latent_to_cpu(samples)
++        completed_av_latents[seg.index] = continuity_samples
+         completed_av_handoff[seg.index] = handoff
+         if isinstance(audio_dict, dict) and audio_dict.get("waveform") is not None:
+             completed_audios[seg.index] = audio_dict
+@@ -1307,7 +1366,7 @@ def execute_director_plan_core(
+                 seg,
+                 plan,
+                 chunk,
+-                av_latent=samples,
++                av_latent=continuity_samples,
+                 handoff=handoff,
+                 audio=audio_dict if isinstance(audio_dict, dict) else None,
+             )
+@@ -1378,7 +1437,20 @@ def execute_director_plan_core(
+                 log.debug("Segment video preview skipped: %s", exc)
+ 
+         if clear_vram_between_segments and progress_index < seg_total - 1:
+-            cleanup_segment_vram(enabled=True)
++            # Drop both aliases to the sampled CUDA latent before unloading
++            # models and clearing the allocator cache. The CPU handoff above
++            # remains available for true latent-tail continuity.
++            samples = None
++            first_pass_samples = None
++            # H3 + Qwen + both VAEs exceed 12 GB VRAM and their async pinned
++            # host caches can exceed physical RAM. A controlled unload here is
++            # slower than keeping everything resident, but prevents the next
++            # segment from degenerating into multi-minute RAM/VRAM page faults.
++            cleanup_segment_vram(
++                enabled=True,
++                unload_models=not keep_model_warm_between_segments,
++                release_dynamic_pins=not keep_model_warm_between_segments,
++            )
+ 
+         reports.append(
+             f"Segment {ui_idx + 1}/{timeline_seg_total}: {task_hint} "
+@@ -1397,6 +1469,95 @@ def execute_director_plan_core(
+         )
+         return chunk, audio_dict, pre_chunk
+ 
++    if precondition_all_segments:
++        reports.append(
++            "VRAM: pre-conditioning all selected segments with one Qwen load; "
++            "H3 stays warm between samples."
++        )
++        log.info(
++            "MiniMax H3 Director: pre-conditioning %d segments before sampling",
++            len(run_list),
++        )
++        for seg in all_segments:
++            if seg.index not in run_indices:
++                continue
++            target_len = max(1, int(seg.frame_count or plan.total_frames or 124))
++            raw_clip = resolve_segment_raw_clip(plan, seg)
++            if seg.source_clip is not None:
++                body_raw = seg.source_clip
++                target_len = max(target_len, int(body_raw.shape[0]))
++            else:
++                body_raw = raw_clip[:target_len] if int(raw_clip.shape[0]) > target_len else raw_clip
++            if body_raw is not None and body_raw.shape[0] > 0:
++                if plan.output_mode == "fixed":
++                    clip_frames = fit_canvas(body_raw, plan.width, plan.height)
++                else:
++                    clip_frames = fit_video_long_edge(body_raw, plan.ref_max_size)
++                    if (
++                        int(clip_frames.shape[1]) != int(plan.height)
++                        or int(clip_frames.shape[2]) != int(plan.width)
++                    ):
++                        clip_frames = fit_canvas(clip_frames, plan.width, plan.height)
++            else:
++                clip_frames = None
++            num_frames = minimax_align_frame_count(target_len)
++            if clip_frames is not None:
++                clip_frames, _ = prepare_segment_clip(clip_frames, num_frames)
++            ctx_w = int(plan.width)
++            ctx_h = int(plan.height)
++            if clip_frames is not None and clip_frames.shape[0] > 0:
++                ctx_h, ctx_w = int(clip_frames.shape[1]), int(clip_frames.shape[2])
++            assert_minimax_canvas(ctx_w, ctx_h)
++            positive_prompt = _conditioning_prompt(plan, seg)
++            first_frame, last_frame, ref_images, ref_videos, ref_audios, ref_video_audios = _build_minimax_inputs(
++                plan, seg, clip_frames=clip_frames, ctx_w=ctx_w, ctx_h=ctx_h, prev_tail=None,
++            )
++            i2v_new_anchor = seg.task_key == "i2v" and first_frame is not None
++            planned_context = (
++                is_continuity_active(plan, seg)
++                and not i2v_new_anchor
++                and seg.index > 0
++                and (seg.index - 1) in run_indices
++            )
++            context_n = snap_context_frames(plan.continuity_overlap_frames) if planned_context else 0
++            sample_len, _ = generation_frame_budget(num_frames, context_n)
++            if planned_context:
++                first_frame = None
++            if seg.task_key in {"r2v", "v2v", "rv2v"} and (
++                ref_images or ref_videos or ref_audios or ref_video_audios
++            ) and audio_vae is None:
++                raise ValueError("r2v/v2v/rv2v / reference conditioning requires audio_vae input.")
++            t_cond = time.perf_counter()
++            positive, negative, latent, task_hint = run_minimax_conditioning(
++                clip=clip,
++                vae=vae,
++                audio_vae=audio_vae,
++                prompt=positive_prompt,
++                width=ctx_w,
++                height=ctx_h,
++                length=sample_len,
++                task_key=seg.task_key,
++                first_frame=first_frame,
++                last_frame=last_frame,
++                ref_images=ref_images,
++                ref_videos=ref_videos,
++                ref_video_audios=ref_video_audios,
++                ref_audios=ref_audios,
++                ref_image_size=resolve_ref_image_size(seg, plan),
++            )
++            conditioning_cache[seg.index] = {
++                "signature": (seg.task_key, positive_prompt, ctx_w, ctx_h, sample_len),
++                "positive": _conditioning_to_cpu(positive),
++                "negative": _conditioning_to_cpu(negative),
++                "latent": av_latent_to_cpu(latent),
++                "task_hint": task_hint,
++                "elapsed": time.perf_counter() - t_cond,
++            }
++            del positive, negative, latent
++        if bool(raw_runtime.get("unloadClipAfterConditioning", False)):
++            unload_clip_after_conditioning(clip)
++        gc.collect()
++
+     for seg in all_segments:
+         # AV latent and decoded refine-pass clips are a rolling continuity
+         # working set, not final outputs. At the start of segment N, only N-1
+@@ -1420,8 +1581,9 @@ def execute_director_plan_core(
+                         progress_pos=progress_pos,
+                     )
+         if seg.index in run_indices:
+-            if clear_vram_between_segments and segment_outputs:
+-                cleanup_segment_vram(enabled=True)
++            # A successfully executed predecessor already performed the one
++            # controlled transition cleanup at the end of _run_one_segment.
++            # Do not purge twice immediately before sampling.
+             try:
+                 chunk, audio_dict, pre_chunk = _run_one_segment(
+                     seg, progress_index=progress_pos[seg.index]
+diff --git a/director/h3_context_patches.py b/director/h3_context_patches.py
+index 5361ffe..afe9929 100644
+--- a/director/h3_context_patches.py
++++ b/director/h3_context_patches.py
+@@ -416,17 +416,23 @@ def _director_extra_conds(self, **kwargs):
+ setattr(_director_extra_conds, PAYLOAD_MARKER, True)
+ 
+ 
+-def _classify_payload_owner() -> str | None:
++def _classify_payload_owner() -> str | None:
+     import comfy.model_base as model_base
+ 
+     cls = getattr(model_base, "MiniMaxH3", None)
+     fn = getattr(cls, "extra_conds", None) if cls is not None else None
+     if fn is None:
+         return None
+-    if getattr(fn, PAYLOAD_MARKER, False):
+-        return "ours"
+-    if getattr(fn, "_h3_motion_context_payload_patch", False):
+-        return "foreign_mc"
++    if getattr(fn, PAYLOAD_MARKER, False):
++        return "ours"
++    # ComfyUI-H3-Multishot's AVBank wrapper implements the same
++    # keyframe/ref/audio merge as Director (and deliberately carries the
++    # Motion-Context ABI marker).  It is safe to reuse instead of treating it
++    # as the mutually-exclusive standalone Motion-Context implementation.
++    if getattr(fn, "_h3_avbank_merge", False):
++        return "compatible_avbank"
++    if getattr(fn, "_h3_motion_context_payload_patch", False):
++        return "foreign_mc"
+     if getattr(fn, "__name__", "") in {"_patched_extra_conds", "_director_extra_conds"}:
+         return "foreign_other"
+     if hasattr(fn, "__wrapped__"):
+@@ -444,10 +450,14 @@ def ensure_payload_patch() -> bool:
+     if _payload_applied:
+         return True
+     owner = _classify_payload_owner()
+-    if owner == "ours":
+-        _payload_applied = True
+-        return True
+-    if owner == "foreign_mc":
++    if owner == "ours":
++        _payload_applied = True
++        return True
++    if owner == "compatible_avbank":
++        _payload_applied = True
++        log.info("Director continuity: reusing compatible H3 Multishot AVBank payload merge")
++        return True
++    if owner == "foreign_mc":
+         raise RuntimeError(
+             "Director continuity: standalone ComfyUI-H3-Motion-Context already patched "
+             "MiniMaxH3.extra_conds. Disable that pack and restart ComfyUI."
+diff --git a/director/segment_cache.py b/director/segment_cache.py
+index da9b288..d6ac355 100644
+--- a/director/segment_cache.py
++++ b/director/segment_cache.py
+@@ -323,7 +323,7 @@ def save_segment_cache(
+             lambda p: p.write_text(text, encoding="utf-8"),
+         )
+         if av_latent is not None and isinstance(av_latent, dict) and "samples" in av_latent:
+-            cpu_latent = _av_latent_to_cpu(av_latent)
++            cpu_latent = av_latent_to_cpu(av_latent)
+             _write_via_temp(latent_path, lambda p: torch.save(cpu_latent, p))
+         if handoff:
+             _write_via_temp(
+@@ -397,7 +397,8 @@ def load_segment_handoff_meta(
+         return None
+ 
+ 
+-def _av_latent_to_cpu(av_latent: dict) -> dict:
++def av_latent_to_cpu(av_latent: dict) -> dict:
++    """Detach every AV-latent tensor and keep the continuity handoff on CPU."""
+     samples = av_latent["samples"]
+     if hasattr(samples, "unbind"):
+         parts = [p.detach().cpu().contiguous() for p in samples.unbind()]
+@@ -605,7 +606,7 @@ def save_first_pass_cache(
+     frames_path = root / f"seg_{idx:04d}.pre.pt"
+     handoff_path = root / f"seg_{idx:04d}.pre.handoff.json"
+     try:
+-        cpu_latent = _av_latent_to_cpu(av_latent)
++        cpu_latent = av_latent_to_cpu(av_latent)
+         _write_via_temp(latent_path, lambda p: torch.save(cpu_latent, p))
+         text = json.dumps(fp, ensure_ascii=False, sort_keys=True)
+         _write_via_temp(meta_path, lambda p: p.write_text(text, encoding="utf-8"))
+diff --git a/director/vram_cleanup.py b/director/vram_cleanup.py
+index fc0090a..825dda2 100644
+--- a/director/vram_cleanup.py
++++ b/director/vram_cleanup.py
+@@ -2,29 +2,116 @@
+ 
+ from __future__ import annotations
+ 
+-import gc
+-import logging
++import gc
++import logging
++import time
+ 
+-log = logging.getLogger("ComfyUI-MiniMaxH3-Director.director.vram")
+-
+-
+-def cleanup_segment_vram(*, enabled: bool = True, unload_models: bool = True) -> None:
+-    """Release segment GPU memory: gc, optional unload of ComfyUI models, empty CUDA cache."""
+-    if not enabled:
+-        return
+-    gc.collect()
+-    try:
+-        import comfy.model_management as mm
+-
+-        mm.cleanup_models_gc()
+-        if unload_models:
+-            mm.unload_all_models()
+-            mm.cleanup_models()
+-        mm.soft_empty_cache()
++log = logging.getLogger("ComfyUI-MiniMaxH3-Director.director.vram")
++
++
++def unload_clip_after_conditioning(clip) -> int:
++    """Release only the CLIP/Qwen patcher after conditioning is materialized."""
++    patcher = getattr(clip, "patcher", None)
++    if patcher is None:
++        return 0
++    released = 0
++    try:
++        import comfy.model_management as mm
++
++        try:
++            import comfy.model_prefetch
++
++            comfy.model_prefetch.cleanup_prefetch_queues()
++        except Exception as prefetch_exc:
++            log.debug("Qwen prefetch cleanup skipped: %s", prefetch_exc)
++        mm.unload_model_and_clones(
++            patcher,
++            unload_additional_models=False,
++            all_devices=True,
++        )
++        if hasattr(patcher, "partially_unload_ram"):
++            released = int(patcher.partially_unload_ram(1 << 60) or 0)
++        gc.collect()
++        mm.soft_empty_cache()
++    except Exception as exc:
++        log.warning("Qwen unload after conditioning failed: %s", exc)
++        return 0
++    log.info(
++        "MiniMax H3 Director: Qwen/CLIP released after conditioning "
++        "(dynamic pins %.1f MB)",
++        released / (1024 * 1024),
++    )
++    return released
++
++
++def cleanup_segment_vram(
++    *,
++    enabled: bool = True,
++    unload_models: bool = True,
++    release_dynamic_pins: bool = False,
++) -> None:
++    """Release segment memory without invoking the expensive Distorch object scan.
++
++    ``release_dynamic_pins`` is intended for transitions between long H3
++    segments on small-VRAM systems. It drops ComfyUI's asynchronous weight
++    prefetch/pinned-RAM state after unloading GPU residency, preventing the
++    next segment from paging tens of gigabytes between RAM and VRAM.
++    """
++    if not enabled:
++        return
++    started = time.monotonic()
++    gc.collect()
++    try:
++        import comfy.model_management as mm
++
++        mm.cleanup_models_gc()
++        if unload_models:
++            try:
++                import comfy.model_prefetch
++
++                comfy.model_prefetch.cleanup_prefetch_queues()
++            except Exception as prefetch_exc:
++                log.debug("Model prefetch cleanup skipped: %s", prefetch_exc)
++            mm.unload_all_models()
++            mm.cleanup_models()
++        released_pins = 0
++        if release_dynamic_pins:
++            try:
++                released_pins = int(
++                    mm.free_pins(1 << 60, evict_active=True, loaded=False) or 0
++                )
++                # Async offload registrations can retain a large Windows RAM
++                # working set even after GPU residency has been unloaded.
++                mm.free_registrations(1 << 60, evict_active=True)
++            except Exception as pins_exc:
++                log.debug("Dynamic weight pin cleanup skipped: %s", pins_exc)
++        # Collect again after model and pin eviction so dead wrappers and
++        # temporary tensors cannot survive into the next segment.
++        gc.collect()
++        mm.soft_empty_cache()
++        try:
++            import torch
++
++            if torch.cuda.is_available():
++                torch.cuda.empty_cache()
++                # Releases CUDA IPC allocations when supported; harmless when
++                # no IPC pool exists and useful on long chained generations.
++                if hasattr(torch.cuda, "ipc_collect"):
++                    torch.cuda.ipc_collect()
++        except Exception as cuda_exc:
++            log.debug("Explicit CUDA cache cleanup skipped: %s", cuda_exc)
+     except Exception as exc:
+         log.warning("Segment VRAM cleanup failed: %s", exc)
+         return
+-    if unload_models:
+-        log.debug("MiniMax H3 Director: segment VRAM cleanup (models unloaded, cache cleared)")
++    elapsed = time.monotonic() - started
++    if release_dynamic_pins:
++        log.info(
++            "MiniMax H3 Director: controlled transition cleanup complete "
++            "(models unloaded, dynamic pins %.1f MB released, %.1fs)",
++            released_pins / (1024 * 1024),
++            elapsed,
++        )
++    elif unload_models:
++        log.debug("MiniMax H3 Director: segment VRAM cleanup (models unloaded, cache cleared)")
+     else:
+         log.debug("MiniMax H3 Director: segment VRAM cleanup (cache cleared, models kept loaded)")

@@ -33,6 +33,10 @@ function isUpscaleGeneration() {
   return $("#generationType").value === "upscale";
 }
 
+function isSuperUpscaleGeneration() {
+  return $("#generationType").value === "superUpscale";
+}
+
 function isLtxUpscaleGeneration() {
   return $("#generationType").value === "ltxUpscale";
 }
@@ -68,7 +72,7 @@ function promptAssistantContext() {
 }
 
 function isSulphurPromptMode() {
-  if (isImageGeneration() || isUpscaleGeneration() || isSeedvr2VideoUpscaleGeneration()) return false;
+  if (isImageGeneration() || isUpscaleGeneration() || isSuperUpscaleGeneration() || isSeedvr2VideoUpscaleGeneration()) return false;
   const selectedWorkflow = state.config?.workflows.find((item) => item.id === workflow.value);
   return selectedWorkflow?.id === "ltxSulphur";
 }
@@ -85,19 +89,26 @@ function updatePromptAssistantAvailability() {
   const sulphurPromptButton = $("#sulphur-prompt-button");
   const directorButton = $("#director-prompt-assistant-button");
   const enabled = Boolean(state.config?.promptAssistant?.enabled);
-  const usable = enabled && !isUpscaleGeneration() && !$("#prompt").disabled;
+  const usable = enabled && !isUpscaleGeneration() && !isSuperUpscaleGeneration() && !$("#prompt").disabled;
   const imageUsable = usable && isImageGeneration();
   const imageTarget = imageUsable ? promptAssistantContext().target : "";
   const qwenUsable = imageUsable && imageTarget === "qwen";
   const qwenEditUsable = imageUsable && /^qwenedit/.test(imageTarget);
   const fluxUsable = imageUsable && imageTarget === "flux2";
+  const kreaUsable = imageUsable && imageTarget === "krea2";
+  const zImageUsable = imageUsable && imageTarget === "zimage";
   const isDirector = !isImageGeneration() && workflow.value === "director";
   const ltxUsable = usable && !isImageGeneration() && !isDirector;
   const sulphurUsable = ltxUsable;
   qwenEditButton.classList.toggle("hidden", !(qwenUsable || qwenEditUsable));
   qwenEditButton.textContent = qwenUsable ? "✦ Qwen Prompt" : "✦ Qwen Edit";
   qwenPreset.classList.toggle("hidden", !qwenUsable);
-  kleinButton.classList.toggle("hidden", !fluxUsable);
+  kleinButton.classList.toggle("hidden", !(fluxUsable || kreaUsable || zImageUsable));
+  kleinButton.textContent = fluxUsable
+    ? "✦ Flux Prompt"
+    : kreaUsable
+      ? "✦ Krea Prompt"
+      : "✦ Z-Image Prompt";
   fluxPreset.classList.toggle("hidden", !fluxUsable);
   reverseButton.classList.toggle("hidden", !imageUsable);
   ltxArchitectButton.classList.toggle("hidden", !ltxUsable);
@@ -193,7 +204,7 @@ function escapeAttribute(text) {
 }
 
 function compatibleLoras() {
-  if (isUpscaleGeneration() || isSeedvr2VideoUpscaleGeneration()) return [];
+  if (isUpscaleGeneration() || isSuperUpscaleGeneration() || isSeedvr2VideoUpscaleGeneration()) return [];
   if (!isImageGeneration() && workflow.value === "minimaxH3") return [];
   const all = state.config?.loras || [];
   let prefix = "LTX2.3\\";
@@ -494,7 +505,6 @@ function imageOptionsChanged(updateDefaults = false) {
     : "Descrivi la modifica o il risultato desiderato…";
   updateEnhancementOptions();
   refreshLoraOptions();
-  updateImageSeriesOptions();
   updatePromptAssistantAvailability();
   syncCharacterFields();
 }
@@ -551,6 +561,7 @@ function updateEnhancementOptions(enforceSafeBatch = false) {
 function generationTypeChanged(type) {
   const image = type === "image";
   const upscale = type === "upscale";
+  const superUpscale = type === "superUpscale";
   const ltxUpscale = type === "ltxUpscale";
   const seedvr2VideoUpscale = type === "seedvr2VideoUpscale";
   const video = type === "video";
@@ -574,12 +585,13 @@ function generationTypeChanged(type) {
 
   $("#image-options").classList.toggle("hidden", !image);
   $("#upscale-options").classList.toggle("hidden", !upscale);
+  $("#super-upscale-options").classList.toggle("hidden", !superUpscale);
   $("#ltx-upscale-options").classList.toggle("hidden", !ltxUpscale);
   $("#seedvr2-video-upscale-options").classList.toggle("hidden", !seedvr2VideoUpscale);
 
   $("#character-field").classList.toggle(
     "hidden",
-    upscale || ltxUpscale || seedvr2VideoUpscale,
+    upscale || superUpscale || ltxUpscale || seedvr2VideoUpscale,
   );
 
   $("#video-settings-grid").classList.toggle("hidden", !video);
@@ -588,15 +600,15 @@ function generationTypeChanged(type) {
 
   $("#negative-prompt-field").classList.toggle(
     "hidden",
-    upscale || ltxUpscale || seedvr2VideoUpscale,
+    upscale || superUpscale || ltxUpscale || seedvr2VideoUpscale,
   );
 
   $("#lora-settings").classList.toggle(
     "hidden",
-    upscale || ltxUpscale || seedvr2VideoUpscale,
+    upscale || superUpscale || ltxUpscale || seedvr2VideoUpscale,
   );
 
-  $("#negativePrompt").disabled = upscale || ltxUpscale || seedvr2VideoUpscale;
+  $("#negativePrompt").disabled = upscale || superUpscale || ltxUpscale || seedvr2VideoUpscale;
 
   workflow.disabled = !video;
   $("#videoInputMode").disabled = !video;
@@ -606,7 +618,7 @@ function generationTypeChanged(type) {
   $("#imageModelFile").disabled = !image;
   $("#imageMode").disabled = !image;
 
-  $("#characterId").disabled = upscale || ltxUpscale || seedvr2VideoUpscale;
+  $("#characterId").disabled = upscale || superUpscale || ltxUpscale || seedvr2VideoUpscale;
 
   $("#seed").disabled = !video;
   $("#imageSeed").disabled = !image;
@@ -627,6 +639,12 @@ function generationTypeChanged(type) {
     "#upscale-options input, #upscale-options select",
   )) {
     input.disabled = !upscale;
+  }
+
+  for (const input of document.querySelectorAll(
+    "#super-upscale-options input, #super-upscale-options select",
+  )) {
+    input.disabled = !superUpscale;
   }
 
   for (const input of document.querySelectorAll(
@@ -668,6 +686,7 @@ function generationTypeChanged(type) {
     $("#prompt").required = true;
 
     $("#upscaleImage").required = false;
+    $("#superUpscaleImage").required = false;
     $("#ltxUpscaleVideo").required = false;
     $("#seedvr2VideoUpscaleVideo").required = false;
 
@@ -693,6 +712,7 @@ function generationTypeChanged(type) {
     $("#imageSeed").disabled = true;
 
     $("#upscaleImage").required = false;
+    $("#superUpscaleImage").required = false;
     $("#ltxUpscaleVideo").required = false;
     $("#seedvr2VideoUpscaleVideo").required = false;
 
@@ -732,6 +752,35 @@ function generationTypeChanged(type) {
     }
 
     upscaleOptionsChanged();
+  } else if (superUpscale) {
+    $("#regular-scene-fields").classList.add("hidden");
+    $("#source-image-field").classList.add("hidden");
+    $("#image-input-field").classList.add("hidden");
+    $("#video-input-field").classList.add("hidden");
+    $("#director-storyboard").classList.add("hidden");
+    $("#edit-settings").classList.add("hidden");
+    $("#quality-field").classList.add("hidden");
+    $("#image").disabled = true;
+    $("#video").disabled = true;
+    $("#sourceImage").disabled = true;
+    $("#prompt").disabled = true;
+    $("#prompt").required = false;
+    $("#negativePrompt").disabled = true;
+    $("#upscaleImage").disabled = true;
+    $("#upscaleImage").required = false;
+    $("#superUpscaleImage").disabled = false;
+    $("#superUpscaleImage").required = true;
+    $("#ltxUpscaleVideo").required = false;
+    $("#seedvr2VideoUpscaleVideo").required = false;
+    const config = state.config?.superUpscale;
+    const details = config?.available === false
+      ? [
+          config.missingNodes?.length ? `Nodi mancanti: ${config.missingNodes.join(", ")}` : "",
+          config.missingFiles?.length ? `File mancanti: ${config.missingFiles.join(", ")}` : "",
+        ].filter(Boolean).join(" · ")
+      : "";
+    $("#super-upscale-warning").textContent = details;
+    $("#super-upscale-warning").classList.toggle("hidden", !details);
   } else if (ltxUpscale) {
     $("#regular-scene-fields").classList.add("hidden");
 
@@ -753,6 +802,7 @@ function generationTypeChanged(type) {
 
     $("#upscaleImage").disabled = true;
     $("#upscaleImage").required = false;
+    $("#superUpscaleImage").required = false;
 
     $("#ltxUpscaleVideo").disabled = false;
     $("#ltxUpscaleVideo").required = true;
@@ -809,6 +859,7 @@ function generationTypeChanged(type) {
 
     $("#upscaleImage").disabled = true;
     $("#upscaleImage").required = false;
+    $("#superUpscaleImage").required = false;
 
     $("#ltxUpscaleVideo").disabled = true;
     $("#ltxUpscaleVideo").required = false;
@@ -848,20 +899,22 @@ function generationTypeChanged(type) {
   }
 
   $("#upscaleImage").required = upscale;
+  $("#superUpscaleImage").required = superUpscale;
   $("#ltxUpscaleVideo").required = ltxUpscale;
   $("#seedvr2VideoUpscaleVideo").required = seedvr2VideoUpscale;
 
   $("#generate-button span").textContent = upscale
     ? "Avvia upscaling"
-    : ltxUpscale
-      ? "Avvia Upscale LTX"
-      : seedvr2VideoUpscale
-        ? "Avvia SeedVR2 Video"
-        : "Avvia generazione";
+    : superUpscale
+      ? "Avvia SUPER UPSCALE"
+      : ltxUpscale
+        ? "Avvia Upscale LTX"
+        : seedvr2VideoUpscale
+          ? "Avvia SeedVR2 Video"
+          : "Avvia generazione";
 
   updateEnhancementOptions();
   refreshLoraOptions();
-  updateImageSeriesOptions();
   updatePromptAssistantAvailability();
   updatePoseLibraryControls();
 }
@@ -1198,6 +1251,25 @@ form.addEventListener("submit", async (event) => {
     applyLoraTriggers($("#prompt"), selectedPromptTriggers());
     const data = new FormData(form);
 
+    if (isSuperUpscaleGeneration()) {
+      const config = state.config?.superUpscale;
+      if (config?.available === false) {
+        const details = [
+          config.missingNodes?.length ? `Nodi mancanti: ${config.missingNodes.join(", ")}` : "",
+          config.missingFiles?.length ? `File mancanti: ${config.missingFiles.join(", ")}` : "",
+        ].filter(Boolean).join(" · ");
+        throw new Error(details || "La pipeline SUPER UPSCALE non è disponibile.");
+      }
+      const sourceImage = $("#superUpscaleImage").files[0];
+      if (!sourceImage) throw new Error("Carica una foto per SUPER UPSCALE.");
+      if (state.config?.maxUploadMb && sourceImage.size > state.config.maxUploadMb * 1024 * 1024) {
+        throw new Error(`La foto supera il limite di ${state.config.maxUploadMb} MB.`);
+      }
+      const upscaleSeed = $("#superUpscaleSeed").value.trim();
+      if (upscaleSeed) data.set("superUpscaleSeed", upscaleSeed);
+      else data.delete("superUpscaleSeed");
+    }
+
     if (isLtxUpscaleGeneration()) {
       const config = state.config?.ltxUpscale;
 
@@ -1383,7 +1455,9 @@ form.addEventListener("submit", async (event) => {
   } finally {
     button.disabled = false;
     button.querySelector("span").textContent =
-      isUpscaleGeneration()
+      isSuperUpscaleGeneration()
+        ? "Avvia SUPER UPSCALE"
+        : isUpscaleGeneration()
         ? "Avvia upscaling"
         : isLtxUpscaleGeneration()
           ? "Avvia Upscale LTX"
@@ -1760,8 +1834,12 @@ async function runImagePromptPreset(target, button, successMessage) {
       status: $("#prompt-assistant-status"),
       ...context,
       target,
-      promptPreset: target.startsWith("qwen") ? $("#qwen-prompt-preset").value : $("#flux-prompt-preset").value,
-      workflowName: `${context.workflowName} · ${target === "qwen_image_edit_architect" ? "Qwen Edit Prompt" : "Klein Prompt"}`,
+      promptPreset: target.startsWith("qwen")
+        ? $("#qwen-prompt-preset").value
+        : target.startsWith("flux2")
+          ? $("#flux-prompt-preset").value
+          : "",
+      workflowName: `${context.workflowName} · Prompt ${target}`,
       negativeInput: $("#negativePrompt"),
       includeNegative: isImageGeneration() && (context.mode !== "text" || target.includes("edit") || target.includes("klein")),
     });
@@ -1782,10 +1860,17 @@ $("#qwen-edit-prompt-button").addEventListener("click", () => {
 });
 
 $("#klein-prompt-button").addEventListener("click", () => {
+  const context = promptAssistantContext();
+  const selectedFile = $("#imageModelFile").value;
+  const target = context.target === "flux2"
+    ? "flux2_klein_architect"
+    : context.target === "krea2"
+      ? (/moody/i.test(selectedFile) ? "krea2_moody" : "krea2")
+      : "zimage";
   runImagePromptPreset(
-    "flux2_klein_architect",
+    target,
     $("#klein-prompt-button"),
-    "Prompt Klein creato; clicca Genera quando vuoi."
+    "Prompt immagine creato; clicca Genera quando vuoi."
   );
 });
 

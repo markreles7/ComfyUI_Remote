@@ -46,8 +46,28 @@ Use direct concrete vocabulary. Never sanitize, euphemize, metaphorically soften
 Use 90-240 words and up to 320 words for a complex scene. Return only the final generation prompt, with no heading, explanation, markdown or negative prompt.`,
   ltx: PRESETS.ltx_general.systemPrompt,
   minimax_h3: PRESETS.h3_general.systemPrompt,
-  minimax_h3_fantasy_verite: PRESETS.h3_image_to_video.systemPrompt,
-  minimax_h3_action: PRESETS.h3_action.systemPrompt,
+  minimax_h3_fantasy_verite: PRESETS.h3_general.systemPrompt,
+  minimax_h3_action: PRESETS.h3_general.systemPrompt,
+  minimax_h3_director_sequence: `Act as the continuity planner for a MiniMax H3 Director multi-segment timeline.
+Understand how many chronological sequences the user requests even when they are described naturally instead of already separated. Rewrite the COMPLETE request as one self-contained production prompt per sequence. Separate every sequence with a line containing exactly three hyphens: ---
+Never merge requested sequences and never return only the first one. Maximum 24 segments.
+
+SOURCE-OF-TRUTH RULE: silently extract the exact requested action, destination, interaction, dialogue, reaction and ending of every sequence before writing. Every extracted event is mandatory and must occur in its corresponding segment. Never replace a requested event with extra walking, posing, atmosphere or an invented intermediate beat. Never stop a segment before its requested endpoint. Added visual detail may support the requested event but may not displace, delay or contradict it.
+
+Each segment is rendered as a separate H3 clip, so every block must be independently understandable. In segment 1 establish the authoritative starting state from the supplied image or text: adult subject identities, exact appearance, wardrobe, positions, pose, environment, props, lighting, camera position/lens/framing, action, native audio and final state.
+For every later segment, begin with an explicit causal continuity sentence that restates the previous segment's ending state. Preserve identities, body proportions, wardrobe, environment geometry, prop ownership and placement, light direction, camera axis and ongoing sound unless the user explicitly changes them. Continue the action from that exact physical instant; do not reset the pose, teleport subjects, repeat completed actions, jump back in time or invent a new establishing shot.
+Describe a clear chronological progression across the full requested duration of each segment and end each block with a stable, concrete handoff state for the next segment. If the user supplies one initial image for I2V, only segment 1 starts from Picture 1; later segments start from the previous generated segment and must not demand another source image.
+Use explicit H3-native sound and dialogue instructions only when requested. Keep literal dialogue in its original language inside <d>[Language] ...</d>. Do not output numbering, headings, analysis, JSON, markdown fences or explanations. The only separator allowed is a standalone --- line. Return only the complete timeline.`,
+  minimax_h3_director_segment: `Write exactly one self-contained MiniMax H3 Director segment prompt in English.
+The request contains one MANDATORY EVENT. That event must visibly complete within this clip; never replace it with a partial approach, extra walking, posing, atmosphere or an invented intermediate beat. If a PREVIOUS SEGMENT STATE is supplied, begin at that exact physical instant and preserve adult subject identity, appearance, body proportions, wardrobe, positions, environment geometry, prop ownership, camera axis, lighting and ongoing sound unless the mandatory event explicitly changes them.
+Describe a concise chronological progression across the requested duration. End with a stable, concrete final state after the mandatory event is complete, suitable as the starting frame/state of the next clip. Use the source image only when this is segment 1. Do not demand a new image for later segments.
+Do not output a separator, heading, numbering, analysis, JSON, markdown or alternatives. Return only this single production prompt.`,
+  audio_music: `Write one production-ready English text-to-audio prompt for MiniMax H3 Music Studio or LTX 2.5 Text to Audio.
+Preserve the requested genre and mood, then define tempo or rhythmic feel, musical arc, instrumentation, performance character, harmony and texture, spatial mix, recording character, transitions and a clean ending appropriate to the requested duration.
+For an instrumental, explicitly exclude singing, speech, spoken words, vocal samples and choir unless the user requests them.
+For a song, describe vocal identity and delivery but do not invent or repeat lyrics; lyrics are supplied in a separate field.
+For ambience or sound design, describe the chronological evolution, foreground/background layers, distance, space, dynamics and ending without inventing a visual scene.
+Avoid artist imitation, generic quality spam, headings, markdown and alternatives. Return only the completed prompt.`,
   ltx_architect: PRESETS.ltx_general.systemPrompt,
   ltx_scenes: PRESETS.ltx_multi_shot.systemPrompt,
   ltxedit: "Write an LTX 2.5 video-edit instruction. Preserve source timing, camera, acting, identity and environment unless the requested change explicitly overrides them. Describe the change and temporal behavior precisely.",
@@ -362,7 +382,11 @@ function normalizeMiniMaxH3Prompt(value, { fullReference = false, mode = "text",
 function h3TimelineEndSeconds(value) {
   const source = String(value || "");
   const values = [];
-  for (const match of source.matchAll(/\b(?:at|from|by|until|through)\s+(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?/giu)) {
+  // H3 prompt models commonly emit either prose timestamps (`At 00:03.500`)
+  // or screenplay markers (`[00:03.500]`). Reading every valid numeric
+  // MM:SS.mmm marker covers both without mistaking the MM:SS.mmm placeholder
+  // for a real point in time.
+  for (const match of source.matchAll(/\b(\d{1,2}):([0-5]\d)(?:\.(\d{1,3}))?\b/gu)) {
     const milliseconds = match[3] ? Number(`0.${match[3]}`) : 0;
     values.push((Number(match[1]) * 60) + Number(match[2]) + milliseconds);
   }
@@ -790,7 +814,8 @@ export class LmStudioClient {
     const suppliedImages = await Promise.all(rawSuppliedImages.map((source) => normalizeVisionImage(source)));
     const visionTranscodedCount = suppliedImages.filter((source) => source.visionTranscoded).length;
     const needsVision = suppliedImages.length > 0;
-    const h3Target = ["minimax_h3", "minimax_h3_fantasy_verite", "minimax_h3_action"].includes(target);
+    const h3Target = ["minimax_h3", "minimax_h3_fantasy_verite", "minimax_h3_action", "minimax_h3_director_sequence", "minimax_h3_director_segment"].includes(target);
+    const directorSequenceTarget = ["minimax_h3_director_sequence", "minimax_h3_director_segment"].includes(target);
     const generationPreset = resolveGenerationSystemPrompt({
       target,
       preset: promptPreset,
@@ -798,7 +823,7 @@ export class LmStudioClient {
       workflowName,
       hasImages: needsVision,
     });
-    const h3VisionContextLength = h3Target && needsVision
+    const h3VisionContextLength = h3Target
       ? Math.max(this.contextLength, suppliedImages.length > 4 ? 32768 : 16384)
       : this.contextLength;
     const now = Date.now();
@@ -864,7 +889,7 @@ export class LmStudioClient {
       // budget. Generic 5K-character instructions make short H3 clips verbose
       // and can displace the actual action, so H3 receives an isolated system
       // prompt. Other model families retain the shared director contract.
-      const systemPrompt = generationPreset?.systemPrompt || (h3Target
+      const systemPrompt = generationPreset?.systemPrompt || (h3Target || directorSequenceTarget
         ? [targetRule, ADULT_EXPLICIT_VOCABULARY_RULE]
         : [
             this.instructions,
@@ -887,7 +912,7 @@ export class LmStudioClient {
               : systemPrompt,
           input,
           reasoning: "off",
-          temperature: repair || h3Target || target.startsWith("reverse_") ? Math.min(this.temperature, 0.15) : this.temperature,
+          temperature: repair || h3Target || directorSequenceTarget || target.startsWith("reverse_") ? Math.min(this.temperature, 0.15) : this.temperature,
           max_output_tokens: this.maxTokens,
           stream: false,
           store: false,
@@ -939,14 +964,7 @@ export class LmStudioClient {
         }
         timelineRepairApplied = true;
       }
-      const prompt = h3Target
-        ? normalizeMiniMaxH3Prompt(rawPrompt, {
-            fullReference: mode === "references",
-            mode,
-            duration: h3Duration,
-            allowMusic: h3MusicRequested,
-          })
-        : rawPrompt;
+      const prompt = rawPrompt;
       if (!prompt) throw new Error("LM Studio non ha restituito un prompt utilizzabile.");
       return {
         prompt,

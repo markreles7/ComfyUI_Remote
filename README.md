@@ -2,10 +2,46 @@
 
 Web app responsive per generare immagini e video da PC o telefono, attraverso Tailscale, usando ComfyUI sul PC di casa.
 
+## Workflow video principale: MiniMax H3 · PlagueKind Sparse V9
+
+Il workflow consigliato per la generazione video è **PlagueKind H3 Sparse V9**, disponibile in **Video Studio**. Usa MiniMax H3 con checkpoint hybrid INT8, Sparse Attention, profilo Low VRAM, audio nativo e supporto a Text to Video, Single Image, First/Last Frame e Reference to Video. Può inoltre concatenare da 2 a 8 sequenze mantenendo reference e continuità fra un segmento e il successivo.
+
+### Tutorial rapido
+
+1. Avvia ComfyUI e poi la webapp; apri **Video Studio**.
+2. Seleziona **PlagueKind H3 Sparse V9** come modalità.
+3. Scegli il tipo di input: testo, primo frame, primo/ultimo frame oppure reference immagini/video/audio.
+4. Scrivi il prompt oppure usa il pulsante H3 per farlo ottimizzare; nelle reference usa i tag `<Picture 1>`, `<Video 1>` e `<Audio 1>`.
+5. Per iniziare lascia i valori consigliati: 8 step, ER-SDE, Beta-57, Sparse Attention 0,70 e Low VRAM attivo. Imposta formato, durata e seed.
+6. Premi **Crea progetto** e controlla il video base prima di spendere tempo nel miglioramento.
+7. Sul video completato scegli liberamente **H3 Latent Upscale + Refine**, **solo RTX Super Resolution ×2**, **solo RCAS**, **solo FILM ×2**, oppure la catena completa **FILM → RTX → RCAS**. Il latent refine rigenera la stessa clip con lo stesso seed; le altre opzioni elaborano direttamente il video e ne conservano l'audio.
+
+Per una storia continua attiva **Sequenze continuative**, separa 2–8 prompt con `---` su una riga e mantieni l'overlap consigliato di 22 frame. H3 Latent Upscale + Refine è riservato alle clip singole; RTX, RCAS e FILM restano utilizzabili sul video completato.
+
+### Pacchetto pronto per Vast.ai
+
+Il repository include [plaguekind-vastai.zip](plaguekind-vastai.zip), un pacchetto autonomo con installer Linux, manifest dei modelli, custom node locale e tre workflow ComfyUI: clip Reference-to-Video, sequenze Director continuative e master Director UHD. Installa **solo ComfyUI + PlagueKind**, senza la webapp. Nel template ufficiale Vast.ai ComfyUI puoi usare come `PROVISIONING_SCRIPT`:
+
+```text
+https://raw.githubusercontent.com/markreles7/ComfyUI_Remote/main/plaguekind-vastai/bootstrap-vastai.sh
+```
+
+In alternativa, dopo aver caricato e scompattato lo ZIP nell'istanza:
+
+```bash
+cd /workspace/plaguekind-vastai
+chmod +x install.sh
+./install.sh
+./install.sh --check
+```
+
+Riavvia quindi ComfyUI e apri uno dei workflow copiati in `ComfyUI/user/default/workflows`. La guida completa, con filtri GPU e compilazione campo per campo del template Vast.ai, è in [plaguekind-vastai/README.md](plaguekind-vastai/README.md). La procedura All in One è separata e non serve per questa installazione.
+
 ## Funzioni incluse
 
 - selezione tra i workflow API disponibili;
-- scelta iniziale tra generazione Immagine e Video;
+- studi separati per generazione Immagine, Video e Audio;
+- Audio Studio con MiniMax H3 Music (canzone/strumentale) e workflow ufficiale LTX 2.5 Text to Audio;
 - Text to Image con famiglie Flux.1, Flux.2, Qwen Image 2512 e Z-Image e scelta dinamica del modello installato;
 - Image to Image e Reference Image in base alle capacità del modello;
 - workflow standalone di upscaling con Lanczos, modelli AI locali, SeedVR2 e NVIDIA RTX VSR;
@@ -50,6 +86,21 @@ http://100.77.122.74:3000
 ```
 
 La web app si collega a ComfyUI internamente tramite `127.0.0.1`; la porta 8188 non deve essere esposta.
+
+Su Windows avvia questa installazione con `start-comfyui-safe.bat`. Lo script mantiene DynamicVRAM ma disabilita il solo Comfy model compiler/CUDA recorder, evitando gli errori `aimdo memory compile error` e il successivo `stack overflow` osservati nelle timeline MiniMax H3 Director multi-segmento.
+
+Per dare precedenza alla generazione su Windows, avvia anche `priorita-comfyui.bat` e lascia aperta la sua finestra durante l'uso. Il monitor imposta **Alta** sui processi Python di questa installazione ComfyUI, inclusi quelli avviati successivamente; Ctrl+C ripristina le priorita precedenti. Eseguilo come amministratore solo se Windows nega la modifica di un processo. Non usare **Tempo reale**, che puo rendere il PC e la webapp non responsivi. La priorita CPU non riserva VRAM o GPU: chiudi le altre applicazioni AI che usano la scheda e mantieni libera memoria sufficiente per Windows e Chrome. Il piano energetico di Windows puo essere impostato su **Prestazioni elevate**.
+
+## Installazione All in One su Vast.ai
+
+Per creare da zero una macchina GPU remota sono inclusi:
+
+- `install-vastai-all-in-one.bat` per istanze Windows;
+- `install-vastai-all-in-one.sh` per le comuni istanze Linux/Ubuntu;
+- launcher coordinati per ComfyUI e webapp;
+- un manifesto separato con modelli, fonti e cartelle di destinazione.
+
+La procedura completa è in [docs/VASTAI_INSTALL.md](docs/VASTAI_INSTALL.md); l'elenco dei pesi da scaricare separatamente è in [docs/VASTAI_MODELS.md](docs/VASTAI_MODELS.md). Per sicurezza i servizi restano su localhost e si raggiungono tramite tunnel SSH o Tailscale.
 
 ## Se Windows Firewall blocca la porta 3000
 
@@ -113,6 +164,10 @@ Il controllo **Look realistico** aggiunge dopo LM Studio una direzione documenta
 ### ACTION H3
 
 Video Studio espone **ACTION H3** come profilo separato dedicato esclusivamente a combattimenti e azioni frenetiche. Usa soltanto FL2VA nelle modalità Text to Video, Single Image e First / Last Frame; applica automaticamente `H3\STY_Combat.safetensors` (Combat Base V2) e la Turbo LoRA già installata, con sampler `res_multistep` e scheduler `simple`. La qualità predefinita è 0,6 → 1,0 MP con purge tra i due passaggi e dopo il salvataggio; sono disponibili anche 0,4 → 1,0 MP e il passaggio diretto a 0,9 MP. Il Prompt Assistant ACTION organizza ogni sequenza come attacco → impatto/schivata → reazione → recupero → azione successiva, completando l'azione prima dell'eventuale dialogo.
+
+### Minimax H3 Fast
+
+La sezione **Minimax H3 Fast** integra il workflow I2V 2-stage Sigma-Split: checkpoint hybrid FL2VA/Ref2VA INT8, Turbo 4-step a 0,75, `MiniMaxH3DualClockSamplerT8` a 12 step con split predefinito a 6, separazione dei latent audio/video, `MinimaxH3LatentUpscaler3D` applicato soltanto al video e completamento Euler con sigma manuali. Il preset originale usa 0,2 → 0,98 MP; risoluzioni, split e forza Turbo restano regolabili. Richiede `minimax_h3_hybrid_fl2va_ref2va_b25-49-int8.safetensors`, una Turbo H3 4-step e un upscaler `minimax_h3_latent_upscaler_3d_fp16/bf16.safetensors`.
 
 I file richiesti sono:
 
@@ -215,7 +270,7 @@ Highres Fix e SeedVR2 richiedono batch `1` per limitare la memoria. Per l'editin
 
 Quando un workflow passa dal modello generativo a RealESRGAN o SeedVR2, il nodo `VRAM Debug` riceve l'immagine già decodificata, scarica Flux/Qwen/Z-Image e libera cache e garbage collection prima di caricare l'upscaler.
 
-La webapp non esegue purge tra lavori ancora in coda: ComfyUI può quindi riutilizzare lo stesso modello per generazioni consecutive. Quando la coda ComfyUI risulta realmente vuota, la webapp attende 15 secondi e chiama `/free` con scaricamento modelli e memoria. Il comportamento può essere configurato con:
+La webapp esegue il purge automatico soltanto dopo generazioni MiniMax H3 (incluse le varianti PlagueKind/Sparse, Fast e Action) o LTX 2.5. Non interviene sui workflow LTX 2.3, immagine, upscale o sugli altri motori. Se ci sono lavori ancora in coda aspetta che ComfyUI sia realmente vuoto, quindi attende 15 secondi e chiama `/free` con `unload_models` e `free_memory`. Il comportamento può essere configurato con:
 
 ```dotenv
 AUTO_PURGE_IDLE=true
@@ -285,9 +340,12 @@ Immagini e video caricati vengono conservati temporaneamente nel browser e reins
 
 Image Studio comprende workflow di editing locale, inserimento soggetto, storyboard e finishing:
 
+- **ANIMA · Anime Generator** usa il workflow nativo ComfyUI `UNETLoader + Qwen3 0.6B + Qwen Image VAE`, rileva i sei checkpoint nella cartella `DiffusionModels\\ANIMA` e applica automaticamente a ciascuno step, CFG, sampler e scheduler consigliati. Supporta quattro formati a circa 1 MP, 1/2/4 varianti indipendenti e master finale AnimeSharp;
+
 - Smartphone Photo Editor con maschera manuale o GroundingDINO + SAM;
 - Smart Image Editor e Inpainting intelligente;
 - Multi-Reference Composer con massimo quattro immagini complessive;
+- **DUO SCENE · Anime** con due identità obbligatorie, ambiente e stile facoltativi, prompt Flux.2 a ruoli separati e finale 4x-AnimeSharp;
 - Storyboard Director con 2–4 fotogrammi separati;
 - LTX First / Last Frame, anche a partire da tutte le coppie adiacenti dello storyboard;
 - Character & Location Bible;

@@ -7,10 +7,12 @@ export const IMAGE_MODELS = {
     name: "Flux Krea 2",
     family: "krea2",
     modelPrefix: "FluxKrea2\\",
-    defaultModelFile: "FluxKrea2\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors",
-    description: "Checkpoint Krea 2 con encoder Qwen3-VL, VAE Qwen e sampling nativo Krea2.",
+    modelIncludes: ["KREA"],
+    modelExcludes: ["TURBO"],
+    defaultModelFile: "FluxKrea2\\krea2_raw_bf16.safetensors",
+    description: "Krea 2 RAW BF16 con encoder Qwen3-VL, VAE Qwen e sampling RAW nativo.",
     modes: ["text", "image"],
-    defaults: { steps: 8, guidance: 1 },
+    defaults: { steps: 52, guidance: 3.5 },
     dependencies: {
       clip: "qwen3vl_4b_fp8_scaled.safetensors",
       vae: "qwen_image_vae.safetensors",
@@ -103,7 +105,7 @@ export function qwenEdit2511Lightning8Preset(modelFile = IMAGE_MODELS.qwenEdit.d
 }
 
 const LEGACY_IMAGE_MODEL_IDS = {
-  fluxKrea: { familyId: "fluxKrea2", defaultModelFile: "FluxKrea2\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors" },
+  fluxKrea: { familyId: "fluxKrea2", defaultModelFile: "FluxKrea2\\krea2_raw_bf16.safetensors" },
   fluxKlein9b: { familyId: "flux2", defaultModelFile: "FLUX2\\flux2Klein_9bBase.safetensors" },
 };
 
@@ -153,8 +155,9 @@ function inputPath(upload) {
 function friendlyModelName(filename) {
   const basename = String(filename).split(/[\\/]/).pop()?.replace(/\.(safetensors|gguf|ckpt|pt|pth)$/i, "") || filename;
   const known = {
-    "darkBeast30BF16INT8_darkBeastKREA2FP8": "DarkBeast Krea2 FP8",
-    "moodyKrea2Mix_v50": "Moody Krea2 Mix v5",
+    "krea2_raw_bf16": "Krea 2 RAW BF16",
+    "darkBeast30BF16INT8_darkBeastKREA2FP8": "DarkBeast Krea 2 FP8",
+    "moodyKrea2Mix_v50": "Moody Krea 2 Mix v5",
     "flux2Klein_9bBase": "Flux.2 Klein 9B Base",
     "z_image_turbo_bf16": "Z-Image Turbo BF16",
     "qwen_image_2512_fp8_e4m3fn": "Qwen Image 2512 FP8",
@@ -218,7 +221,7 @@ function buildKrea2(definition, options, upload) {
     }, "CLIPLoader", "Text encoder Krea 2"),
     "3": node({ vae_name: "qwen_image_vae.safetensors" }, "VAELoader", "VAE Krea 2"),
     "5": node({ text: options.prompt, clip: ["2", 0] }, "CLIPTextEncode", "Prompt Krea 2"),
-    "6": node({ conditioning: ["5", 0] }, "ConditioningZeroOut", "Negativo Krea 2"),
+    "6": node({ text: options.negativePrompt, clip: ["2", 0] }, "CLIPTextEncode", "Negative Krea 2 codificato"),
     "8": node({
       seed: options.seed,
       steps: options.steps,
@@ -858,7 +861,7 @@ function applyPortableDetectionDetailers(workflow, definition, options) {
   // then return the crops to the
   // original full-resolution image. The primary generator remains unchanged.
   workflow["905000"] = node({
-    unet_name: "FluxKrea2\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors",
+    unet_name: "FluxKrea2\\krea2_raw_bf16.safetensors",
     weight_dtype: "default",
   }, "UNETLoader", "Face Detailer universale · Krea2");
   workflow["905001"] = node({
@@ -938,7 +941,7 @@ function applyPortableDetectionDetailers(workflow, definition, options) {
       guide_size_for: true,
       max_size: 1024,
       seed: options.seed + pass.offset,
-      steps: 10,
+      steps: 52,
       cfg: 3.5,
       sampler_name: "euler",
       scheduler: "simple",
@@ -1315,7 +1318,7 @@ export function buildImageWorkflow(modelId, rawOptions, upload, rawLoras = undef
       min: 1, max: 4, integer: true, label: "Numero immagini",
     }),
     steps: numberOption(rawOptions.imageSteps, definition.defaults.steps, {
-      min: 1, max: 50, integer: true, label: "Numero di step",
+      min: 1, max: 100, integer: true, label: "Numero di step",
     }),
     guidance: numberOption(rawOptions.imageGuidance, definition.defaults.guidance, {
       min: 0, max: 20, label: "Guidance",
@@ -1408,6 +1411,15 @@ export function buildImageWorkflow(modelId, rawOptions, upload, rawLoras = undef
     insertModelLoras(workflow, loras, ["1", 0], ["8"]);
   } else if (definition.family === "krea2") {
     insertModelLoras(workflow, loras, ["1", 0], ["8"]);
+    const kreaModel = workflow["8"].inputs.model;
+    workflow["7900"] = node({
+      model: kreaModel,
+      sampling_mode: "raw_dynamic",
+      width: options.width,
+      height: options.height,
+      manual_shift: 1.15,
+    }, "Krea2ModelSampling", "Krea 2 RAW · shift dinamico ufficiale");
+    workflow["8"].inputs.model = ["7900", 0];
   } else if (definition.family === "qwen" || definition.family === "qwenedit") {
     insertModelLoras(workflow, loras, ["1", 0], ["4"]);
   } else if (definition.family === "flux2") {

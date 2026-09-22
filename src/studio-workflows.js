@@ -2,9 +2,10 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildImageWorkflow } from "./image-workflows.js";
+import { buildImageWorkflow, IMAGE_MODELS } from "./image-workflows.js";
 import { buildUpscaleWorkflow } from "./upscale-workflows.js";
 import { buildFirstLastWorkflow } from "./workflows.js";
+import { insertModelLoras } from "./loras.js";
 
 export const STUDIO_MODES = {
   guidedEdit: {
@@ -52,6 +53,21 @@ export const STUDIO_MODES = {
     input: "source",
     supportsReferences: true,
     legacy: true,
+  },
+  duoScene: {
+    id: "duoScene",
+    name: "DUO SCENE · Anime",
+    description: "Inserisce due personaggi distinti in una nuova scena anime, con ambientazione e reference di stile facoltative.",
+    input: "optional",
+    supportsReferences: false,
+    guided: true,
+  },
+  anima: {
+    id: "anima",
+    name: "ANIMA · Anime Generator",
+    description: "Generazione anime nativa da prompt o con fino a tre identità da profilo/reference sheet e ambientazione facoltativa.",
+    input: "text",
+    guided: true,
   },
   storyboard: {
     id: "storyboard",
@@ -112,6 +128,12 @@ export const STUDIO_MODES = {
     supportsMask: true,
     staticWorkflow: true,
   },
+  kreaRawMaster: {
+    id: "kreaRawMaster",
+    name: "Krea 2 RAW Master",
+    description: "Replica fedele del workflow FameGrid Krea2 Spicy originale: Turbo 0.6, Filter Bypass 1.0, FameGrid 1.0, doppio sampler RES4LYF e Color Finish originale.",
+    input: "optional",
+  },
 };
 
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -129,6 +151,7 @@ const KREA_TRIPLE_API_FILES = {
 };
 const KREA_TRIPLE_NODES = {
   kreaModel: "2",
+  kreaSampling: "970090",
   kreaPrompt: "5",
   kreaLatent: "8",
   zPrompt: "15",
@@ -143,35 +166,86 @@ const KREA_TRIPLE_NODES = {
 };
 const KREA_TRIPLE_MODELS = Object.freeze([
   {
-    id: "darkBeast",
-    name: "DarkBeast Krea2 FP8 · bilanciato",
-    file: "FluxKrea2\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors",
+    id: "rawBf16",
+    name: "Krea 2 RAW BF16 · qualità nativa",
+    file: "FluxKrea2\\krea2_raw_bf16.safetensors",
     moodyPromptAnchor: false,
-  },
-  {
-    id: "moodyKrea",
-    name: "Moody Krea2 Mix v5 · estetica social/asiatica",
-    file: "FluxKrea2\\moodyKrea2Mix_v50.safetensors",
-    moodyPromptAnchor: true,
   },
 ]);
 const FLUX2_BASE = "FLUX2\\flux2Klein_9bBase.safetensors";
 const FLUX2_TURBO = "FLUX2\\pornmasterFlux2Klein_v4TurboFp8.safetensors";
 const ZIMAGE_TURBO = "Z-IMG\\z_image_turbo_bf16.safetensors";
-const KREA2_REFINE = "FluxKrea2\\darkBeast30BF16INT8_darkBeastKREA2FP8.safetensors";
+const KREA_RAW_MODEL = "FluxKrea2\\krea2_raw_bf16.safetensors";
+const KREA2_REFINE = KREA_RAW_MODEL;
+const KREA_RAW_CLIP = "qwen3vl_4b_bf16.safetensors";
+const KREA_RAW_VAE = "qwen_image_vae.safetensors";
+const KREA_FAMEGRID_VAE = "wan_2.1_vae.safetensors";
+const KREA_RAW_FIXED_LORAS = Object.freeze([
+  { name: "FLUX\\STY_Krea2_Turbo_Rank64_BF16.safetensors", strength: 0.6 },
+  { name: "FLUX\\STY_Krea2_Filter_Bypass_v3.safetensors", strength: 1.0 },
+  { name: "FLUX\\STY_FameGrid_Krea2_Spice_FIX_trigger-famegrid.safetensors", strength: 1.0 },
+]);
+const KREA_RAW_ORIGINAL_NEGATIVE = "cartoon, anime, illustration, painting, drawing, sketch, 3d render, cgi, video game, plastic skin, airbrushed, cartoon eyes, overly smooth skin, doll-like, waxy skin, freckles, blurry, out of focus, low resolution, low quality, jpeg artifacts, oversaturated, overexposed, underexposed, harsh shadows, deformed, disfigured, extra limbs, extra fingers, missing fingers, mutated hands, bad anatomy, asymmetrical eyes, cross-eyed, unnatural pose, stiff pose, mannequin, watermark, text, logo, signature, frame, border, duplicate, cloned face, symmetrical face, perfect symmetry, studio backdrop, plain background, overprocessed, HDR look, glossy filter, beauty filter, smooth skin filter, AI artifacts, uncanny valley";
+const KREA_RAW_ASPECT_RATIOS = Object.freeze({
+  "1:1 (Square)": [1, 1],
+  "2:3 (Portrait Photo)": [2, 3],
+  "3:2 (Photo)": [3, 2],
+  "3:4 (Portrait Standard)": [3, 4],
+  "4:3 (Standard)": [4, 3],
+  "9:16 (Portrait Widescreen)": [9, 16],
+  "16:9 (Widescreen)": [16, 9],
+  "21:9 (Ultrawide)": [21, 9],
+});
+
+function kreaRawResolution(aspectRatio, megapixels, multiple = 8) {
+  const [ratioWidth, ratioHeight] = KREA_RAW_ASPECT_RATIOS[aspectRatio];
+  const pixels = megapixels * 1_000_000;
+  return [
+    Math.max(multiple, Math.round(Math.sqrt(pixels * ratioWidth / ratioHeight) / multiple) * multiple),
+    Math.max(multiple, Math.round(Math.sqrt(pixels * ratioHeight / ratioWidth) / multiple) * multiple),
+  ];
+}
 const QWEN_EDIT_2511 = "QWEN\\qwen_image_edit_2511_bf16.safetensors";
+const ANIMA_TEXT_ENCODER = "qwen_3_06b_base.safetensors";
+const ANIMA_VAE = "qwen_image_vae.safetensors";
+const ANIMA_MODELS = Object.freeze([
+  { id: "turbo", name: "ANIMA Turbo v1.1 · rapidissimo", file: "ANIMA\\anima_turboV11.safetensors", steps: 8, cfg: 1, sampler: "euler", scheduler: "simple" },
+  { id: "animij", name: "Animij S1 · espressivo / pittorico", file: "ANIMA\\animij_s1.safetensors", steps: 32, cfg: 6, sampler: "er_sde", scheduler: "simple" },
+  { id: "miaomiao", name: "MiaoMiao Harem ANIMA 1.6 · estetica ricca", file: "ANIMA\\miaomiaoHarem_anima16.safetensors", steps: 30, cfg: 4.5, sampler: "euler_ancestral", scheduler: "normal" },
+  { id: "hoseki", name: "Hoseki LustrousMix ANIMA 1.0", file: "ANIMA\\hosekiLustrousmixAnima_animaV10.safetensors", steps: 24, cfg: 4, sampler: "euler_ancestral", scheduler: "normal" },
+  { id: "rimix", name: "Ri-mix Illustrious ANIMA α", file: "ANIMA\\riMixIllustriousAnima_riMixAnima.safetensors", steps: 30, cfg: 3, sampler: "er_sde", scheduler: "simple" },
+  { id: "wai", name: "WAI-ANIMA v1.0", file: "ANIMA\\waiANIMA_v10Base10.safetensors", steps: 30, cfg: 5, sampler: "euler_ancestral", scheduler: "normal" },
+]);
 const STORYBOARD_MODELS = {
+  qwenImage: {
+    id: "qwenImage",
+    name: "Qwen Image 2512 · Text to Image",
+    draft: IMAGE_MODELS.qwenImage.defaultModelFile,
+    quality: IMAGE_MODELS.qwenImage.defaultModelFile,
+    steps: IMAGE_MODELS.qwenImage.defaults.steps,
+    guidance: IMAGE_MODELS.qwenImage.defaults.guidance,
+  },
   qwen2511: {
     id: "qwen2511",
     name: "Qwen Image Edit 2511 BF16",
     draft: QWEN_EDIT_2511,
     quality: QWEN_EDIT_2511,
+    steps: 40,
+    guidance: 4,
   },
   klein: {
     id: "klein",
     name: "Flux.2 Klein 9B Base",
     draft: FLUX2_TURBO,
     quality: FLUX2_BASE,
+  },
+  krea2: {
+    id: "krea2",
+    name: "Krea 2 · Text to Image",
+    draft: IMAGE_MODELS.fluxKrea2.defaultModelFile,
+    quality: IMAGE_MODELS.fluxKrea2.defaultModelFile,
+    steps: IMAGE_MODELS.fluxKrea2.defaults.steps,
+    guidance: IMAGE_MODELS.fluxKrea2.defaults.guidance,
   },
 };
 
@@ -211,7 +285,9 @@ function buildQwenKreaKleinJob(raw, source) {
   const prompt = String(raw.prompt || "").trim();
   if (!prompt) throw new Error("Inserisci il prompt di editing per Qwen.");
   const workflow = cloneStaticWorkflow(QWEN_KREA_KLEIN_API_FILE);
-  const seed = seedAt(raw);
+  const seed = raw.seed === undefined || raw.seed === null || raw.seed === ""
+    ? crypto.randomInt(0, 2 ** 31)
+    : seedAt(raw);
   const sourcePath = inputPath(source);
 
   const loadImage = workflow["78"]
@@ -228,6 +304,39 @@ function buildQwenKreaKleinJob(raw, source) {
 
   const negativePrompt = String(raw.negativePrompt || "").trim();
   if (negativePrompt && workflow["77"]?.inputs) workflow["77"].inputs.prompt = negativePrompt;
+
+  // The Krea RAW refinement must use a genuine unconditional embedding.
+  // ConditioningZeroOut leaves a zero tensor here and produces the coloured
+  // speckle/mosaic artifact seen with CFG > 1, even when the negative is empty.
+  workflow["396"] = {
+    inputs: { text: negativePrompt, clip: ["414", 0] },
+    class_type: "CLIPTextEncode",
+    _meta: { title: negativePrompt ? "Krea RAW · prompt negativo" : "Krea RAW · negative vuoto codificato" },
+  };
+  // Krea 2 shares the Qwen Image latent space, not the Wan video VAE.
+  if (workflow["415"]?.inputs) workflow["415"].inputs.vae_name = KREA_RAW_VAE;
+  // Read the real size of the image entering the img2img refinement so the
+  // official dynamic-shift schedule stays correct for every aspect ratio.
+  workflow["940100"] = {
+    inputs: { image: ["286", 0] },
+    class_type: "GetImageSize",
+    _meta: { title: "Krea RAW · dimensioni effettive" },
+  };
+  workflow["940101"] = {
+    inputs: {
+      model: ["413", 0],
+      sampling_mode: "raw_dynamic",
+      width: ["940100", 0],
+      height: ["940100", 1],
+      manual_shift: 1.15,
+    },
+    class_type: "Krea2ModelSampling",
+    _meta: { title: "Krea 2 RAW · shift dinamico ufficiale" },
+  };
+  if (workflow["499"]?.inputs) {
+    workflow["499"].inputs.model = ["940101", 0];
+    workflow["499"].inputs.return_with_leftover_noise = "disable";
+  }
 
   for (const item of Object.values(workflow)) {
     if (item?.class_type === "easy seed" && item.inputs) item.inputs.seed = seed;
@@ -271,6 +380,7 @@ function buildQwenKreaKleinJob(raw, source) {
         staticWorkflow: "Qwen_Krea_Klein_API.json",
         qwenEditNode: "110",
         kreaRefineNode: "499",
+        kreaSamplingNode: "940101",
         kleinRefineNode: "480",
         seedvr2Node: "492",
       },
@@ -297,7 +407,9 @@ function buildAnimeToRealJob(raw, source) {
   if (!prompt) throw new Error("Inserisci il prompt enhanced generato con LM Studio.");
   const negativePrompt = String(raw.negativePrompt || "").trim();
   const workflow = cloneStaticWorkflow(ANIME_TO_REAL_API_FILE);
-  const seed = seedAt(raw);
+  const seed = raw.seed === undefined || raw.seed === null || raw.seed === ""
+    ? crypto.randomInt(0, 2 ** 31)
+    : seedAt(raw);
   const sourcePath = inputPath(source);
 
   // Qwen-VL e i suoi nodi di testo intermedi sono volutamente esclusi: il prompt
@@ -424,11 +536,30 @@ function kreaTripleModelSelection(raw) {
 function configureKreaTripleCommon(workflow, raw, { operation, model, prompt, negativePrompt, seed, width, height }) {
   const nodes = KREA_TRIPLE_NODES;
   workflow[nodes.kreaModel].inputs.unet_name = model.file;
+  workflow[nodes.kreaSampling] = {
+    inputs: {
+      model: [nodes.kreaModel, 0],
+      sampling_mode: "raw_dynamic",
+      width,
+      height,
+      manual_shift: 1.15,
+    },
+    class_type: "Krea2ModelSampling",
+    _meta: { title: "Krea 2 RAW · shift dinamico ufficiale" },
+  };
+  workflow[nodes.kreaLatent].inputs.model = [nodes.kreaSampling, 0];
   workflow[nodes.kreaPrompt].inputs.text = prompt;
   workflow[nodes.zPrompt].inputs.text = prompt;
   workflow[nodes.kleinPrompt].inputs.text = prompt;
   workflow[nodes.kreaLatent].inputs.seed = seed;
-  workflow[nodes.zSampler].inputs.seed = seed + 1;
+  // This is an img2img cleanup stage, not an independent variation.  Keep
+  // the seed stable and the denoise low so Z-Image cannot repaint anatomy or
+  // amplify the RAW model's high-frequency texture.
+  workflow[nodes.zSampler].inputs.seed = seed;
+  workflow[nodes.zSampler].inputs.denoise = Math.min(
+    numberValue(raw.kreaTripleZRefineDenoise, 0.12, 0.05, 0.25),
+    0.15,
+  );
   workflow[nodes.kleinNoise].inputs.noise_seed = seed + 2;
   workflow[nodes.seedvr2].inputs.seed = seed;
   workflow[nodes.resolution].inputs.use_custom_resolution = true;
@@ -439,10 +570,24 @@ function configureKreaTripleCommon(workflow, raw, { operation, model, prompt, ne
     workflow[nodes.seedvr2Dit].inputs.cache_model = true;
     workflow[nodes.seedvr2Dit].inputs.attention_mode = "sdpa";
   }
-  if (negativePrompt) {
-    for (const id of ["6", "16", "37"]) {
-      if (workflow[id]?.class_type === "ConditioningZeroOut") workflow[id].inputs._negative_prompt_note = negativePrompt;
-    }
+  // Krea 2 RAW uses real unconditional embeddings for CFG.  Zeroing the
+  // positive conditioning when the negative prompt is empty produces the
+  // coloured dot/mosaic pattern seen at native 1K resolutions.
+  for (const [id, clipId] of [["6", "3"], ["16", "75"], ["37", "32"]]) {
+    workflow[id] = {
+      inputs: { text: negativePrompt, clip: [clipId, 0] },
+      class_type: "CLIPTextEncode",
+      _meta: { title: "Krea Triple · negative conditioning codificato" },
+    };
+  }
+
+  // These two nodes were debug saves in the imported template and created
+  // large, misleading intermediate files.  Keep previews available without
+  // treating damaged intermediate stages as deliverables.
+  for (const id of ["25", "38"]) {
+    if (workflow[id]?.class_type !== "SaveImage") continue;
+    const images = workflow[id].inputs.images;
+    workflow[id] = { inputs: { images }, class_type: "PreviewImage", _meta: { title: "Krea Triple · anteprima diagnostica" } };
   }
 }
 
@@ -476,14 +621,14 @@ function addKreaTripleSourceLatent(workflow, source, raw, width, height) {
     numberValue(raw.kreaTripleDenoise ?? raw.denoise, 0.35, 0.1, 0.8);
 }
 
-function addKreaTripleMaskComposite(workflow, source, mask, raw) {
+function addKreaTripleMaskComposite(workflow, source, mask, raw, generatedImage) {
   workflow["970110"] = {
     inputs: { image: inputPath(mask) },
     class_type: "LoadImage",
     _meta: { title: "Krea Triple · maschera manuale" },
   };
   workflow["970120"] = {
-    inputs: { image: [KREA_TRIPLE_NODES.finalImage, 0] },
+    inputs: { image: generatedImage },
     class_type: "GetImageSize",
     _meta: { title: "Krea Triple · final size" },
   };
@@ -537,7 +682,7 @@ function addKreaTripleMaskComposite(workflow, source, mask, raw) {
   workflow["970126"] = {
     inputs: {
       destination: ["970121", 0],
-      source: [KREA_TRIPLE_NODES.finalImage, 0],
+      source: generatedImage,
       x: 0,
       y: 0,
       resize_source: false,
@@ -549,6 +694,60 @@ function addKreaTripleMaskComposite(workflow, source, mask, raw) {
   workflow[KREA_TRIPLE_NODES.finalSave].inputs.images = ["970126", 0];
 }
 
+function pruneWorkflowToOutputs(workflow, outputIds) {
+  const required = new Set(outputIds.filter((id) => workflow[id]));
+  const pending = [...required];
+  while (pending.length) {
+    const id = pending.pop();
+    const node = workflow[id];
+    if (!node?.inputs) continue;
+    for (const value of Object.values(node.inputs)) {
+      if (!Array.isArray(value) || value.length !== 2) continue;
+      const dependency = String(value[0]);
+      if (!workflow[dependency] || required.has(dependency)) continue;
+      required.add(dependency);
+      pending.push(dependency);
+    }
+  }
+  for (const id of Object.keys(workflow)) {
+    if (!required.has(id)) delete workflow[id];
+  }
+}
+
+function configureKreaTripleStages(workflow, raw, operation, source, mask) {
+  const stages = {
+    krea: true,
+    zImage: boolValue(raw.kreaTripleUseZImage, true),
+    klein: boolValue(raw.kreaTripleUseKlein, true),
+    seedvr2: boolValue(raw.kreaTripleUseSeedVR2, true),
+  };
+  let generatedImage = ["9", 0];
+  const previewOutputs = ["10"];
+
+  if (stages.zImage) {
+    generatedImage = ["18", 0];
+    previewOutputs.push("25");
+  }
+  if (stages.klein) {
+    workflow["33"].inputs.image = generatedImage;
+    workflow["67"].inputs.image_ref = generatedImage;
+    generatedImage = ["67", 0];
+    previewOutputs.push("38");
+  }
+  if (stages.seedvr2) {
+    workflow["42"].inputs.image = generatedImage;
+    generatedImage = [KREA_TRIPLE_NODES.finalImage, 0];
+  }
+
+  if (operation === "selective") {
+    addKreaTripleMaskComposite(workflow, source, mask, raw, generatedImage);
+  } else {
+    workflow[KREA_TRIPLE_NODES.finalSave].inputs.images = generatedImage;
+  }
+  pruneWorkflowToOutputs(workflow, [KREA_TRIPLE_NODES.finalSave, ...previewOutputs]);
+  return stages;
+}
+
 function buildKreaTripleJob(raw, { source, mask }) {
   const prompt = String(raw.prompt || "").trim();
   if (!prompt) throw new Error("Inserisci il prompt per Krea Triple Studio.");
@@ -557,12 +756,13 @@ function buildKreaTripleJob(raw, { source, mask }) {
   if (operation === "selective" && !mask?.name) throw new Error("Krea Triple Selective richiede una maschera manuale.");
   const workflow = cloneStaticWorkflow(KREA_TRIPLE_API_FILES[operation]);
   const model = kreaTripleModelSelection(raw);
-  const [width, height] = dimensions(raw);
+  const [requestedWidth, requestedHeight] = dimensions(raw);
+  const [width, height] = fitKreaRawResolution(requestedWidth, requestedHeight);
   const seed = seedAt(raw);
   const negativePrompt = String(raw.negativePrompt || "").trim();
   configureKreaTripleCommon(workflow, raw, { operation, model, prompt, negativePrompt, seed, width, height });
   if (operation !== "text") addKreaTripleSourceLatent(workflow, source, raw, width, height);
-  if (operation === "selective") addKreaTripleMaskComposite(workflow, source, mask, raw);
+  const stages = configureKreaTripleStages(workflow, raw, operation, source, mask);
   return {
     workflow,
     metadata: {
@@ -584,6 +784,10 @@ function buildKreaTripleJob(raw, { source, mask }) {
       imageModelFamily: "kreaTriple",
       imageSettings: {
         operation,
+        requestedWidth,
+        requestedHeight,
+        kreaNativeWidth: width,
+        kreaNativeHeight: height,
         kreaModel: model.file,
         kreaModelId: model.id,
         moodyPromptAnchor: model.moodyPromptAnchor,
@@ -591,8 +795,139 @@ function buildKreaTripleJob(raw, { source, mask }) {
         staticWorkflow: path.basename(KREA_TRIPLE_API_FILES[operation]),
         nodes: KREA_TRIPLE_NODES,
         seedvr2CacheModelBoolean: workflow[KREA_TRIPLE_NODES.seedvr2Dit]?.inputs?.cache_model === true,
+        stages,
+        finalStage: stages.seedvr2 ? "seedvr2" : stages.klein ? "klein" : stages.zImage ? "zImage" : "krea",
       },
       loras: [],
+    },
+  };
+}
+
+function buildKreaRawMasterJob(raw, loras = []) {
+  const userPrompt = String(raw.prompt || "").trim();
+  if (!userPrompt) throw new Error("Inserisci il prompt per Krea 2 RAW Master.");
+  const prompt = /^famegrid\s*,?/i.test(userPrompt) ? userPrompt : `famegrid,\n${userPrompt}`;
+  const extraNegative = String(raw.negativePrompt || "").trim();
+  const negativePrompt = extraNegative
+    ? `${KREA_RAW_ORIGINAL_NEGATIVE}, ${extraNegative}`
+    : KREA_RAW_ORIGINAL_NEGATIVE;
+  const requestedAspectRatio = String(raw.kreaRawAspectRatio || "9:16 (Portrait Widescreen)");
+  const aspectRatio = KREA_RAW_ASPECT_RATIOS[requestedAspectRatio]
+    ? requestedAspectRatio
+    : "9:16 (Portrait Widescreen)";
+  const megapixels = numberValue(raw.kreaRawMegapixels, 1.2, 0.1, 16);
+  const resolutionMultiple = 8;
+  const [width, height] = kreaRawResolution(aspectRatio, megapixels, resolutionMultiple);
+  const seed = raw.seed === undefined || raw.seed === null || raw.seed === ""
+    ? crypto.randomInt(0, 2 ** 31)
+    : seedAt(raw);
+  const refineSeed = raw.seed === undefined || raw.seed === null || raw.seed === ""
+    ? crypto.randomInt(0, 2 ** 31)
+    : seed + 1;
+  const workflow = {
+    "316": { inputs: { unet_name: KREA_RAW_MODEL, weight_dtype: "default" }, class_type: "UNETLoader", _meta: { title: "Load Diffusion Model" } },
+    "154": { inputs: { lora_name: KREA_RAW_FIXED_LORAS[0].name, strength_model: 0.6, model: ["316", 0] }, class_type: "LoraLoaderModelOnly", _meta: { title: "Krea 2 Turbo" } },
+    "155": { inputs: { lora_name: KREA_RAW_FIXED_LORAS[1].name, strength_model: 1.0, model: ["154", 0] }, class_type: "LoraLoaderModelOnly", _meta: { title: "Krea 2 filter bypass" } },
+    "128": { inputs: { lora_name: KREA_RAW_FIXED_LORAS[2].name, strength_model: 1.0, model: ["155", 0] }, class_type: "LoraLoaderModelOnly", _meta: { title: "FameGrid Spicy · strength 1.0" } },
+    "317": { inputs: { clip_name: KREA_RAW_CLIP, type: "krea2", device: "default" }, class_type: "CLIPLoader", _meta: { title: "Load CLIP" } },
+    "48": { inputs: { value: prompt }, class_type: "PrimitiveStringMultiline", _meta: { title: "Positive" } },
+    "6": { inputs: { text: ["48", 0], clip: ["317", 0] }, class_type: "CLIPTextEncode", _meta: { title: "CLIP Text Encode (Prompt)" } },
+    "271": { inputs: { value: negativePrompt }, class_type: "PrimitiveStringMultiline", _meta: { title: "Negative" } },
+    "272": { inputs: { text: ["271", 0], clip: ["317", 0] }, class_type: "CLIPTextEncode", _meta: { title: "CLIP Text Encode (Prompt)" } },
+    "282": { inputs: { value: 1.0 }, class_type: "PrimitiveFloat", _meta: { title: "CFG" } },
+    "341": { inputs: { aspect_ratio: aspectRatio, megapixels, multiple: resolutionMultiple }, class_type: "ResolutionSelector", _meta: { title: "Resolution Selector" } },
+    "232": { inputs: { width: ["341", 0], height: ["341", 1], batch_size: 1 }, class_type: "EmptyLatentImage", _meta: { title: "Empty Latent Image" } },
+    "210": { inputs: { vae_name: KREA_FAMEGRID_VAE }, class_type: "VAELoader", _meta: { title: "Load VAE" } },
+  };
+  const optionalLoras = lorasForModel(loras, KREA_RAW_MODEL);
+  let modelLink = ["128", 0];
+  optionalLoras.forEach((lora, index) => {
+    const id = String(900100 + index);
+    workflow[id] = {
+      inputs: { model: modelLink, lora_name: lora.name, strength_model: lora.strength },
+      class_type: "LoraLoaderModelOnly",
+      _meta: { title: `LoRA aggiuntiva ${index + 1} · ${lora.name}` },
+    };
+    modelLink = [id, 0];
+  });
+  workflow["265"] = {
+    inputs: {
+      eta: 0.5,
+      sampler_name: "multistep/res_2m",
+      scheduler: "beta57",
+      steps: 6,
+      steps_to_run: -1,
+      denoise: 1.0,
+      cfg: ["282", 0],
+      seed,
+      sampler_mode: "standard",
+      bongmath: true,
+      model: modelLink,
+      positive: ["6", 0],
+      negative: ["272", 0],
+      latent_image: ["232", 0],
+    },
+    class_type: "ClownsharKSampler_Beta",
+    _meta: { title: "ClownsharKSampler · RES 2M" },
+  };
+  workflow["274"] = {
+    inputs: {
+      eta: 0.5,
+      sampler_name: "multistep/deis_3m",
+      scheduler: "bong_tangent",
+      steps: 2,
+      steps_to_run: -1,
+      denoise: 0.2,
+      cfg: ["282", 0],
+      seed: refineSeed,
+      sampler_mode: "standard",
+      bongmath: true,
+      model: modelLink,
+      positive: ["6", 0],
+      negative: ["272", 0],
+      latent_image: ["265", 0],
+    },
+    class_type: "ClownsharKSampler_Beta",
+    _meta: { title: "ClownsharKSampler · DEIS 3M refine" },
+  };
+  workflow["8"] = { inputs: { samples: ["274", 0], vae: ["210", 0] }, class_type: "VAEDecode", _meta: { title: "VAE Decode" } };
+  workflow["340"] = {
+    inputs: { image: ["8", 0], color_strength: 1.0, sharpen_strength: 0.2 },
+    class_type: "FameGridColorFinish",
+    _meta: { title: "FameGrid color and detail finish" },
+  };
+  workflow["213"] = { inputs: { images: ["340", 0], filename_prefix: "Studio/krea_raw_master/famegrid_v2" }, class_type: "SaveImage", _meta: { title: "Save Image" } };
+  return {
+    workflow,
+    metadata: {
+      mediaType: "image",
+      generationType: "image",
+      workflowId: "studio:kreaRawMaster",
+      workflowName: "Krea 2 RAW Master",
+      studioMode: "kreaRawMaster",
+      studioStage: "final",
+      studioLabel: "ORIGINALE · FameGrid Krea2 Spicy · doppio RES4LYF",
+      prompt,
+      negativePrompt,
+      width,
+      height,
+      seed,
+      imageModelFile: KREA_RAW_MODEL,
+      imageModelName: "Krea 2 Raw BF16 + Turbo 0.6 + Filter Bypass + FameGrid 1.0",
+      imageModelFamily: "fluxKrea2",
+      imageSettings: {
+        sourceWorkflow: "FameGrid_Krea2_Spicy_CORRECTED.json",
+        faithfulOriginal: true,
+        samplers: [
+          { node: "265", sampler: "multistep/res_2m", scheduler: "beta57", steps: 6, denoise: 1.0, cfg: 1.0, seed },
+          { node: "274", sampler: "multistep/deis_3m", scheduler: "bong_tangent", steps: 2, denoise: 0.2, cfg: 1.0, seed: refineSeed },
+        ],
+        resolutionSelector: { node: "341", aspectRatio, megapixels, multiple: resolutionMultiple },
+        colorFinish: { colorStrength: 1.0, sharpenStrength: 0.2 },
+        fixedLoras: KREA_RAW_FIXED_LORAS,
+        upscale: "manual",
+      },
+      loras: [...KREA_RAW_FIXED_LORAS, ...optionalLoras],
     },
   };
 }
@@ -608,12 +943,403 @@ function dimensions(raw) {
   ];
 }
 
+function fitKreaRawResolution(width, height) {
+  // Krea 2 RAW is trained for roughly 1K generation.  Running the base model
+  // directly near 2 MP produces the coloured high-frequency ringing visible
+  // in the affected outputs.  Preserve aspect ratio on a 32 px latent grid;
+  // later Krea Triple stages perform the high-resolution reconstruction.
+  const maxPixels = 1024 * 1024;
+  if (width * height <= maxPixels) return [width, height];
+  const scale = Math.sqrt(maxPixels / (width * height));
+  const fittedWidth = Math.max(256, Math.floor((width * scale) / 32) * 32);
+  const fittedHeight = Math.max(256, Math.floor((height * scale) / 32) * 32);
+  return [fittedWidth, fittedHeight];
+}
+
 function seedAt(raw, index = 0) {
   const parsed = Number(raw.seed);
   const seed = Number.isSafeInteger(parsed) && parsed >= 0
     ? parsed
     : crypto.randomInt(0, 2 ** 31);
   return seed + index;
+}
+
+function animaReferencePrompt(raw, scenePrompt, references) {
+  const flags = [
+    boolValue(raw.animaHasCharacter2),
+    boolValue(raw.animaHasCharacter3),
+    boolValue(raw.animaHasEnvironment),
+  ];
+  if (references.length !== flags.filter(Boolean).length) {
+    throw new Error("Le reference ANIMA non corrispondono agli slot selezionati. Ricarica i personaggi e l’ambientazione.");
+  }
+  const roles = [{ image: 1, role: "character1" }];
+  let imageIndex = 2;
+  if (flags[0]) roles.push({ image: imageIndex++, role: "character2" });
+  if (flags[1]) roles.push({ image: imageIndex++, role: "character3" });
+  if (flags[2]) roles.push({ image: imageIndex++, role: "environment" });
+  const roleInstructions = roles.map(({ image, role }) => role === "environment"
+    ? `Image ${image} is the environment reference only. Preserve its location, spatial layout, camera viewpoint, architecture and lighting direction; never copy people from it.`
+    : `Image ${image} is the identity reference for character ${role.slice(-1)} only. It may be a portrait or a reference sheet. Preserve that character's recognizable face, hairstyle, colors, body traits, outfit-defining details and distinctive features; never reproduce the sheet layout.`);
+  const presentCharacters = roles
+    .filter((item) => item.role.startsWith("character"))
+    .map((item) => Number(item.role.slice(-1)));
+  return {
+    prompt: [
+      `Create one unified single-frame anime scene with exactly ${roles.filter((item) => item.role !== "environment").length} principal referenced character(s).`,
+      ...roleInstructions,
+      `Requested scene: ${scenePrompt}`,
+      ...presentCharacters.map((number) => {
+        const text = String(raw[`animaCharacter${number}Direction`] || "").trim();
+        return text && `Character ${number} role, placement and action: ${text}.`;
+      }).filter(Boolean),
+      "Keep every identity separate and recognizable. Never merge, average, swap or leak faces, hair, bodies, clothing or accessories between characters.",
+      "Integrate anatomy, gaze, scale, pose, perspective, contact, occlusion, shadows and environmental light naturally.",
+      "Output one finished scene only, never a collage, split screen, lineup, comparison panel or reference sheet.",
+    ].join(" "),
+    roles,
+  };
+}
+
+const ANIMA_QUALITY_LEVELS = new Set(["fast", "balanced", "max"]);
+
+function animaSamplingPasses(raw, model, initialDenoise) {
+  const quality = ANIMA_QUALITY_LEVELS.has(String(raw.animaQuality || "fast"))
+    ? String(raw.animaQuality || "fast")
+    : "fast";
+  const passes = [{
+    stage: "base",
+    steps: model.steps,
+    cfg: model.cfg,
+    sampler: model.sampler,
+    scheduler: model.scheduler,
+    denoise: initialDenoise,
+  }];
+  if (quality === "balanced" || quality === "max") {
+    const denoise = Math.round(Math.min(0.24, initialDenoise * 0.48) * 100) / 100;
+    passes.push({
+      stage: "detail",
+      steps: Math.max(6, Math.min(12, Math.round(model.steps * 0.4))),
+      cfg: model.cfg,
+      sampler: "er_sde",
+      scheduler: "simple",
+      denoise,
+    });
+  }
+  if (quality === "max") {
+    const previous = passes.at(-1).denoise;
+    passes.push({
+      stage: "polish",
+      steps: Math.max(4, Math.min(8, Math.round(model.steps * 0.25))),
+      cfg: model.cfg,
+      sampler: "dpmpp_2m_sde",
+      scheduler: "karras",
+      denoise: Math.round(Math.min(0.12, previous * 0.5) * 100) / 100,
+    });
+  }
+  return { quality, passes };
+}
+
+function addAnimaRefinementPasses(workflow, {
+  baseSamplerId,
+  extraSamplerIds,
+  modelLink,
+  positive,
+  negative,
+  seed,
+  sampling,
+  decodeId,
+}) {
+  const samplerIds = [baseSamplerId];
+  let previous = baseSamplerId;
+  sampling.passes.slice(1).forEach((pass, index) => {
+    const nodeId = extraSamplerIds[index];
+    workflow[nodeId] = {
+      inputs: {
+        model: modelLink,
+        positive,
+        negative,
+        latent_image: [previous, 0],
+        seed: seed + 2000 + index,
+        steps: pass.steps,
+        cfg: pass.cfg,
+        sampler_name: pass.sampler,
+        scheduler: pass.scheduler,
+        denoise: pass.denoise,
+      },
+      class_type: "KSampler",
+      _meta: { title: `ANIMA · ${pass.stage === "detail" ? "dettaglio" : "polish finale"} · denoise ${pass.denoise}` },
+    };
+    samplerIds.push(nodeId);
+    previous = nodeId;
+  });
+  workflow[decodeId].inputs.samples = [previous, 0];
+  return samplerIds;
+}
+
+function buildAnimaJob(raw, model, index, width, height, { source, references = [] } = {}, loras = []) {
+  const seed = seedAt({ ...raw, seed: raw.animaSeed }, index);
+  const scenePrompt = String(raw.prompt || "").trim();
+  const usesReferences = String(raw.animaInputMode || "text") === "references";
+  if (usesReferences && !source?.name) throw new Error("Carica almeno il personaggio principale per ANIMA.");
+  const referencePlan = usesReferences ? animaReferencePrompt(raw, scenePrompt, references) : null;
+  const prompt = referencePlan?.prompt || scenePrompt;
+  const negative = String(raw.negativePrompt || "").trim()
+    || "worst quality, low quality, score_1, score_2, score_3, blurry, jpeg artifacts, malformed anatomy, extra limbs, extra fingers, text, watermark";
+  const initialDenoise = usesReferences
+    ? numberValue(raw.animaReferenceStrength, 0.5, 0.2, 0.8)
+    : 1;
+  const sampling = animaSamplingPasses(raw, model, initialDenoise);
+  let workflow = {
+    "1": {
+      inputs: { unet_name: model.file, weight_dtype: "default" },
+      class_type: "UNETLoader",
+      _meta: { title: `ANIMA · ${model.name}` },
+    },
+    "2": {
+      inputs: { clip_name: ANIMA_TEXT_ENCODER, type: "stable_diffusion", device: "default" },
+      class_type: "CLIPLoader",
+      _meta: { title: "ANIMA · Qwen3 0.6B" },
+    },
+    "3": {
+      inputs: { vae_name: ANIMA_VAE },
+      class_type: "VAELoader",
+      _meta: { title: "ANIMA · Qwen Image VAE" },
+    },
+    "4": {
+      inputs: { text: prompt, clip: ["2", 0] },
+      class_type: "CLIPTextEncode",
+      _meta: { title: "ANIMA · Prompt" },
+    },
+    "5": {
+      inputs: { text: negative, clip: ["2", 0] },
+      class_type: "CLIPTextEncode",
+      _meta: { title: "ANIMA · Negative" },
+    },
+    "6": {
+      inputs: { width, height, batch_size: 1 },
+      class_type: "EmptyLatentImage",
+      _meta: { title: "ANIMA · Formato" },
+    },
+    "7": {
+      inputs: {
+        model: ["1", 0],
+        positive: ["4", 0],
+        negative: ["5", 0],
+        latent_image: ["6", 0],
+        seed,
+        steps: model.steps,
+        cfg: model.cfg,
+        sampler_name: model.sampler,
+        scheduler: model.scheduler,
+        denoise: initialDenoise,
+      },
+      class_type: "KSampler",
+      _meta: { title: `ANIMA · ${model.steps} step · CFG ${model.cfg}` },
+    },
+    "8": {
+      inputs: { samples: ["7", 0], vae: ["3", 0] },
+      class_type: "VAEDecode",
+      _meta: { title: "ANIMA · Decode" },
+    },
+    "9": {
+      inputs: { images: ["8", 0], filename_prefix: `Studio/anima/${model.id}` },
+      class_type: "SaveImage",
+      _meta: { title: "ANIMA · Salva" },
+    },
+  };
+  let animaSamplerIds = ["7"];
+  if (usesReferences) {
+    const composition = buildImageWorkflow("flux2", {
+      imageModelFile: FLUX2_BASE,
+      imageMode: "image",
+      imageResolution: "custom",
+      imageWidth: width,
+      imageHeight: height,
+      imageSteps: 20,
+      imageGuidance: 5,
+      denoise: 1,
+      prompt,
+      negativePrompt: `${negative}, merged identities, blended faces, identity leakage, duplicate principal character, collage, split screen, reference sheet`,
+      seed,
+      batchSize: 1,
+      referenceUploads: references,
+      upscaleMode: "none",
+      saveOriginal: true,
+    }, source, []);
+    workflow = composition.workflow;
+    for (const [nodeId, node] of Object.entries(workflow)) {
+      if (node.class_type === "SaveImage") delete workflow[nodeId];
+    }
+    workflow["970001"] = {
+      inputs: { image: ["15", 0], upscale_method: "lanczos", width, height, crop: "disabled" },
+      class_type: "ImageScale",
+      _meta: { title: "ANIMA · adatta composizione identitaria" },
+    };
+    workflow["970002"] = {
+      inputs: { unet_name: model.file, weight_dtype: "default" },
+      class_type: "UNETLoader",
+      _meta: { title: `ANIMA · ${model.name}` },
+    };
+    workflow["970003"] = {
+      inputs: { clip_name: ANIMA_TEXT_ENCODER, type: "stable_diffusion", device: "default" },
+      class_type: "CLIPLoader",
+      _meta: { title: "ANIMA · Qwen3 0.6B" },
+    };
+    workflow["970004"] = {
+      inputs: { vae_name: ANIMA_VAE },
+      class_type: "VAELoader",
+      _meta: { title: "ANIMA · Qwen Image VAE" },
+    };
+    workflow["970005"] = {
+      inputs: { text: prompt, clip: ["970003", 0] },
+      class_type: "CLIPTextEncode",
+      _meta: { title: "ANIMA · prompt scena coerente" },
+    };
+    workflow["970006"] = {
+      inputs: { text: negative, clip: ["970003", 0] },
+      class_type: "CLIPTextEncode",
+      _meta: { title: "ANIMA · negativo" },
+    };
+    workflow["970007"] = {
+      inputs: { pixels: ["970001", 0], vae: ["970004", 0] },
+      class_type: "VAEEncode",
+      _meta: { title: "ANIMA · encode composizione" },
+    };
+    workflow["970008"] = {
+      inputs: {
+        model: ["970002", 0],
+        positive: ["970005", 0],
+        negative: ["970006", 0],
+        latent_image: ["970007", 0],
+        seed: seed + 1000,
+        steps: model.steps,
+        cfg: model.cfg,
+        sampler_name: model.sampler,
+        scheduler: model.scheduler,
+        denoise: initialDenoise,
+      },
+      class_type: "KSampler",
+      _meta: { title: `ANIMA · render ${model.steps} step · CFG ${model.cfg}` },
+    };
+    workflow["970009"] = {
+      inputs: { samples: ["970008", 0], vae: ["970004", 0] },
+      class_type: "VAEDecode",
+      _meta: { title: "ANIMA · decode finale" },
+    };
+    workflow["970010"] = {
+      inputs: { images: ["970009", 0], filename_prefix: `Studio/anima/${model.id}_references` },
+      class_type: "SaveImage",
+      _meta: { title: "ANIMA · salva scena coerente" },
+    };
+    animaSamplerIds = addAnimaRefinementPasses(workflow, {
+      baseSamplerId: "970008",
+      extraSamplerIds: ["970011", "970012"],
+      modelLink: ["970002", 0],
+      positive: ["970005", 0],
+      negative: ["970006", 0],
+      seed,
+      sampling,
+      decodeId: "970009",
+    });
+  } else {
+    animaSamplerIds = addAnimaRefinementPasses(workflow, {
+      baseSamplerId: "7",
+      extraSamplerIds: ["7101", "7102"],
+      modelLink: ["1", 0],
+      positive: ["4", 0],
+      negative: ["5", 0],
+      seed,
+      sampling,
+      decodeId: "8",
+    });
+  }
+  const animaModelNodeId = usesReferences ? "970002" : "1";
+  insertModelLoras(workflow, loras, [animaModelNodeId, 0], animaSamplerIds);
+  return {
+    workflow,
+    metadata: {
+      mediaType: "image",
+      generationType: "image",
+      workflowId: "studio:anima",
+      workflowName: `${STUDIO_MODES.anima.name} · ${model.name}`,
+      studioMode: "anima",
+      studioStage: "drafts",
+      studioLabel: `${model.name} · ${sampling.quality.toUpperCase()} · Variante ${index + 1}`,
+      prompt: scenePrompt,
+      effectivePrompt: prompt,
+      negativePrompt: negative,
+      seed,
+      width,
+      height,
+      imageModelId: model.id,
+      imageModelName: model.name,
+      imageModelFamily: "anima",
+      imageModelFile: model.file,
+      sourceImage: usesReferences ? inputPath(source) : null,
+      referenceImages: usesReferences ? references.map(inputPath) : [],
+      referenceCount: usesReferences ? references.length + 1 : 0,
+      referenceRoles: referencePlan?.roles || [],
+      identityPolicy: usesReferences ? "multi-character-distinct-identities" : "text-only",
+      imageSettings: {
+        steps: model.steps,
+        totalSteps: sampling.passes.reduce((total, pass) => total + pass.steps, 0),
+        guidance: model.cfg,
+        sampler: model.sampler,
+        scheduler: model.scheduler,
+        textEncoder: ANIMA_TEXT_ENCODER,
+        vae: ANIMA_VAE,
+        inputMode: usesReferences ? "references" : "text",
+        identityComposer: usesReferences ? FLUX2_BASE : null,
+        animaDenoise: initialDenoise,
+        quality: sampling.quality,
+        samplerCount: sampling.passes.length,
+        samplingPasses: sampling.passes,
+      },
+      loras,
+    },
+  };
+}
+
+const DUO_STYLE_PRESETS = Object.freeze({
+  cinematic: "high-end cinematic anime illustration, expressive clean linework, detailed cel shading, controlled highlights, rich color design, coherent cinematic lighting",
+  romantic: "romantic anime illustration, elegant clean linework, soft cel shading, warm harmonious palette, delicate atmospheric light",
+  action: "dynamic action anime key visual, energetic linework, strong readable silhouettes, dramatic perspective, crisp cel shading and cinematic impact",
+  manga: "polished manga-inspired illustration, precise ink lines, restrained color accents, graphic shadows and highly readable composition",
+  realistic: "semi-realistic anime illustration, recognizable facial structure, refined anatomy, detailed hair and fabric, cinematic natural light",
+});
+
+function duoScenePrompt(raw, scenePrompt, references) {
+  if (!boolValue(raw.duoHasFemale)) throw new Error("Carica la reference della donna.");
+  const expectedReferences = 1 + Number(boolValue(raw.duoHasEnvironment)) + Number(boolValue(raw.duoHasStyle));
+  if (references.length !== expectedReferences) {
+    throw new Error("Le reference DUO SCENE non corrispondono agli slot selezionati. Ricarica uomo, donna, ambiente e stile.");
+  }
+  const roles = [{ image: 1, role: "maleIdentity" }, { image: 2, role: "femaleIdentity" }];
+  let imageIndex = 3;
+  if (boolValue(raw.duoHasEnvironment)) roles.push({ image: imageIndex++, role: "environment" });
+  if (boolValue(raw.duoHasStyle)) roles.push({ image: imageIndex++, role: "style" });
+  const roleInstructions = roles.map(({ image, role }) => ({
+    maleIdentity: `Image ${image} is the identity reference for the male character only. Preserve his recognizable facial structure, hairstyle, hair color and distinctive features.`,
+    femaleIdentity: `Image ${image} is the identity reference for the female character only. Preserve her recognizable facial structure, hairstyle, hair color and distinctive features.`,
+    environment: `Image ${image} defines the environment, architecture, camera viewpoint, spatial layout and lighting direction only. Do not copy people from it.`,
+    style: `Image ${image} defines visual anime language, linework, shading, palette and rendering style only. Do not copy its character identity or composition.`,
+  })[role]);
+  const style = DUO_STYLE_PRESETS[String(raw.duoStylePreset || "cinematic")] || DUO_STYLE_PRESETS.cinematic;
+  return {
+    prompt: [
+      "Create one unified, single-frame anime scene containing the two separately referenced principal characters.",
+      ...roleInstructions,
+      `Requested scene: ${scenePrompt}`,
+      `Visual treatment: ${style}.`,
+      String(raw.duoMalePlacement || "").trim() && `Male character placement/action: ${String(raw.duoMalePlacement).trim()}.`,
+      String(raw.duoFemalePlacement || "").trim() && `Female character placement/action: ${String(raw.duoFemalePlacement).trim()}.`,
+      "Keep the two identities completely distinct. Never blend, swap or average their faces, hair, bodies, clothes or accessories.",
+      "Show exactly one instance of each principal character unless the scene prompt explicitly requests background extras.",
+      "Integrate gaze, scale, anatomy, perspective, contact, shadows and occlusions naturally. Produce one scene, never a collage, split screen, character sheet or comparison panel.",
+    ].filter(Boolean).join(" "),
+    roles,
+  };
 }
 
 function imageOptions(raw, {
@@ -674,6 +1400,8 @@ function lorasForModel(loras, modelFile) {
       ? "QWEN\\"
     : modelFile.startsWith("Z-IMG\\")
       ? "ZIMG\\"
+    : modelFile.startsWith("ANIMA\\")
+      ? "ANIMA\\"
       : "FLUX\\";
   return (Array.isArray(loras) ? loras : []).filter((item) => {
     const name = String(item?.name || "");
@@ -1102,13 +1830,12 @@ function storyboardModelSelection(raw, preset) {
   const family = STORYBOARD_MODELS[String(raw.storyboardFamily || "klein")];
   if (!family) throw new Error("Famiglia modello storyboard non valida.");
   const profile = "quality";
-  const gwen = family.id === "gwen";
   return {
     family,
     profile,
     modelFile: family.quality,
-    steps: gwen ? 6 : preset.steps,
-    guidance: gwen ? 1 : preset.guidance,
+    steps: family.steps ?? preset.steps,
+    guidance: family.guidance ?? preset.guidance,
   };
 }
 
@@ -1330,7 +2057,15 @@ export function applyQwenStructureGuide(workflow, family, raw, source, guideUplo
   };
 }
 
-export function studioConfig({ modelPatches = [], preprocessors = [], imageModels = [] } = {}) {
+export function studioConfig({
+  modelPatches = [],
+  preprocessors = [],
+  imageModels = [],
+  textEncoders = [],
+  vaes = [],
+  loras = [],
+  availableNodes = [],
+} = {}) {
   const patchAvailable = (name) => modelPatches.some((item) =>
     String(item).toLowerCase() === name.toLowerCase()
   );
@@ -1342,6 +2077,29 @@ export function studioConfig({ modelPatches = [], preprocessors = [], imageModel
       ...model,
       available: imageModels.some((file) => String(file).replaceAll("/", "\\").toLowerCase() === model.file.toLowerCase()),
     })),
+    kreaRawMaster: {
+      model: KREA_RAW_MODEL,
+      clip: KREA_RAW_CLIP,
+      vae: KREA_FAMEGRID_VAE,
+      fixedLoras: KREA_RAW_FIXED_LORAS,
+      modelAvailable: imageModels.some((file) => String(file).replaceAll("/", "\\").toLowerCase() === KREA_RAW_MODEL.toLowerCase()),
+      clipAvailable: textEncoders.some((file) => String(file).toLowerCase() === KREA_RAW_CLIP.toLowerCase()),
+      vaeAvailable: vaes.some((file) => String(file).toLowerCase() === KREA_FAMEGRID_VAE.toLowerCase()),
+      lorasAvailable: KREA_RAW_FIXED_LORAS.every((required) => loras.some((file) => String(file).replaceAll("/", "\\").toLowerCase() === required.name.toLowerCase())),
+      samplerAvailable: availableNodes.includes("ClownsharKSampler_Beta"),
+      resolutionSelectorAvailable: availableNodes.includes("ResolutionSelector"),
+      colorFinishAvailable: availableNodes.includes("FameGridColorFinish"),
+    },
+    anima: {
+      models: ANIMA_MODELS.map((model) => ({
+        ...model,
+        available: imageModels.some((file) => String(file).replaceAll("/", "\\").toLowerCase() === model.file.toLowerCase()),
+      })),
+      textEncoder: ANIMA_TEXT_ENCODER,
+      vae: ANIMA_VAE,
+      textEncoderAvailable: textEncoders.some((file) => String(file).toLowerCase() === ANIMA_TEXT_ENCODER.toLowerCase()),
+      vaeAvailable: vaes.some((file) => String(file).toLowerCase() === ANIMA_VAE.toLowerCase()),
+    },
     structureGuides: [
       { id: "automatic", name: "Automatico · consigliato", available: true },
       {
@@ -1397,8 +2155,22 @@ export function buildStudioJobs(studioMode, raw, uploads, loras = undefined) {
   if (studioMode === "kreaTriple") {
     return [buildKreaTripleJob(raw, { source, mask })];
   }
+  if (studioMode === "kreaRawMaster") {
+    return [buildKreaRawMasterJob(raw, loras)];
+  }
+  if (studioMode === "anima") {
+    const requested = String(raw.animaModel || ANIMA_MODELS[0].file).replaceAll("/", "\\");
+    const model = ANIMA_MODELS.find((item) => item.file.toLowerCase() === requested.toLowerCase());
+    if (!model) throw new Error("Checkpoint ANIMA non riconosciuto.");
+    const outputs = numberValue(raw.animaOutputs, 1, 1, 4, true);
+    const animaLoras = lorasForModel(loras, model.file);
+    return Array.from({ length: outputs }, (_, index) => buildAnimaJob(raw, model, index, width, height, {
+      source,
+      references,
+    }, animaLoras));
+  }
   const preset = PRESETS[raw.editPreset] || PRESETS.balanced;
-  const alternatives = numberValue(raw.alternatives, 2, 2, 4, true);
+  const alternatives = numberValue(raw.alternatives, 2, boolValue(raw.promptBatchItem) ? 1 : 2, 4, true);
   const automaticTarget = String(raw.maskTarget || "").trim();
   const modelBase = String(raw.flux2BaseModel || FLUX2_BASE);
   const modelTurbo = String(raw.flux2TurboModel || FLUX2_TURBO);
@@ -1420,9 +2192,70 @@ export function buildStudioJobs(studioMode, raw, uploads, loras = undefined) {
     }];
   }
 
+  if (studioMode === "duoScene") {
+    if (!source?.name) throw new Error("Carica la reference dell’uomo.");
+    const duo = duoScenePrompt(raw, prompt, references);
+    const duoNegative = [
+      String(raw.negativePrompt || "").trim(),
+      "merged identities, blended faces, face swap, duplicated character, duplicate body, extra principal character, mixed hairstyles, identity leakage, collage, split screen, character sheet, reference sheet, text, watermark, malformed anatomy, extra limbs, extra fingers",
+    ].filter(Boolean).join(", ");
+    const duoRaw = { ...raw, negativePrompt: duoNegative, sourceDenoise: false };
+    return Array.from({ length: alternatives }, (_, index) => buildImageJob({
+      studioMode,
+      stage: "drafts",
+      label: `Scena anime ${index + 1}`,
+      raw: duoRaw,
+      source,
+      references,
+      modelFile: modelBase,
+      prompt: duo.prompt,
+      seed: seedAt(raw, index),
+      width,
+      height,
+      steps: preset.steps,
+      guidance: preset.guidance,
+      denoise: 1,
+      loras,
+      extraMetadata: {
+        editPreset: preset.label,
+        referenceCount: references.length + 1,
+        referenceRoles: duo.roles,
+        duoStylePreset: String(raw.duoStylePreset || "cinematic"),
+        hasEnvironmentReference: boolValue(raw.duoHasEnvironment),
+        hasStyleReference: boolValue(raw.duoHasStyle),
+        identityPolicy: "two-distinct-identities",
+        guidedAction: "select_draft",
+      },
+    }));
+  }
+
   if (studioMode === "storyboard") {
-    const shots = parseShots(raw);
     const storyboardModel = storyboardModelSelection(raw, preset);
+    if (boolValue(raw.promptBatchItem)) {
+      return [buildImageJob({
+        studioMode,
+        stage: "drafts",
+        label: "Scena da elenco prompt",
+        raw,
+        source,
+        references,
+        modelFile: storyboardModel.modelFile,
+        prompt,
+        seed: seedAt(raw),
+        width,
+        height,
+        steps: storyboardModel.steps,
+        guidance: storyboardModel.guidance,
+        loras,
+        extraMetadata: {
+          storyboardModelFamily: storyboardModel.family.id,
+          storyboardModelName: storyboardModel.family.name,
+          storyboardModelProfile: storyboardModel.profile,
+          promptBatchItem: true,
+        },
+      })];
+    }
+    const shots = parseShots(raw);
     return shots.map((shot, index) => buildImageJob({
       studioMode,
       stage: "storyboard",
@@ -1672,7 +2505,7 @@ export function buildStudioContinuation(action, raw, selectedUpload, loras = und
   }
   if (action === "finalize") {
     const studioPreset = String(raw.studioPreset || "quality");
-    if (studioPreset === "speed") {
+    if (studioPreset === "speed" || ["duoScene", "anima"].includes(raw.studioMode)) {
       const finalOutput = String(raw.finalOutput || "rtx");
       if (finalOutput === "none") {
         return {
@@ -1706,21 +2539,22 @@ export function buildStudioContinuation(action, raw, selectedUpload, loras = und
           },
         };
       }
-      const engine = finalOutput === "realesrgan"
+      const engine = ["realesrgan", "animeSharp"].includes(finalOutput)
         ? "model"
         : finalOutput.startsWith("seed")
           ? "seedvr2"
           : "rtx";
-      const preset = finalOutput === "seed7" ? "max" : "speed";
+      const preset = finalOutput === "seed7" ? "max" : finalOutput === "animeSharp" ? "quality" : "speed";
+      const upscaleModel = finalOutput === "animeSharp" ? "4x-AnimeSharp.pth" : "RealESRGAN_x2.pth";
       const result = buildUpscaleWorkflow({
         upscaleEngine: engine,
         upscalePreset: preset,
-        upscaleModel: "RealESRGAN_x2.pth",
+        upscaleModel,
         upscaleAutoPurge: true,
         upscaleSourceWidth: width,
         upscaleSourceHeight: height,
         seed: raw.seed,
-      }, selectedUpload, ["RealESRGAN_x2.pth"]);
+      }, selectedUpload, [upscaleModel]);
       result.workflow["99"].inputs.filename_prefix = `Studio/${raw.studioMode || "guidedEdit"}/08_finale`;
       return {
         ...result,
@@ -1728,10 +2562,10 @@ export function buildStudioContinuation(action, raw, selectedUpload, loras = und
           ...result.metadata,
           generationType: "image",
           workflowId: `studio:${raw.studioMode || "guidedEdit"}`,
-          workflowName: `${STUDIO_MODES[raw.studioMode || "guidedEdit"].name} · Master veloce`,
+          workflowName: `${STUDIO_MODES[raw.studioMode || "guidedEdit"].name} · ${["duoScene", "anima"].includes(raw.studioMode) ? "Master anime" : "Master veloce"}`,
           studioMode: raw.studioMode || "guidedEdit",
           studioStage: "final",
-          studioLabel: "Master veloce · upscale",
+          studioLabel: ["duoScene", "anima"].includes(raw.studioMode) ? "Master anime · upscale" : "Master veloce · upscale",
           prompt,
         },
       };

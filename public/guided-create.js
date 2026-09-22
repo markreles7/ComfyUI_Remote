@@ -46,7 +46,7 @@ const BRANCHES = {
   video: [
     { id: "ltx25Aio", title: "LTX 2.5 AIO", description: "Audio/video nativo, keyframe, reference e controllo V2V" },
     { id: "minimaxH3", title: "MiniMax H3 multimodale", description: "Testo, frame e reference immagini/video/audio" },
-    { id: "actionH3", title: "ACTION H3", description: "Combattimenti e azioni frenetiche con Combat V2" },
+    { id: "actionH3", title: "ACTION H3", description: "Preset Combat V2 e Weapon BUNNY su Hybrid b25-49" },
     { id: "textVideo", title: "Video da una descrizione", description: "Text to Video LTX 2.3" },
     { id: "videoEdit", title: "Modificare un video esistente", description: "Scene Transform V2V con Union Control" },
     { id: "actorReplace", title: "Sostituire un attore", description: "Viso, testa o corpo" },
@@ -130,7 +130,7 @@ const WORKFLOW_CHECKLISTS = {
   hdr: ["Video sorgente", "Direzione di luce e contrasto", "Esposizione", "Controllo highlight, ombre ed eventuale EXR"],
   sequentialStory: ["Idea completa e ordine degli eventi", "Testo o immagine iniziale", "Numero e durata delle scene", "Scaletta, continuity frame e avvio sequenza"],
   minimaxH3: ["Scegli T2V, singola immagine, first/last o multi-reference", "Imposta 0,4/0,6 → 1,0 MP oppure sampling diretto 0,9 MP", "Seleziona LoRA H3 e reference", "Controlla i purge VRAM prima di avviare"],
-  actionH3: ["Scegli T2V, singola immagine o first/last", "Descrivi attacco, impatto, reazione e recupero", "Scegli trigger Combat V2 e qualità", "Verifica res_multistep + simple prima del render"],
+  actionH3: ["Scegli T2V, immagine, first/last o reference", "Scegli Combat V2 o Weapon BUNNY e il preset", "Descrivi attacco, impatto, reazione e recupero", "Verifica res_multistep + simple prima del render"],
   ltx25Aio: ["Scegli generazione, reference o controllo video", "Parti da Anteprima e conserva il seed", "Carica gli input richiesti dalla modalità", "Controlla il piano Purge VRAM prima del render finale"],
 };
 

@@ -344,6 +344,11 @@ function formatSettings(item) {
     if (item.upscaleSettings.targetShortEdge) {
       entries.push(["Lato corto", `${item.upscaleSettings.targetShortEdge}px`]);
     }
+    if (item.upscaleSettings.targetLongEdge) {
+      entries.push(["Lato lungo max", `${item.upscaleSettings.targetLongEdge}px`]);
+    }
+    if (item.upscaleSettings.denoise != null) entries.push(["Ricostruzione", item.upscaleSettings.denoise]);
+    if (item.upscaleSettings.controlStrength != null) entries.push(["Fedeltà struttura", item.upscaleSettings.controlStrength]);
     if (item.upscaleSettings.autoPurge) entries.push(["Purge VRAM", "Prima dell’upscale"]);
   }
   return entries.map(([label, value]) =>
@@ -352,6 +357,15 @@ function formatSettings(item) {
 }
 
 function mediaMarkup(item) {
+  if (item.audios?.length) {
+    return `<div class="generation-audios">${item.audios.map((audio, index) => `
+      <figure class="generation-audio">
+        <div class="audio-disc" aria-hidden="true"><span>♪</span></div>
+        <figcaption>${escapeHtml(audio.filename || `Audio ${index + 1}`)}</figcaption>
+        <audio controls preload="metadata" src="/api/audio/${item.id}/${index}"></audio>
+        <a class="download" href="/api/audio/${item.id}/${index}?download=1" download>Download MP3 ↓</a>
+      </figure>`).join("")}</div>`;
+  }
   if (item.videos?.length) {
     return item.videos.map((video, index) => `
       <div class="generation-video" data-lazy-video="/api/media/${item.id}/${index}">
@@ -610,7 +624,7 @@ function cleanupCriteria() {
 }
 
 function cleanupSummary(estimate) {
-  return `${estimate.generations || 0} generazioni · ${estimate.images || 0} immagini · ${estimate.videos || 0} video · ${estimate.files || 0} file · ${formatBytes(estimate.bytes || 0)} stimati`;
+  return `${estimate.generations || 0} generazioni · ${estimate.images || 0} immagini · ${estimate.videos || 0} video · ${estimate.audios || 0} audio · ${estimate.files || 0} file · ${formatBytes(estimate.bytes || 0)} stimati`;
 }
 
 async function estimateCleanup() {
