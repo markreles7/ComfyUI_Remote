@@ -1,3 +1,4 @@
+import { deferMediaPreview } from "./on-demand-media.js?v=20261005-sidebar-previews";
 import { WORKFLOW_GUIDE_BY_ID } from "./workflow-guides.js";
 import { enhanceMainPrompt } from "./prompt-assistant.js";
 import { consumeGuidedHandoff, guidedTokenFromLocation, setInputFile } from "./guided-handoff.js";
@@ -902,9 +903,8 @@ function imageButtons(project, generation) {
     );
     return `
       <figure>
-        <a href="/api/image/${generation.id}/${index}" target="_blank" rel="noopener">
-          <img loading="lazy" src="/api/image/${generation.id}/${index}" alt="${before ? "Prima" : "Risultato"}">
-        </a>
+        ${deferMediaPreview(`<img loading="lazy" src="/api/image/${generation.id}/${index}" alt="${before ? "Prima" : "Risultato"}">`)}
+        <a href="/api/image/${generation.id}/${index}" target="_blank" rel="noopener">Apri immagine</a>
         ${before ? "" : `<button type="button" data-project="${project.id}" data-generation="${generation.id}" data-image="${index}">Usa questo risultato</button>`}
       </figure>
     `;
@@ -968,9 +968,9 @@ function projectMarkup(project) {
         <h3>${escapeHtml(project.name)}</h3>
         <small>${escapeHtml(statusLabel(project.status))}</small>
       </div>
-      <p>${project.promptBatch?.length
-        ? `${project.promptBatch.length} scene generate in sequenza con lo stesso workflow e le stesse impostazioni.`
-        : escapeHtml(project.prompt || project.studioMode)}</p>
+      ${project.promptBatch?.length
+        ? `<p>${project.promptBatch.length} scene generate in sequenza con lo stesso workflow e le stesse impostazioni.</p>`
+        : `<details class="generation-details generation-prompt-details"><summary>Prompt usato</summary><p>${escapeHtml(project.prompt || project.studioMode)}</p></details>`}
       ${project.executionMode === "automatic"
         ? `<p class="hint">Pipeline automatica · ${escapeHtml(project.autoState || "in preparazione")}${project.autoError ? ` · ${escapeHtml(project.autoError)}` : ""}</p>`
         : ""}

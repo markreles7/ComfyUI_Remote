@@ -1,13 +1,14 @@
 import { readFileSync } from "node:fs";
 
 const H3_REFERENCE_SYSTEM_PROMPT = readFileSync(new URL("../config/prompts/minimax-h3-reference.txt", import.meta.url), "utf8").trim();
+export const H3_FINAL_REFINEMENT_RULES = readFileSync(new URL("../config/prompts/minimax-h3-final-refinement.txt", import.meta.url), "utf8").trim();
 
 const PRESETS = Object.freeze({
   h3_general: {
     id: "h3_general",
     family: "minimax_h3",
     name: "Reference Generation",
-    systemPrompt: H3_REFERENCE_SYSTEM_PROMPT,
+    systemPrompt: `${H3_REFERENCE_SYSTEM_PROMPT}\n\n${H3_FINAL_REFINEMENT_RULES}`,
   },
   ltx_general: {
     id: "ltx_general",

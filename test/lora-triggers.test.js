@@ -15,6 +15,17 @@ test("accetta anche un trigger singolo come stringa", () => {
   assert.deepEqual(uniquePromptTriggers("r34l1sm"), ["r34l1sm"]);
 });
 
+test("H3 conserva il trigger di scena sulla prima riga senza accumulare preset combat", () => {
+  const body = "subject_definitions: <Subject 1> uses <Picture 1>.\n\nsummary: [reference generation] Action.\n\nretention_analysis: Preserve identity.\n\ndetailed_description: [Shot 1] Readable action.\n\noverall_soundscape: N/A\n\nnon_diegetic_music: N/A";
+  for (const trigger of ["prfight2", "prfight2, prfin1", "BUNNY"]) {
+    const result = promptWithH3IntegratedTriggers(`${trigger}\n\n${body}`, ["prfight2", "prfin1", "BUNNY"]);
+    assert.equal(result, `${trigger}\n\n${body}`);
+    assert.equal(promptWithH3IntegratedTriggers(result, ["BUNNY"], ["prfight2"]), result);
+  }
+  const sequence = `BUNNY\n\n${body}\n\n---\n\nprfight2\n\n${body}\n\n---\n\n${body}`;
+  assert.equal(promptWithH3IntegratedTriggers(sequence, []), sequence);
+});
+
 test("H3 mantiene tre soli campi e inserisce i trigger all'inizio della descrizione integrata", () => {
   const prompt = [
     "integrated_multimodal_description[0-4s: dolly in toward the speaker. (S1) says: <d>[Italian] Fa caldo.</d>]",

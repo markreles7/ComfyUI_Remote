@@ -19,6 +19,7 @@ import comfy.sd
 import comfy.utils
 
 from .face_swap import RemoteFaceSelectionPoint, RemoteTrackedFaceSwap
+from .super_upscale import NODE_CLASS_MAPPINGS as SUPER_UPSCALE_NODES
 
 
 def functional_linear_4bits(x, weight, bias):
@@ -351,6 +352,7 @@ class RemoteUnloadCLIP:
 
 
 NODE_CLASS_MAPPINGS = {
+    **SUPER_UPSCALE_NODES,
     "RemoteUNETLoaderNF4": RemoteUNETLoaderNF4,
     "RemoteUNETLoaderConvRotINT8": RemoteUNETLoaderConvRotINT8,
     "RemoteTrackedFaceSwap": RemoteTrackedFaceSwap,

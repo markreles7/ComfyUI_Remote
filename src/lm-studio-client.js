@@ -1,7 +1,11 @@
 import { execFile as execFileCallback, spawn } from "node:child_process";
 import { promisify } from "node:util";
+import { matchingH3InferenceProfile, readH3InferenceProfile, validateH3InferenceProfile } from "./lm-studio-inference-profile.js";
+import { inferPlaguekindSequences, plaguekindSequenceContract } from "./plaguekind-sequences.js";
+import { plaguekindSystemPrompt, validatePlaguekindReview, hasPlaguekindReviewContent, plaguekindNeedsComplexFormat, hasIncompletePlaguekindSections } from "./plaguekind-screenplay.js";
 import {
   GENERATION_SYSTEM_PROMPT_CATALOG,
+  H3_FINAL_REFINEMENT_RULES,
   PRESETS,
   resolveGenerationSystemPrompt,
 } from "./generation-system-prompts.js";
@@ -9,6 +13,7 @@ import {
 const execFile = promisify(execFileCallback);
 
 const TARGET_RULES = {
+  super_upscale_tile: `Write one concise English restoration prompt for ONLY the crop shown in images 2 and 3. Image 1 is context, never content to insert into the crop. Image 2 is the original truth; image 3 is a possibly imperfect upscale. Describe visible materials and structures literally, then specify subtle realistic texture appropriate to them. Preserve object counts, geometry, perspective, color, light and original depth of field. Never turn blur, grain, shadows or compression into new objects or ornamental details. Keep sky, glass and defocused areas smooth when appropriate. Do not include objects outside the crop. Use 60-120 words, no headings, no analysis, no quality tags.`,
   krea2: "Write a native Krea 2 prompt as fluent visual direction. Prioritize a clearly identified subject, environment, composition, camera, natural light, materials, skin texture and photographic intent.",
   krea2_moody: `Write a native Krea 2 prompt for the Moody Krea2 Mix checkpoint.
 The checkpoint has a known default bias toward Asian-looking social-media faces, so the prompt must begin with one precise adult human identity anchor whenever a woman or man is present.
@@ -380,20 +385,38 @@ function normalizeMiniMaxH3Prompt(value, { fullReference = false, mode = "text",
 }
 
 function h3TimelineEndSeconds(value) {
-  const source = String(value || "");
+  const raw = String(value || "");
+  const fields = parseH3Fields(raw, [...new Set([...H3_REFERENCE_FIELDS, ...H3_BASE_FIELDS])]);
+  // Only the visual action describes clip time. Reference lengths, audio
+  // metadata, summaries and spoken numbers must not become action timestamps.
+  const source = (fields.detailed_description || fields.integrated_multimodal_description
+    || (Object.keys(fields).length ? "" : raw)).replace(/<d>[\s\S]*?<\/d>/giu, "");
   const values = [];
   // H3 prompt models commonly emit either prose timestamps (`At 00:03.500`)
   // or screenplay markers (`[00:03.500]`). Reading every valid numeric
   // MM:SS.mmm marker covers both without mistaking the MM:SS.mmm placeholder
   // for a real point in time.
-  for (const match of source.matchAll(/\b(\d{1,2}):([0-5]\d)(?:\.(\d{1,3}))?\b/gu)) {
+  for (const match of source.matchAll(/(?:\b(?:at|from|to|until|through|between|and|by)\s+|\[\s*)(\d{1,2}):([0-5]\d)(?:\.(\d{1,3}))?\b/giu)) {
     const milliseconds = match[3] ? Number(`0.${match[3]}`) : 0;
     values.push((Number(match[1]) * 60) + Number(match[2]) + milliseconds);
   }
-  for (const match of source.matchAll(/\b(\d+(?:\.\d+)?)\s*(?:seconds?|secs?|s)\b/giu)) {
+  for (const match of source.matchAll(/\b(?:at|by|from|to|until|through|between)\s+(?:\d+(?:\.\d+)?\s*[-–]\s*)?(\d+(?:\.\d+)?)\s*(?:seconds?|secs?|s)\b/giu)) {
     values.push(Number(match[1]));
   }
   return Math.max(0, ...values.filter(Number.isFinite));
+}
+
+function plaguekindClipTimes(value) {
+  const description = String(value || "").match(/^detailed_description:\s*([\s\S]*?)(?=^overall_soundscape:|^non_diegetic_music:|(?![\s\S]))/mu)?.[1] || "";
+  return [...description.matchAll(/\b(\d{1,2}):([0-5]\d)(?:\.(\d{1,3}))?\b/gu)]
+    .map((match) => Number(match[1]) * 60 + Number(match[2]) + Number(`0.${(match[3] || "0").padEnd(3, "0")}`));
+}
+
+function ensurePlaguekindOpeningTimestamp(value) {
+  return String(value || "").replace(
+    /^(detailed_description:[ \t]*(?:\[Shot 1\][ \t]*)?)/mu,
+    "$1At 00:00.000, begin in the established opening state; ",
+  );
 }
 
 function completionText(payload) {
@@ -639,6 +662,7 @@ export class LmStudioClient {
     contextLength = 8192,
     maxTokens = 2048,
     temperature = 0.35,
+    h3InferenceProfile = readH3InferenceProfile(),
     startServer = true,
     lmsCommand = "lms",
     instructions = DEFAULT_INSTRUCTIONS,
@@ -653,6 +677,7 @@ export class LmStudioClient {
     this.contextLength = Number(contextLength) || 8192;
     this.maxTokens = Number(maxTokens) || 2048;
     this.temperature = Number(temperature);
+    this.h3InferenceProfile = h3InferenceProfile ? validateH3InferenceProfile(h3InferenceProfile) : null;
     this.startServer = Boolean(startServer);
     this.lmsCommand = lmsCommand;
     this.instructions = String(instructions || DEFAULT_INSTRUCTIONS).trim();
@@ -765,7 +790,8 @@ export class LmStudioClient {
     if (existing?.id) {
       const existingContextLength = Number(existing.config?.context_length || existing.context_length || 0);
       const requiresVerifiedLargerContext = requestedContextLength > this.contextLength;
-      if (!requiresVerifiedLargerContext || existingContextLength >= requestedContextLength) {
+      if (existingContextLength >= requestedContextLength
+        || (!existingContextLength && !requiresVerifiedLargerContext)) {
         return { instanceId: existing.id, model: available, loadedNow: false, fallbackFrom };
       }
       // Le istanze aperte manualmente da LM Studio possono restare a 8K.
@@ -806,9 +832,11 @@ export class LmStudioClient {
     }
   }
 
-  async enhance({ text, target, promptPreset = "", duration = 0, mode = "text", image = null, images = [], workflowName = "", model = "", includeNegative = false }) {
+  async enhance({ text, target, promptPreset = "", duration = 0, mode = "text", image = null, images = [], workflowName = "", model = "", includeNegative = false, plaguekindStage = "" }) {
     const idea = String(text || "").trim();
     if (!idea) throw new Error("Scrivi prima una frase o una richiesta di modifica.");
+    const sequencePlan = plaguekindStage ? inferPlaguekindSequences(idea, duration) : null;
+    if (sequencePlan?.count > 1) duration = sequencePlan.duration;
     const targetRule = TARGET_RULES[target] || TARGET_RULES.studio;
     const rawSuppliedImages = (Array.isArray(images) && images.length ? images : image ? [image] : []).filter(Boolean).slice(0, 9);
     const suppliedImages = await Promise.all(rawSuppliedImages.map((source) => normalizeVisionImage(source)));
@@ -824,12 +852,15 @@ export class LmStudioClient {
       hasImages: needsVision,
     });
     const h3VisionContextLength = h3Target
-      ? Math.max(this.contextLength, suppliedImages.length > 4 ? 32768 : 16384)
+      ? Math.max(this.contextLength, suppliedImages.length > 4 || sequencePlan?.count > 1
+        || idea.length > 6000 || plaguekindStage === "final"
+          ? this.h3InferenceProfile?.complexContextLength || 32768
+          : this.h3InferenceProfile?.contextLength || 16384)
       : this.contextLength;
     const now = Date.now();
     if (this.active) {
       const elapsed = now - this.active.startedAt;
-      if (elapsed < this.lockTimeoutMs) {
+      if (now < (this.active.expiresAt || this.active.startedAt + this.lockTimeoutMs)) {
         const seconds = Math.max(1, Math.round(elapsed / 1000));
         throw new Error(`Il Prompt Assistant locale sta già scrivendo un prompt (${seconds}s). Attendi il risultato oppure riprova tra poco.`);
       }
@@ -838,6 +869,7 @@ export class LmStudioClient {
       id: `${now}-${Math.random().toString(36).slice(2)}`,
       startedAt: now,
       target,
+      expiresAt: now + this.startupTimeoutMs + this.inferenceTimeoutMs * (plaguekindStage === "final" && sequencePlan.count > 1 ? sequencePlan.count * 3 : 1) + 90000,
     };
     this.active = lock;
     let loaded;
@@ -847,10 +879,17 @@ export class LmStudioClient {
         allowFallback: Boolean(model),
         contextLength: h3VisionContextLength,
       });
+      const h3InferenceProfile = h3Target ? matchingH3InferenceProfile(this.h3InferenceProfile, loaded.model) : null;
+      const h3MaxOutputTokens = h3InferenceProfile?.maxOutputTokens || this.maxTokens;
       const h3MusicRequested = h3Target
         && /\b(?:music|musica|soundtrack|score|song|canzone|melody|melodia)\b/iu.test(idea)
         && !/\b(?:no|senza|without)\s+(?:music|musica|soundtrack|score|song|canzone|melody|melodia)\b/iu.test(idea);
-      const userText = generationPreset
+      const userText = plaguekindStage === "review"
+        ? [`Workflow: PlagueKind / MiniMax H3. Fase: ${plaguekindStage}.`,
+            `Durata impostata: ${Number(duration) || "non specificata"} secondi. Modalità: ${mode}.`,
+            needsVision ? `Esamina le ${suppliedImages.length} immagini allegate in ordine e rispetta i ruoli indicati nella richiesta.` : "Nessuna immagine allegata: non fingere di aver visto una reference.",
+            idea].join("\n")
+        : generationPreset
         ? h3Target && Number(duration) > 0
           ? [
               `Target duration: ${Number(duration)} seconds.`,
@@ -872,15 +911,31 @@ export class LmStudioClient {
           : "",
         `User request: ${idea}`,
           ].filter(Boolean).join("\n");
+      const h3InputContract = h3Target && plaguekindStage !== "review" ? [
+        "H3 COMPILER CONTRACT (apply to the request above):",
+        needsVision
+          ? `Exactly ${suppliedImages.length} pictures are attached. Use only their actual numbered references and assigned roles.`
+          : "No pictures are attached. Do not invent <Picture N>, implied references, reference outfits or observed appearances. A reference described in the user's text is a description, not an inspected image.",
+        "Keep every requested action and ending. In unarmed choreography retain explicit action terms such as jab, straight, uppercut and throw; a requested wrestling throw must visibly lift/take down the opponent, not merely make them stumble. Do not add extra exchanges, attacks, effects, opponents or a winner. Fill unspecified minor staging conservatively.",
+        /^(?:image|i2v|image-to-video|start_frame)$/iu.test(mode)
+          ? "This is image-to-video: begin at the exact supplied or described initial pose and composition, then progress from that pose without a new opening shot."
+          : "Use the specified reference roles; a reusable identity reference alone is not a literal opening frame.",
+        Number(duration) > 0
+          ? `The local visual timeline begins At 00:00.000 and ends at exactly ${Number(duration).toFixed(3)} seconds, with an explicit numeric timestamp for the final state. Spread actions chronologically across this interval; no cumulative timestamps or overloaded simultaneous attacks.`
+          : "Keep actions chronological within the requested clip.",
+        "Return only one complete native H3 prompt per requested segment, preserving the section schema. If using the six-section schema, every section must have meaningful content: define the actual described cast in subject_definitions even without pictures; write the actual scene summary, not only [reference generation]; retention_analysis states only supplied reference relationships or N/A if none. No empty headings. No analysis, alternatives or invented dialogue. non_diegetic_music is N/A unless explicitly requested.",
+        "FIRST OUTPUT LINE: For important physical weapon handling, including controlled handling without fighting, output exactly BUNNY. Otherwise, for actual unarmed combat, output exactly prfight2 (or prfight2, prfin1 only with an explicitly decisive concluding finisher). For every ordinary or magic-only scene output subject_definitions: with NO trigger. Body movement alone is not combat. Classify the positively requested actions, ignoring negated mentions of fighting or weapons. Put a blank line after a required trigger, then the sections. Never combine weapon/combat triggers or explain this decision.",
+      ].join("\n") : "";
+      const contractedUserText = h3InputContract ? `${userText}\n\n${h3InputContract}` : userText;
       const userContent = needsVision
         ? [
-            { type: "text", content: userText },
+            { type: "text", content: contractedUserText },
             ...suppliedImages.map((source) => ({
               type: "image",
               data_url: `data:${source.mimetype};base64,${source.buffer.toString("base64")}`,
             })),
           ]
-        : userText;
+        : contractedUserText;
       const videoTarget = isVideoTarget(target);
       // H3 usa un contratto raw: tre campi nelle modalità base e sei sezioni
       // in Ref2VA. Il wrapper JSON per il negativo è quindi sempre escluso.
@@ -889,7 +944,7 @@ export class LmStudioClient {
       // budget. Generic 5K-character instructions make short H3 clips verbose
       // and can displace the actual action, so H3 receives an isolated system
       // prompt. Other model families retain the shared director contract.
-      const systemPrompt = generationPreset?.systemPrompt || (h3Target || directorSequenceTarget
+      const nativeSystemPrompt = generationPreset?.systemPrompt || (h3Target || directorSequenceTarget
         ? [targetRule, ADULT_EXPLICIT_VOCABULARY_RULE]
         : [
             this.instructions,
@@ -901,26 +956,127 @@ export class LmStudioClient {
             target.startsWith("reverse_") ? REVERSE_PROMPT_CONTENT_FIDELITY_RULE : "",
             returnNegative ? (videoTarget ? VIDEO_NEGATIVE_PROMPT_SCHEMA_RULE : NEGATIVE_PROMPT_SCHEMA_RULE) : "",
           ]).filter(Boolean).join("\n\n");
-      const requestDraft = async (input, repair = "") => this.request("/api/v1/chat", {
+      const complexRequired = plaguekindStage === "final" && (sequencePlan.count > 1 || plaguekindNeedsComplexFormat({ imageCount: suppliedImages.length, text: idea }));
+      const splitSegments = (value) => String(value).split(/^\s*---\s*$/mu).filter((part) => part.trim());
+      const invalidFinalStructure = (value) => plaguekindStage === "final" && (hasIncompletePlaguekindSections(value, complexRequired)
+        || (sequencePlan.count > 1 && splitSegments(value).length !== sequencePlan.count));
+      const stageSystemPrompt = plaguekindStage === "review" ? plaguekindSystemPrompt("review")
+        : plaguekindStage === "final" ? `${nativeSystemPrompt}\n\n${plaguekindSystemPrompt("final", { complexRequired })}`
+          : nativeSystemPrompt;
+      const systemPrompt = stageSystemPrompt + (sequencePlan ? `\n\n${plaguekindSequenceContract(sequencePlan, plaguekindStage)}` : "");
+      const requestDraft = async (input, repair = "", promptOverride = systemPrompt) => this.request("/api/v1/chat", {
         method: "POST",
         body: JSON.stringify({
           model: loaded.instanceId,
-          system_prompt: repair === "language"
-            ? `${systemPrompt}\n\nLANGUAGE REPAIR TASK:\nThe previous draft contains non-English production prose. Rewrite the complete prompt in English now. Preserve only literal dialogue, quoted on-screen text, labels and names in their requested original language. Follow the original output schema exactly and return no explanation.`
+          system_prompt: (repair === "language"
+            ? `${promptOverride}\n\nLANGUAGE REPAIR TASK:\nThe previous draft contains non-English production prose. Rewrite the complete prompt in English now. Preserve only literal dialogue, quoted on-screen text, labels and names in their requested original language. Follow the original output schema exactly and return no explanation.`
             : repair === "timeline"
-              ? `${systemPrompt}\n\nTIMELINE COMPLETION REPAIR:\nThe previous draft ends too early. Rewrite the complete prompt, preserving every requested subject, action, reference, dialogue line and output field, but distribute the physical progression across the entire target duration. The last meaningful action, reaction, camera settle or stable ending must occur within the final 10% of the requested duration. Do not add unrelated events, do not pad with repeated adjectives, and do not end the timeline early.`
-              : systemPrompt,
+              ? `${promptOverride}\n\nTIMELINE COMPLETION REPAIR:\nThe previous draft's action timeline does not fit the configured clip duration. Rewrite the complete prompt, preserving every requested subject, action, reference, dialogue line and output field, but distribute the physical progression across the entire target duration. The last meaningful action, reaction, camera settle or stable ending must occur within the final 10% of the requested duration. Never exceed the configured clip duration; a reference's length or the total film duration is not this clip's duration. Correct overloaded choreography conservatively rather than just relabeling times. Do not add unrelated events, do not pad with repeated adjectives, and do not end the timeline early.`
+              : repair === "clipTimeline"
+                ? `${promptOverride}\n\nTIMELINE COMPLETION REPAIR:\nRewrite this one clip with an explicit local timeline starting at 00:00.000 and ending at the exact requested clip duration. Do not use cumulative/global timestamps or mention the total film duration inside detailed_description. Preserve the requested events and six H3 sections.`
+              : promptOverride).replace(H3_FINAL_REFINEMENT_RULES, "").trim()
+            + (h3Target && plaguekindStage !== "review" ? `\n\n${H3_FINAL_REFINEMENT_RULES}` : ""),
           input,
           reasoning: "off",
-          temperature: repair || h3Target || directorSequenceTarget || target.startsWith("reverse_") ? Math.min(this.temperature, 0.15) : this.temperature,
-          max_output_tokens: this.maxTokens,
+          temperature: repair || h3Target || directorSequenceTarget || target.startsWith("reverse_") || target === "super_upscale_tile" ? Math.min(this.temperature, 0.15) : this.temperature,
+          max_output_tokens: plaguekindStage === "final"
+            ? Math.max(h3MaxOutputTokens, h3InferenceProfile?.finalMaxOutputTokens || 4096)
+            : plaguekindStage ? Math.max(this.maxTokens, Math.min(16000, Math.max(4096, sequencePlan.count * 1800))) : h3MaxOutputTokens,
+          ...(h3InferenceProfile && plaguekindStage !== "review" ? h3InferenceProfile.sampling : {}),
           stream: false,
           store: false,
         }),
       }, this.inferenceTimeoutMs);
+      if (plaguekindStage === "final" && sequencePlan.count > 1) {
+        const clips = [];
+        let timelineRepairApplied = false;
+        const clipSystem = `${nativeSystemPrompt}\n\n${plaguekindSystemPrompt("final", { complexRequired: true })}\n\nSEQUENTIAL CLIP MODE: Generate exactly ONE complete six-section English H3 prompt per request. Never emit a --- separator or another clip. Each clip has its own local time 00:00.000 through ${sequencePlan.duration.toFixed(2)} seconds. In detailed_description, write the opening explicitly as "[Shot 1] At 00:00.000, ..." before any later timestamp; finish at 00:${String(sequencePlan.duration).padStart(2, "0")}.000. Never exceed ${sequencePlan.duration.toFixed(2)} seconds. The total scene lasts ${sequencePlan.totalDuration} seconds across ${sequencePlan.count} separate clips, but this response covers only one clip. Maintain stable identities, speaker IDs, wardrobe, props, location, sounds and physical continuity. Retain the chosen alternative and original story arc.`;
+        for (let index = 0; index < sequencePlan.count; index += 1) {
+          const prior = clips.at(-1);
+          const clipInstruction = [
+            contractedUserText,
+            `CURRENT CLIP: ${index + 1} of ${sequencePlan.count}. Generate ONLY this ${sequencePlan.duration}-second clip. Its detailed_description runs from 00:00.000 to 00:${String(sequencePlan.duration).padStart(2, "0")}.000. Cover the chronological portion of the reviewed screenplay assigned to this clip; leave subsequent events for later clips.`,
+            prior ? `PREVIOUS ACCEPTED CLIP (continuity source, not part of this response):\n${prior}\nStart at its exact ending state without restarting the action or reference opening frame. Carry forward all accumulated changes and continue toward the next story event.` : "This is the first clip. Establish the opening state from the supplied references and screenplay.",
+            "Return only one six-section prompt. No evaluation, alternatives, headings, JSON, markdown or separator.",
+          ].join("\n\n");
+          const clipInput = needsVision && index === 0
+            ? [{ type: "text", content: clipInstruction }, ...userContent.slice(1)]
+            : clipInstruction;
+          let accepted = "";
+          let failure = "";
+          for (let attempt = 0; attempt < 3; attempt += 1) {
+            const repairInput = attempt === 0 ? clipInput : `${clipInstruction}\n\nREPAIR THIS CLIP ONLY: ${failure}\nPrevious invalid draft:\n${accepted}`;
+            const payload = await requestDraft(repairInput, attempt ? "clipTimeline" : "", clipSystem);
+            accepted = normalizeH3Timestamps(completionText(payload));
+            let times = plaguekindClipTimes(accepted);
+            const ordered = times.every((time, position) => position === 0 || time >= times[position - 1] - 0.05);
+            const validEnd = times.length > 0 && times.at(-1) >= sequencePlan.duration - 0.05
+              && times.at(-1) <= sequencePlan.duration + 0.05;
+            const withinClip = times.every((time) => time <= sequencePlan.duration + 0.05);
+            if (times.length && times[0] > 0.05 && ordered && validEnd && withinClip
+              && !hasIncompletePlaguekindSections(accepted, true)
+              && !hasPlaguekindReviewContent(accepted)
+              && splitSegments(accepted).length === 1) {
+              accepted = ensurePlaguekindOpeningTimestamp(accepted);
+              times = plaguekindClipTimes(accepted);
+              timelineRepairApplied = true;
+            }
+            const validTimes = times.length >= 2 && times[0] <= 0.05 && ordered && validEnd && withinClip;
+            failure = hasPlaguekindReviewContent(accepted) ? "Review material was included."
+              : hasIncompletePlaguekindSections(accepted, true) ? "One or more required H3 sections are missing."
+                : splitSegments(accepted).length !== 1 ? "You returned more than one clip."
+                  : hasLikelyNonEnglishProse(accepted) ? "Production prose must be English."
+                    : !validTimes ? `The detailed_description must contain explicit timestamps from 00:00.000 through 00:${String(sequencePlan.duration).padStart(2, "0")}.000 only. Found: ${times.join(", ") || "none"}.`
+                      : "";
+            if (!failure) break;
+            timelineRepairApplied = true;
+          }
+          if (failure) throw new Error(`LM Studio non ha completato la sequenza ${index + 1}/${sequencePlan.count} da 0 a ${sequencePlan.duration}s: ${failure} Riprova la scelta; il prompt originale è conservato.`);
+          clips.push(accepted);
+        }
+        return {
+          prompt: clips.join("\n\n---\n\n"), stage: "final", sequencePlan, negativePrompt: "",
+          model: loaded.model.display_name || loaded.model.key, modelKey: loaded.model.key,
+          modelFallbackFrom: loaded.fallbackFrom || "", promptPreset: generationPreset?.id || "",
+          promptPresetName: generationPreset?.name || "", usedVision: needsVision,
+          usedImageCount: suppliedImages.length, visionTranscodedCount,
+          visionInputFormats: suppliedImages.map((source) => source.mimetype),
+          timelineRepairApplied, loadTimeSeconds: loaded.loadTimeSeconds || 0,
+          get unloadError() { return unloadError?.message || null; },
+        };
+      }
       let payload = await requestDraft(userContent);
+      if (plaguekindStage === "review") {
+        let review;
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          try { review = validatePlaguekindReview(parseJsonCompletion(payload)); break; }
+          catch {
+            if (attempt === 1) throw new Error("LM Studio ha restituito una valutazione incompleta o malformata anche dopo la correzione automatica. Riprova: la richiesta originale è conservata.");
+            const repairText = `${userText}\nJSON REPAIR: Regenerate the review from the original request. Return one COMPLETE strict JSON object with evaluation and screenplay strings and options as exactly THREE strings. Escape internal quotes, backslashes and newlines correctly. No literal line breaks inside strings, trailing commas, comments or markdown fences. Keep the screenplay concise enough to finish all three options while preserving enriched visual staging, intermediate actions, sound cues and motivated timed shots within the user's constraints. The three options add further ideas beyond this enriched base. Preserve Italian prose. Do not write the final prompt.`;
+            payload = await requestDraft(needsVision ? [{ type: "text", content: repairText }, ...userContent.slice(1)] : repairText);
+          }
+        }
+        const content = { review, stage: "review", sequencePlan };
+        return { ...content, model: loaded.model.display_name || loaded.model.key,
+          usedVision: needsVision, usedImageCount: suppliedImages.length, visionTranscodedCount,
+          get unloadError() { return unloadError?.message || null; } };
+      }
       let parsed = returnNegative ? parsePromptCompletion(payload) : null;
       let rawPrompt = returnNegative ? cleanOutput(parsed?.prompt) : completionText(payload);
+      if (plaguekindStage === "final" && (hasPlaguekindReviewContent(rawPrompt) || invalidFinalStructure(rawPrompt))) {
+        // Regenerate from the selected request and images, never from the
+        // contaminated review wrapped in an H3 field.
+        const correction = "\nFINAL OUTPUT REPAIR: the previous answer contained review material or violated the required section structure. Return ONLY the English H3 generation prompt in the required schema. When the complex format is required, include all six non-empty sections in order for EACH sequence. Exclude all evaluation, screenplay sections, alternatives and markdown fences, even inside native fields.";
+        const repairContent = needsVision
+          ? [{ type: "text", content: contractedUserText + correction }, ...userContent.slice(1)]
+          : contractedUserText + correction;
+        payload = await requestDraft(repairContent);
+        rawPrompt = completionText(payload);
+        if (hasPlaguekindReviewContent(rawPrompt)) {
+          throw new Error("LM Studio ha ripetuto valutazione o alternative invece del solo prompt finale. Riprova la scelta: il testo originale è conservato.");
+        }
+        if (invalidFinalStructure(rawPrompt)) throw new Error("LM Studio non ha rispettato le sei sezioni H3 o il numero di sequenze richiesto. Riprova la scelta: il testo originale è conservato.");
+      }
       if (h3Target) rawPrompt = normalizeH3Timestamps(rawPrompt);
       if (hasLikelyNonEnglishProse(rawPrompt)) {
         payload = await requestDraft(`Rewrite this draft according to the language repair task:\n\n${rawPrompt}`, "language");
@@ -933,13 +1089,18 @@ export class LmStudioClient {
       const h3Duration = Number(duration) || Number(idea.match(/Target duration:\s*(\d+(?:\.\d+)?)\s*seconds?/iu)?.[1]) || 0;
       let timelineRepairApplied = false;
       const timelineEnd = h3TimelineEndSeconds(rawPrompt);
-      if (h3Target && h3Duration >= 4 && (timelineEnd === 0 || timelineEnd < h3Duration * 0.75)) {
+      const invalidTimeline = (value) => sequencePlan?.count > 1
+        ? splitSegments(value).some((part) => { const end = h3TimelineEndSeconds(part); return end < h3Duration * 0.9 || end > h3Duration + 0.5; })
+        : h3TimelineEndSeconds(value) > 0 && (h3TimelineEndSeconds(value) < h3Duration * 0.75
+          || h3TimelineEndSeconds(value) > h3Duration + 0.05);
+      if (h3Target && h3Duration >= 4 && invalidTimeline(rawPrompt)) {
         const repairText = [
           `Target duration: ${h3Duration.toFixed(2)} seconds.`,
+          `Original request and reference roles:\n${contractedUserText}`,
           timelineEnd > 0
             ? `The previous draft's latest explicit time is ${timelineEnd.toFixed(2)} seconds.`
             : "The previous draft contains no valid numeric timestamp proving that it covers the requested duration.",
-          "Rewrite the COMPLETE prompt so its chronology reaches the target duration and its final meaningful beat occurs near the end.",
+          `Rewrite the COMPLETE prompt for this ${h3Duration.toFixed(2)}-second clip only. Its visual action timeline must never exceed ${h3Duration.toFixed(2)} seconds and its final meaningful beat must occur near the end.`,
           "Use explicit numeric timestamps such as 00:00.000, 00:03.500 and 00:08.000. Never output the placeholder MM:SS.mmm or a timestamp beginning with MM:.",
           "Previous draft:",
           rawPrompt,
@@ -959,15 +1120,20 @@ export class LmStudioClient {
           throw new Error("LM Studio ha restituito prosa non inglese durante il completamento della timeline H3.");
         }
         const repairedEnd = h3TimelineEndSeconds(rawPrompt);
-        if (repairedEnd === 0 || repairedEnd < h3Duration * 0.75) {
-          throw new Error(`LM Studio ha interrotto nuovamente la timeline H3 a ${repairedEnd.toFixed(2)}s invece di coprire ${h3Duration.toFixed(2)}s.`);
+        if (invalidTimeline(rawPrompt)) {
+          throw new Error(`La timeline delle azioni H3 arriva a ${repairedEnd.toFixed(2)}s e non rispetta la durata impostata di ${h3Duration.toFixed(2)}s, anche dopo la correzione automatica.`);
         }
         timelineRepairApplied = true;
       }
       const prompt = rawPrompt;
+      if (invalidFinalStructure(prompt)) throw new Error("Il prompt finale non contiene tutte le sezioni H3 richieste. Riprova la scelta: il testo originale è conservato.");
+      if (plaguekindStage === "final" && hasPlaguekindReviewContent(prompt)) {
+        throw new Error("Il prompt finale contiene ancora materiale di valutazione. Riprova la scelta: il testo originale è conservato.");
+      }
       if (!prompt) throw new Error("LM Studio non ha restituito un prompt utilizzabile.");
       return {
         prompt,
+        ...(plaguekindStage === "final" ? { stage: "final", sequencePlan } : {}),
         negativePrompt: returnNegative
           ? (videoTarget
             ? videoNegativePromptFallback({ mode })
@@ -1010,7 +1176,7 @@ export class LmStudioClient {
     const idea = String(description || "").trim();
     if (!idea && !image) throw new Error("Scrivi una breve descrizione oppure carica una fotografia.");
     const now = Date.now();
-    if (this.active && now - this.active.startedAt < this.lockTimeoutMs) {
+    if (this.active && now < (this.active.expiresAt || this.active.startedAt + this.lockTimeoutMs)) {
       throw new Error("LM Studio sta già elaborando un'altra richiesta. Attendi il risultato corrente.");
     }
     const lock = { id: `${now}-${Math.random().toString(36).slice(2)}`, startedAt: now, target: "character_genesis" };
@@ -1086,7 +1252,7 @@ No markdown, code fences, comments, explanations, negativePrompt or extra keys.`
     if (!character?.id || !image?.buffer) throw new Error("Character e Hero sono richiesti per creare il Reference Plan.");
     if (!allowedRoles.length) throw new Error("Nessun ruolo reference consentito per questo tipo di soggetto.");
     const now = Date.now();
-    if (this.active && now - this.active.startedAt < this.lockTimeoutMs) {
+    if (this.active && now < (this.active.expiresAt || this.active.startedAt + this.lockTimeoutMs)) {
       throw new Error("LM Studio sta già elaborando un'altra richiesta. Attendi il risultato corrente.");
     }
     const lock = { id: `${now}-${Math.random().toString(36).slice(2)}`, startedAt: now, target: "character_reference_plan" };
@@ -1175,7 +1341,7 @@ technicalNegativePrompt must be a concise 8-18 word English comma-separated pres
   async planCharacterPhoto({ character, userIntent = "", choices = {}, sceneSeed = {}, selectedReferences = [], workflow = {} } = {}) {
     if (!character?.id) throw new Error("Seleziona un Character prima di creare la scena fotografica.");
     const now = Date.now();
-    if (this.active && now - this.active.startedAt < this.lockTimeoutMs) {
+    if (this.active && now < (this.active.expiresAt || this.active.startedAt + this.lockTimeoutMs)) {
       throw new Error("LM Studio sta già elaborando un'altra richiesta. Attendi il risultato corrente.");
     }
     const lock = { id: `${now}-${Math.random().toString(36).slice(2)}`, startedAt: now, target: "character_photo" };
@@ -1264,7 +1430,7 @@ No markdown, comments, explanations or extra keys.`,
       throw new Error("Character e azione video sono richiesti.");
     }
     const now = Date.now();
-    if (this.active && now - this.active.startedAt < this.lockTimeoutMs) {
+    if (this.active && now < (this.active.expiresAt || this.active.startedAt + this.lockTimeoutMs)) {
       throw new Error("LM Studio sta già elaborando un'altra richiesta. Attendi il risultato corrente.");
     }
     const lock = { id: `${now}-${Math.random().toString(36).slice(2)}`, startedAt: now, target: "character_video" };
@@ -1393,7 +1559,7 @@ No markdown, headings, comments, alternatives or extra keys.`,
     const now = Date.now();
     if (this.active) {
       const elapsed = now - this.active.startedAt;
-      if (elapsed < this.lockTimeoutMs) {
+      if (now < (this.active.expiresAt || this.active.startedAt + this.lockTimeoutMs)) {
         const seconds = Math.max(1, Math.round(elapsed / 1000));
         throw new Error(`Il Prompt Assistant locale sta già scrivendo un prompt (${seconds}s). Attendi il risultato corrente.`);
       }
@@ -1519,7 +1685,7 @@ Do not include a negative prompt, markdown, explanations, bullets outside JSON, 
     const now = Date.now();
     if (this.active) {
       const elapsed = now - this.active.startedAt;
-      if (elapsed < this.lockTimeoutMs) {
+      if (now < (this.active.expiresAt || this.active.startedAt + this.lockTimeoutMs)) {
         const seconds = Math.max(1, Math.round(elapsed / 1000));
         throw new Error(`Il Prompt Assistant locale sta già lavorando (${seconds}s). Attendi il risultato corrente.`);
       }
@@ -1609,7 +1775,7 @@ No markdown, code fences, comments, explanations or extra keys.`,
     const now = Date.now();
     if (this.active) {
       const elapsed = now - this.active.startedAt;
-      if (elapsed < this.lockTimeoutMs) {
+      if (now < (this.active.expiresAt || this.active.startedAt + this.lockTimeoutMs)) {
         const seconds = Math.max(1, Math.round(elapsed / 1000));
         throw new Error(`Il Prompt Assistant locale sta già lavorando (${seconds}s). Attendi il risultato corrente.`);
       }

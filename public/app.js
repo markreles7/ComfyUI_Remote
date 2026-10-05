@@ -1,8 +1,10 @@
+import { deferMediaPreview } from "./on-demand-media.js?v=20261005-sidebar-previews";
 import { enhanceDirectorPrompts, enhanceMainPrompt } from "./prompt-assistant.js";
 import { consumeGuidedHandoff, guidedTokenFromLocation, setInputFile } from "./guided-handoff.js";
 import { applyLoraTriggers, automaticLoraTriggers, loraMatchesFamily, loraOptionLabel } from "./lora-triggers.js?v=20260822-scalar-fix";
 import { setupUploadPreviews } from "./upload-previews.js";
 import { createAdaptivePoller, getAppConfig, warmAppConfig } from "./runtime-cache.js";
+import { validateGenerationForm } from "./generation-form-validation.js";
 
 void warmAppConfig();
 
@@ -21,6 +23,8 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 const form = $("#generator-form");
+// Run validation in the submit handler so blocked submissions have visible feedback.
+form.noValidate = true;
 const workflow = $("#workflow");
 const connection = $("#connection");
 const toast = $("#toast");
@@ -567,6 +571,11 @@ function generationTypeChanged(type) {
   const video = type === "video";
 
   $("#generationType").value = type;
+  form.classList.toggle("home-video-mode", video);
+  document.querySelector(".workspace").classList.toggle("home-video-workspace", video);
+  const studioFrame = $("#home-video-studio");
+  studioFrame.classList.toggle("hidden", !video);
+  if (video && !studioFrame.getAttribute("src")) studioFrame.src = studioFrame.dataset.src;
 
   for (const button of document.querySelectorAll("[data-generation-type]")) {
     button.classList.toggle(
@@ -1159,10 +1168,10 @@ function renderHistory() {
   $("#history-empty").classList.toggle("hidden", state.history.length > 0);
   container.innerHTML = state.history.map((item) => {
     const media = item.videos?.length
-      ? `<video controls preload="metadata" playsinline src="/api/media/${item.id}/0"></video>
+      ? `${deferMediaPreview(`<video controls preload="metadata" playsinline src="/api/media/${item.id}/0"></video>`)}
          <a class="download" href="/api/media/${item.id}/0?download=1" download>Download ↓</a>`
       : item.images?.length
-        ? `<img src="${anchorImageUrl(item, 0)}" alt="${escapeHtml(item.seriesLabel || item.workflowName)}" loading="lazy">
+        ? `${deferMediaPreview(`<img src="${anchorImageUrl(item, 0)}" alt="${escapeHtml(item.seriesLabel || item.workflowName)}" loading="lazy">`)}
           <div class="history-image-actions">
              <a class="download" href="${anchorImageUrl(item, 0)}?download=1" download>Download ↓</a>
            </div>`
@@ -1171,7 +1180,8 @@ function renderHistory() {
       <article class="history-card">
         <div class="history-media">${media}</div>
         <div class="history-info">
-          <h3 title="${escapeHtml(item.prompt)}">${escapeHtml(item.prompt || item.workflowName)}</h3>
+          <h3>${escapeHtml(item.workflowName || "Generazione")}</h3>
+          ${item.prompt ? `<details class="generation-details generation-prompt-details"><summary>Prompt usato</summary><p>${escapeHtml(item.prompt)}</p></details>` : ""}
           <p>${escapeHtml(item.workflowName)}${videoModeLabel(item.inputMode) ? ` · ${escapeHtml(videoModeLabel(item.inputMode))}` : ""}${item.sceneCount > 1 ? ` · ${item.sceneCount} scene` : ""} · ${item.resolution} · ${formatDate(item.createdAt)}</p>
         </div>
       </article>`;
@@ -1242,8 +1252,12 @@ function connectEvents() {
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
-  $("#form-error").textContent = "";
   const button = $("#generate-button");
+  if (button.disabled) return;
+  if (!validateGenerationForm(form, $("#form-error"))) {
+    showToast($("#form-error").textContent);
+    return;
+  }
   button.disabled = true;
   button.querySelector("span").textContent = "Invio a ComfyUI…";
   try {
@@ -2103,3 +2117,11 @@ async function start() {
 }
 
 start();
+
+window.addEventListener("message", (event) => {
+  const frame = $("#home-video-studio");
+  if (event.origin !== location.origin || event.source !== frame.contentWindow) return;
+  if (event.data?.type === "video-studio-height" && Number.isFinite(event.data.height)) {
+    frame.style.height = `${Math.max(500, event.data.height)}px`;
+  }
+});

@@ -265,6 +265,19 @@ test("Eros Max T2VA usa il checkpoint ibrido e Turbo integrato a 6 step senza Lo
   assert.equal(job.metadata.externalTurbo, false);
 });
 
+test("H3 conserva la prima riga del trigger LM Studio nelle modalità base e reference", () => {
+  for (const trigger of ["prfight2", "prfight2, prfin1", "BUNNY"]) {
+    for (const mode of ["text", "image"]) {
+      const job = build(mode, {
+        h3ModelProfile: mode === "image" ? "erosMax" : "base",
+        prompt: `${trigger}\n\n${mode === "image" ? "subject_definitions: <Subject 1> is defined by <Picture 1>.\n\nsummary: [reference generation] Action.\n\nretention_analysis: Preserve identity.\n\ndetailed_description" : "integrated_multimodal_description"}: [Shot 1] The subject completes a readable action.\n\noverall_soundscape: N/A\n\nnon_diegetic_music: N/A`,
+      }, mode === "image" ? { h3FirstFrame: image } : {});
+      assert.ok(job.workflow["25"].inputs.prompt.startsWith(`${trigger}\n\n`));
+      assert.equal(job.workflow["25"].inputs.prompt.split(trigger).length, 2);
+    }
+  }
+});
+
 test("Eros Max Single Image converte l'immagine in Picture 1 Ref2VA e blocca First Last", () => {
   const job = build("image", {
     h3ModelProfile: "erosMax",

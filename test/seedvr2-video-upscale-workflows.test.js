@@ -55,6 +55,25 @@ test("SeedVR2 Video Anteprima e Massima cambiano profilo senza pass aggiuntivi",
   assert.equal(Object.values(max.workflow).filter((item) => item.class_type === "SeedVR2VideoUpscaler").length, 1);
 });
 
+test("SeedVR2 Light 1,5x usa il 3B FP8 con il profilo rapido PlagueKind", () => {
+  const result = buildSeedvr2VideoUpscaleWorkflow({
+    seedvr2VideoPreset: "light15",
+    seedvr2VideoResolution: 960,
+    seedvr2VideoMaxResolution: 1776,
+    seedvr2VideoFrameLoadCap: 289,
+    seedvr2VideoSourceDuration: 12,
+    seed: 99,
+  }, upload);
+
+  assert.equal(result.workflow["4"].inputs.model, "seedvr2_ema_3b_fp8_e4m3fn.safetensors");
+  assert.equal(result.workflow["4"].inputs.blocks_to_swap, 20);
+  assert.equal(result.workflow["6"].inputs.resolution, 960);
+  assert.equal(result.workflow["6"].inputs.max_resolution, 1776);
+  assert.equal(result.workflow["6"].inputs.batch_size, 9);
+  assert.equal(result.workflow["6"].inputs.temporal_overlap, 1);
+  assert.equal(result.workflow["1"].inputs.frame_load_cap, 289);
+});
+
 test("espone SeedVR2 Video solo quando nodi, DiT e VAE sono disponibili", () => {
   const config = seedvr2VideoUpscaleConfig({
     availableNodes: [

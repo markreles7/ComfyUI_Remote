@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { execFile as execFileCallback } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import http from "node:http";
 import https from "node:https";
 import path from "node:path";
@@ -12,6 +13,10 @@ import multer from "multer";
 import { ComfyClient, extractAudios, extractImages, extractVideos } from "./comfy-client.js";
 import { audioStudioConfig, buildAudioStudioWorkflow } from "./audio-studio-workflows.js";
 import { parseDirectorNaturalSegments } from "./h3-director-prompt.js";
+import { planPlaguekindSeparateSequences, plaguekindSeparateJobInput } from "./plaguekind-separate-sequences.js";
+import { PLAGUEKIND2_MODE, PLAGUEKIND2_WORKFLOW } from "./plaguekind2-test-workflows.js";
+import { planPlaguekind2TestSequences, plaguekind2TestJobInput, splitPlaguekind2History, uploadPlaguekind2Continuity } from "./plaguekind2-test-sequences.js";
+import { normalizePlaguekindDuration } from "./plaguekind-duration.js";
 import { editWildcardConfig, pickEditWildcardPrompt } from "./edit-wildcards.js";
 import { poseLibraryConfig, selectPose } from "./pose-library.js";
 import { cancelGeneration } from "./generation-cancellation.js";
@@ -24,6 +29,7 @@ import {
 } from "./generation-library.js";
 import { HistoryStore } from "./history-store.js";
 import { LmStudioClient } from "./lm-studio-client.js";
+import { captionSuperUpscaleTile, unloadSuperUpscaleVision } from "./super-upscale-vision.js";
 import {
   inspectImageFiles,
   mediaContentDisposition,
@@ -66,6 +72,10 @@ import {
   seedvr2VideoUpscaleConfig,
   SEEDVR2_VIDEO_UPSCALE_REQUIRED_NODES,
 } from "./seedvr2-video-upscale-workflows.js";
+import {
+  buildFlashVsrVideoUpscaleWorkflow,
+  flashVsrVideoUpscaleConfig,
+} from "./flashvsr-video-upscale-workflows.js";
 import {
   buildInteractiveCastUnionJob,
   buildVideoStudioInitialJob,
@@ -200,6 +210,7 @@ const store = new HistoryStore(path.join(root, ".data", "history.json"));
 const generationProgressLogs = new Map();
 const studioStore = new HistoryStore(path.join(root, ".data", "studio-projects.json"));
 const videoStudioStore = new HistoryStore(path.join(root, ".data", "video-studio-projects.json"));
+const plaguekindSequenceAdvances = new Set();
 
 function reconcileOrphanStudioProjects() {
   const patches = new Map();
@@ -1116,7 +1127,17 @@ function studioProjectView(project) {
 }
 
 function videoStudioProjectView(project) {
-  return studioProjectView(project);
+  const view = studioProjectView(project);
+  const plan = project.plaguekindSeparatePlan;
+  if (!plan) return view;
+  if (project.sequenceError) return { ...view, status: "error" };
+  if (view.generations.some((item) => ["error", "interrupted", "cancelled"].includes(item.status))) {
+    return { ...view, status: "error" };
+  }
+  if (view.generations.length < plan.count && view.generations.at(-1)?.status === "completed") {
+    return { ...view, status: "running" };
+  }
+  return view;
 }
 
 function isActiveStatus(status) {
@@ -1130,7 +1151,11 @@ function videoStudioProjectGenerations(project) {
 }
 
 function videoStudioProjectIsActive(project) {
-  return videoStudioProjectGenerations(project).some((item) => isActiveStatus(item.status));
+  const generations = videoStudioProjectGenerations(project);
+  return generations.some((item) => isActiveStatus(item.status))
+    || Boolean(project.plaguekindSeparatePlan && !project.sequenceError
+      && generations.length < project.plaguekindSeparatePlan.count
+      && generations.at(-1)?.status === "completed");
 }
 
 function removeGeneratedMediaFiles(generations) {
@@ -1139,7 +1164,7 @@ function removeGeneratedMediaFiles(generations) {
   const skipped = [];
   const seen = new Set();
   for (const generation of generations) {
-    for (const file of [...(generation.images || []), ...(generation.videos || []), ...(generation.audios || [])]) {
+    for (const file of [...(generation.images || []), ...(generation.videos || []), ...(generation.audios || []), ...(generation.continuityImages || [])]) {
       const match = resolveMediaFile(outputDirectory, file);
       if (!match?.path || seen.has(match.path)) continue;
       seen.add(match.path);
@@ -1302,6 +1327,102 @@ async function queueStudioJob(job, projectId) {
   });
   broadcast({ type: "generation_created", generationId: item.id, projectId, data: item });
   return item;
+}
+
+async function uploadPlaguekindContinuityTail(generation, frameCount) {
+  const video = generation.videos?.at(-1);
+  if (!video) throw new Error("La sequenza precedente non ha prodotto un video da cui ricavare il contesto.");
+  const token = crypto.randomUUID();
+  const sourcePath = path.join(os.tmpdir(), `plaguekind-${token}-source.mp4`);
+  const tailPath = path.join(os.tmpdir(), `plaguekind-${token}-tail.mp4`);
+  let temporarySource = false;
+  try {
+    const local = resolveMediaFile(outputDirectory, video)?.path;
+    let input = local;
+    if (!input) {
+      const response = await fetch(comfy.mediaUrl(video), { signal: AbortSignal.timeout(120_000) });
+      if (!response.ok) throw new Error(`Impossibile leggere il primo video (${response.status}).`);
+      fs.writeFileSync(sourcePath, Buffer.from(await response.arrayBuffer()));
+      input = sourcePath;
+      temporarySource = true;
+    }
+    const { stdout } = await execFile("ffprobe", ["-v", "error", "-count_frames", "-select_streams", "v:0",
+      "-show_entries", "stream=nb_read_frames", "-of", "csv=p=0", input], { windowsHide: true, timeout: 60_000 });
+    const totalFrames = Number(String(stdout).trim());
+    if (!Number.isInteger(totalFrames) || totalFrames < frameCount) {
+      throw new Error(`Il primo video contiene ${Number.isFinite(totalFrames) ? totalFrames : "un numero ignoto di"} frame; ne servono ${frameCount} per la continuità.`);
+    }
+    await execFile("ffmpeg", ["-y", "-v", "error", "-i", input, "-map", "0:v:0", "-vf",
+      `select=gte(n\\,${totalFrames - frameCount}),setpts=PTS-STARTPTS`, "-frames:v", String(frameCount),
+      "-fps_mode", "passthrough", "-an", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "10", tailPath],
+    { windowsHide: true, timeout: 120_000 });
+    const { stdout: tailFramesText } = await execFile("ffprobe", ["-v", "error", "-count_frames", "-select_streams", "v:0",
+      "-show_entries", "stream=nb_read_frames", "-of", "csv=p=0", tailPath], { windowsHide: true, timeout: 60_000 });
+    if (Number(String(tailFramesText).trim()) !== frameCount) throw new Error(`La coda video non contiene esattamente ${frameCount} frame.`);
+    const buffer = fs.readFileSync(tailPath);
+    return comfy.uploadInput({ buffer, mimetype: "video/mp4", originalname: `plaguekind-continuity-${token}.mp4`, size: buffer.length });
+  } finally {
+    if (temporarySource) fs.rmSync(sourcePath, { force: true });
+    fs.rmSync(tailPath, { force: true });
+  }
+}
+
+async function advancePlaguekindSeparateSequence(projectId) {
+  if (plaguekindSequenceAdvances.has(projectId)) return;
+  const project = videoStudioStore.get(projectId);
+  if (!project?.plaguekindSeparatePlan || project.sequenceError) return;
+  const generations = videoStudioProjectGenerations(project);
+  if (generations.length >= project.plaguekindSeparatePlan.count || generations.at(-1)?.status !== "completed") return;
+  plaguekindSequenceAdvances.add(projectId);
+  try {
+    const current = videoStudioStore.get(projectId);
+    if (!current || current.sequenceError || videoStudioProjectGenerations(current).length !== generations.length) return;
+    const testMode = current.videoStudioMode === PLAGUEKIND2_MODE || generations.at(-1)?.continuitySource === "base-png";
+    const plan = testMode ? planPlaguekind2TestSequences(current.settings) : planPlaguekindSeparateSequences(current.settings);
+    const index = generations.length;
+    const alreadyQueued = store.list().find((item) => item.projectId === projectId
+      && item.sequenceMode === "separate-anchored" && item.sequenceIndex === index + 1);
+    if (alreadyQueued) {
+      const recovered = videoStudioStore.update(projectId, {
+        generationIds: [...(current.generationIds || []), alreadyQueued.id], updatedAt: new Date().toISOString(),
+      });
+      broadcast({ type: "video_studio_project_updated", projectId, data: videoStudioProjectView(recovered) });
+      return;
+    }
+    const tail = testMode
+      ? await uploadPlaguekind2Continuity(comfy, generations.at(-1), plan.contextFrames)
+      : await uploadPlaguekindContinuityTail(generations.at(-1), plan.contextFrames);
+    const prepared = testMode
+      ? plaguekind2TestJobInput(current.settings, plan, index, current.uploads, tail)
+      : plaguekindSeparateJobInput(current.settings, plan, index, current.uploads, tail);
+    const config = await videoStudioRuntimeConfig();
+    let job = buildVideoStudioInitialJob(current.videoStudioMode, prepared.raw, prepared.uploads, current.loras || [], config);
+    job.metadata = {
+      ...job.metadata,
+      workflowName: `Video Studio · ${current.videoStudioMode === PLAGUEKIND2_MODE ? "PlagueKind2Test" : "PlagueKind H3"} · Sequenza ${index + 1}/${plan.count}`,
+      videoStudioLabel: `PlagueKind H3 · Sequenza ${index + 1}/${plan.count} · ${job.metadata.width}×${job.metadata.height}`,
+      sequenceIndex: index + 1, sequenceCount: plan.count, continuityFrames: plan.contextFrames,
+      sequenceMode: "separate-anchored",
+    };
+    job = await integrateSceneJob(job, prepared.raw, { trackedMask: false });
+    cancelIdlePurge();
+    const next = await queueStudioJob(job, projectId);
+    const updated = videoStudioStore.update(projectId, {
+      generationIds: [...(current.generationIds || []), next.id], updatedAt: new Date().toISOString(),
+    });
+    broadcast({ type: "video_studio_project_updated", projectId, data: videoStudioProjectView(updated) });
+  } catch (error) {
+    const current = videoStudioStore.get(projectId);
+    if (current) {
+      const updated = videoStudioStore.update(projectId, {
+        sequenceError: `La sequenza successiva non è stata avviata: ${error.message}`,
+        updatedAt: new Date().toISOString(),
+      });
+      broadcast({ type: "video_studio_project_updated", projectId, data: videoStudioProjectView(updated) });
+    }
+  } finally {
+    plaguekindSequenceAdvances.delete(projectId);
+  }
 }
 
 function recordSequentialStoryFinal(project) {
@@ -1598,8 +1719,17 @@ async function uploadVideoStudioFiles(files) {
     validateUploadSize(file, isVideo || isAudio ? maxVideoUploadMb : maxUploadMb, isVideo ? "Il video" : isAudio ? "L’audio" : "L’immagine");
     uploaded[key] = isVideo || isAudio ? await comfy.uploadInput(file) : await comfy.uploadImage(file);
   }
+  const slottedH3ReferenceImages = files
+    .map((file) => {
+      const match = /^h3ReferenceImage([1-9])$/u.exec(file.fieldname);
+      return match ? { ...file, referenceIndex: Number(match[1]) - 1 } : null;
+    })
+    .filter(Boolean)
+    .sort((left, right) => left.referenceIndex - right.referenceIndex);
   const referenceGroups = {
-    h3ReferenceImages: files.filter((file) => file.fieldname === "h3ReferenceImages"),
+    h3ReferenceImages: slottedH3ReferenceImages.length
+      ? slottedH3ReferenceImages
+      : files.filter((file) => file.fieldname === "h3ReferenceImages"),
     h3ReferenceVideos: files.filter((file) => file.fieldname === "h3ReferenceVideos"),
     h3ReferenceAudios: files.filter((file) => file.fieldname === "h3ReferenceAudios"),
     directorStartImages: files.filter((file) => file.fieldname === "directorStartImages"),
@@ -1624,7 +1754,10 @@ async function uploadVideoStudioFiles(files) {
       if (isAudio && !file.mimetype.startsWith("audio/")) throw new Error("Le reference audio MiniMax H3 devono essere file audio.");
       if (!isVideo && !isAudio && !file.mimetype.startsWith("image/")) throw new Error("Le reference immagine MiniMax H3 devono essere PNG, JPG o WebP.");
       validateUploadSize(file, isVideo || isAudio ? maxVideoUploadMb : maxUploadMb, "Una reference MiniMax H3");
-      uploaded[key].push(isVideo || isAudio ? await comfy.uploadInput(file) : await comfy.uploadImage(file));
+      const uploadedFile = isVideo || isAudio ? await comfy.uploadInput(file) : await comfy.uploadImage(file);
+      uploaded[key].push(Number.isInteger(file.referenceIndex)
+        ? { ...uploadedFile, referenceIndex: file.referenceIndex }
+        : uploadedFile);
     }
   }
   const ltx25Keyframes = files.filter((file) => file.fieldname === "ltx25Keyframes");
@@ -1758,6 +1891,17 @@ function scheduleIdlePurge(generation) {
 }
 
 app.disable("x-powered-by");
+const superUpscaleCaptionToken = crypto.randomUUID();
+app.post("/api/super-upscale/caption", (request, response, next) => {
+  if (request.headers.authorization !== `Bearer ${superUpscaleCaptionToken}`) {
+    return response.status(403).json({ error: "Callback SUPER UPSCALE non autorizzata." });
+  }
+  next();
+}, express.json({ limit: "20mb" }), async (request, response, next) => {
+  try {
+    response.json(await captionSuperUpscaleTile(promptAssistant, request.body));
+  } catch (error) { next(error); }
+});
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static(path.join(root, "public"), {
   extensions: ["html"],
@@ -2486,6 +2630,9 @@ async function buildAppConfig(infoOverride = null) {
     installedSeedvr2Models: comboOptions(info.SeedVR2LoadDiTModel?.input?.required?.model),
     installedVaes: comboOptions(info.SeedVR2LoadVAEModel?.input?.required?.model),
   });
+  const flashVsrVideoConfig = flashVsrVideoUpscaleConfig({
+    availableNodes: Object.keys(info),
+  });
   const superUpscale = superUpscaleConfig({
     availableNodes: Object.keys(info),
     installedSeedvr2Models: comboOptions(info.SeedVR2LoadDiTModel?.input?.required?.model),
@@ -2554,6 +2701,7 @@ async function buildAppConfig(infoOverride = null) {
       installedVaes: installedImageVaes,
     }),
     seedvr2VideoUpscale: seedvr2VideoConfig,
+    flashVsrVideoUpscale: flashVsrVideoConfig,
     characterVideoAudio: {
       voice: voiceCapabilities,
       lipSync: lipSyncCapabilities,
@@ -5464,6 +5612,18 @@ app.get("/api/video-studio/projects/:id", (request, response) => {
   response.json(videoStudioProjectView(project));
 });
 
+app.post("/api/video-studio/projects/:id/continue-sequence", (request, response) => {
+  const project = videoStudioStore.get(request.params.id);
+  if (!project?.plaguekindSeparatePlan) return response.status(404).json({ error: "Sequenza PlagueKind separata non trovata." });
+  const generations = videoStudioProjectGenerations(project);
+  if (generations.length >= project.plaguekindSeparatePlan.count || generations.at(-1)?.status !== "completed") {
+    return response.status(409).json({ error: "La sequenza successiva può partire solo dopo un video completato." });
+  }
+  const updated = videoStudioStore.update(project.id, { sequenceError: null, updatedAt: new Date().toISOString() });
+  void advancePlaguekindSeparateSequence(project.id);
+  response.status(202).json(videoStudioProjectView(updated));
+});
+
 app.get("/api/interactive-cast/capabilities", async (_request, response, next) => {
   try {
     const age = Date.now() - interactiveCastCapabilitiesCache.updatedAt;
@@ -5994,7 +6154,7 @@ app.post("/api/video-studio/projects", upload.any(), async (request, response, n
     await comfy.health();
     const config = await videoStudioRuntimeConfig();
     const selectedLoras = parseLoras(request.body.loras);
-    const allowedLoras = ["minimaxH3", "minimaxH3Fast", "minimaxH3AllInOne", "h3SparseV9", "h3SeamlessChain", "actionH3", "weaponCombatH3", "seedHunterH3"].includes(request.body.videoStudioMode) ? config.h3Loras : config.ltxLoras;
+    const allowedLoras = ["minimaxH3", "minimaxH3Fast", "minimaxH3AllInOne", "h3SparseV9", PLAGUEKIND2_MODE, "h3SeamlessChain", "actionH3", "weaponCombatH3", "seedHunterH3"].includes(request.body.videoStudioMode) ? config.h3Loras : config.ltxLoras;
     if (selectedLoras.length) validateLoras(selectedLoras, allowedLoras);
     const uploaded = await uploadVideoStudioFiles(request.files || []);
     const characterSelection = await uploadCharacterSelection(
@@ -6012,13 +6172,25 @@ app.post("/api/video-studio/projects", upload.any(), async (request, response, n
       if (!uploaded.identityImage) uploaded.identityImage = characterSelection.uploads[0];
       if (!uploaded.referenceSheet) uploaded.referenceSheet = characterSelection.uploads[1] || characterSelection.uploads[0];
     }
+    const testMode = [PLAGUEKIND2_MODE, "h3SparseV9"].includes(request.body.videoStudioMode);
+    const plaguekindPlan = testMode ? planPlaguekind2TestSequences(request.body) : planPlaguekindSeparateSequences(request.body);
+    const firstPlaguekind = plaguekindPlan
+      ? (testMode ? plaguekind2TestJobInput : plaguekindSeparateJobInput)(request.body, plaguekindPlan, 0, uploaded)
+      : null;
     let job = buildVideoStudioInitialJob(
       request.body.videoStudioMode,
-      request.body.videoStudioMode === "seedHunterH3" ? { ...request.body, h3CandidateIndex: 1 } : request.body,
-      uploaded,
+      request.body.videoStudioMode === "seedHunterH3" ? { ...request.body, h3CandidateIndex: 1 } : firstPlaguekind?.raw || request.body,
+      firstPlaguekind?.uploads || uploaded,
       selectedLoras,
       config,
     );
+    if (plaguekindPlan) job.metadata = {
+      ...job.metadata,
+      workflowName: `Video Studio · ${request.body.videoStudioMode === PLAGUEKIND2_MODE ? "PlagueKind2Test" : "PlagueKind H3"} · Sequenza 1/${plaguekindPlan.count}`,
+      videoStudioLabel: `PlagueKind H3 · Sequenza 1/${plaguekindPlan.count} · ${job.metadata.width}×${job.metadata.height}`,
+      sequenceIndex: 1, sequenceCount: plaguekindPlan.count,
+      continuityFrames: plaguekindPlan.contextFrames, sequenceMode: "separate-anchored",
+    };
     const jobs = request.body.videoStudioMode === "seedHunterH3"
       ? [job, ...[1, 2].map((offset) => buildVideoStudioInitialJob(
         "seedHunterH3",
@@ -6041,7 +6213,7 @@ app.post("/api/video-studio/projects", upload.any(), async (request, response, n
           },
         };
       }
-      jobs[index] = await integrateSceneJob(jobs[index], request.body, {
+      jobs[index] = await integrateSceneJob(jobs[index], firstPlaguekind?.raw || request.body, {
         trackedMask: request.body.videoStudioMode === "actorReplacement",
       });
     }
@@ -6056,6 +6228,10 @@ app.post("/api/video-studio/projects", upload.any(), async (request, response, n
       uploads: uploaded,
       loras: selectedLoras,
       sceneRecipe: sceneRecipe ? { ...sceneRecipe, createdAt: new Date().toISOString() } : null,
+      plaguekindSeparatePlan: plaguekindPlan ? {
+        count: plaguekindPlan.count, duration: plaguekindPlan.duration,
+        contextFrames: plaguekindPlan.contextFrames,
+      } : null,
       status: "queued",
       generationIds: [],
       createdAt: new Date().toISOString(),
@@ -6095,27 +6271,121 @@ app.post("/api/video-studio/projects/:id/promote-preview", async (request, respo
     if (videoStudioProjectIsActive(project)) {
       return response.status(409).json({ error: "Attendi o annulla la generazione attiva prima di promuovere l’anteprima." });
     }
+    const finishingMode = String(request.body?.finishingMode || "all");
     const requested = request.body?.generationId ? store.get(String(request.body.generationId)) : null;
     const generations = videoStudioProjectGenerations(project);
     const generation = requested || [...generations].reverse().find((item) =>
       item.status === "completed" && item.videos?.length
         && (sparseFinishing
-          ? item.workflowId === "videoStudio:h3SparseV9" && item.videoStudioStage === "generation"
+          ? finishingMode === "film"
+            ? [
+                "videoStudio:h3SparseV9:latentQuality",
+                "videoStudio:h3SparseV9:seedVr2Light15",
+                "videoStudio:h3SparseV9:flashVsrTiny15",
+                "videoStudio:h3SparseV9",
+              ].includes(item.workflowId)
+            : item.workflowId === "videoStudio:h3SparseV9" && item.videoStudioStage === "generation"
           : item.h3Stage === "preview")
     );
+    const validSparseSource = generation && (finishingMode === "film"
+      ? [
+          "videoStudio:h3SparseV9:latentQuality",
+          "videoStudio:h3SparseV9:seedVr2Light15",
+          "videoStudio:h3SparseV9:flashVsrTiny15",
+          "videoStudio:h3SparseV9",
+        ].includes(generation.workflowId)
+      : generation.workflowId === "videoStudio:h3SparseV9" && generation.videoStudioStage === "generation");
     if (!generation || generation.projectId !== project.id || generation.status !== "completed"
       || (sparseFinishing
-        ? generation.workflowId !== "videoStudio:h3SparseV9" || generation.videoStudioStage !== "generation"
+        ? !validSparseSource
         : generation.h3Stage !== "preview") || !generation.videos?.length) {
       return response.status(409).json({ error: sparseFinishing
         ? "Completa prima il video PlagueKind da migliorare."
         : "Completa prima un’anteprima MiniMax H3 del progetto." });
     }
     const config = await videoStudioRuntimeConfig();
-    const finishingMode = String(request.body?.finishingMode || "all");
-    if (finishingMode === "latent") {
+    if (["seedvr2Light", "flashVsrTiny"].includes(finishingMode)) {
       if (!sparseFinishing) {
-        return response.status(409).json({ error: "H3 Latent Upscale + Refine dopo la generazione è disponibile per PlagueKind H3 Sparse V9." });
+        return response.status(409).json({ error: "SeedVR2 Light e FlashVSR Tiny sono disponibili per PlagueKind H3." });
+      }
+      const info = await comfy.objectInfo();
+      const seedvrConfig = seedvr2VideoUpscaleConfig({
+        availableNodes: Object.keys(info || {}),
+        installedSeedvr2Models: comboOptions(info?.SeedVR2LoadDiTModel?.input?.required?.model),
+        installedVaes: comboOptions(info?.SeedVR2LoadVAEModel?.input?.required?.model),
+      });
+      const flashConfig = flashVsrVideoUpscaleConfig({ availableNodes: Object.keys(info || {}) });
+      const capability = finishingMode === "seedvr2Light"
+        ? seedvrConfig.profiles.find((profile) => profile.id === "light15")
+        : flashConfig;
+      if (!capability?.available) {
+        const missing = capability?.missingNodes?.join(", ") || "modelli o nodi richiesti";
+        throw new Error(`${finishingMode === "seedvr2Light" ? "SeedVR2 Light" : "FlashVSR Tiny"} non disponibile: ${missing}.`);
+      }
+
+      const sourceWidth = Number(generation.width || generation.outputWidth);
+      const sourceHeight = Number(generation.height || generation.outputHeight);
+      if (!sourceWidth || !sourceHeight) throw new Error("La risoluzione del video PlagueKind non è disponibile.");
+      const outputWidth = Math.round(sourceWidth * 1.5 / 2) * 2;
+      const outputHeight = Math.round(sourceHeight * 1.5 / 2) * 2;
+      const fps = Number(generation.fps || 24);
+      const duration = Number(generation.duration || 12);
+      const frameLoadCap = Math.min(2000, Math.ceil(duration * fps) + 1);
+      const selectedUpload = await comfy.reuseOutputFile(
+        generation.videos.at(-1),
+        `${finishingMode}-${project.id}.mp4`,
+        "video/mp4",
+      );
+      const job = finishingMode === "seedvr2Light"
+        ? buildSeedvr2VideoUpscaleWorkflow({
+            seedvr2VideoPreset: "light15",
+            seedvr2VideoResolution: Math.round(Math.min(sourceWidth, sourceHeight) * 1.5 / 2) * 2,
+            seedvr2VideoMaxResolution: Math.max(outputWidth, outputHeight),
+            seedvr2VideoKeepAudio: true,
+            seedvr2VideoSourceDuration: duration,
+            seedvr2VideoFrameLoadCap: frameLoadCap,
+            seedvr2VideoFps: fps,
+            seed: generation.seed,
+          }, selectedUpload)
+        : buildFlashVsrVideoUpscaleWorkflow({
+            flashVsrSourceWidth: sourceWidth,
+            flashVsrSourceHeight: sourceHeight,
+            flashVsrSourceDuration: duration,
+            flashVsrFrameLoadCap: frameLoadCap,
+            flashVsrFps: fps,
+            flashVsrResizeFactor: 0.75,
+            flashVsrScale: 2,
+            seed: generation.seed,
+          }, selectedUpload);
+      job.metadata = {
+        ...job.metadata,
+        workflowId: finishingMode === "seedvr2Light"
+          ? "videoStudio:h3SparseV9:seedVr2Light15"
+          : "videoStudio:h3SparseV9:flashVsrTiny15",
+        workflowName: finishingMode === "seedvr2Light"
+          ? "Video Studio · PlagueKind · SeedVR2 Light 3B 1,5×"
+          : "Video Studio · PlagueKind · FlashVSR Tiny 1,5×",
+        videoStudioStage: "previewFinishing",
+        videoStudioLabel: `${finishingMode === "seedvr2Light" ? "SeedVR2 Light 3B" : "FlashVSR Tiny"} · 1,5× → ${outputWidth}×${outputHeight}`,
+        h3Stage: "promotedFinal",
+        finishingMode,
+        sourcePreviewGenerationId: generation.id,
+        sceneRecipeSeed: generation.seed,
+        width: outputWidth,
+        height: outputHeight,
+        outputWidth,
+        outputHeight,
+      };
+      const created = await queueStudioJob(job, project.id);
+      const updated = videoStudioStore.update(project.id, {
+        generationIds: [...(project.generationIds || []), created.id],
+        updatedAt: new Date().toISOString(),
+      });
+      return response.status(202).json(videoStudioProjectView(updated));
+    }
+    if (["quality", "latent"].includes(finishingMode)) {
+      if (!sparseFinishing) {
+        return response.status(409).json({ error: "H3 Latent Upscale + Refine dopo la generazione è disponibile per PlagueKind H3." });
       }
       if (generation.multiSequence || String(project.settings?.h3SparseMultiSequence || "false") === "true") {
         return response.status(409).json({ error: "H3 Latent Upscale + Refine richiede una singola clip PlagueKind; non è compatibile con le sequenze continuative." });
@@ -6123,22 +6393,32 @@ app.post("/api/video-studio/projects/:id/promote-preview", async (request, respo
       if (!config.h3.sparseV9.available) {
         throw new Error(config.h3.sparseV9.reason || "H3 Latent Upscale + Refine non è disponibile nell’istanza ComfyUI attiva.");
       }
+      const upscaleWidth = Math.round((Number(generation.width) * 1.5) / 32) * 32;
+      const upscaleHeight = Math.round((Number(generation.height) * 1.5) / 32) * 32;
       const job = buildVideoStudioInitialJob("h3SparseV9", {
         ...project.settings,
         seed: generation.seed,
         h3SparseLatentUpscale: true,
         h3SparseMultiSequence: false,
+        h3SparseLatentScale: 1.5,
+        h3SparseLatentWidth: upscaleWidth,
+        h3SparseLatentHeight: upscaleHeight,
+        h3SparsePostRcas: true,
+        h3SparseRcasStrength: 0.18,
       }, project.uploads || {}, project.loras || [], config);
       job.metadata = {
         ...job.metadata,
-        workflowId: "videoStudio:h3SparseV9:latentRefine",
-        workflowName: "Video Studio · PlagueKind H3 Sparse V9 · H3 Latent Upscale + Refine",
+        workflowId: "videoStudio:h3SparseV9:latentQuality",
+        workflowName: "Video Studio · PlagueKind H3 · H3 Latent 1,5× + RCAS 0,18",
         videoStudioStage: "previewFinishing",
-        videoStudioLabel: "Miglioramento · H3 Latent Upscale + Refine · stesso seed",
+        videoStudioLabel: `Miglioramento qualità · H3 Latent 1,5× → ${upscaleWidth}×${upscaleHeight} · RCAS 0,18`,
         h3Stage: "promotedFinal",
-        finishingMode,
+        finishingMode: "quality",
         sourcePreviewGenerationId: generation.id,
         sceneRecipeSeed: generation.seed,
+        outputWidth: upscaleWidth,
+        outputHeight: upscaleHeight,
+        rtxBypassed: true,
       };
       const created = await queueStudioJob(job, project.id);
       const updated = videoStudioStore.update(project.id, {
@@ -6808,9 +7088,16 @@ app.post("/api/generations", upload.any(), async (request, response, next) => {
         throw new Error("Carica una foto PNG, JPG o WebP per SUPER UPSCALE.");
       }
       validateUploadSize(imageFile, maxUploadMb, "L'immagine");
+      if (!promptAssistant.publicConfig().enabled) {
+        throw new Error("SUPER UPSCALE richiede LM Studio Vision abilitato per la rifinitura locale.");
+      }
       if (promptAssistant.publicConfig().enabled) {
         try {
-          await releaseComfyMemoryIfIdle();
+          const released = await releaseComfyMemoryIfIdle();
+          if (!released.released) throw new Error("Attendi che ComfyUI sia libero prima di avviare SUPER UPSCALE.");
+          if (promptAssistant.active) throw new Error("LM Studio è occupato. Attendi il risultato corrente.");
+          await promptAssistant.ensureServer();
+          await unloadSuperUpscaleVision(promptAssistant);
           const vision = await promptAssistant.enhance({
             text: "Describe every visible element literally and precisely for a high-fidelity photographic restoration. Preserve exact identity, anatomy, pose, clothing, objects, environment, composition, crop, colors and lighting. Emphasize authentic micro-textures without inventing content.",
             target: "reverse_qwen",
@@ -6820,8 +7107,10 @@ app.post("/api/generations", upload.any(), async (request, response, next) => {
           });
           request.body.superUpscaleVisionPrompt = vision.prompt;
           request.body.superUpscaleVisionModel = vision.model;
+          if (vision.unloadError) throw new Error(`Scaricamento LM Studio fallito: ${vision.unloadError}`);
+          await unloadSuperUpscaleVision(promptAssistant);
         } catch (error) {
-          request.body.superUpscaleVisionError = error.message;
+          throw new Error(`SUPER UPSCALE Vision: ${error.message}`);
         } finally {
           await releaseComfyMemoryIfIdle().catch(() => null);
         }
@@ -7056,7 +7345,9 @@ app.post("/api/generations", upload.any(), async (request, response, next) => {
           ? buildSuperUpscaleWorkflow(
               request.body,
               uploaded,
-              { modelPatch: request.body.superUpscaleModelPatch },
+              { modelPatch: request.body.superUpscaleModelPatch,
+                captionUrl: process.env.SUPER_UPSCALE_CAPTION_URL || `http://${host === "0.0.0.0" ? "127.0.0.1" : host}:${port}/api/super-upscale/caption`,
+                captionToken: superUpscaleCaptionToken },
             )
         : generationType === "ltxUpscale"
           ? buildLtxUpscaleWorkflow(
@@ -7301,6 +7592,22 @@ app.post("/api/prompt-assistant/enhance", upload.fields([
     let characterContext = null;
     let characterPromptPrefix = "";
     const rawEnhancementText = String(body.text || "").trim();
+    const plaguekind = String(body.videoStudioMode || "") === "h3SparseV9";
+    const plaguekindStage = plaguekind ? String(body.plaguekindStage || "review") : "";
+    if (plaguekind && !["review", "final"].includes(plaguekindStage)) {
+      return response.status(400).json({ error: "Fase PlagueKind non valida." });
+    }
+    let plaguekindContext = "";
+    if (plaguekindStage === "final") {
+      let review;
+      try { review = JSON.parse(String(body.plaguekindReview || "")); } catch { /* validated below */ }
+      const choice = String(body.plaguekindChoice || "");
+      if (!review?.screenplay || !Array.isArray(review.options) || review.options.length !== 3
+        || !["original", "0", "1", "2"].includes(choice)) {
+        return response.status(400).json({ error: "Prima leggi la sceneggiatura e scegli la richiesta originale oppure una delle tre alternative." });
+      }
+      plaguekindContext = `\nSCENEGGIATURA ESAMINATA:\n${review.screenplay}\nSCELTA ESPLICITA: ${choice === "original" ? "Versione base arricchita della richiesta originale; conserva dettagli, azioni intermedie e inquadrature della sceneggiatura compatibili con la richiesta. Non applicare alternative." : review.options[Number(choice)]}`;
+    }
     const allInOneSegments = String(body.videoStudioMode || "") === "minimaxH3AllInOne"
       ? rawEnhancementText
         .split(/^\s*---+\s*$/mu)
@@ -7332,7 +7639,7 @@ app.post("/api/prompt-assistant/enhance", upload.fields([
     if (allInOneSegments.length > 24) {
       return response.status(400).json({ error: "AllInOne accetta massimo 24 segmenti per progetto." });
     }
-    let enhancementText = rawEnhancementText;
+    let enhancementText = rawEnhancementText + plaguekindContext;
     if (target === "minimax_h3_director_sequence" && directorNaturalSegments.length > 1) {
       enhancementText = [
         `MANDATORY EVENT MAP — output exactly ${directorNaturalSegments.length} segments in this order.`,
@@ -7380,6 +7687,7 @@ app.post("/api/prompt-assistant/enhance", upload.fields([
       images: overrides.images || sourceImages,
       model: (target.startsWith("sulphur_") || target === "sulphur_prompt") ? sulphurPromptAssistantModel : "",
       includeNegative: String(body.includeNegative || "").toLowerCase() === "true",
+      plaguekindStage,
     });
     let result;
     if (target === "minimax_h3_director_sequence" && directorNaturalSegments.length > 1) {
@@ -7439,7 +7747,7 @@ app.post("/api/prompt-assistant/enhance", upload.fields([
     } else {
       result = await enhancePrompt(enhancementText);
     }
-    if (target === "minimax_h3_director_sequence") {
+    if (target === "minimax_h3_director_sequence" && !plaguekind) {
       const renderedSegments = String(result.prompt || "")
         .split(/^\s*---+\s*$/mu)
         .map((segment) => segment.trim())
@@ -7678,14 +7986,51 @@ setInterval(async () => {
           }
           continue;
         }
-        const videos = extractVideos(entry);
-        const images = extractImages(entry);
-        const audios = extractAudios(entry);
+        let mediaEntry = entry;
+        let continuityImages;
+        if (item.workflowId === PLAGUEKIND2_WORKFLOW || item.continuitySource === "base-png") {
+          // PNG outputs may arrive before the final video. Never advance early.
+          if (entry.status?.completed !== true && entry.status?.status_str !== "error") continue;
+          if (entry.status?.status_str !== "error") {
+            try {
+              const split = splitPlaguekind2History(entry, item.continuityFrames);
+              if (!extractVideos(split.publicEntry).length) throw new Error("PlagueKind2Test non ha prodotto il video finale.");
+              mediaEntry = split.publicEntry;
+              continuityImages = split.continuityImages;
+            } catch (error) {
+              const updated = store.update(item.id, { status: "error", error: error.message,
+                continuityImages: entry.outputs?.["9202"]?.images || [],
+                finishedAt: new Date().toISOString() });
+              broadcast({ type: "generation_updated", generationId: item.id, data: updated });
+              continue;
+            }
+          } else mediaEntry = { ...entry, outputs: {} };
+        }
+        const videos = extractVideos(mediaEntry);
+        const images = extractImages(mediaEntry);
+        const audios = extractAudios(mediaEntry);
         const completed = entry.status?.completed === true;
         const statusText = entry.status?.status_str;
         if (videos.length || images.length || audios.length) {
           const finishedAt = new Date().toISOString();
           const startedAtMs = Date.parse(item.startedAt || "");
+          let finalVideos = videos;
+          if (["videoStudio:h3SparseV9", PLAGUEKIND2_WORKFLOW].includes(item.workflowId) && videos.length) {
+            try {
+              finalVideos = await Promise.all(videos.map((video) =>
+                normalizePlaguekindDuration(outputDirectory, video, item.duration)));
+            } catch (error) {
+              const updated = store.update(item.id, {
+                status: "error", progress: 100, videos,
+                error: `PlagueKind ha generato il video, ma non è riuscito ad allineare la durata: ${error.message}`,
+                finishedAt,
+                durationMs: Number.isFinite(startedAtMs)
+                  ? Math.max(0, Date.parse(finishedAt) - startedAtMs) : null,
+              });
+              broadcast({ type: "generation_updated", generationId: item.id, data: updated });
+              continue;
+            }
+          }
           const isImageGeneration = item.mediaType === "image"
             || ["image", "upscale", "superUpscale"].includes(item.generationType);
           const inspectedImages = isImageGeneration
@@ -7733,7 +8078,8 @@ setInterval(async () => {
           const updated = store.update(item.id, {
             status: "completed",
             progress: 100,
-            videos,
+            videos: finalVideos,
+            ...(continuityImages ? { continuityImages } : {}),
             images,
             audios,
             imageDimensions: inspectedImages.map(({ file, width, height }) => ({
@@ -7774,6 +8120,9 @@ setInterval(async () => {
           continueCharacterMasterPipeline(updated);
           continueCharacterVideoPipeline(updated);
           const characterSheet = maybeRegisterCharacterSheet(updated, primaryImage);
+          if (updated.sequenceMode === "separate-anchored" && updated.projectId) {
+            void advancePlaguekindSeparateSequence(updated.projectId);
+          }
           if (characterSheet) {
             const imported = store.update(updated.id, {
               characterSheetImported: true,
@@ -7795,7 +8144,8 @@ setInterval(async () => {
             // non deve bloccare il polling globale né l'aggiornamento della pagina.
             void finalizeSceneIntegration(updated, mediaFile, localPath);
           }
-          if (!updated.pipelineRootGenerationId) scheduleIdlePurge(updated);
+          if (!updated.pipelineRootGenerationId && !(updated.sequenceMode === "separate-anchored"
+            && updated.sequenceIndex < updated.sequenceCount)) scheduleIdlePurge(updated);
         } else if (completed) {
           const finishedAt = new Date().toISOString();
           const startedAtMs = Date.parse(item.startedAt || "");
@@ -7846,6 +8196,11 @@ const server = app.listen(port, host, () => {
   void refreshAppConfig().then(async () => {
     await resumeCharacterMasterPipelines();
     await resumeCharacterVideoPipelines();
+    for (const project of videoStudioStore.list()) {
+      if (project.plaguekindSeparatePlan && !project.sequenceError) {
+        void advancePlaguekindSeparateSequence(project.id);
+      }
+    }
   }).catch(() => {});
   void refreshInteractiveCastCapabilities().catch(() => {});
   void refreshSceneCapabilities().catch(() => {});
@@ -7856,4 +8211,3 @@ function shutdown() {
 }
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
-

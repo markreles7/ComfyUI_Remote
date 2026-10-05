@@ -1,9 +1,16 @@
-import { enhanceMainPrompt } from "./prompt-assistant.js?v=20260827-h3-character-context";
+import { deferMediaPreview } from "./on-demand-media.js?v=20261005-sidebar-previews";
+import { H3_SFW_PRESETS } from "./h3-sfw-presets.js";
+import { resolveH3LoraFile, H3_LEGACY_PRESET_FILES } from "./h3-lora-files.js";
+import { PLAGUEKIND_LORA_PRESETS, findPlaguekindPresetLora } from "./plaguekind-lora-presets.js?v=20260929-inventory";
+import { enhanceMainPrompt } from "./prompt-assistant.js?v=20260929-screenplay";
+import { reviewPlaguekindScene } from "./plaguekind-screenplay.js?v=20261005-enriched-scene";
 import { consumeGuidedHandoff, guidedTokenFromLocation, setInputFile } from "./guided-handoff.js";
 import { applyH3LoraTriggers, applyLoraTriggers, automaticLoraTriggers, loraOptionLabel, uniquePromptTriggers } from "./lora-triggers.js?v=20260908-h3-timeline-preserve";
 import { setupUploadPreviews } from "./upload-previews.js";
 import { createAdaptivePoller, getAppConfig, warmAppConfig } from "./runtime-cache.js";
 import { attachFormDraft } from "./form-draft.js";
+import { validateGenerationForm } from "./generation-form-validation.js";
+import { setupPromptDictation } from "./prompt-dictation.js?v=20260929-voice";
 
 void warmAppConfig();
 
@@ -32,11 +39,21 @@ const state = {
   configRefreshInFlight: false,
   projectsRenderKey: "",
   readiness: { ready: true, title: "", detail: "" },
+  submittingProject: false,
 };
 
 const $ = (selector) => document.querySelector(selector);
+const plaguekindDictation = setupPromptDictation({
+  input: $("#h3SparsePrompt"), button: $("#h3-sparse-dictation"),
+  status: $("#h3-sparse-dictation-status"), preview: $("#h3-sparse-dictation-preview"),
+});
+document.addEventListener("change", (event) => {
+  if (event.target.matches('[name="videoStudioMode"]')) plaguekindDictation.stop();
+});
 
 const H3_SCENE_PRESETS = Object.freeze({
+  ...PLAGUEKIND_LORA_PRESETS,
+  ...H3_SFW_PRESETS,
   fantasyVerite: {
     hint: "Fantasy vérité: I2V verticale 8 s, handheld, Realism People 0,70. L'anteprima 0,4 MP è già utilizzabile; KJ Lanczos è la finitura conservativa consigliata.",
     mode: "image", duration: "8", aspect: "9:16 (Portrait Widescreen)", look: "amateurHandheld", lora: "realism", strength: 0.7,
@@ -149,6 +166,7 @@ const H3_SCENE_PRESETS = Object.freeze({
 });
 
 const H3_SCENE_MANAGED_LORA_TYPES = Object.freeze([
+  ...Object.keys(H3_SFW_PRESETS),
   "realism", "motion", "betterMotion", "zeroTwo", "whisper", "drone",
   "nsfwAio", "mystic", "blowjob", "deepthroat", "boobPhysics", "bounce",
   "bst", "animeAdult", "flatAnime", "penis", "galaxyAce", "vbvrPro",
@@ -309,8 +327,14 @@ function syncCharacterFields() {
     : "Usa il Character Pack come identita, reference sheet o base futura per anchor frame.";
 }
 
+function selectedWorkflowMode() {
+  return document.querySelector("[name=videoStudioMode]:checked")?.value || "h3SparseV9";
+}
+
 function mode() {
-  return document.querySelector("[name=videoStudioMode]:checked")?.value || "actorReplacement";
+  // Share the controls and prompt tools, but submit and persist a distinct mode.
+  const selected = selectedWorkflowMode();
+  return selected === "plagueKind2Test" ? "h3SparseV9" : selected;
 }
 
 function setConnection(online) {
@@ -465,31 +489,9 @@ function findH3MotionBoosterLora() {
 }
 
 function findH3PresetLora(type) {
-  const matchers = {
-    realism: /STY_Realism_People\.safetensors$/i,
-    motion: /STY_Motion_Booster\.safetensors$/i,
-    betterMotion: /MOT_Better_Motion\.safetensors$/i,
-    zeroTwo: /MOT_Zero_Two_Dance\.safetensors$/i,
-    whisper: /AUD_Whispering\.safetensors$/i,
-    drone: /CAM_Drone_Shot\.safetensors$/i,
-    nsfwAio: /NSFW_AIO\.safetensors$/i,
-    mystic: /(?:NSFW_)?MysticXXX_MMH3-V4\.safetensors$/i,
-    blowjob: /NSFW_Blowjob\.safetensors$/i,
-    deepthroat: /NSFW_deepthroat\.safetensors$/i,
-    boobPhysics: /NSFW_Boob Physics\.safetensors$/i,
-    bounce: /NSFW_bouncetits\.safetensors$/i,
-    bounceFl2va: /NSFW_bounceV07_fl2va-000230_Intense\.safetensors$/i,
-    bounceRef2va: /NSFW_bounceV07-000230_Intense\.safetensors$/i,
-    breastPlay: /NSFW_breastplayjiggle_h3_v2\.safetensors$/i,
-    tiddiesRealism: /NSFW_PlagueKind-tiddies-realismslider\.safetensors$/i,
-    galaxyAce: /STY_GalaxyAce\.safetensors$/i,
-    vbvrPro: /STY_H3_VBVR_Pro_attn_only\.safetensors$/i,
-    bst: /(?:NSFW_)?MiniMax_bst_v1\.safetensors$/i,
-    animeAdult: /NSFW_General_Hentai_Anime_H3\.safetensors$/i,
-    flatAnime: /STY_Flat_Anime_H3\.safetensors$/i,
-    penis: /(?:NSFW_)?PenisV2_minimax-h3_epoch60\.safetensors$/i,
-  };
-  return (state.config?.videoStudio?.h3Loras || []).find((name) => matchers[type]?.test(name)) || "";
+  if (PLAGUEKIND_LORA_PRESETS[type]) return findPlaguekindPresetLora(type, state.config?.videoStudio?.h3Loras || []);
+  return resolveH3LoraFile(state.config?.videoStudio?.h3Loras || [],
+    H3_SFW_PRESETS[type]?.file || H3_LEGACY_PRESET_FILES[type] || []);
 }
 
 function updateActionH3PresetHint() {
@@ -594,7 +596,9 @@ function updateH3ScenePresetHint() {
 }
 
 function applyH3SceneLoras(preset) {
-  const managedLoras = H3_SCENE_MANAGED_LORA_TYPES.map(findH3PresetLora).filter(Boolean);
+  const managedLoras = [...H3_SCENE_MANAGED_LORA_TYPES,
+    ...(mode() === "h3SparseV9" ? Object.keys(PLAGUEKIND_LORA_PRESETS) : []),
+  ].map(findH3PresetLora).filter(Boolean);
   state.loras = state.loras.filter((item) => !managedLoras.includes(item.name));
   const missing = [];
   for (const entry of [{ type: preset.lora, strength: preset.strength }, ...(preset.extraLoras || [])]) {
@@ -652,13 +656,16 @@ function updateH3SparseScenePresetHint() {
     ...(preset.forcedTriggers || []),
     ...automaticLoraTriggers(selected.filter((entry) => entry.name), metadata),
   ]);
-  hint.textContent = `LoRA: ${loras.join(" + ")}. Trigger: ${triggers.join(", ") || "nessuno verificato"}.`;
+  hint.textContent = `${preset.hint} LoRA: ${loras.join(" + ")}. Trigger: ${triggers.join(", ") || "nessuno verificato"}.`;
 }
 
 function applyH3SparseScenePreset() {
   const preset = H3_SCENE_PRESETS[$("#h3SparseScenePreset")?.value];
   if (!preset) return showToast("Seleziona un preset scena PlagueKind.");
   updateH3SparseScenePresetHint();
+  const unavailable = [{ type: preset.lora }, ...(preset.extraLoras || [])]
+    .filter((entry) => !findH3PresetLora(entry.type)).map((entry) => entry.type);
+  if (unavailable.length) return showToast(`Preset non applicato: LoRA mancante o nome ambiguo (${unavailable.join(", ")}). Le LoRA selezionate sono conservate.`);
   const missing = applyH3SceneLoras(preset);
   applyVideoPromptTriggers($("#h3SparsePrompt"), "h3SparseV9");
   showToast(missing.length
@@ -674,6 +681,7 @@ function selectedVideoPromptTriggers(selectedMode) {
   }
   if (selectedMode === "h3SparseV9") {
     triggers.unshift(...(H3_SCENE_PRESETS[$("#h3SparseScenePreset")?.value]?.forcedTriggers || []));
+    if (triggers.includes("cinemagradestyle")) triggers.unshift("cinemagradestyle");
   }
   if (selectedMode === "actionH3") {
     triggers.unshift($("#actionH3Trigger")?.value || "");
@@ -770,11 +778,12 @@ function updateReadiness() {
       : videoConfig.h3?.fast?.reason || "Controlla checkpoint hybrid, Turbo 4-step, upscaler latent e nodi sigma-split.";
   } else if (selectedMode === "h3SparseV9") {
     ready = Boolean(videoConfig.h3?.sparseV9?.available);
-    title = ready ? "PlagueKind H3 Sparse V9 pronto" : "PlagueKind H3 Sparse V9 non disponibile";
+    title = ready ? "PlagueKind H3 pronto" : "PlagueKind H3 non disponibile";
+    if (selectedWorkflowMode() === "plagueKind2Test") title = ready ? "PlagueKind2Test pronto" : "PlagueKind2Test non disponibile";
     detail = ready
       ? ($("#h3SparseMultiSequence")?.checked
-        ? "PlagueKind continuativo: Director concatena 2–8 sequenze mantenendo Hybrid b30-49, SLA Sparse, Parasyte 1,5 ed ER-SDE/Beta-57."
-        : "Workflow V9 completo: hybrid b30-49 INT8, SLA Sparse comfy, Parasyte 1,5, ER-SDE/Beta-57 e finitura modulare. Gli stadi post sono bypassati come nel JSON originale.")
+        ? "PlagueKind: 2–8 job H3 separati, avviati uno dopo l'altro. La clip seguente usa i frame finali della precedente come guida di movimento; SLA Sparse, Parasyte 1,5 ed ER-SDE/Beta-57 restano attivi."
+        : "PlagueKind H3: hybrid b30-49 INT8, SLA Sparse, Parasyte 1,5 ed ER-SDE/Beta-57. Continuità da PNG base prima di upscale e sharpening, con rifinitura indipendente.")
       : videoConfig.h3?.sparseV9?.reason || "Controlla hybrid b30-49, Parasyte/Fast6, TAE, AdaLN e nodi PlagueKind/MMH3.";
   } else if (selectedMode === "seedHunterH3") {
     ready = Boolean(videoConfig.h3?.available && videoConfig.h3?.seedHunter?.available);
@@ -876,7 +885,7 @@ function updateReadiness() {
   readiness.innerHTML = `<span>${ready ? "✓" : "!"}</span><div><b>${escapeHtml(title)}</b><p>${escapeHtml(detail)}</p></div>`;
   state.readiness = { ready, title, detail };
   const submit = $("#video-studio-submit");
-  submit.disabled = false;
+  submit.disabled = state.submittingProject;
   submit.dataset.preflightBlocked = ready ? "false" : "true";
   submit.setAttribute("aria-disabled", String(!ready));
   submit.title = ready ? "" : `${title}: ${detail}`;
@@ -1205,6 +1214,51 @@ function h3SparseModelLabel(modelName, defaultModel) {
   return name.split(/[\\/]/u).pop() || name;
 }
 
+function h3SparsePictureEntries() {
+  return [...document.querySelectorAll(".h3-sparse-picture-input")]
+    .map((input) => ({
+      input,
+      slot: Number(input.closest("[data-picture-slot]")?.dataset.pictureSlot || 0),
+      file: input.files?.[0] || null,
+    }))
+    .filter((entry) => entry.slot >= 1 && entry.slot <= 9);
+}
+
+function insertTextAtCursor(input, text) {
+  if (!input) return;
+  const start = Number.isInteger(input.selectionStart) ? input.selectionStart : input.value.length;
+  const end = Number.isInteger(input.selectionEnd) ? input.selectionEnd : start;
+  const prefix = start > 0 && !/\s$/u.test(input.value.slice(0, start)) ? "\n" : "";
+  input.setRangeText(`${prefix}${text}`, start, end, "end");
+  input.focus();
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function updateH3SparsePictureSlots() {
+  const selected = h3SparsePictureEntries().filter((entry) => entry.file);
+  const summary = $("#h3-sparse-picture-summary");
+  const toolbar = $("#h3-sparse-picture-tags");
+  if (summary) {
+    summary.textContent = selected.length
+      ? selected.map(({ slot, file }) => `<Picture ${slot}> · ${file.name}`).join("  |  ")
+      : "Nessuna Picture selezionata.";
+  }
+  if (!toolbar) return;
+  toolbar.innerHTML = "";
+  toolbar.classList.toggle("hidden", !selected.length || $("#h3SparseMode")?.value !== "references");
+  for (const { slot, file } of selected) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "reference-tag-button";
+    button.title = `Inserisci il riferimento a ${file.name} nel punto corrente del prompt`;
+    button.innerHTML = `+ &lt;Picture ${slot}&gt; <small>${escapeHtml(file.name)}</small>`;
+    button.addEventListener("click", () => {
+      insertTextAtCursor($("#h3SparsePrompt"), `<Picture ${slot}> is the reference sheet of `);
+    });
+    toolbar.append(button);
+  }
+}
+
 function renderH3SparseModels() {
   const select = $("#h3SparseModel");
   const sparse = state.config?.videoStudio?.h3?.sparseV9;
@@ -1222,6 +1276,14 @@ function renderH3SparseModels() {
 
 function updateH3SparseV9Fields() {
   const active = mode() === "h3SparseV9";
+  const testMode = ["h3SparseV9", "plagueKind2Test"].includes(selectedWorkflowMode());
+  const banner = $("#h3-sparse-v9-fields .interactive-cast-banner");
+  if (banner) {
+    banner.querySelector("h3").textContent = "PlagueKind H3";
+    banner.querySelector(".eyebrow").textContent = testMode
+      ? "PLAGUEKIND H3 · CONTINUITÀ DALLA BASE"
+      : "PLAGUEKIND MINIMAX H3 SPARSE ATTENTION · V9 ORIGINALE";
+  }
   let selected = $("#h3SparseMode")?.value || "image";
   const modelProfile = h3SparseModelProfile($("#h3SparseModel")?.value);
   for (const option of $("#h3SparseMode")?.options || []) {
@@ -1243,6 +1305,7 @@ function updateH3SparseV9Fields() {
   const showFirst = active && ["image", "firstLast"].includes(selected);
   const showLast = active && selected === "firstLast";
   const showReferences = active && selected === "references";
+  updateH3SparsePictureSlots();
   for (const [selector, show] of [
     ["#h3-sparse-first-frame-field", showFirst],
     ["#h3-sparse-last-frame-field", showLast],
@@ -1257,14 +1320,28 @@ function updateH3SparseV9Fields() {
   continuityField?.querySelectorAll("select").forEach((input) => { input.disabled = !multiSequence; });
   const latentUpscale = $("#h3SparseLatentUpscale");
   if (latentUpscale) {
-    if (multiSequence) latentUpscale.checked = false;
-    latentUpscale.disabled = !active || multiSequence;
+    latentUpscale.disabled = !active;
   }
-  const latentEnabled = active && !multiSequence && latentUpscale?.checked === true;
-  for (const selector of ["#h3SparseTemporalChunks", "#h3SparseSpatialTiling"]) {
+  const latentEnabled = active && latentUpscale?.checked === true;
+  const latentHint = $("#h3-sparse-latent-hint");
+  if (latentHint && multiSequence) latentHint.textContent = "Ogni sequenza è ora un job H3 separato. Se attivi H3 Latent Upscale, viene applicato a ciascuna clip; Temporal chunks e Spatial tiling restano disponibili. Il contesto video scelto ancora l'inizio del job successivo.";
+  else if (latentHint) latentHint.textContent = "1a e 1b hanno effetto solo con H3 Latent Upscale. Temporal chunks divide la clip in blocchi da 102 frame con 17 frame di sovrapposizione; Spatial tiling suddivide l’immagine in riquadri automatici con budget di 70.000 token. Su 12 GB è prudente lasciarli entrambi attivi.";
+  if (latentHint && testMode) {
+    latentHint.textContent = "PlagueKind H3: la sequenza successiva usa i PNG della generazione base e le reference originali. H3 Latent Upscale e RCAS rifiniscono il video finale senza rientrare nella continuità. I PNG di servizio sono salvati separatamente; resta la ricodifica VAE.";
+  }
+  for (const selector of ["#h3SparseTemporalChunks", "#h3SparseSpatialTiling", "#h3SparseLatentScale", "#h3SparsePostRcas", "#h3SparseRcasStrength"]) {
     const control = $(selector);
     if (control) control.disabled = !latentEnabled;
   }
+  const sparseEnabled = $("#h3SparseEnabled")?.checked === true;
+  const stabilizeMotion = $("#h3SparseStabilizeMotion");
+  const canStabilize = active && sparseEnabled && $("#h3SparseEngine")?.value === "triton";
+  if (stabilizeMotion) {
+    stabilizeMotion.disabled = !canStabilize;
+    if (!canStabilize) stabilizeMotion.checked = false;
+  }
+  const denseLastSteps = $("#h3SparseDenseLastSteps");
+  if (denseLastSteps) denseLastSteps.max = $("#h3SparseSteps")?.value || "8";
   const lowVram = $("#h3SparseLowVram");
   if (lowVram) {
     lowVram.checked = true;
@@ -1283,9 +1360,12 @@ function updateH3SparseV9Fields() {
         ? "Modalità singola First / Last Frame: la concatenazione automatica non è disponibile."
         : "Modalità singola: il prompt genera una sola clip."
       : valid
-        ? `${segments.length} sequenze × ${duration} s = circa ${segments.length * duration} s; handoff automatico di ${$("#h3SparseContinuityFrames")?.value || 22} frame.`
+        ? `${segments.length} video separati × ${duration} s; il job successivo parte dopo il precedente e usa gli ultimi ${$("#h3SparseContinuityFrames")?.value || 22} frame come contesto di movimento.`
         : "Inserisci da 2 a 8 prompt e separali con --- da solo su una riga.";
     sequenceSummary.classList.toggle("prompt-assistant-error", !valid);
+    if (multiSequence && valid && testMode) {
+      sequenceSummary.textContent = `${segments.length} video separati × ${duration} s · PlagueKind H3: ultimi ${$("#h3SparseContinuityFrames")?.value || 22} frame base in PNG, prima di upscale e sharpening. Reference originali riutilizzate secondo la modalità scelta.`;
+    }
   }
   const durationLabel = $("#h3-sparse-duration-label");
   if (durationLabel) durationLabel.textContent = multiSequence ? "Durata per sequenza" : "Durata";
@@ -1525,7 +1605,7 @@ function updateMode() {
       : selected === "h3SeamlessChain"
       ? "Genera H3 Seamless Chain"
       : selected === "h3SparseV9"
-      ? "Genera PlagueKind Sparse V9"
+      ? (selectedWorkflowMode() === "plagueKind2Test" ? "Genera PlagueKind2Test" : "Genera PlagueKind H3")
       : selected === "seedHunterH3"
       ? "Genera 3 candidati Seed Hunter"
       : h3Preview
@@ -1741,7 +1821,7 @@ function setupPreview(inputSelector, targetSelector, className) {
 function generationMedia(generation) {
   if (generation.videos?.length) {
     const index = generation.videos.length - 1;
-    return `<video controls preload="metadata" src="/api/media/${generation.id}/${index}"></video>`;
+    return `${deferMediaPreview(`<video controls preload="metadata" src="/api/media/${generation.id}/${index}"></video>`)}`;
   }
   return `<div class="video-stage-placeholder">${generation.status === "error" ? "Errore" : `${generation.progress || 0}%`}</div>`;
 }
@@ -1786,7 +1866,8 @@ function renderProjects() {
       item.status === "completed" && item.videos?.length
         && (project.videoStudioMode !== "seedHunterH3" || item.h3Stage === "nativeFinal")
     );
-    const active = (project.generations || []).some((item) => ["queued", "running"].includes(item.status));
+    const active = (project.generations || []).some((item) => ["queued", "running"].includes(item.status))
+      || Boolean(project.plaguekindSeparatePlan && project.status === "running");
     const completedPreview = [...(project.generations || [])].reverse().find((item) =>
       item.status === "completed" && item.h3Stage === "preview" && item.videos?.length
     );
@@ -1794,6 +1875,15 @@ function renderProjects() {
       item.status === "completed" && item.videoStudioStage === "generation"
         && item.workflowId === "videoStudio:h3SparseV9" && item.videos?.length
     );
+    const sparseFilmSource = [...(project.generations || [])].reverse().find((item) =>
+      item.status === "completed" && item.videos?.length && [
+        "videoStudio:h3SparseV9:latentQuality",
+        "videoStudio:h3SparseV9:seedVr2Light15",
+        "videoStudio:h3SparseV9:flashVsrTiny15",
+      ].includes(item.workflowId)
+    ) || completedSparseNative;
+    const sparseUpscaleWidth = completedSparseNative ? Math.round((Number(completedSparseNative.width) * 1.5) / 32) * 32 : 0;
+    const sparseUpscaleHeight = completedSparseNative ? Math.round((Number(completedSparseNative.height) * 1.5) / 32) * 32 : 0;
     const h3RecipeReady = ["minimaxH3", "actionH3"].includes(project.videoStudioMode) && project.sceneRecipe && completedPreview;
     const h3ProjectName = project.videoStudioMode === "actionH3" ? "ACTION H3" : "MiniMax H3";
     const finishing = state.config.videoStudio.h3?.previewFinishing;
@@ -1818,7 +1908,10 @@ function renderProjects() {
             </button>
           </div>
         </header>
-        <p>${escapeHtml(project.prompt || "Progetto guidato Video Studio")}</p>
+        <details class="generation-details generation-prompt-details"><summary>Prompt usato</summary><p>${escapeHtml(project.prompt || "Progetto guidato Video Studio")}</p></details>
+        ${project.plaguekindSeparatePlan ? `<p class="hint">Sequenze separate: ${(project.generations || []).length}/${project.plaguekindSeparatePlan.count} avviate · ${project.plaguekindSeparatePlan.contextFrames} frame di contesto fra i video.</p>` : ""}
+        ${project.sequenceError ? `<p class="video-stage-error">${escapeHtml(project.sequenceError)}</p>` : ""}
+        ${project.sequenceError ? `<button class="chip-button" type="button" data-plaguekind-continue="${escapeHtml(project.id)}">Riprova sequenza successiva</button>` : ""}
         ${project.sceneRecipe ? `<div class="h3-scene-recipe"><b>Ricetta scena salvata</b><span>Seed ${escapeHtml(project.sceneRecipe.seed)} · ${escapeHtml(project.sceneRecipe.h3Mode)} · ${escapeHtml(project.sceneRecipe.aspectRatio)}</span></div>` : ""}
         <div class="video-project-stages">
           ${(project.generations || []).map((generation) => `
@@ -1853,37 +1946,37 @@ function renderProjects() {
           ` : ""}
           ${completedSparseNative && project.videoStudioMode === "h3SparseV9" && !active ? `
             <button class="chip-button h3-promote-action" type="button"
-              data-h3-promote="${escapeHtml(project.id)}" data-finishing="latent"
+              data-h3-promote="${escapeHtml(project.id)}" data-finishing="quality"
               data-generation="${escapeHtml(completedSparseNative.id)}"
               ${completedSparseNative.multiSequence
-                ? 'disabled title="Il latent refine richiede una singola clip"'
+                ? 'disabled title="H3 Latent Upscale richiede una singola clip"'
                 : state.config.videoStudio.h3?.sparseV9?.available === false
                   ? `disabled title="${escapeHtml(state.config.videoStudio.h3.sparseV9.reason || "H3 Latent Upscale non disponibile")}"`
                   : ""}>
-              H3 Latent Upscale + Refine · stesso seed
+              Migliora qualità · H3 Latent 1,5× → ${sparseUpscaleWidth}×${sparseUpscaleHeight} · RCAS 0,18
             </button>
             <button class="chip-button h3-promote-action" type="button"
-              data-h3-promote="${escapeHtml(project.id)}" data-finishing="rtx"
-              data-generation="${escapeHtml(completedSparseNative.id)}" ${finishingDisabled("rtx")}>
-              Solo RTX Super Resolution ×2
+              data-h3-promote="${escapeHtml(project.id)}" data-finishing="seedvr2Light"
+              data-generation="${escapeHtml(completedSparseNative.id)}"
+              ${state.config.seedvr2VideoUpscale?.profiles?.find((item) => item.id === "light15")?.available === false
+                ? 'disabled title="SeedVR2 3B FP8 o nodi richiesti non disponibili"'
+                : ""}>
+              SeedVR2 Light 3B · 1,5× → ${Math.round(Number(completedSparseNative.width) * 1.5 / 2) * 2}×${Math.round(Number(completedSparseNative.height) * 1.5 / 2) * 2}
             </button>
             <button class="chip-button h3-promote-action" type="button"
-              data-h3-promote="${escapeHtml(project.id)}" data-finishing="rcas"
-              data-rcas-strength="0.3" data-generation="${escapeHtml(completedSparseNative.id)}"
-              ${finishingDisabled("rcas")}>
-              Solo RCAS · 0,30
+              data-h3-promote="${escapeHtml(project.id)}" data-finishing="flashVsrTiny"
+              data-generation="${escapeHtml(completedSparseNative.id)}"
+              ${state.config.flashVsrVideoUpscale?.available === false
+                ? `disabled title="Nodi mancanti: ${escapeHtml((state.config.flashVsrVideoUpscale.missingNodes || []).join(", "))}"`
+                : ""}>
+              FlashVSR Tiny · 1,5× → ${Math.round(Number(completedSparseNative.width) * 1.5 / 2) * 2}×${Math.round(Number(completedSparseNative.height) * 1.5 / 2) * 2}
             </button>
-            <button class="chip-button h3-promote-action" type="button"
+            ${sparseFilmSource ? `<button class="chip-button h3-promote-action" type="button"
               data-h3-promote="${escapeHtml(project.id)}" data-finishing="film"
-              data-generation="${escapeHtml(completedSparseNative.id)}" ${finishingDisabled("film")}>
-              Solo FILM ×2
-            </button>
-            <button class="chip-button h3-promote-action" type="button"
-              data-h3-promote="${escapeHtml(project.id)}" data-finishing="all"
-              data-rcas-strength="0.3" data-generation="${escapeHtml(completedSparseNative.id)}"
-              ${finishingDisabled("all")}>
-              Migliora finale · FILM ×2 → RTX VSR → RCAS
-            </button>
+              data-generation="${escapeHtml(sparseFilmSource.id)}" ${finishingDisabled("film")}
+              title="${sparseFilmSource !== completedSparseNative ? "Usa l’ultimo video migliorato completato" : "Usa il video PlagueKind originale"}">
+              FILM ×2 · 24 → 48 fps
+            </button>` : ""}
           ` : ""}
           ${h3RecipeReady && !active ? `
             <button class="chip-button h3-promote-action" type="button" data-h3-promote="${escapeHtml(project.id)}" data-finishing="kjLanczos" data-generation="${escapeHtml(completedPreview.id)}">
@@ -2102,7 +2195,7 @@ async function startSequentialStory() {
 
 function sequentialSceneMedia(scene) {
   if (scene.generationId && scene.outputVideo) {
-    return `<video controls preload="metadata" src="/api/media/${escapeHtml(scene.generationId)}/0"></video>`;
+    return `${deferMediaPreview(`<video controls preload="metadata" src="/api/media/${escapeHtml(scene.generationId)}/0"></video>`)}`;
   }
   return `<div class="video-stage-placeholder">${escapeHtml(sceneStatusLabel(scene.status))}</div>`;
 }
@@ -2114,7 +2207,7 @@ function renderSequentialStories() {
     const completed = scenes.filter((scene) => scene.status === "completed").length;
     const progress = Math.round(Number(project.progress || (completed / Math.max(1, scenes.length)) * 100));
     const finalMedia = project.finalGenerationId && project.finalVideo
-      ? `<video controls preload="metadata" src="/api/media/${escapeHtml(project.finalGenerationId)}/0"></video>`
+      ? `${deferMediaPreview(`<video controls preload="metadata" src="/api/media/${escapeHtml(project.finalGenerationId)}/0"></video>`)}`
       : "";
     return `
       <article class="video-project-card sequential-project-card" data-sequential-project="${escapeHtml(project.id)}">
@@ -2141,7 +2234,7 @@ function renderSequentialStories() {
             <section class="${scene.stale ? "is-stale" : ""}">
               <div class="studio-result-label"><span>${escapeHtml(scene.index)} · ${escapeHtml(scene.title)}</span><b>${escapeHtml(sceneStatusLabel(scene.status))}</b></div>
               ${sequentialSceneMedia(scene)}
-              <p>${escapeHtml(scene.prompt || "")}</p>
+              <details class="generation-details generation-prompt-details"><summary>Prompt scena</summary><p>${escapeHtml(scene.prompt || "")}</p></details>
               <small>Seed ${escapeHtml(scene.seed ?? "random")} · anchor ${escapeHtml(scene.anchorStatus || "no anchor generator configured")}</small>
               ${scene.continuityFrame ? `<small>Continuity frame: ${escapeHtml(scene.continuityFrame.filename || "estratto")}</small>` : ""}
               ${scene.identityReport ? `<small>Identity: ${escapeHtml(scene.identityReport.status)} · avg ${escapeHtml(scene.identityReport.averageSimilarity ?? "n/d")}</small>` : ""}
@@ -2379,7 +2472,7 @@ function renderInteractiveCastProjects() {
         <div class="interactive-cast-frames">
           ${(project.actors.added || []).filter((actor) => actor.reference?.relativePath).map((actor) => `
             <figure>
-              <img src="${assetUrl(project, actor.reference.relativePath)}" alt="${escapeHtml(actor.name || "New Actor")} reference">
+              ${deferMediaPreview(`<img src="${assetUrl(project, actor.reference.relativePath)}" alt="${escapeHtml(actor.name || "New Actor")} reference">`)}
               <figcaption>${escapeHtml(actor.name || "New Actor")} · reference temporanea</figcaption>
             </figure>
           `).join("")}
@@ -2389,14 +2482,14 @@ function renderInteractiveCastProjects() {
         <div class="interactive-cast-frames">
           ${(project.artifacts.frames || []).filter((frame) => frame.relativePath).map((frame) => `
             <figure>
-              <img src="${assetUrl(project, frame.relativePath)}" alt="${escapeHtml(frame.role)} frame">
+              ${deferMediaPreview(`<img src="${assetUrl(project, frame.relativePath)}" alt="${escapeHtml(frame.role)} frame">`)}
               <figcaption>${escapeHtml(frame.role)} · ${Number(frame.time || 0).toFixed(2)}s</figcaption>
             </figure>
           `).join("")}
         </div>
       ` : ""}
       ${project.artifacts?.audio?.relativePath ? `
-        <audio class="interactive-cast-audio" controls preload="metadata" src="${assetUrl(project, project.artifacts.audio.relativePath)}"></audio>
+        ${deferMediaPreview(`<audio class="interactive-cast-audio" controls preload="metadata" src="${assetUrl(project, project.artifacts.audio.relativePath)}"></audio>`)}
       ` : ""}
       ${(project.audioAnalysis?.stems || []).some((stem) => stem.relativePath) ? `
         <div class="interactive-cast-audio-tasks">
@@ -2404,7 +2497,7 @@ function renderInteractiveCastProjects() {
           ${(project.audioAnalysis.stems || []).filter((stem) => stem.relativePath).map((stem) => `
             <div class="interactive-cast-audio-task ready">
               <small><b>${escapeHtml(stem.role)}</b> ${escapeHtml(stem.method || "ffmpeg")}</small>
-              <audio controls preload="metadata" src="${assetUrl(project, stem.relativePath)}"></audio>
+              ${deferMediaPreview(`<audio controls preload="metadata" src="${assetUrl(project, stem.relativePath)}"></audio>`)}
               <em>${escapeHtml(stem.note || "Stem fallback")}</em>
             </div>
           `).join("")}
@@ -2462,7 +2555,7 @@ function renderInteractiveCastProjects() {
                 <small><b>${segment.status === "ready" ? "AI ready" : "Missing AI"}</b> ${Number(segment.start || 0).toFixed(2)}-${Number(segment.end || 0).toFixed(2)} · ${escapeHtml(segment.mode)} · ${escapeHtml(segment.reason)}</small>
                 ${anchor ? `
                   <figure class="interactive-cast-task-anchor">
-                    <img src="${assetUrl(project, anchor.relativePath)}" alt="Anchor ${escapeHtml(segment.id)}">
+                    ${deferMediaPreview(`<img src="${assetUrl(project, anchor.relativePath)}" alt="Anchor ${escapeHtml(segment.id)}">`)}
                     <figcaption>Anchor ${Number(anchor.time || 0).toFixed(2)}s</figcaption>
                   </figure>
                 ` : ""}
@@ -2495,7 +2588,7 @@ function renderInteractiveCastProjects() {
                 ${task && segment.mode === "generative" && segment.status !== "ready" ? `
                   ${anchorCandidate ? `
                     <figure class="interactive-cast-anchor-candidate">
-                      <img src="${assetUrl(project, anchorCandidate.relativePath)}" alt="Anteprima anchor composta ${escapeHtml(segment.id)}">
+                      ${deferMediaPreview(`<img src="${assetUrl(project, anchorCandidate.relativePath)}" alt="Anteprima anchor composta ${escapeHtml(segment.id)}">`)}
                       <figcaption>
                         <b>Anchor composta · tentativo ${Number(anchorCandidate.attempt || task.generation?.anchorAttempt || 1)}</b>
                         <span>Controlla presenza, identità, scala, prospettiva e luce prima di avviare LTX.</span>
@@ -2570,7 +2663,7 @@ function renderInteractiveCastProjects() {
                   ${task.generation?.error ? `<em class="video-stage-error">${escapeHtml(task.generation.error)}</em>` : ""}
                 ` : ""}
                 ${segment.status === "ready" && segment.replacementRelativePath
-                  ? `<video controls preload="metadata" src="${assetUrl(project, segment.replacementRelativePath)}"></video>
+                  ? `${deferMediaPreview(`<video controls preload="metadata" src="${assetUrl(project, segment.replacementRelativePath)}"></video>`)}
                      <button class="chip-button compact" type="button" data-interactive-cast-identity="${escapeHtml(project.id)}:${escapeHtml(segment.id)}">Identity check</button>`
                   : segment.mode === "composite"
                     ? `<div class="interactive-cast-composite-inputs">
@@ -2599,10 +2692,10 @@ function renderInteractiveCastProjects() {
                 <div class="interactive-cast-audio-task ${task.status === "ready" ? "ready" : ""}">
                   <small><b>${task.status === "ready" ? "Lip-sync ready" : "Missing lip-sync"}</b> ${Number(task.start || 0).toFixed(2)}-${Number(task.end || 0).toFixed(2)} · ${escapeHtml(task.speaker)}</small>
                   ${task.sourceClipRelativePath ? `
-                    <label>Source clip preservata<video controls preload="metadata" src="${assetUrl(project, task.sourceClipRelativePath)}"></video></label>
+                    <label>Source clip preservata${deferMediaPreview(`<video controls preload="metadata" src="${assetUrl(project, task.sourceClipRelativePath)}"></video>`)}</label>
                   ` : ""}
                   ${task.dialogueAudioRelativePath ? `
-                    <label>Audio guida<audio controls preload="metadata" src="${assetUrl(project, task.dialogueAudioRelativePath)}"></audio></label>
+                    <label>Audio guida${deferMediaPreview(`<audio controls preload="metadata" src="${assetUrl(project, task.dialogueAudioRelativePath)}"></audio>`)}</label>
                   ` : ""}
                   ${task.status === "ready"
                     ? ""
@@ -2621,10 +2714,10 @@ function renderInteractiveCastProjects() {
                   <small><b>${task.status === "ready" ? "Voice ready" : "Missing voice"}</b> ${Number(task.start || 0).toFixed(2)}-${Number(task.end || 0).toFixed(2)} · ${escapeHtml(task.speaker)}</small>
                   <p>${escapeHtml(task.dialogue)}</p>
                   ${task.referenceAudio?.relativePath ? `
-                    <label>Reference voce<audio controls preload="metadata" src="${assetUrl(project, task.referenceAudio.relativePath)}"></audio></label>
+                    <label>Reference voce${deferMediaPreview(`<audio controls preload="metadata" src="${assetUrl(project, task.referenceAudio.relativePath)}"></audio>`)}</label>
                   ` : ""}
                   ${task.replacementRelativePath
-                    ? `<label>Battuta pronta<audio controls preload="metadata" src="${assetUrl(project, task.replacementRelativePath)}"></audio></label>`
+                    ? `<label>Battuta pronta${deferMediaPreview(`<audio controls preload="metadata" src="${assetUrl(project, task.replacementRelativePath)}"></audio>`)}</label>`
                     : `<label class="compact-file"><input type="file" accept="audio/*" data-cast-dialogue-audio-file="${escapeHtml(project.id)}:${escapeHtml(task.eventId)}"><span>Carica battuta audio</span></label>
                        <button class="chip-button compact" type="button" data-interactive-cast-dialogue-audio="${escapeHtml(project.id)}:${escapeHtml(task.eventId)}">Aggancia audio</button>
                        <button class="chip-button compact" type="button" data-interactive-cast-dialogue-synthesize="${escapeHtml(project.id)}:${escapeHtml(task.eventId)}">Sintetizza voce</button>`}
@@ -2643,13 +2736,13 @@ function renderInteractiveCastProjects() {
         <button class="chip-button" type="button" data-interactive-cast-audio-remix="${escapeHtml(project.id)}">Crea audio remix</button>
       ` : ""}
       ${project.outputs?.dialogueRemix?.relativePath ? `
-        <audio class="interactive-cast-audio" controls preload="metadata" src="${assetUrl(project, project.outputs.dialogueRemix.relativePath)}"></audio>
+        ${deferMediaPreview(`<audio class="interactive-cast-audio" controls preload="metadata" src="${assetUrl(project, project.outputs.dialogueRemix.relativePath)}"></audio>`)}
       ` : ""}
       ${project.renderPackage?.readiness?.ready && !project.outputs?.finalVideo ? `
         <button class="chip-button" type="button" data-interactive-cast-concat="${escapeHtml(project.id)}">Ricomponi MP4 finale</button>
       ` : ""}
       ${project.outputs?.finalVideo?.relativePath ? `
-        <video class="interactive-cast-final" controls preload="metadata" src="${assetUrl(project, project.outputs.finalVideo.relativePath)}"></video>
+        ${deferMediaPreview(`<video class="interactive-cast-final" controls preload="metadata" src="${assetUrl(project, project.outputs.finalVideo.relativePath)}"></video>`)}
       ` : ""}
       ${(project.warnings || []).map((warning) => `<p class="hint">${escapeHtml(warning)}</p>`).join("")}
     </article>
@@ -3194,6 +3287,26 @@ async function refreshProjects() {
 
 async function submitProject(event) {
   event.preventDefault();
+  if (state.submittingProject) return;
+  const status = $("#video-studio-status");
+  try {
+    if (!validateGenerationForm(event.currentTarget, status)) {
+      showToast(status.textContent);
+      return;
+    }
+    state.submittingProject = true;
+    await prepareAndSubmitProject(event);
+  } catch (error) {
+    // Preparation and preflight can fail before the upload's own try/catch.
+    status.textContent = error.message || "Impossibile preparare la generazione.";
+    showToast(status.textContent);
+  } finally {
+    state.submittingProject = false;
+    $("#video-studio-submit").disabled = false;
+  }
+}
+
+async function prepareAndSubmitProject(event) {
   const readiness = updateReadiness();
   if (!readiness.ready) {
     const message = `${readiness.title}. ${readiness.detail}`;
@@ -3268,7 +3381,7 @@ async function submitProject(event) {
     weaponCombatH3: "#weaponCombatDuration",
     ltx25Aio: "#ltx25Duration",
   };
-  form.set("videoStudioMode", selectedMode);
+  form.set("videoStudioMode", selectedWorkflowMode());
   form.set("prompt", promptByMode[selectedMode] ? $(promptByMode[selectedMode]).value : "Temporal interpolation");
   if (durationByMode[selectedMode]) form.set("duration", $(durationByMode[selectedMode]).value);
   const seedByMode = {
@@ -3298,7 +3411,7 @@ async function submitProject(event) {
     form.set("h3FastUseTurbo", String($("#h3FastUseTurbo")?.checked));
   }
   if (selectedMode === "h3SparseV9") {
-    for (const name of ["h3SparseMultiSequence", "h3SparseCache", "h3SparseLowVram", "h3SparseLatentUpscale", "h3SparseTemporalChunks", "h3SparseSpatialTiling"]) {
+    for (const name of ["h3SparseEnabled", "h3SparseStabilizeMotion", "h3SparsePostRcas", "h3SparseMultiSequence", "h3SparseCache", "h3SparseLowVram", "h3SparseLatentUpscale", "h3SparseTemporalChunks", "h3SparseSpatialTiling"]) {
       form.set(name, String($(`#${name}`)?.checked));
     }
     form.set("h3SparseSegmentCount", String(sparseSegmentCountBeforeSubmit));
@@ -3383,18 +3496,18 @@ async function promoteH3Preview(button) {
   button.disabled = true;
   const finishingMode = button.dataset.finishing || "all";
   const labels = {
-    latent: "H3 Latent Upscale + Refine · stesso seed",
-    rtx: "Solo RTX Super Resolution ×2",
-    rcas: "Solo RCAS · 0,30",
-    film: "Solo FILM ×2",
-    all: button.dataset.rcasStrength ? "Migliora finale · FILM ×2 → RTX VSR → RCAS" : "RTX · FILM ×2 → VSR → RCAS",
+    quality: "Migliora qualità · H3 Latent 1,5× → RCAS 0,18",
+    seedvr2Light: "SeedVR2 Light 3B · 1,5×",
+    flashVsrTiny: "FlashVSR Tiny · 1,5×",
+    film: "FILM ×2 · 24 → 48 fps",
+    all: "RTX · FILM ×2 → VSR → RCAS",
     kjLanczos: "KJ Lanczos · conserva il look",
   };
   const messages = {
-    latent: "H3 Latent Upscale + Refine aggiunto alla coda con lo stesso seed.",
-    rtx: "RTX Super Resolution ×2 aggiunto alla coda.",
-    rcas: "RCAS aggiunto alla coda.",
-    film: "FILM ×2 aggiunto alla coda.",
+    quality: "H3 Latent Upscale 1,5× e RCAS 0,18 aggiunti alla coda. RTX VSR è bypassato per conservare naturalezza.",
+    seedvr2Light: "SeedVR2 Light 3B 1,5× aggiunto alla coda sul video PlagueKind originale.",
+    flashVsrTiny: "FlashVSR Tiny 1,5× aggiunto alla coda sul video PlagueKind originale.",
+    film: "FILM ×2 aggiunto alla coda sul miglior risultato disponibile.",
     all: "Finishing FILM → RTX ×2 → RCAS aggiunto alla coda.",
     kjLanczos: "Finitura KJ Lanczos conservativa aggiunta alla coda.",
   };
@@ -3568,9 +3681,12 @@ async function start() {
   renderDialogue();
   renderLoras();
   updateMode();
+  const initialWorkflow = selectedWorkflowMode();
   attachFormDraft($("#video-studio-form"), {
     key: "ltx-remote:video-studio-draft:v1",
     onRestore: () => {
+      // Preserve the opening workflow while restoring the draft's other fields.
+      document.querySelector(`[name=videoStudioMode][value="${initialWorkflow}"]`).checked = true;
       try {
         state.dialogue = JSON.parse($("#dialogue-json").value || "[]");
         state.loras = JSON.parse($("#video-loras-json").value || "[]");
@@ -3605,7 +3721,7 @@ async function start() {
       refreshInteractiveCastProjects(),
     ]);
   }, {
-    active: () => state.projects.some((project) => (project.generations || []).some((item) => ["queued", "running"].includes(item.status)))
+    active: () => state.projects.some((project) => project.status === "running" || (project.generations || []).some((item) => ["queued", "running"].includes(item.status)))
       || state.sequentialStories.some((project) => ["queued", "running", "generating"].includes(project.status))
       || state.interactiveCastProjects.some((project) => ["queued", "running"].includes(project.status)),
   });
@@ -3757,13 +3873,13 @@ function ltxPromptConfigForMode(selectedMode) {
     h3SparseV9: {
       input: $("#h3SparsePrompt"),
       status: $("#h3-sparse-prompt-assistant-status"),
-      workflowName: "Video Studio · PlagueKind H3 Sparse V9",
-      sourceFile: () => $("#h3SparseFirstFrame")?.files[0] || $("#h3SparseReferenceImages")?.files[0] || null,
+      workflowName: "Video Studio · PlagueKind H3",
+      sourceFile: () => $("#h3SparseFirstFrame")?.files[0] || h3SparsePictureEntries().find((entry) => entry.file)?.file || null,
       sourceFiles: () => {
         const selected = $("#h3SparseMode")?.value || "image";
         if (selected === "image") return [$("#h3SparseFirstFrame")?.files[0]].filter(Boolean);
         if (selected === "firstLast") return [$("#h3SparseFirstFrame")?.files[0], $("#h3SparseLastFrame")?.files[0]].filter(Boolean);
-        if (selected === "references") return [...($("#h3SparseReferenceImages")?.files || [])].slice(0, 9);
+        if (selected === "references") return h3SparsePictureEntries().filter((entry) => entry.file).map((entry) => entry.file);
         return [];
       },
       mode: () => {
@@ -3776,10 +3892,11 @@ function ltxPromptConfigForMode(selectedMode) {
         const selected = $("#h3SparseMode")?.value || "image";
         const modeName = { text: "T2VA", image: "I2VA", firstLast: "FL2VA", references: "Ref2VA" }[selected];
         const multiSequence = $("#h3SparseMultiSequence")?.checked === true;
+        const pictureLabels = h3SparsePictureEntries().filter((entry) => entry.file).map((entry) => `<Picture ${entry.slot}> = ${entry.file.name}`);
         const refs = selected === "references"
-          ? ` Supplied references: ${Math.min(9, $("#h3SparseReferenceImages")?.files?.length || 0)} pictures, ${Math.min(3, $("#h3SparseReferenceVideos")?.files?.length || 0)} videos and ${Math.min(3, $("#h3SparseReferenceAudios")?.files?.length || 0)} audios.`
+          ? ` Supplied references: ${pictureLabels.length} pictures (${pictureLabels.join("; ") || "none"}), ${Math.min(3, $("#h3SparseReferenceVideos")?.files?.length || 0)} videos and ${Math.min(3, $("#h3SparseReferenceAudios")?.files?.length || 0)} audios. Preserve these exact Picture slot numbers.`
           : "";
-        return `PlagueKind H3 Sparse V9 input mode: ${modeName}. ${multiSequence ? "Create 2-8 causal continuous sequences separated by a standalone --- line; each next sequence inherits the exact final identity, pose, positions, camera, lighting, props and audio state of the previous one. " : ""}Target duration ${multiSequence ? "per sequence" : ""}: ${$("#h3SparseDuration")?.value || 8} seconds.${refs} ${h3LoraPromptContract(triggers)} Preserve chronological shot timing, camera motion and native sound. User request: ${$("#h3SparsePrompt").value}`;
+        return `PlagueKind H3 input mode: ${modeName}. ${multiSequence ? "Create 2-8 causal continuous sequences separated by a standalone --- line; each next sequence inherits the exact final identity, pose, positions, camera, lighting, props and audio state of the previous one. " : ""}Target duration ${multiSequence ? "per sequence" : ""}: ${$("#h3SparseDuration")?.value || 8} seconds.${refs} ${h3LoraPromptContract(triggers)} Preserve chronological shot timing, camera motion and native sound. User request: ${$("#h3SparsePrompt").value}`;
       },
       toast: "Prompt Sparse V9 creato; controlla la timeline e avvia quando vuoi.",
     },
@@ -3901,6 +4018,10 @@ function ltxPromptLabel(target) {
 }
 
 async function runVideoStudioLtxPrompt(button) {
+  if (plaguekindDictation.active) {
+    $("#h3-sparse-dictation-status").textContent = "Ferma la dettatura prima di premere H3 Prompt.";
+    return;
+  }
   const tools = button.closest("[data-ltx-prompt-tools]");
   const selectedMode = tools?.dataset.ltxPromptTools || mode();
   const config = ltxPromptConfigForMode(selectedMode);
@@ -3915,7 +4036,7 @@ async function runVideoStudioLtxPrompt(button) {
   syncLoras();
   const selectedPromptTriggers = selectedVideoPromptTriggers(selectedMode);
   try {
-    const enhanced = await enhanceMainPrompt({
+    const enhancementArgs = {
       input: config.input,
       button,
       status: config.status,
@@ -3939,7 +4060,47 @@ async function runVideoStudioLtxPrompt(button) {
         lockOutfit: $("#videoCharacterLockOutfit")?.value || "false",
         videoStudioMode: selectedMode,
       },
-    });
+    };
+    if (selectedMode === "h3SparseV9") {
+      if (!config.input.value.trim()) {
+        config.status.textContent = "Scrivi prima la scena che vuoi valutare.";
+        return;
+      }
+      const scenePreset = PLAGUEKIND_LORA_PRESETS[$("#h3SparseScenePreset")?.value];
+      const presetApplied = scenePreset && [{ type: scenePreset.lora }, ...(scenePreset.extraLoras || [])]
+        .every((entry) => state.loras.some((lora) => lora.name === findH3PresetLora(entry.type) && Number(lora.strength) !== 0));
+      enhancementArgs.text = `${config.text(selectedPromptTriggers)}\nAspect ratio: ${$("#h3SparseAspectRatio")?.value || "unspecified"}${presetApplied ? `\nSelected LoRA visual direction (subordinate to the user request): ${scenePreset.promptDirection}` : ""}`;
+      await reviewPlaguekindScene(enhancementArgs, {
+        panel: $("#h3-sparse-screenplay"),
+        signature: () => JSON.stringify({
+          scenePreset: $("#h3SparseScenePreset")?.value,
+          loras: state.loras.map(({ name, strength }) => [name, strength]),
+          text: config.text(selectedVideoPromptTriggers(selectedMode)),
+          mode: config.mode(), duration: config.duration(),
+          ratio: $("#h3SparseAspectRatio")?.value,
+          character: [$("#videoCharacterId")?.value, $("#videoCharacterIdentityStrength")?.value,
+            $("#videoCharacterLockFace")?.value, $("#videoCharacterLockHair")?.value,
+            $("#videoCharacterLockBody")?.value, $("#videoCharacterLockOutfit")?.value],
+          files: (config.sourceFiles?.() || []).map((file) => [file.name, file.size, file.lastModified]),
+        }),
+        onFinal: (final) => {
+          if (final.sequencePlan?.count > 1) {
+            $("#h3SparseDuration").value = String(final.sequencePlan.duration);
+            if ($("#h3SparseMode").value !== "firstLast") $("#h3SparseMultiSequence").checked = true;
+            updateH3SparseV9Fields();
+            $("#h3SparseDuration").dispatchEvent(new Event("change", { bubbles: true }));
+            if ($("#h3SparseMode").value === "firstLast") {
+              config.status.textContent = "Prompt delle sequenze pronti. Per generarli in continuità scegli Single Image, Text to Video oppure References: First/Last non supporta la catena.";
+            }
+          }
+          $("#videoCharacterPromptEnhanced").value = final.character?.id || "";
+          applyVideoPromptTriggers(config.input, selectedMode, selectedPromptTriggers);
+          showToast("Prompt finale PlagueKind pronto secondo la tua scelta.");
+        },
+      });
+      return;
+    }
+    const enhanced = await enhanceMainPrompt(enhancementArgs);
     $("#videoCharacterPromptEnhanced").value = enhanced?.character?.id || "";
     applyVideoPromptTriggers(config.input, selectedMode, selectedPromptTriggers);
     const triggerNotice = selectedPromptTriggers.length
@@ -4078,6 +4239,12 @@ $("#h3SparseModel")?.addEventListener("change", () => {
   updateH3SparseV9Fields();
   updateReadiness();
 });
+for (const input of document.querySelectorAll(".h3-sparse-picture-input")) {
+  input.addEventListener("change", () => {
+    updateH3SparsePictureSlots();
+    updateReadiness();
+  });
+}
 for (const selector of ["#h3SparseMultiSequence", "#h3SparseContinuityFrames", "#h3SparseDuration"]) {
   $(selector)?.addEventListener("change", () => {
     updateH3SparseV9Fields();
@@ -4127,7 +4294,13 @@ $("#h3UseTurbo")?.addEventListener("change", updateH3Fields);
 $("#h3RunProfile").addEventListener("change", updateMode);
 $("#h3ScenePreset").addEventListener("change", updateH3ScenePresetHint);
 $("#h3ApplyScenePreset").addEventListener("click", applyH3ScenePreset);
+for (const [id, preset] of Object.entries(H3_SFW_PRESETS)) {
+  $("#h3ScenePreset").add(new Option(`${preset.label} · test`, id));
+}
 $("#h3SparseScenePreset").innerHTML = $("#h3ScenePreset").innerHTML;
+for (const [id, preset] of Object.entries(PLAGUEKIND_LORA_PRESETS)) {
+  $("#h3SparseScenePreset").add(new Option(preset.label, id));
+}
 $("#h3SparseScenePreset").addEventListener("change", updateH3SparseScenePresetHint);
 $("#h3SparseApplyScenePreset").addEventListener("click", applyH3SparseScenePreset);
 $("#actionH3RunProfile").addEventListener("change", updateMode);
@@ -4213,6 +4386,18 @@ $("#video-loras").addEventListener("click", (event) => {
   renderLoras();
 });
 $("#video-studio-projects").addEventListener("click", (event) => {
+  const continueSequence = event.target.closest("[data-plaguekind-continue]");
+  if (continueSequence) {
+    continueSequence.disabled = true;
+    void api(`/api/video-studio/projects/${continueSequence.dataset.plaguekindContinue}/continue-sequence`, { method: "POST" })
+      .then((project) => {
+        state.projects = state.projects.map((item) => item.id === project.id ? project : item);
+        renderProjects();
+        showToast("Preparazione della sequenza successiva avviata.");
+      })
+      .catch((error) => { continueSequence.disabled = false; showToast(error.message); });
+    return;
+  }
   const promote = event.target.closest("[data-h3-promote]");
   if (promote) {
     promoteH3Preview(promote);
@@ -4450,6 +4635,7 @@ $("#sequential-story-projects").addEventListener("click", async (event) => {
     showToast(error.message);
   }
 });
+$("#video-studio-form").noValidate = true;
 $("#video-studio-form").addEventListener("submit", submitProject);
 $("#video-studio-form").addEventListener("click", (event) => {
   const button = event.target.closest("[data-ltx-prompt]");
@@ -4475,3 +4661,41 @@ start().catch((error) => {
   $("#video-studio-status").textContent = error.message;
   setConnection(false);
 });
+
+for (const selector of ["#h3SparseEnabled", "#h3SparseEngine", "#h3SparseSteps"]) {
+  $(selector)?.addEventListener("change", updateH3SparseV9Fields);
+}
+
+$("#h3-sparse-reset-original")?.addEventListener("click", () => {
+  const originals = {
+    h3SparseEnabled: true,
+    h3SparseSparsity: "0.7",
+    h3SparseSteps: "8",
+    h3SparseDenseLastSteps: "0",
+    h3SparseDenseSteps: "1",
+    h3SparseEngine: "comfy_kitchen",
+    h3SparseStabilizeMotion: false,
+    h3SparseCache: false,
+  };
+  for (const [id, value] of Object.entries(originals)) {
+    const field = document.getElementById(id);
+    if (!field) continue;
+    if (field.type === "checkbox") field.checked = value;
+    else field.value = value;
+  }
+  updateH3SparseV9Fields();
+  updateReadiness();
+  $("#h3SparseSparsity")?.dispatchEvent(new Event("change", { bubbles: true }));
+  showToast("Valori originali Sparse Attention e sampling PlagueKind V9 ripristinati.");
+});
+
+if (new URLSearchParams(location.search).get("embedded") === "1") {
+  document.body.classList.add("embedded-video-studio");
+  document.querySelectorAll('[name="videoStudioMode"]').forEach((input) => {
+    if (input.value !== "h3SparseV9") input.closest("label").hidden = true;
+  });
+  const observer = new ResizeObserver(() => {
+    parent.postMessage({ type: "video-studio-height", height: Math.ceil(document.querySelector("main").getBoundingClientRect().height) }, location.origin);
+  });
+  observer.observe(document.querySelector("main"));
+}

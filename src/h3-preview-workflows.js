@@ -45,7 +45,7 @@ export function buildH3PreviewFinishingWorkflow(sourceVideo, raw = {}) {
   const sourceMode = String(raw.videoStudioMode || "minimaxH3");
   const actionProfile = sourceMode === "actionH3";
   const sparseProfile = sourceMode === "h3SparseV9";
-  const profileName = sparseProfile ? "PlagueKind H3 Sparse V9" : actionProfile ? "ACTION H3" : "MiniMax H3";
+  const profileName = sparseProfile ? "PlagueKind H3" : actionProfile ? "ACTION H3" : "MiniMax H3";
   const profileFolder = sparseProfile ? "PlagueKindH3SparseV9" : actionProfile ? "ActionH3" : "MiniMaxH3";
   const portrait = /^(9:16|3:4|2:3)/.test(String(raw.aspectRatio || ""));
   const square = String(raw.aspectRatio || "").startsWith("1:1");

@@ -5,10 +5,11 @@ import { fileURLToPath } from "node:url";
 import { buildWorkflow } from "./workflows.js";
 import { buildMiniMaxH3FastWorkflow, buildMiniMaxH3SeamlessChainWorkflow, buildMiniMaxH3Workflow } from "./minimax-h3-workflows.js";
 import { buildMiniMaxH3DirectorWorkflow } from "./minimax-h3-director-workflows.js";
-import { buildMiniMaxH3SparseV9Workflow } from "./minimax-h3-sparse-workflows.js";
+import { buildPlaguekind2TestWorkflow, buildPlaguekindH3Workflow } from "./plaguekind2-test-workflows.js";
 import { buildLtx25Workflow } from "./ltx25-workflows.js";
 import { H3_PREVIEW_FINISHING_REQUIREMENTS } from "./h3-preview-workflows.js";
 import { loraTriggerMetadata } from "./lora-trigger-catalog.js";
+import { h3LoraIdentity } from "../public/h3-lora-files.js";
 import { normalizeDynamicInputs } from "./workflow-normalization.js";
 import { H3_ACTION_PRESETS } from "./h3-action-presets.js";
 
@@ -82,8 +83,8 @@ const REQUIRED_NODES = {
   ],
   minimaxH3SeamlessChain: ["H3MultishotSampler", "CLIPLoader", "VAELoader", "UNETLoader", "LoraLoaderModelOnly", "MiniMaxH3MemoryEfficientSageAttentionPatch", "ResolutionSelector", "VHS_VideoCombine", "DisTorchPurgeVRAMV2"],
   minimaxH3SparseV9: [
-    "CLIPLoader", "VAELoader", "UNETLoader", "MiniMaxH3ImageToVideo", "MiniMaxH3ReferenceToVideo",
-    "MiniMaxH3Director", "PreviewAny",
+    "CLIPLoader", "VAELoader", "UNETLoader", "MiniMaxH3ImageToVideo", "MiniMaxH3ReferenceToVideo", "MiniMaxH3AddGuide", "LoadVideo", "GetVideoComponents", "ImageFromBatch", "ImageBatch", "LoadImage", "SaveImage",
+    "MiniMaxH3Director", "MiniMaxH3DirectorRefine", "PreviewAny",
     "H3SLAAttention", "H3MiniMaxCache", "MiniMaxLowVRAMAttention", "MiniMaxChunkFeedForward",
     "LTX_lora_loader", "H3AdaLNLoRAFix", "MiniMaxH3SigmaShift", "ModelPreviewOverrideKJ",
     "SamplerER_SDE", "BasicScheduler", "SamplerCustomAdvanced", "VAEDecode", "VAEDecodeAudio",
@@ -236,8 +237,13 @@ export const VIDEO_STUDIO_MODES = {
   },
   h3SparseV9: {
     id: "h3SparseV9",
-    name: "PlagueKind H3 Sparse V9",
-    description: "Workflow V9 originale: hybrid b30-49 INT8, SLA Sparse Attention, Parasyte, TAE e finitura modulare.",
+    name: "PlagueKind H3",
+    description: "Hybrid b30-49 INT8, SLA Sparse Attention, Parasyte e continuità da PNG base con rifinitura indipendente.",
+  },
+  plagueKind2Test: {
+    id: "plagueKind2Test",
+    name: "PlagueKind2Test",
+    description: "Sperimentale: continuità da PNG base, video finale con rifinitura indipendente.",
   },
   seedHunterH3: {
     id: "seedHunterH3",
@@ -412,10 +418,10 @@ export function videoStudioConfig({
     disabledH3Loras,
     h3LoraMetadata: loraTriggerMetadata(h3Loras),
     h3LoraCompatibility: Object.fromEntries(h3Loras.map((name) => [name, {
-      allowedModelProfiles: normalizedBaseName(name) === "sty_galaxyace.safetensors"
+      allowedModelProfiles: h3LoraIdentity(name) === "galaxyace.safetensors"
         ? ["base", "erosMax"]
         : ["base", "erosMax", "pinkCherry"],
-      reason: normalizedBaseName(name) === "sty_galaxyace.safetensors"
+      reason: h3LoraIdentity(name) === "galaxyace.safetensors"
         ? "GalaxyAce è compatibile con H3 pruned ed Eros Max; non con PinkCherry INT8 unpruned."
         : null,
     }])),
@@ -474,7 +480,7 @@ export function videoStudioConfig({
         reason: capabilities.minimaxH3SparseV9.available
           ? null
           : capabilities.minimaxH3SparseV9.modelReady
-            ? `Nodi PlagueKind H3 Sparse V9 mancanti: ${capabilities.minimaxH3SparseV9.missingNodes.join(", ")}`
+            ? `Nodi PlagueKind H3 mancanti: ${capabilities.minimaxH3SparseV9.missingNodes.join(", ")}`
             : "Mancano hybrid b30-49, Parasyte/Fast6, Qwen3-VL, VAE o upscaler latente H3.",
         files: {
           hybrid: files.h3SparseHybrid,
@@ -1367,7 +1373,8 @@ export function buildVideoStudioInitialJob(mode, raw, uploads, loras, config) {
   if (mode === "minimaxH3") return buildMiniMaxH3Workflow(raw, uploads, loras, config);
   if (mode === "minimaxH3Fast") return buildMiniMaxH3FastWorkflow(raw, uploads, loras, config);
   if (mode === "minimaxH3AllInOne") return buildMiniMaxH3DirectorWorkflow(raw, uploads, loras, config);
-  if (mode === "h3SparseV9") return buildMiniMaxH3SparseV9Workflow(raw, uploads, loras, config);
+  if (mode === "h3SparseV9") return buildPlaguekindH3Workflow(raw, uploads, loras, config);
+  if (mode === "plagueKind2Test") return buildPlaguekind2TestWorkflow(raw, uploads, loras, config);
   if (mode === "h3SeamlessChain") return buildMiniMaxH3SeamlessChainWorkflow(raw, uploads, loras, config);
   if (mode === "seedHunterH3") {
     return buildMiniMaxH3Workflow({

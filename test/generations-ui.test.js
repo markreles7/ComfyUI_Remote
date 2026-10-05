@@ -21,11 +21,13 @@ test("Generazioni usa paginazione backend e Carica altri", () => {
   assert.match(script, /loadHistory\(\{ append: true \}\)/);
 });
 
-test("Generazioni carica video solo al click", () => {
-  assert.match(script, /data-lazy-video/);
-  assert.match(script, /data-load-video/);
-  assert.match(script, /document\.createElement\("video"\)/);
-  assert.doesNotMatch(script, /<video controls preload="metadata" playsinline src="\/api\/media/);
+test("Generazioni carica i media solo quando viene richiesta un'anteprima", () => {
+  assert.match(script, /<video controls preload="none" playsinline data-preview-src="\/api\/media/);
+  assert.match(script, /<audio controls preload="none" data-preview-src="\/api\/audio/);
+  assert.match(script, /<img loading="lazy" decoding="async" data-preview-src="\/api\/image/);
+  assert.doesNotMatch(script, /<(?:video|audio|img)\b[^>]*\ssrc=/);
+  assert.match(script, /data-load-preview/);
+  assert.match(script, /media\.src = media\.dataset\.previewSrc/);
 });
 
 test("Generazioni chiama stima ed esecuzione cleanup", () => {
@@ -36,7 +38,7 @@ test("Generazioni chiama stima ed esecuzione cleanup", () => {
 });
 
 test("Krea Triple mostra soltanto il master 08_finale mantenendo il suo indice API", () => {
-  assert.match(html, /generations\.js\?v=20260823-krea-final-only/);
+  assert.match(html, /generations\.js\?v=20261005-h3-downloads/);
   assert.match(script, /function displayImageEntries/);
   assert.match(script, /studio:kreaTriple/);
   assert.match(script, /08\[_-\]finale/);

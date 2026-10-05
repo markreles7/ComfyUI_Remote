@@ -1,3 +1,4 @@
+import { deferMediaPreview } from "./on-demand-media.js?v=20261005-sidebar-previews";
 import { enhanceMainPrompt } from "./prompt-assistant.js";
 import { createAdaptivePoller } from "./runtime-cache.js";
 
@@ -41,8 +42,8 @@ function render() {
   container.innerHTML = state.generations.map((item) => `
     <article class="audio-result-card">
       <div class="audio-result-heading"><div><span class="status-pill status-${escapeHtml(item.status)}">${escapeHtml(statusLabel(item.status))}${item.status === "running" ? ` · ${item.progress || 0}%` : ""}</span><h3>${escapeHtml(item.workflowName)}</h3><small>${escapeHtml(formatDate(item.createdAt))} · ${escapeHtml(item.duration || "—")} s · seed ${escapeHtml(item.seed ?? "—")}</small></div>${["queued", "running"].includes(item.status) ? `<button class="ghost-button compact" data-cancel="${item.id}" type="button">Annulla</button>` : ""}</div>
-      <p>${escapeHtml(item.prompt || "")}</p>
-      ${(item.audios || []).map((audio, index) => `<audio controls preload="metadata" src="/api/audio/${item.id}/${index}"></audio><a class="download" href="/api/audio/${item.id}/${index}?download=1" download>Download ${escapeHtml(audio.filename)} ↓</a>`).join("")}
+      <details class="generation-details generation-prompt-details"><summary>Prompt usato</summary><p>${escapeHtml(item.prompt || "")}</p></details>
+      ${(item.audios || []).map((audio, index) => `${deferMediaPreview(`<audio controls preload="metadata" src="/api/audio/${item.id}/${index}"></audio>`)}<a class="download" href="/api/audio/${item.id}/${index}?download=1" download>Download ${escapeHtml(audio.filename)} ↓</a>`).join("")}
       ${item.error ? `<p class="form-error">${escapeHtml(item.error)}</p>` : ""}
     </article>`).join("");
 }

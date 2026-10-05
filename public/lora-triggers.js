@@ -53,9 +53,12 @@ export function promptWithH3IntegratedTriggers(prompt, triggers, previousTrigger
       .map((segment) => promptWithH3IntegratedTriggers(segment, triggers, previousTriggers))
       .join("\n\n---\n\n");
   }
-  const selected = uniquePromptTriggers(triggers);
-  const removable = uniquePromptTriggers([...previousTriggers, ...selected]);
   let body = String(prompt || "").trim();
+  const sceneTrigger = body.match(/^(prfight2(?:, prfin1)?|BUNNY)(?:\r?\n|$)/u)?.[1] || "";
+  if (sceneTrigger) body = body.slice(sceneTrigger.length).trim();
+  const selected = uniquePromptTriggers(triggers)
+    .filter((trigger) => !sceneTrigger || !/^(?:prfight2|prfin1|BUNNY)$/iu.test(trigger));
+  const removable = uniquePromptTriggers([...previousTriggers, ...selected]);
   for (const trigger of removable) body = removeTrigger(body, trigger);
   body = body.replace(/^[\s,.;:!—–-]+/, "").trim();
 
@@ -91,7 +94,8 @@ export function promptWithH3IntegratedTriggers(prompt, triggers, previousTrigger
     parsed.retention_analysis ||= "Supplied reference roles are preserved according to the user request.";
   }
   const formatted = order.map((field) => `${field}: ${parsed[field] || "N/A"}`).join("\n\n");
-  return alignment ? `${alignment}\n\n${formatted}` : formatted;
+  const result = alignment ? `${alignment}\n\n${formatted}` : formatted;
+  return sceneTrigger ? `${sceneTrigger}\n\n${result}` : result;
 }
 
 export function applyLoraTriggers(input, triggers) {

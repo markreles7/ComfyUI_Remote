@@ -55,9 +55,9 @@ test("Video Studio espone MiniMax H3 con quattro modalità, reference multimodal
 
 test("il comando Crea progetto resta cliccabile e recupera le capability H3 online", () => {
   assert.match(html, /id="video-studio-submit"[^>]*type="submit"/);
-  assert.match(html, /video-studio\.js\?v=20260918-plague-scene-loras/);
-  assert.match(html, /styles\.css\?v=20260917-video-mode-groups/);
-  assert.match(script, /submit\.disabled = false/);
+  assert.match(html, /video-studio\.js\?v=20261005-sidebar-previews/);
+  assert.match(html, /styles\.css\?v=20261005-sidebar-previews/);
+  assert.match(script, /submit\.disabled = state\.submittingProject/);
   assert.match(script, /state\.config = await getAppConfig\(\{ force: true \}\)/);
   assert.match(script, /shouldRefreshCapabilities/);
   assert.match(script, /document\.querySelectorAll\("#dialogue-list \.dialogue-row"\)/);
@@ -133,18 +133,24 @@ test("Minimax H3 Fast espone il workflow I2V sigma-split dedicato", () => {
   assert.match(script, /minimaxH3Fast: "#minimax-h3-fast-fields"/);
 });
 
-test("PlagueKind Sparse V9 espone sequenze continuative con handoff automatico", () => {
+test("PlagueKind Sparse V9 espone job separati con handoff video di 22 frame", () => {
   assert.match(html, /id="h3SparseModel"/);
   assert.match(script, /function renderH3SparseModels/);
   assert.match(html, /id="h3SparseMultiSequence"/);
   assert.match(html, /id="h3SparseContinuityFrames"[\s\S]*22 frame · bilanciato/);
   assert.match(html, /id="h3-sparse-sequence-summary"/);
+  assert.match(html, /Ogni sequenza produce un video distinto/);
+  assert.match(script, /frame come contesto di movimento/);
   assert.match(html, /id="h3SparseLowVram"[^>]*checked disabled/);
   assert.match(html, /Qwen viene scaricato dopo il conditioning/);
   assert.match(script, /lowVram\.checked = true;[\s\S]*lowVram\.disabled = true;/);
   assert.match(script, /PlagueKind continuativo richiede da 2 a 8 prompt/);
   assert.match(script, /form\.set\("h3SparseSegmentCount"/);
   assert.match(script, /selectedMode === "h3SparseV9"[\s\S]*target = "minimax_h3_director_sequence"/);
+  assert.match(html, /id="h3-sparse-picture-slots"[\s\S]*Picture 1[\s\S]*Picture 9/);
+  assert.match(html, /name="h3ReferenceImage1"[\s\S]*name="h3ReferenceImage9"/);
+  assert.match(script, /<Picture \$\{slot\}> is the reference sheet of/);
+  assert.match(script, /Preserve these exact Picture slot numbers/);
 });
 
 test("Seed Hunter H3 è un workflow autonomo con tre candidati selezionabili", () => {
@@ -183,13 +189,21 @@ test("Video Studio condivide i preset Combat e Weapon tra ACTION H3 e AllInOne",
   assert.match(script, /data-h3-promote/);
   assert.match(script, /data-h3-native/);
   assert.match(server, /promote-preview/);
-  assert.match(script, /H3 Latent Upscale \+ Refine · stesso seed/);
-  assert.match(script, /Solo RTX Super Resolution ×2/);
-  assert.match(script, /Solo RCAS · 0,30/);
-  assert.match(script, /Solo FILM ×2/);
-  assert.match(script, /Migliora finale · FILM ×2 → RTX VSR → RCAS/);
+  assert.match(script, /Migliora qualità · H3 Latent 1,5×/);
+  assert.match(script, /RCAS 0,18/);
+  assert.match(script, /SeedVR2 Light 3B · 1,5×/);
+  assert.match(script, /FlashVSR Tiny · 1,5×/);
+  assert.match(script, /FILM ×2 · 24 → 48 fps/);
+  assert.doesNotMatch(script, /Solo RTX Super Resolution ×2/);
+  assert.doesNotMatch(script, /Solo RCAS · 0,30/);
+  assert.doesNotMatch(script, /Solo FILM ×2/);
+  assert.doesNotMatch(script, /Migliora finale · FILM ×2 → RTX VSR → RCAS/);
   assert.match(server, /project\.videoStudioMode === "h3SparseV9"/);
   assert.match(server, /h3SparseLatentUpscale: true/);
+  assert.match(server, /h3SparsePostRcas: true/);
+  assert.match(server, /h3SparseRcasStrength: 0\.18/);
+  assert.match(server, /seedvr2VideoPreset: "light15"/);
+  assert.match(server, /flashVsrResizeFactor: 0\.75/);
   assert.match(server, /regenerate-native/);
   assert.match(server, /"minimax_h3_action"/);
 });
@@ -387,7 +401,7 @@ test("Interactive Scene e Scene Transform espongono il preflight senza pulsanti 
   assert.match(script, /capabilityBlockDetail/);
   assert.match(script, /nodi ComfyUI mancanti/);
   assert.match(script, /state\.readiness = \{ ready, title, detail \}/);
-  assert.match(script, /submit\.disabled = false/);
+  assert.match(script, /submit\.disabled = state\.submittingProject/);
   assert.match(script, /if \(!readiness\.ready\)/);
   assert.match(script, /showToast\(message\)/);
 });

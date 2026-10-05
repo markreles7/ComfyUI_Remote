@@ -4,19 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0c10">
-  <title>Video Studio · LTX Remote Studio</title>
+  <title>Video Studio · H3 Minimax</title>
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=20260917-video-mode-groups">
-  <script type="module" src="/video-studio.js?v=20260918-plague-scene-loras"></script>
+  <link rel="stylesheet" href="/styles.css?v=20261005-sidebar-previews">
+  <script type="module" src="/video-studio.js?v=20261005-sidebar-previews"></script>
   <script type="module" src="/generation-console.js?v=20260908-live-progress"></script>
   <script type="module" src="/scene-integration.js?v=20260822-submit-fix"></script>
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"></span><span>LTX <b>REMOTE</b></span></a>
+    <a class="brand" href="/" aria-label="H3 Minimax"><span class="brand-h3"><span class="brand-h">H</span><span class="brand-three">3</span></span><span class="brand-name">Minimax</span></a>
     <div class="topbar-actions">
       <nav class="primary-nav" aria-label="Navigazione principale">
         <a href="/guided-create.html">Crea guidata</a>
@@ -62,10 +62,45 @@
 
         <fieldset class="video-studio-mode-grid">
           <legend>Workflow</legend>
+          <section class="video-studio-mode-group" aria-labelledby="video-mode-minimax-h3">
+            <h3 id="video-mode-minimax-h3">MiniMax H3</h3>
+          <label>
+            <input type="radio" name="videoStudioMode" value="h3SparseV9" checked>
+            <span><b>PlagueKind H3</b><small>Hybrid b30-49 · PNG base per continuità · finitura indipendente</small></span>
+          </label>
+          <label>
+            <input type="radio" name="videoStudioMode" value="minimaxH3">
+            <span><b>MiniMax H3 Studio</b><small>T2V, I2V, first/last e reference immagini, video o audio</small></span>
+          </label>
+          <label>
+            <input type="radio" name="videoStudioMode" value="minimaxH3AllInOne">
+            <span><b>AllInOne</b><small>Director Station · timeline multi-scena e continuità automatica</small></span>
+          </label>
+          <label>
+            <input type="radio" name="videoStudioMode" value="h3SeamlessChain">
+            <span><b>H3 Seamless Chain</b><small>Una start image · 2–8 take concatenati automaticamente</small></span>
+          </label>
+          <label>
+            <input type="radio" name="videoStudioMode" value="minimaxH3Fast">
+            <span><b>Minimax H3 Fast</b><small>I2V 2-stage · Dual Clock + sigma split + latent upscale 3D</small></span>
+          </label>
+          <label>
+            <input type="radio" name="videoStudioMode" value="seedHunterH3">
+            <span><b>Seed Hunter H3</b><small>3 job separati a 0,25 MP · scegli un solo seed da finalizzare</small></span>
+          </label>
+          <label>
+            <input type="radio" name="videoStudioMode" value="actionH3">
+            <span><b>ACTION H3</b><small>Hybrid b25-49 · preset Combat V2 o Weapon BUNNY</small></span>
+          </label>
+          <label>
+            <input type="radio" name="videoStudioMode" value="weaponCombatH3">
+            <span><b>Weapon Combat</b><small>Armi ad alta velocità · LoRA BUNNY + refine latente</small></span>
+          </label>
+          </section>
           <section class="video-studio-mode-group" aria-labelledby="video-mode-ltx23">
             <h3 id="video-mode-ltx23">LTX 2.3</h3>
           <label>
-            <input type="radio" name="videoStudioMode" value="actorReplacement" checked>
+            <input type="radio" name="videoStudioMode" value="actorReplacement">
             <span><b>Actor Replacement</b><small>Viso o corpo, recitazione e audio originali</small></span>
           </label>
           <label>
@@ -99,41 +134,6 @@
           <label>
             <input type="radio" name="videoStudioMode" value="sequentialStory">
             <span><b>Storia continua</b><small>Scene brevi, continuity frame, purge e concat finale</small></span>
-          </label>
-          </section>
-          <section class="video-studio-mode-group" aria-labelledby="video-mode-minimax-h3">
-            <h3 id="video-mode-minimax-h3">MiniMax H3</h3>
-          <label>
-            <input type="radio" name="videoStudioMode" value="h3SparseV9">
-            <span><b>PlagueKind H3 Sparse V9</b><small>Hybrid b30-49 · SLA Sparse INT8 · Parasyte · finitura modulare</small></span>
-          </label>
-          <label>
-            <input type="radio" name="videoStudioMode" value="minimaxH3">
-            <span><b>MiniMax H3 Studio</b><small>T2V, I2V, first/last e reference immagini, video o audio</small></span>
-          </label>
-          <label>
-            <input type="radio" name="videoStudioMode" value="minimaxH3AllInOne">
-            <span><b>AllInOne</b><small>Director Station · timeline multi-scena e continuità automatica</small></span>
-          </label>
-          <label>
-            <input type="radio" name="videoStudioMode" value="h3SeamlessChain">
-            <span><b>H3 Seamless Chain</b><small>Una start image · 2–8 take concatenati automaticamente</small></span>
-          </label>
-          <label>
-            <input type="radio" name="videoStudioMode" value="minimaxH3Fast">
-            <span><b>Minimax H3 Fast</b><small>I2V 2-stage · Dual Clock + sigma split + latent upscale 3D</small></span>
-          </label>
-          <label>
-            <input type="radio" name="videoStudioMode" value="seedHunterH3">
-            <span><b>Seed Hunter H3</b><small>3 job separati a 0,25 MP · scegli un solo seed da finalizzare</small></span>
-          </label>
-          <label>
-            <input type="radio" name="videoStudioMode" value="actionH3">
-            <span><b>ACTION H3</b><small>Hybrid b25-49 · preset Combat V2 o Weapon BUNNY</small></span>
-          </label>
-          <label>
-            <input type="radio" name="videoStudioMode" value="weaponCombatH3">
-            <span><b>Weapon Combat</b><small>Armi ad alta velocità · LoRA BUNNY + refine latente</small></span>
           </label>
           </section>
           <section class="video-studio-mode-group" aria-labelledby="video-mode-ltx25">
@@ -670,28 +670,42 @@
         <section id="h3-sparse-v9-fields" class="hidden">
           <div class="interactive-cast-banner">
             <p class="eyebrow">PLAGUEKIND MINIMAX H3 SPARSE ATTENTION · V9 ORIGINALE</p>
-            <h3>PlagueKind H3 Sparse V9</h3>
+            <h3>PlagueKind H3</h3>
             <p>Hybrid FL2VA/Ref2VA b30-49 INT8, SLA Sparse “comfy”, AdaLN fix in modalità Windows-safe, Parasyte 1,5, TAE H3 e catena finale attivabile per singolo stadio.</p>
           </div>
           <div class="field-grid">
             <div class="field"><label for="h3SparseModel">Modello MiniMax H3</label><select id="h3SparseModel" name="h3SparseModel"><option value="minimax_h3_hybrid_fl2va_ref2va_b30-49-int8.safetensors" selected>Hybrid b30-49 · predefinito</option></select><p id="h3-sparse-model-hint" class="hint">Hybrid b30-49: qualità più FL2VA, reference consistency moderata.</p></div>
             <div class="field"><label for="h3SparseMode">Sorgente</label><select id="h3SparseMode" name="h3SparseMode"><option value="text">Text to Video</option><option value="image" selected>Single Image to Video</option><option value="firstLast">First / Last Frame</option><option value="references">Reference Images / Video / Audio</option></select></div>
             <div class="field"><label id="h3-sparse-duration-label" for="h3SparseDuration">Durata</label><select id="h3SparseDuration" name="duration"><option value="4">4 s</option><option value="5">5 s</option><option value="6">6 s</option><option value="8" selected>8 s · originale</option><option value="10">10 s</option><option value="12">12 s</option><option value="15">15 s</option></select></div>
-            <div class="field"><label for="h3SparseAspectRatio">Formato</label><select id="h3SparseAspectRatio" name="h3SparseAspectRatio"><option value="16:9 (Widescreen)">16:9 orizzontale</option><option value="9:16 (Portrait Widescreen)">9:16 verticale</option><option value="1:1 (Square)">1:1 quadrato</option><option value="4:3 (Standard)" selected>4:3 · originale</option><option value="3:4 (Portrait Standard)">3:4 verticale</option><option value="3:2 (Photo)">3:2</option><option value="2:3 (Portrait Photo)">2:3 verticale</option></select></div>
-            <div class="field"><label for="h3SparseMegapixels">Risoluzione</label><select id="h3SparseMegapixels" name="h3SparseMegapixels"><option value="0.4">0,4 MP</option><option value="0.6">0,6 MP</option><option value="0.8">0,8 MP</option><option value="0.98" selected>0,98 MP · originale</option></select></div>
+            <div class="field"><label for="h3SparseAspectRatio">Formato</label><select id="h3SparseAspectRatio" name="h3SparseAspectRatio"><option value="16:9 (Widescreen)">16:9 orizzontale</option><option value="9:16 (Portrait Widescreen)">9:16 verticale</option><option value="1:1 (Square)">1:1 quadrato</option><option value="4:3 (Standard)" selected>4:3 · originale</option><option value="3:4 (Portrait Standard)">3:4 verticale</option><option value="3:2 (Photo)">3:2</option><option value="2:3 (Portrait Photo)">2:3 verticale</option><option value="1.85:1 (Cinema Flat)">Cinema Flat · 1,85:1</option><option value="2.39:1 (Cinema Scope)">Cinema Scope · 2,39:1</option><option value="21:9 (Ultrawide)">Cinema Ultrawide · 21:9</option></select></div>
+            <div class="field">
+              <label for="h3SparseMegapixels">Risoluzione (MP)</label>
+              <input id="h3SparseMegapixels" name="h3SparseMegapixels" type="number" min="0.2" max="2" step="any" value="0.98" list="h3-sparse-resolution-presets" required aria-describedby="h3-sparse-resolution-hint">
+              <datalist id="h3-sparse-resolution-presets"><option value="0.4">0,4 MP</option><option value="0.6">0,6 MP</option><option value="0.8">0,8 MP</option><option value="0.98">0,98 MP · originale</option></datalist>
+              <p id="h3-sparse-resolution-hint" class="hint">Inserisci un valore da 0,2 a 2 MP oppure scegli un suggerimento. Il formato determina larghezza e altezza, arrotondate per difetto a multipli di 32 pixel, prima dell’eventuale upscale.</p>
+            </div>
           </div>
           <section class="studio-subpanel">
-            <p class="subpanel-title">Sequenze continuative</p>
+            <p class="subpanel-title">Sequenze separate con continuità</p>
             <div class="field-grid">
               <label class="inline-check"><input id="h3SparseMultiSequence" name="h3SparseMultiSequence" type="checkbox"> Attiva più sequenze · separatore <b>---</b></label>
               <div id="h3-sparse-continuity-frames-field" class="field hidden"><label for="h3SparseContinuityFrames">Contesto fra sequenze</label><select id="h3SparseContinuityFrames" name="h3SparseContinuityFrames"><option value="5">5 frame · taglio netto</option><option value="22" selected>22 frame · bilanciato</option><option value="39">39 frame · continuità forte</option><option value="56">56 frame · massima continuità</option></select></div>
             </div>
             <p id="h3-sparse-sequence-summary" class="hint">Modalità singola: il prompt genera una sola clip.</p>
-            <p class="hint">Con Single Image, la foto avvia soltanto la prima sequenza; ogni sequenza successiva parte automaticamente dallo stato finale della precedente. Le reference multimodali vengono condivise lungo tutta la catena.</p>
+            <p class="hint">Ogni sequenza produce un video distinto. Il job successivo parte dopo il completamento del precedente e riceve gli ultimi frame come guida di movimento; la foto iniziale non riavvia la seconda clip. Le reference originali restano disponibili in modalità Reference.</p>
           </section>
           <div class="field">
             <div class="label-row"><label for="h3SparsePrompt">Prompt H3 temporizzato</label><div class="prompt-assistant-tools" data-ltx-prompt-tools="h3SparseV9"><select id="h3SparsePromptPreset" class="prompt-preset-select"><option value="h3_general">H3 Reference Generation</option></select><button class="prompt-assistant-button" type="button" data-ltx-prompt="minimax_h3">✦ H3 Prompt</button></div></div>
             <textarea id="h3SparsePrompt" rows="10" placeholder="Prima sequenza completa...&#10;---&#10;Seconda sequenza, continuazione temporale...&#10;---&#10;Terza sequenza..."></textarea>
+            <div class="prompt-dictation-tools">
+              <button id="h3-sparse-dictation" type="button" aria-pressed="false" aria-controls="h3SparsePrompt" aria-describedby="h3-sparse-dictation-status">🎙 Detta la richiesta</button>
+              <p id="h3-sparse-dictation-status" class="hint" role="status">Controllo disponibilità microfono…</p>
+            </div>
+            <p id="h3-sparse-dictation-preview" class="hint" aria-live="polite" hidden></p>
+            <p class="hint">La dettatura aggiunge testo alla richiesta, senza inviarla. Il browser può elaborare l’audio tramite il proprio servizio vocale; l’app non salva registrazioni.</p>
+            <p class="hint">Prompt Enhancement: prima valuta la richiesta e scrive la sceneggiatura, poi propone tre alternative. Il prompt finale viene generato solo dopo la tua scelta.</p>
+            <section id="h3-sparse-screenplay" class="studio-subpanel" aria-label="Valutazione e scelta della sceneggiatura" aria-live="polite" hidden></section>
+            <div id="h3-sparse-picture-tags" class="reference-tag-toolbar hidden" aria-label="Inserisci Picture nel prompt"></div>
             <p id="h3-sparse-prompt-assistant-status" class="prompt-assistant-status">Il workflow usa 8 secondi, 8 step, ER-SDE, beta_57, shift video/audio 12/3 e SLA 0,70; Low VRAM è sempre attivo nel profilo da 12 GB.</p>
           </div>
           <div id="h3-sparse-first-frame-field" class="field">
@@ -701,31 +715,59 @@
             <label>Fotogramma finale</label><label class="dropzone video-studio-drop"><input id="h3SparseLastFrame" name="h3LastFrame" type="file" accept="image/png,image/jpeg,image/webp"><span class="upload-icon">F</span><strong>Carica l’ultimo frame</strong></label>
           </div>
           <section id="h3-sparse-reference-fields" class="studio-subpanel hidden">
-            <p class="subpanel-title">Reference multimodali</p>
-            <p class="hint">Massimo 9 immagini, 3 video e 3 audio; richiamali come &lt;Picture 1&gt;, &lt;Video 1&gt;, &lt;Audio 1&gt;.</p>
-            <div class="field"><label>Immagini reference</label><input id="h3SparseReferenceImages" name="h3ReferenceImages" type="file" multiple accept="image/png,image/jpeg,image/webp"></div>
+            <p class="subpanel-title">Picture · slot Director originali</p>
+            <p class="hint">Scegli direttamente il numero della Picture: gli slot restano fissi anche se ne lasci qualcuno vuoto. L’ordine visivo corrisponde ai tag &lt;Picture 1&gt;…&lt;Picture 9&gt; usati nel prompt.</p>
+            <div id="h3-sparse-picture-slots" class="h3-picture-slot-grid">
+              <label class="compact-file h3-picture-slot" data-picture-slot="1"><b>Picture 1</b><span>Seleziona immagine</span><input id="h3SparsePicture1" class="h3-sparse-picture-input" name="h3ReferenceImage1" type="file" accept="image/png,image/jpeg,image/webp"></label>
+              <label class="compact-file h3-picture-slot" data-picture-slot="2"><b>Picture 2</b><span>Seleziona immagine</span><input id="h3SparsePicture2" class="h3-sparse-picture-input" name="h3ReferenceImage2" type="file" accept="image/png,image/jpeg,image/webp"></label>
+              <label class="compact-file h3-picture-slot" data-picture-slot="3"><b>Picture 3</b><span>Seleziona immagine</span><input id="h3SparsePicture3" class="h3-sparse-picture-input" name="h3ReferenceImage3" type="file" accept="image/png,image/jpeg,image/webp"></label>
+              <label class="compact-file h3-picture-slot" data-picture-slot="4"><b>Picture 4</b><span>Seleziona immagine</span><input id="h3SparsePicture4" class="h3-sparse-picture-input" name="h3ReferenceImage4" type="file" accept="image/png,image/jpeg,image/webp"></label>
+              <label class="compact-file h3-picture-slot" data-picture-slot="5"><b>Picture 5</b><span>Seleziona immagine</span><input id="h3SparsePicture5" class="h3-sparse-picture-input" name="h3ReferenceImage5" type="file" accept="image/png,image/jpeg,image/webp"></label>
+              <label class="compact-file h3-picture-slot" data-picture-slot="6"><b>Picture 6</b><span>Seleziona immagine</span><input id="h3SparsePicture6" class="h3-sparse-picture-input" name="h3ReferenceImage6" type="file" accept="image/png,image/jpeg,image/webp"></label>
+              <label class="compact-file h3-picture-slot" data-picture-slot="7"><b>Picture 7</b><span>Seleziona immagine</span><input id="h3SparsePicture7" class="h3-sparse-picture-input" name="h3ReferenceImage7" type="file" accept="image/png,image/jpeg,image/webp"></label>
+              <label class="compact-file h3-picture-slot" data-picture-slot="8"><b>Picture 8</b><span>Seleziona immagine</span><input id="h3SparsePicture8" class="h3-sparse-picture-input" name="h3ReferenceImage8" type="file" accept="image/png,image/jpeg,image/webp"></label>
+              <label class="compact-file h3-picture-slot" data-picture-slot="9"><b>Picture 9</b><span>Seleziona immagine</span><input id="h3SparsePicture9" class="h3-sparse-picture-input" name="h3ReferenceImage9" type="file" accept="image/png,image/jpeg,image/webp"></label>
+            </div>
+            <p id="h3-sparse-picture-summary" class="hint">Nessuna Picture selezionata.</p>
             <div class="field"><label>Video reference</label><input id="h3SparseReferenceVideos" name="h3ReferenceVideos" type="file" multiple accept="video/*"></div>
             <div class="field"><label>Audio reference</label><input id="h3SparseReferenceAudios" name="h3ReferenceAudios" type="file" multiple accept="audio/*"></div>
             <div class="field"><label for="h3SparseReferenceSize">Dimensione immagini</label><select id="h3SparseReferenceSize" name="h3SparseReferenceSize"><option value="match" selected>Match · originale</option><option value="max">Max · molto più pesante</option></select></div>
           </section>
           <section class="studio-subpanel">
-            <p class="subpanel-title">Sparse Attention e sampling originale</p>
+            <div class="label-row"><p class="subpanel-title">Sparse Attention e sampling originale</p><button id="h3-sparse-reset-original" type="button">Ripristina valori originali V9</button></div>
+            <p class="hint">Originale PlagueKind V9: Sparse attiva · sparsità 0,70 · 8 step · Last Dense 0 · indici dense 1 · engine Comfy Kitchen · stabilizzazione movimento disattivata · cache disattivata.</p>
             <div class="field-grid">
-              <div class="field"><label for="h3SparseSparsity">Sparsità SLA</label><select id="h3SparseSparsity" name="h3SparseSparsity"><option value="0.7" selected>0,70 · valore originale V9</option><option value="0.8">0,80 · qualità vicina a PyTorch</option><option value="0.85">0,85 · bilanciata</option><option value="0.9">0,90 · più veloce / minima degradazione</option><option value="0.95">0,95 · più leggera</option></select></div>
+              <div class="field">
+                <label for="h3SparseSparsity">Sparsità SLA</label>
+                <input id="h3SparseSparsity" name="h3SparseSparsity" type="number" min="0" max="0.95" step="any" value="0.7" list="h3-sparse-sparsity-presets" required aria-describedby="h3-sparse-sparsity-hint">
+                <datalist id="h3-sparse-sparsity-presets"><option value="0.7">0,70 · originale V9</option><option value="0.8">0,80</option><option value="0.85">0,85</option><option value="0.9">0,90</option><option value="0.95">0,95</option></datalist>
+                <p id="h3-sparse-sparsity-hint" class="hint">Valore manuale da 0 a 0,95; originale 0,70. Una sparsità maggiore riduce i calcoli di attenzione, ma può alterare dettagli e movimento.</p>
+              </div>
               <div class="field"><label for="h3SparseSteps">Step</label><select id="h3SparseSteps" name="h3SparseSteps"><option value="8" selected>8 · originale</option><option value="10">10</option><option value="12">12</option></select></div>
-              <label class="inline-check"><input id="h3SparseCache" name="h3SparseCache" type="checkbox"> H3 Cache · bypass originale</label>
+              <label class="inline-check"><input id="h3SparseEnabled" name="h3SparseEnabled" type="checkbox" checked> Sparse Attention attiva</label>
+              <div class="field"><label for="h3SparseEngine">Engine Sparse Attention</label><select id="h3SparseEngine" name="h3SparseEngine"><option value="comfy_kitchen" selected>Comfy Kitchen · originale</option><option value="triton">Triton</option></select></div>
+              <div class="field"><label for="h3SparseDenseLastSteps">Last Dense · ultimi step con attenzione completa</label><input id="h3SparseDenseLastSteps" name="h3SparseDenseLastSteps" type="number" min="0" max="8" step="1" value="0" required><p class="hint">Originale: 0. È lo stesso parametro dense_last_steps (Last Dense): nessuno step finale forzato dense.</p></div>
+              <div class="field"><label for="h3SparseDenseSteps">Indici degli step dense</label><input id="h3SparseDenseSteps" name="h3SparseDenseSteps" type="text" value="1" placeholder="Vuoto = nessuno"><p class="hint">Originale: 1, cioè il secondo step (gli indici partono da 0). Puoi usare 0,1 oppure 0-2, o lasciare vuoto. Si aggiungono agli ultimi step dense.</p></div>
+              <label class="inline-check"><input id="h3SparseStabilizeMotion" name="h3SparseStabilizeMotion" type="checkbox" disabled aria-describedby="h3-sparse-motion-hint"> Stabilizza movimento · Triton</label>
+              <label class="inline-check"><input id="h3SparseCache" name="h3SparseCache" type="checkbox" aria-describedby="h3-sparse-cache-hint"> H3 Cache · disattivata nel workflow originale</label>
               <label class="inline-check"><input id="h3SparseLowVram" name="h3SparseLowVram" type="checkbox" checked disabled> Low VRAM Attention + FF chunks · sempre attivo su 12 GB</label>
             </div>
+            <p id="h3-sparse-motion-hint" class="hint">La stabilizzazione richiede Sparse attiva e Triton; usa più VRAM. Disattiva Sparse per confrontare la generazione con attenzione completa.</p>
+            <p id="h3-sparse-cache-hint" class="hint">Se attiva, riutilizza risultati intermedi del modello durante il sampling per ridurre i calcoli, con possibili variazioni nel risultato. Se disattiva, il nodo cache viene saltato: questo è il significato di “bypass originale”.</p>
             <p id="h3-sparse-memory-hint" class="hint">Low VRAM è obbligatorio in tutte le modalità PlagueKind. Qwen viene scaricato dopo il conditioning; Parasyte Turbo è incorporata una sola volta a 1,5 e FastH3 6-step resta bypassata.</p>
           </section>
           <section class="studio-subpanel">
             <p class="subpanel-title">Upscale latente sperimentale · bypass originale</p>
             <div class="field-grid">
-              <label class="inline-check"><input id="h3SparseLatentUpscale" name="h3SparseLatentUpscale" type="checkbox"> 1. MMH3 Latent Upscale · sperimentale</label>
+              <label class="inline-check"><input id="h3SparseLatentUpscale" name="h3SparseLatentUpscale" type="checkbox"> H3 Latent Upscale</label>
+              <div class="field"><label for="h3SparseLatentScale">Scala upscale latente</label><input id="h3SparseLatentScale" name="h3SparseLatentScale" type="number" min="1" max="4" step="0.1" value="1.5" required disabled></div>
+              <label class="inline-check"><input id="h3SparsePostRcas" name="h3SparsePostRcas" type="checkbox" checked disabled> RCAS dopo upscale</label>
+              <div class="field"><label for="h3SparseRcasStrength">Intensità RCAS</label><input id="h3SparseRcasStrength" name="h3SparseRcasStrength" type="number" min="0" max="1" step="0.01" value="0.18" required disabled><p class="hint">Disattiva RCAS o imposta 0 per confrontare il video senza sharpening.</p></div>
               <label class="inline-check"><input id="h3SparseTemporalChunks" name="h3SparseTemporalChunks" type="checkbox" checked disabled> 1a. Temporal chunks 102/17</label>
               <label class="inline-check"><input id="h3SparseSpatialTiling" name="h3SparseSpatialTiling" type="checkbox" checked disabled> 1b. Spatial tiling auto · 70k token</label>
             </div>
-            <p class="hint">FILM ×2, RTX VSR e RCAS non appesantiscono più la generazione. Dopo aver visto il video comparirà un solo pulsante per applicarli insieme, soltanto se il risultato ti piace.</p>
+            <p id="h3-sparse-latent-hint" class="hint">1a e 1b hanno effetto solo con H3 Latent Upscale. Temporal chunks divide la clip in blocchi da 102 frame con 17 frame di sovrapposizione; Spatial tiling suddivide l’immagine in riquadri automatici con budget di 70.000 token. Riducono la memoria necessaria, con lavoro aggiuntivo per sovrapporre e ricomporre i blocchi e possibili artefatti di raccordo. Disattivandoli, l’upscale elabora tutta la durata e/o l’intera immagine insieme, richiedendo più VRAM. Su 12 GB è prudente lasciarli entrambi attivi.</p>
+            <p class="hint">Se sai già che userai il risultato finale, attiva qui il latent upscale: lavora sul latent prima del decode ed evita di dover rigenerare la clip in seguito. FILM ×2 resta separato e facoltativo per passare da 24 a 48 fps.</p>
           </section>
           <div class="field"><label for="h3SparseSeed">Seed</label><input id="h3SparseSeed" name="seed" type="number" min="0" placeholder="Casuale"></div>
         </section>

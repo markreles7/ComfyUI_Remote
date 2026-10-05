@@ -10,7 +10,7 @@ import {
 
 const upload = { name: "photo.webp", subfolder: "remote", type: "input" };
 
-test("SUPER UPSCALE replica la pipeline SeedVR2, tile Z-Image e ClearReality", () => {
+test("SUPER UPSCALE conserva la sorgente e rifinisce tile limitati alla risoluzione finale", () => {
   const { workflow, metadata } = buildSuperUpscaleWorkflow({
     superUpscalePreset: "8k",
     superUpscaleDenoise: "0.35",
@@ -19,7 +19,8 @@ test("SUPER UPSCALE replica la pipeline SeedVR2, tile Z-Image e ClearReality", (
   }, upload, { modelPatch: "Z-Image-Turbo-Fun-Controlnet-Union-2.1-2601-8steps.safetensors" });
 
   assert.equal(workflow["12"].inputs.resolution, 3840);
-  assert.equal(workflow["20"].inputs.width_factor, 2);
+  assert.deepEqual(workflow["12"].inputs.image, ["1", 0]);
+  assert.equal(workflow["20"].inputs.tile_size, 1024);
   assert.match(workflow["34"].inputs.text, /preserve the exact visible subject/);
   assert.equal(workflow["39"].inputs.steps, 8);
   assert.equal(workflow["39"].inputs.denoise, 0.35);
@@ -27,7 +28,21 @@ test("SUPER UPSCALE replica la pipeline SeedVR2, tile Z-Image e ClearReality", (
   assert.equal(workflow["50"].inputs.model_name, "4x-ClearRealityV1.pth");
   assert.equal(workflow["52"].inputs.size, 7680);
   assert.equal(metadata.generationType, "superUpscale");
-  assert.equal(metadata.upscaleSettings.tileGrid, "2×2");
+  assert.equal(metadata.upscaleSettings.tileGrid, "adaptive-1024");
+  assert.equal(workflow["60"].inputs.vision, true);
+  assert.deepEqual(workflow["60"].inputs.image, ["52", 0]);
+  assert.deepEqual(workflow["60"].inputs.reference, ["1", 0]);
+  assert.deepEqual(workflow["66"].inputs.text, ["60", 1]);
+  assert.deepEqual(workflow["71"].inputs.positive, ["66", 0]);
+  assert.deepEqual(workflow["53"].inputs.image, ["74", 0]);
+  assert.equal(workflow["71"].inputs.denoise, 0.18);
+  assert.deepEqual(workflow["61"].inputs.ready, ["60", 3]);
+  for (const id of ["62", "63", "64", "65"]) {
+    assert.ok(Object.values(workflow[id].inputs).some((value) => Array.isArray(value) && value[0] === "61"));
+  }
+  for (const value of Object.values(workflow).flatMap((item) => Object.values(item.inputs))) {
+    if (Array.isArray(value)) assert.ok(workflow[value[0]], `Missing source ${value[0]}`);
+  }
 });
 
 test("SUPER UPSCALE usa la descrizione Vision prodotta prima di ComfyUI", () => {

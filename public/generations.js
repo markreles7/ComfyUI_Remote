@@ -70,12 +70,6 @@ function formatDate(value) {
   }).format(new Date(value));
 }
 
-function compactText(value, maxLength = 150) {
-  const text = String(value || "").replace(/\s+/g, " ").trim();
-  if (text.length <= maxLength) return text;
-  return `${text.slice(0, maxLength).trimEnd()}…`;
-}
-
 function formatBytes(bytes) {
   const value = Number(bytes || 0);
   if (value >= 1024 ** 3) return `${(value / 1024 ** 3).toFixed(2)} GB`;
@@ -124,7 +118,6 @@ function promptMarkup(item) {
     <details class="generation-details generation-prompt-details">
       <summary>
         <span>Prompt usato</span>
-        <em>${escapeHtml(compactText(item.prompt))}</em>
       </summary>
       <p>${escapeHtml(item.prompt)}</p>
     </details>
@@ -221,17 +214,17 @@ function sceneIntegrationMarkup(item) {
       ${evaluationArtifacts.length ? `
         <div class="scene-evaluation-artifacts">
           <figure>
-            <img loading="lazy" src="/api/scene-integration/profiles/${encodeURIComponent(integration.profileId)}/source" alt="Scena originale">
+            <img loading="lazy" data-detail-preview-src="/api/scene-integration/profiles/${encodeURIComponent(integration.profileId)}/source" alt="Scena originale">
             <figcaption>Prima · scena originale</figcaption>
           </figure>
           ${item.mediaType === "image" && item.images?.length ? `
             <figure>
-              <img loading="lazy" src="/api/image/${encodeURIComponent(item.id)}/0" alt="Risultato integrato">
+              <img loading="lazy" data-detail-preview-src="/api/image/${encodeURIComponent(item.id)}/0" alt="Risultato integrato">
               <figcaption>Dopo · risultato</figcaption>
             </figure>` : ""}
           ${evaluationArtifacts.map(([key, filename]) => `
             <figure>
-              <img loading="lazy" src="/api/scene-integration/artifacts/${encodeURIComponent(integration.profileId)}/${encodeURIComponent(filename)}" alt="${escapeHtml(key)}">
+              <img loading="lazy" data-detail-preview-src="/api/scene-integration/artifacts/${encodeURIComponent(integration.profileId)}/${encodeURIComponent(filename)}" alt="${escapeHtml(key)}">
               <figcaption>${escapeHtml(key === "evaluationMask" ? "Maschera valutazione" : "Mappa differenze")}</figcaption>
             </figure>`).join("")}
         </div>` : ""}
@@ -362,18 +355,16 @@ function mediaMarkup(item) {
       <figure class="generation-audio">
         <div class="audio-disc" aria-hidden="true"><span>♪</span></div>
         <figcaption>${escapeHtml(audio.filename || `Audio ${index + 1}`)}</figcaption>
-        <audio controls preload="metadata" src="/api/audio/${item.id}/${index}"></audio>
+        <audio controls preload="none" data-preview-src="/api/audio/${item.id}/${index}"></audio>
+        <button type="button" class="media-preview-button" data-load-preview>Ascolta audio</button>
         <a class="download" href="/api/audio/${item.id}/${index}?download=1" download>Download MP3 ↓</a>
       </figure>`).join("")}</div>`;
   }
   if (item.videos?.length) {
     return item.videos.map((video, index) => `
-      <div class="generation-video" data-lazy-video="/api/media/${item.id}/${index}">
-        <button class="video-lazy-button" type="button" data-load-video>
-          <span>▶</span>
-          <b>Apri video</b>
-          <small>${escapeHtml(video.filename || `Video ${index + 1}`)}</small>
-        </button>
+      <div class="generation-video">
+        <video controls preload="none" playsinline data-preview-src="/api/media/${item.id}/${index}"></video>
+        <button type="button" class="media-preview-button" data-load-preview>Mostra video</button>
         <a class="download" href="/api/media/${item.id}/${index}?download=1" download>
           Download${item.videos.length > 1 ? ` ${index + 1}` : ""} ↓
         </a>
@@ -393,8 +384,9 @@ function mediaMarkup(item) {
   return `<div class="generation-images">${displayImages.map(({ image, index }) => `
     <figure class="generation-image">
       <a href="/api/image/${item.id}/${index}" target="_blank" rel="noopener">
-        <img loading="lazy" src="/api/image/${item.id}/${index}" alt="Risultato ${index + 1}">
+        <img loading="lazy" decoding="async" data-preview-src="/api/image/${item.id}/${index}" alt="Risultato ${index + 1}" hidden>
       </a>
+      <button type="button" class="media-preview-button" data-load-preview>Mostra immagine</button>
       <a class="download" href="/api/image/${item.id}/${index}?download=1" download>
         Download ↓
       </a>
@@ -434,7 +426,7 @@ function render() {
           <div>
             <span class="status-pill status-${escapeHtml(item.status)}">${escapeHtml(statusLabel(item))}</span>
             ${item.archived ? `<span class="archive-pill">Archiviata</span>` : ""}
-            <h2>${escapeHtml(item.workflowName || item.prompt || "Generazione")}</h2>
+            <h2>${escapeHtml(item.workflowName || "Generazione")}</h2>
             <p>${escapeHtml(item.workflowName)} · ${escapeHtml(formatDate(item.createdAt))}</p>
             ${item.projectId ? `<p>Progetto Studio · ${escapeHtml(item.studioStage || "output")} · ${escapeHtml(item.studioLabel || "")}</p>` : ""}
           </div>
@@ -454,7 +446,7 @@ function render() {
           </div>
         </div>
         ${promptMarkup(item)}
-        <div class="generation-settings">${formatSettings(item)}</div>
+        <details class="generation-details"><summary>Impostazioni</summary><div class="generation-settings">${formatSettings(item)}</div></details>
         ${sceneIntegrationMarkup(item)}
         ${item.negativePrompt ? `
           <details class="generation-details">
@@ -710,18 +702,27 @@ $("#history").addEventListener("change", (event) => {
   renderArchiveActions();
 });
 
+$("#history").addEventListener("toggle", (event) => {
+  const details = event.target;
+  if (!details.matches(".scene-result-details") || !details.open) return;
+  for (const image of details.querySelectorAll("[data-detail-preview-src]")) {
+    image.src = image.dataset.detailPreviewSrc;
+    delete image.dataset.detailPreviewSrc;
+  }
+}, true);
+
 $("#history").addEventListener("click", async (event) => {
-  const lazyVideo = event.target.closest("[data-load-video]");
-  if (lazyVideo) {
-    const wrapper = lazyVideo.closest("[data-lazy-video]");
-    const src = wrapper?.dataset.lazyVideo;
-    if (!src || wrapper.querySelector("video")) return;
-    lazyVideo.replaceWith(Object.assign(document.createElement("video"), {
-      controls: true,
-      playsInline: true,
-      preload: "metadata",
-      src,
-    }));
+  const previewButton = event.target.closest("[data-load-preview]");
+  if (previewButton) {
+    const container = previewButton.closest(".generation-video, .generation-image, .generation-audio");
+    const media = container.querySelector("[data-preview-src]");
+    media.hidden = false;
+    media.src = media.dataset.previewSrc;
+    if (media.tagName !== "IMG") {
+      media.load();
+      media.play().catch(() => showToast("Premi Play per avviare la riproduzione."));
+    }
+    previewButton.remove();
     return;
   }
   const archiveButton = event.target.closest("[data-archive-job]");

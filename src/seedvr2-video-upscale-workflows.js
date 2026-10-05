@@ -19,6 +19,20 @@ export const SEEDVR2_VIDEO_UPSCALE_REQUIRED_NODES = [
 ];
 
 export const SEEDVR2_VIDEO_UPSCALE_PROFILES = {
+  light15: {
+    id: "light15",
+    name: "Light 1,5×",
+    description: "PlagueKind: modello 3B FP8, target 1,5×, batch compatto e BlockSwap ridotto.",
+    model: "seedvr2_ema_3b_fp8_e4m3fn.safetensors",
+    resolution: 960,
+    batchSize: 9,
+    temporalOverlap: 1,
+    blocksToSwap: 20,
+    swapIoComponents: false,
+    encodeTileSize: 768,
+    decodeTileSize: 768,
+    crf: 13,
+  },
   preview: {
     id: "preview",
     name: "Anteprima",

@@ -114,6 +114,10 @@ if (config.h3.sparseV9.available) {
   };
   cases.push(
     ["h3SparseV9/original-bypass", sparseBase, { h3FirstFrame: image }],
+    ["h3SparseV9/anchored-second", {
+      ...sparseBase, h3SparseMode: "references", duration: 12,
+      prompt: "Continue directly from the previous video's 22-frame motion context.",
+    }, { h3ReferenceImages: [image], h3ContinuityClip: video }],
     ["h3SparseV9/full-finish", {
       ...sparseBase,
       h3SparseLatentUpscale: true,

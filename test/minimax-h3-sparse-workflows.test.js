@@ -79,6 +79,22 @@ test("Sparse V9 forza Low VRAM in ogni modalità anche con una bozza UI obsoleta
   assert.equal(job.metadata.lowVramEnabled, true);
 });
 
+test("Sparse V9 ancora una clip di contesto nel conditioning della generazione successiva", () => {
+  const job = buildMiniMaxH3SparseV9Workflow({
+    prompt: "Continue the same motion for 12 seconds.", h3SparseMode: "references", duration: 12,
+  }, {
+    h3ReferenceImages: [firstFrame],
+    h3ContinuityClip: { name: "tail22.mp4", subfolder: "remote" },
+  }, [], config);
+  assert.equal(job.workflow["70"].class_type, "LoadVideo");
+  assert.equal(job.workflow["701"].class_type, "GetVideoComponents");
+  assert.equal(job.workflow["24"].class_type, "MiniMaxH3AddGuide");
+  assert.deepEqual(job.workflow["24"].inputs.positive, ["20", 0]);
+  assert.deepEqual(job.workflow["24"].inputs.image, ["701", 0]);
+  assert.deepEqual(job.workflow["23"].inputs.conditioning, ["24", 0]);
+  assert.equal(job.workflow["20"].class_type, "MiniMaxH3ReferenceToVideo");
+});
+
 test("Sparse V9 conserva solo il latent upscale interno e rinvia FILM RTX RCAS al finishing manuale", () => {
   const job = buildMiniMaxH3SparseV9Workflow({
     prompt: "A timed cinematic scene.", h3SparseLatentUpscale: true,
@@ -138,6 +154,22 @@ test("Sparse V9 concatena più sequenze con una sola immagine iniziale e lo stac
   assert.equal(job.metadata.startImageStrategy, "first-image-then-previous-segment");
 });
 
+test("Sparse V9 finale usa H3 Latent 1,5x allineato a 32 e RCAS 0,18 senza RTX", () => {
+  const job = buildMiniMaxH3SparseV9Workflow({
+    prompt: "A final cinematic scene.",
+    h3SparseAspectRatio: "16:9 (Widescreen)", h3SparseMegapixels: 0.8,
+    h3SparseLatentUpscale: true, h3SparseLatentScale: 1.5,
+    h3SparsePostRcas: true, h3SparseRcasStrength: 0.18,
+  }, { h3FirstFrame: firstFrame }, [], config);
+  assert.equal(job.metadata.width, 1184);
+  assert.equal(job.metadata.height, 640);
+  assert.equal(job.workflow["41"].inputs.width, 1792);
+  assert.equal(job.workflow["41"].inputs.height, 960);
+  assert.deepEqual(job.workflow["55"].inputs, { image: ["50", 0], strength: 0.18, chunk_size: 2 });
+  assert.equal(Object.values(job.workflow).some((item) => item.class_type === "RTXVideoSuperResolution"), false);
+  assert.equal(job.metadata.stages.rcasStrength, 0.18);
+});
+
 test("Sparse V9 applica il purge estremo tra sequenze di 8, 10 o 12 secondi", () => {
   for (const duration of [8, 10, 12]) {
     const job = buildMiniMaxH3SparseV9Workflow({
@@ -185,14 +217,36 @@ test("Sparse V9 condivide le reference lungo tutta la catena continuativa", () =
   assert.equal(job.metadata.lowVramEnabled, true);
 });
 
-test("Sparse V9 blocca concatenazioni ambigue e latent upscale per singola clip", () => {
+test("Sparse V9 conserva gli slot Picture scelti anche se non sono consecutivi", () => {
+  const picture3 = { ...firstFrame, name: "marcus.png", referenceIndex: 2 };
+  const single = buildMiniMaxH3SparseV9Workflow({
+    prompt: "<Picture 3> is the reference sheet of Marcus.",
+    h3SparseMode: "references",
+  }, { h3ReferenceImages: [picture3] }, [], config);
+  assert.deepEqual(single.workflow["20"].inputs["ref_images.ref_image_2"], ["102", 0]);
+  assert.equal(single.workflow["102"]._meta.title, "PlagueKind V9 · Picture 3");
+
+  const chained = buildMiniMaxH3SparseV9Workflow({
+    prompt: "Prima.\n---\nSeconda.", h3SparseMode: "references",
+    h3SparseMultiSequence: true, h3SparseSegmentCount: 2,
+  }, { h3ReferenceImages: [picture3] }, [], config);
+  const timeline = JSON.parse(chained.workflow["20"].inputs.timeline_data);
+  assert.equal(timeline.global.refs[0].index, 2);
+  assert.equal(timeline.segments[1].refs[0].index, 2);
+});
+
+test("Sparse V9 blocca concatenazioni ambigue e ingrandisce ogni sequenza nel Director", () => {
   assert.throws(() => buildMiniMaxH3SparseV9Workflow({
     prompt: "Un solo prompt", h3SparseMultiSequence: true,
   }, { h3FirstFrame: firstFrame }, [], config), /da 2 a 8 prompt/u);
-  assert.throws(() => buildMiniMaxH3SparseV9Workflow({
+  const upscaled = buildMiniMaxH3SparseV9Workflow({
     prompt: "Prima.\n---\nSeconda.", h3SparseMultiSequence: true,
     h3SparseSegmentCount: 2, h3SparseLatentUpscale: true,
-  }, { h3FirstFrame: firstFrame }, [], config), /latent upscale MMH3/u);
+  }, { h3FirstFrame: firstFrame }, [], config);
+  assert.equal(upscaled.workflow["41"].class_type, "MiniMaxH3DirectorRefine");
+  assert.equal(upscaled.workflow["41"].inputs.mode, "latent_upscale");
+  assert.deepEqual(upscaled.workflow["20"].inputs.refine, ["41", 0]);
+  assert.equal(upscaled.metadata.stages.latentUpscale, true);
   assert.throws(() => buildMiniMaxH3SparseV9Workflow({
     prompt: "Prima.\n---\nSeconda.", h3SparseMode: "firstLast", h3SparseMultiSequence: true,
   }, { h3FirstFrame: firstFrame, h3LastFrame: firstFrame }, [], config), /First \/ Last Frame/u);
@@ -212,4 +266,40 @@ test("Sparse V9 permette di scegliere qualsiasi modello H3 installato e verifica
   assert.throws(() => buildMiniMaxH3SparseV9Workflow({
     prompt: "Shot.", h3SparseModel: "missing-h3.safetensors",
   }, { h3FirstFrame: firstFrame }, [], config), /non è installato/u);
+});
+
+
+test("Sparse V9 inoltra i controlli attenzione e registra i valori anche nelle sequenze", () => {
+  const settings = { prompt: "A scene.", h3SparseEngine: "triton", h3SparseStabilizeMotion: "true",
+    h3SparseDenseLastSteps: "2", h3SparseDenseSteps: "0-2,4", h3SparseSparsity: "0.65" };
+  for (const multi of [false, true]) {
+    const job = buildMiniMaxH3SparseV9Workflow({ ...settings, h3SparseMultiSequence: multi,
+      prompt: multi ? "First scene.\n---\nSecond scene." : settings.prompt }, { h3FirstFrame: firstFrame }, [], config);
+    assert.equal(job.workflow["5"].inputs.engine, "triton");
+    assert.equal(job.workflow["5"].inputs.stabilize_motion, true);
+    assert.equal(job.workflow["5"].inputs.dense_last_steps, 2);
+    assert.equal(job.workflow["5"].inputs.dense_steps, "0-2,4");
+    assert.equal(job.metadata.sparse.denseLastSteps, 2);
+    assert.equal(job.metadata.sparse.engine, "triton");
+  }
+  const disabled = buildMiniMaxH3SparseV9Workflow({ prompt: "A scene.", h3SparseEnabled: "false",
+    h3SparseDenseSteps: "" }, { h3FirstFrame: firstFrame }, [], config);
+  assert.equal(disabled.workflow["5"].inputs.enabled, false);
+  assert.equal(disabled.workflow["5"].inputs.dense_steps, "");
+});
+
+test("Sparse V9 rifiuta configurazioni di attenzione incompatibili o fuori intervallo", () => {
+  for (const invalid of [{ h3SparseEngine: "unknown" }, { h3SparseStabilizeMotion: true },
+    { h3SparseDenseLastSteps: 9 }, { h3SparseDenseLastSteps: 1.5 },
+    { h3SparseDenseSteps: "8" }, { h3SparseDenseSteps: "3-1" }, { h3SparseDenseSteps: "abc" }]) {
+    assert.throws(() => buildMiniMaxH3SparseV9Workflow({ prompt: "A scene.", ...invalid }, { h3FirstFrame: firstFrame }, [], config));
+  }
+});
+
+test("Sparse V9 consente upscale personalizzato senza RCAS", () => {
+  const job = buildMiniMaxH3SparseV9Workflow({ prompt: "A scene.", h3SparseLatentUpscale: true,
+    h3SparseLatentScale: 2, h3SparsePostRcas: "false", h3SparseRcasStrength: 0 }, { h3FirstFrame: firstFrame }, [], config);
+  assert.equal(job.workflow["41"].inputs.width, job.metadata.width * 2);
+  assert.equal(job.workflow["55"], undefined);
+  assert.equal(job.metadata.stages.rcasStrength, 0);
 });

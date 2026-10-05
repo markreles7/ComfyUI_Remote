@@ -1,0 +1,17 @@
+{
+  "modelKey": "gemma-4-e4b-uncensored-hauhaucs-aggressive",
+  "quantization": "Q4_K_M",
+  "validatedOn": "2026-10-05",
+  "runtime": "llama.cpp-win-x86_64-nvidia-cuda12-avx2@2.51.0",
+  "contextLength": 16384,
+  "complexContextLength": 32768,
+  "maxOutputTokens": 2048,
+  "finalMaxOutputTokens": 4096,
+  "sampling": {
+    "temperature": 0.15,
+    "top_p": 1,
+    "top_k": 40,
+    "min_p": 0,
+    "repeat_penalty": 1.05
+  }
+}

@@ -4,22 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0c10">
-  <title>LTX Remote Studio</title>
+  <title>H3 Minimax</title>
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css">
-  <script type="module" src="/app.js?v=20260902-image-prompt-buttons"></script>
+  <link rel="stylesheet" href="/styles.css?v=20261005-sidebar-previews">
+  <script type="module" src="/app.js?v=20261005-sidebar-previews"></script>
   <script type="module" src="/generation-console.js?v=20260908-live-progress"></script>
   <script type="module" src="/scene-integration.js"></script>
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="/">
-      <span class="brand-mark" aria-hidden="true"></span>
-      <span>LTX <b>REMOTE</b></span>
-    </a>
+    <a class="brand" href="/" aria-label="H3 Minimax"><span class="brand-h3"><span class="brand-h">H</span><span class="brand-three">3</span></span><span class="brand-name">Minimax</span></a>
     <div class="topbar-actions">
       <nav class="primary-nav" aria-label="Navigazione principale">
         <a href="/guided-create.html">Crea guidata</a>
@@ -61,7 +58,7 @@
           <button class="active" type="button" data-generation-type="video">
             <span>▶</span>
             <b>Video</b>
-            <small>LTX 2.3</small>
+            <small>PlagueKind H3</small>
           </button>
 
           <button type="button" data-generation-type="image">
@@ -94,6 +91,8 @@
             <small>Upscale video</small>
           </button>
         </div>
+
+        <iframe id="home-video-studio" class="hidden" title="PlagueKind H3 · Video Studio" data-src="/video-studio.html?workflow=h3SparseV9&amp;embedded=1"></iframe>
 
         <div id="video-workflow-field" class="field">
           <label for="workflow">Workflow</label>
@@ -260,13 +259,13 @@
             <legend>Dimensione finale massima</legend>
             <label><input type="radio" name="superUpscalePreset" value="4k" disabled><span><b>4K</b><small>Restauro 2048 px · più rapido</small></span></label>
             <label><input type="radio" name="superUpscalePreset" value="6k" disabled><span><b>6K</b><small>Restauro 3072 px · bilanciato</small></span></label>
-            <label><input type="radio" name="superUpscalePreset" value="8k" checked disabled><span><b>8K MAX</b><small>Pipeline RunningHub · consigliato</small></span></label>
+            <label><input type="radio" name="superUpscalePreset" value="8k" checked disabled><span><b>8K MAX</b><small>Massimo dettaglio · più lento</small></span></label>
           </fieldset>
           <div class="field-grid compact-grid">
             <div class="field">
               <label for="superUpscaleDenoise">Ricostruzione dettaglio</label>
-              <input id="superUpscaleDenoise" name="superUpscaleDenoise" type="range" min=".15" max=".55" step=".01" value=".35" disabled>
-              <p class="hint">0,35 replica il workflow di riferimento. Valori più alti inventano più micro-dettaglio.</p>
+              <input id="superUpscaleDenoise" name="superUpscaleDenoise" type="range" min=".15" max=".55" step=".01" value=".25" disabled>
+              <p class="hint">0,25 conserva meglio la sorgente. Valori più alti ricostruiscono più dettagli e possono alterare le forme.</p>
             </div>
             <div class="field">
               <label for="superUpscaleControlStrength">Fedeltà struttura</label>
@@ -280,7 +279,7 @@
             </div>
           </div>
           <div class="storyboard-note">
-            <b>Pipeline completa:</b> analisi Vision LM Studio → SeedVR2 7B → Z‑Image Turbo ControlNet sui tile (8 step) → color match → ClearReality 4×. I tile 2×2 e il purge automatico sono ottimizzati per la RTX 4070 SUPER da 12 GB.
+            <b>Rifinitura locale inclusa in 4K, 6K e 8K:</b> conserva la sorgente, esegue il restauro e analizza ogni riquadro finale con LM Studio confrontandolo con l’originale. I prompt locali guidano una seconda rifinitura delicata. Richiede LM Studio Vision; tempi maggiori, soprattutto in 8K. I modelli vengono scaricati prima di ogni analisi e prima di riprendere la generazione.
           </div>
           <p id="super-upscale-warning" class="model-warning hidden"></p>
         </section>

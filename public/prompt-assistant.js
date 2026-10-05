@@ -51,8 +51,10 @@ export async function enhanceMainPrompt({
     const response = await fetch("/api/prompt-assistant/enhance", { method: "POST", body: data });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error || `Errore ${response.status}`);
-    input.value = payload.prompt;
-    input.dispatchEvent(new Event("input", { bubbles: true }));
+    if (payload.stage !== "review") {
+      input.value = payload.prompt;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }
     if (negativeInput && payload.negativePrompt) {
       negativeInput.value = payload.negativePrompt;
       negativeInput.dispatchEvent(new Event("input", { bubbles: true }));

@@ -1,3 +1,5 @@
+import { h3LoraIdentity } from "../public/h3-lora-files.js";
+
 function civitai(trigger, modelId, versionId, extra = {}) {
   return Object.freeze({
     trigger,
@@ -42,6 +44,14 @@ function huggingFace(trigger, repository, extra = {}) {
 }
 
 export const LORA_TRIGGER_CATALOG = Object.freeze({
+  "h3\\sty_handheld_h3_100.safetensors": civitai(null, 2592748, 3343481, {
+    baseModel: "MiniMax H3",
+    promptRule: "This H3 version declares no trained activation words. It strengthens handheld shake for static and moving viewpoints. The shared model description also covers Wan; high-noise-only and strength 1.7 are not verified H3-specific settings.",
+  }),
+  "h3\\sty_cinemagrade_style_h3_ep50.safetensors": civitai("cinemagradestyle", 2927223, 3312531, {
+    baseModel: "MiniMax H3", recommendedStrength: 1,
+    promptRule: "Put cinemagradestyle first in the visual prompt. Experimental ep50 style LoRA trained on H3 FL2VA; changes color grade and finish, not subject identity. Author recommends strength 1.0. ep50 is stronger than ep35.",
+  }),
   "anima\\anima-base-1-masterpiece-v51.safetensors": civitaiTriggers(["masterpiece", "very aesthetic"], 929497, 2961717, {
     baseModel: "Anima",
     recommendedStrength: 1,
@@ -429,8 +439,20 @@ export function normalizedLoraName(name) {
 }
 
 export function loraTriggerMetadata(installedLoras = []) {
+  const upstreamAliases = {
+    "h3\\handheld_h3_100.safetensors": "h3\\sty_handheld_h3_100.safetensors",
+    "h3\\cinemagrade_style_h3_ep50.safetensors": "h3\\sty_cinemagrade_style_h3_ep50.safetensors",
+  };
   return Object.fromEntries(installedLoras.flatMap((name) => {
-    const metadata = LORA_TRIGGER_CATALOG[normalizedLoraName(name)];
+    const normalized = normalizedLoraName(name);
+    let metadata = LORA_TRIGGER_CATALOG[upstreamAliases[normalized] || normalized];
+    if (!metadata && normalized.startsWith("h3\\")) {
+      const matches = Object.entries(LORA_TRIGGER_CATALOG).filter(([key]) => key.startsWith("h3\\") && h3LoraIdentity(key) === h3LoraIdentity(normalized));
+      // A renamed category is safe only when the catalogue entries agree.
+      if (matches.length && matches.every(([, item]) => JSON.stringify(item) === JSON.stringify(matches[0][1]))) {
+        metadata = { ...matches[0][1], matchedCatalogName: matches[0][0], matchedBy: "category-prefix" };
+      }
+    }
     return metadata ? [[name, metadata]] : [];
   }));
 }

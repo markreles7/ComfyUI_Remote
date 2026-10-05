@@ -10,7 +10,8 @@ import {
   parseJsonCompletion,
   parseReferencePlanCompletion,
 } from "../src/lm-studio-client.js";
-import { PRESETS, resolveGenerationSystemPrompt } from "../src/generation-system-prompts.js";
+import { H3_FINAL_REFINEMENT_RULES, PRESETS, resolveGenerationSystemPrompt } from "../src/generation-system-prompts.js";
+import { validateH3InferenceProfile } from "../src/lm-studio-inference-profile.js";
 
 function response(payload, status = 200) {
   return {
@@ -25,6 +26,36 @@ function response(payload, status = 200) {
 
 test("ripulisce reasoning e delimitatori dal prompt locale", () => {
   assert.equal(cleanOutput("<think>hidden</think>\nPrompt: \"A cinematic pool scene.\""), "A cinematic pool scene.");
+});
+
+test("il profilo H3 usa sampler espliciti solo per modello e quantizzazione testati", async () => {
+  const profile = { modelKey: "tested", quantization: "Q4_K_M", contextLength: 16384,
+    complexContextLength: 32768, maxOutputTokens: 2048, finalMaxOutputTokens: 4096,
+    sampling: { temperature: 0.05, top_p: 0.9, top_k: 40, min_p: 0, repeat_penalty: 1.05 } };
+  for (const [key, quantization, target, applies] of [
+    ["tested", "Q4_K_M", "minimax_h3", true],
+    ["tested", "Q8_0", "minimax_h3", false],
+    ["other", "Q4_K_M", "minimax_h3", false],
+    ["tested", "Q4_K_M", "qwen", false],
+  ]) {
+    const client = new LmStudioClient({ model: key, h3InferenceProfile: profile });
+    client.loadModel = async () => ({ instanceId: key, model: { key, quantization: { name: quantization } } });
+    client.unload = async () => {};
+    client.request = async (_path, options) => {
+      const body = JSON.parse(options.body);
+      for (const [name, value] of Object.entries(profile.sampling)) {
+        if (applies) assert.equal(body[name], value);
+        else if (name !== "temperature") assert.equal(body[name], undefined);
+      }
+      assert.equal(body.seed, undefined);
+      assert.equal(body.presence_penalty, undefined);
+      assert.equal(body.frequency_penalty, undefined);
+      return { output: [{ type: "message", content: "One adult walks slowly." }] };
+    };
+    await client.enhance({ text: "One adult walks slowly.", target });
+  }
+  assert.throws(() => validateH3InferenceProfile({ ...profile, sampling: { ...profile.sampling, top_k: 0 } }), /top_k >= 1/);
+  assert.throws(() => validateH3InferenceProfile({ ...profile, sampling: { ...profile.sampling, seed: 42 } }), /cinque sampler/);
 });
 
 test("Moody Krea richiede a LM Studio un'identità iniziale precisa", () => {
@@ -1161,6 +1192,60 @@ test("MiniMax H3 misura la fine reale della timeline", () => {
   assert.equal(h3TimelineEndSeconds("Use MM:SS.mmm placeholders only."), 0);
 });
 
+test("H3 misura solo le azioni, escludendo reference da 30s, audio, dialoghi e aspect ratio", () => {
+  const prompt = [
+    "subject_definitions: <Video 1> is a 30 seconds reference, not the generated clip.",
+    "summary: A 30s source adapted to an eight-second scene in 16:9.",
+    "retention_analysis: Preserve the style at 00:30.000 of the reference.",
+    "detailed_description: [Shot 1] At 00:00.000 she starts walking. At 00:08.000 she stops. (S1) says <d>[English] Wait 30 seconds; it is 12:30.</d>",
+    "overall_soundscape: A loop sourced from a 30 seconds recording at 00:30.000.",
+    "non_diegetic_music: N/A",
+  ].join("\n\n");
+  assert.equal(h3TimelineEndSeconds(prompt), 8);
+  assert.equal(h3TimelineEndSeconds("integrated_multimodal_description: [Shot 1] A continuous walk in 16:09 framing.\n\noverall_soundscape: A 30 seconds ambient reference."), 0);
+  assert.equal(h3TimelineEndSeconds(prompt.replace("At 00:08.000 she stops", "At 00:30.000 she stops")), 30);
+});
+
+test("H3 restituisce il prompt da 8s anche quando le reference durano 30s", async () => {
+  const draft = "subject_definitions: <Video 1> is a 30 seconds motion reference.\n\nsummary: Adapt the 30s reference to the requested scene.\n\nretention_analysis: Preserve movement style.\n\ndetailed_description: [Shot 1] At 00:00.000 the subject starts walking. At 00:08.000 the subject stops.\n\noverall_soundscape: Footsteps.\n\nnon_diegetic_music: N/A";
+  let requests = 0;
+  const client = new LmStudioClient({ model: "test" });
+  client.loadModel = async () => ({ instanceId: "test", model: { key: "test" } });
+  client.unload = async () => {};
+  client.request = async (path) => {
+    assert.equal(path, "/api/v1/chat");
+    requests += 1;
+    return { output: [{ type: "message", content: draft }] };
+  };
+  const result = await client.enhance({ text: "An eight-second walk using a 30 seconds motion reference.", target: "minimax_h3", duration: 8 });
+  assert.equal(requests, 1);
+  assert.equal(result.prompt, draft);
+  assert.equal(result.timelineRepairApplied, false);
+});
+
+test("H3 ripara una timeline realmente da 30s usando la durata da 8s e la richiesta originale", async () => {
+  const valid = "integrated_multimodal_description: [Shot 1] At 00:00.000 the subject starts walking. At 00:08.000 the subject stops.\n\noverall_soundscape: Footsteps.\n\nnon_diegetic_music: N/A";
+  let requests = 0;
+  const client = new LmStudioClient({ model: "test" });
+  client.loadModel = async () => ({ instanceId: "test", model: { key: "test" } });
+  client.unload = async () => {};
+  client.request = async (path, options) => {
+    requests += 1;
+    if (requests === 2) {
+      const body = JSON.parse(options.body);
+      assert.match(body.input, /Original request and reference roles/);
+      assert.match(body.input, /never exceed 8\.00 seconds/);
+      assert.match(body.input, /Walk beside the canal/);
+      assert.ok(body.system_prompt.endsWith(H3_FINAL_REFINEMENT_RULES));
+    }
+    return { output: [{ type: "message", content: requests === 1 ? valid.replace("00:08.000", "00:30.000") : valid }] };
+  };
+  const result = await client.enhance({ text: "Walk beside the canal.", target: "minimax_h3", duration: 8 });
+  assert.equal(requests, 2);
+  assert.equal(result.prompt, valid);
+  assert.equal(result.timelineRepairApplied, true);
+});
+
 test("MiniMax H3 Eros accetta i timestamp screenplay tra parentesi quadre", async () => {
   let chatCalls = 0;
   const client = new LmStudioClient({
@@ -1201,6 +1286,8 @@ test("MiniMax H3 riscrive automaticamente un prompt da 8 secondi fermo a 3 secon
       if (path === "/api/v1/models/load") return response({ model_instance_id: "h3-duration" });
       if (path === "/api/v1/chat") {
         chatCalls += 1;
+        assert.ok(body.system_prompt.endsWith(H3_FINAL_REFINEMENT_RULES));
+        assert.equal(body.system_prompt.split(H3_FINAL_REFINEMENT_RULES).length, 2);
         if (chatCalls === 1) {
           return response({ output: [{ type: "message", content: "integrated_multimodal_description: [Shot 1] At 00:00.000 the adult subject begins moving. At 00:03.000 she pauses.\n\noverall_soundscape: Car hum.\n\nnon_diegetic_music: N/A" }] });
         }
@@ -1227,6 +1314,39 @@ test("MiniMax H3 riscrive automaticamente un prompt da 8 secondi fermo a 3 secon
   assert.match(result.prompt, /00:07\.800/);
 });
 
+test("H3 mantiene il formato, i trigger e l'azione continua senza imporre timestamp", async () => {
+  for (const [target, trigger, action] of [
+    ["minimax_h3", "", "The subjects walk steadily along the canal throughout the eight-second clip."],
+    ["minimax_h3_action", "prfight2", "The fighter punches, then recovers his guard as the opponent steps back."],
+    ["minimax_h3_director_segment", "BUNNY", "The subject draws the katana from his left hip with his right hand, then holds it steady."],
+  ]) {
+    const draft = `${trigger ? `${trigger}\n\n` : ""}subject_definitions:\n<Subject 1> preserves the identity from <Picture 1>.\n\nsummary:\n[reference generation] Continuous action.\n\nretention_analysis:\nIdentity fully_preserved.\n\ndetailed_description:\n[Shot 1] ${action}\n\noverall_soundscape:\nFootsteps and cloth movement synchronized with the action.\n\nnon_diegetic_music:\nN/A`;
+    let chatCalls = 0;
+    const client = new LmStudioClient({
+      model: "vision-model",
+      fetchImpl: async (url, options = {}) => {
+        const path = new URL(url).pathname;
+        const body = options.body ? JSON.parse(options.body) : null;
+        if (path === "/api/v1/models") return response({ models: [{ key: "vision-model", capabilities: { vision: true }, loaded_instances: [] }] });
+        if (path === "/api/v1/models/load") return response({ model_instance_id: "h3-refinement" });
+        if (path === "/api/v1/models/unload") return response({});
+        if (path === "/api/v1/chat") {
+          chatCalls += 1;
+          assert.ok(body.system_prompt.endsWith(H3_FINAL_REFINEMENT_RULES));
+          assert.equal(body.system_prompt.split(H3_FINAL_REFINEMENT_RULES).length, 2);
+          return response({ output: [{ type: "message", content: draft }] });
+        }
+        throw new Error(`Unexpected path ${path}`);
+      },
+    });
+    const result = await client.enhance({ text: action, target, duration: 8 });
+    assert.equal(chatCalls, 1);
+    assert.equal(result.prompt, draft);
+    assert.equal(result.timelineRepairApplied, false);
+    assert.doesNotMatch(result.prompt, /FINAL H3 FORMULATION|silently verify/);
+  }
+});
+
 test("MiniMax H3 invia fino a nove reference vision a LM Studio nell'ordine Picture N", async () => {
   const calls = [];
   const client = new LmStudioClient({
@@ -1242,7 +1362,9 @@ test("MiniMax H3 invia fino a nove reference vision a LM Studio nell'ordine Pict
       }
       if (path === "/api/v1/chat") {
         assert.equal(body.input.length, 4);
-        assert.equal(body.input[0].content, "Tre frame cinematografici");
+        assert.ok(body.input[0].content.startsWith("Tre frame cinematografici\n\n"));
+        assert.match(body.input[0].content, /Exactly 3 pictures are attached/);
+        assert.match(body.input[0].content, /FIRST OUTPUT LINE/);
         assert.match(body.input[1].data_url, /base64,b25l/);
         assert.match(body.input[3].data_url, /base64,dGhyZWU=/);
         assert.match(body.system_prompt, /\[reference generation\]/i);
@@ -1312,6 +1434,24 @@ test("MiniMax H3 ricarica a 16K un'istanza Vision preesistente a 8K", async () =
     "/api/v1/chat",
     "/api/v1/models/unload",
   ]);
+});
+
+test("H3 assegna 4096 token a ciascun clip finale anche con otto sequenze", async () => {
+  const client = new LmStudioClient({ model: "test" });
+  client.loadModel = async () => ({ instanceId: "test", model: { key: "test" } });
+  client.unload = async () => {};
+  let calls = 0;
+  client.request = async (_path, options) => {
+    const body = JSON.parse(options.body);
+    assert.equal(body.max_output_tokens, 4096);
+    assert.match(body.input, /No pictures are attached/);
+    assert.match(body.input, /FIRST OUTPUT LINE/);
+    calls += 1;
+    return { output: [{ type: "message", content: "subject_definitions: One adult.\n\nsummary: The adult waits.\n\nretention_analysis: N/A\n\ndetailed_description: [Shot 1] At 00:00.000, the adult waits. At 00:08.000, the adult remains still.\n\noverall_soundscape: Room tone.\n\nnon_diegetic_music: N/A" }] };
+  };
+  const result = await client.enhance({ text: "8 sequenze da 8 secondi: un adulto aspetta in una stanza.", target: "minimax_h3", duration: 8, plaguekindStage: "final" });
+  assert.equal(calls, 8);
+  assert.equal(result.prompt.split(/^---$/m).length, 8);
 });
 
 test("espone preset LM Studio distinti per image editing Qwen e Klein", () => {

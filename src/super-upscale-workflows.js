@@ -23,9 +23,9 @@ export const SUPER_UPSCALE_REQUIRED_NODES = [
   "SeedVR2LoadVAEModel",
   "SeedVR2VideoUpscaler",
   "VRAM_Debug",
-  "TTP_Tile_image_size",
-  "TTP_Image_Tile_Batch",
-  "easy imageBatchToImageList",
+  "RemoteSuperUpscaleTiles",
+  "RemoteSuperUpscaleModelNames",
+  "RemoteSuperUpscaleAssemble",
   "ImageScaleDownToSize",
   "UNETLoader",
   "CLIPLoader",
@@ -38,8 +38,6 @@ export const SUPER_UPSCALE_REQUIRED_NODES = [
   "VAEEncode",
   "KSampler",
   "VAEDecode",
-  "ImageListToImageBatch",
-  "TTP_Image_Assy",
   "ImageSharpen",
   "ColorMatch",
   "JWImageSaturation",
@@ -85,19 +83,14 @@ export function buildSuperUpscaleWorkflow(rawOptions = {}, upload, runtime = {})
   const preset = SUPER_UPSCALE_PRESETS[String(rawOptions.superUpscalePreset || "8k")];
   if (!preset) throw new Error("Preset SUPER UPSCALE non valido.");
   const seed = seedValue(rawOptions.superUpscaleSeed ?? rawOptions.seed);
-  const denoise = numeric(rawOptions.superUpscaleDenoise, 0.35, 0.15, 0.55);
+  const denoise = numeric(rawOptions.superUpscaleDenoise, 0.25, 0.15, 0.55);
+  const refineDenoise = numeric(rawOptions.superUpscaleRefineDenoise, 0.18, 0.1, 0.3);
   const controlStrength = numeric(rawOptions.superUpscaleControlStrength, 0.5, 0.2, 1);
   const modelPatch = runtime.modelPatch || rawOptions.superUpscaleModelPatch;
   if (!modelPatch) throw new Error("Manca il ControlNet Union per Z-Image Turbo.");
 
   const workflow = {
     "1": node({ image: inputPath(upload) }, "LoadImage", "SUPER UPSCALE · sorgente"),
-    "2": node({
-      aspect_ratio: "original", proportional_width: 1, proportional_height: 1,
-      fit: "letterbox", method: "lanczos", round_to_multiple: "8",
-      scale_to_side: "longest", scale_to_length: 1024, background_color: "#000000",
-      image: ["1", 0],
-    }, "LayerUtility: ImageScaleByAspectRatio V2", "Prepara sorgente a 1024 px"),
     "10": node({
       model: SUPER_UPSCALE_FILES.seedvrModel, device: "cuda:0", blocks_to_swap: 36,
       swap_io_components: false, offload_device: "cpu", attention_mode: "sdpa",
@@ -109,7 +102,7 @@ export function buildSuperUpscaleWorkflow(rawOptions = {}, upload, runtime = {})
       tile_debug: "false", offload_device: "cpu",
     }, "SeedVR2LoadVAEModel", "SeedVR2 VAE · tiled"),
     "12": node({
-      image: ["2", 0], dit: ["10", 0], vae: ["11", 0], seed,
+      image: ["1", 0], dit: ["10", 0], vae: ["11", 0], seed,
       resolution: preset.restoreSize, max_resolution: preset.restoreSize,
       batch_size: 1, uniform_batch_size: false, color_correction: "lab",
       temporal_overlap: 16, prepend_frames: 0, input_noise_scale: 0,
@@ -124,9 +117,10 @@ export function buildSuperUpscaleWorkflow(rawOptions = {}, upload, runtime = {})
       scale_to_side: "longest", scale_to_length: preset.restoreSize,
       background_color: "#000000", image: ["13", 1],
     }, "LayerUtility: ImageScaleByAspectRatio V2", "Normalizza dimensione restauro"),
-    "20": node({ image: ["14", 0], width_factor: 2, height_factor: 2, overlap_rate: 0.2 }, "TTP_Tile_image_size", "Tile 2×2 · overlap 20%"),
-    "21": node({ image: ["14", 0], tile_width: ["20", 0], tile_height: ["20", 1] }, "TTP_Image_Tile_Batch", "Divide in tile"),
-    "22": node({ image: ["21", 0] }, "easy imageBatchToImageList", "Tile come lista"),
+    "20": node({ image: ["14", 0], reference: ["1", 0],
+      global_prompt: String(rawOptions.superUpscaleVisionPrompt || "").trim() || DEFAULT_RESTORE_PROMPT,
+      tile_size: 1024, overlap: 128, vision: false, caption_url: "", caption_token: "" },
+    "RemoteSuperUpscaleTiles", "Restauro · tile 1024 px"),
     "30": node({ unet_name: SUPER_UPSCALE_FILES.diffusionModel, weight_dtype: "default" }, "UNETLoader", "Z-Image Turbo"),
     "31": node({ clip_name: SUPER_UPSCALE_FILES.clip, type: "qwen_image", device: "default" }, "CLIPLoader", "Qwen text encoder"),
     "32": node({ vae_name: SUPER_UPSCALE_FILES.vae }, "VAELoader", "Z-Image VAE"),
@@ -136,30 +130,57 @@ export function buildSuperUpscaleWorkflow(rawOptions = {}, upload, runtime = {})
       clip: ["31", 0],
     }, "CLIPTextEncode", "Descrizione Vision della sorgente"),
     "35": node({ conditioning: ["34", 0] }, "ConditioningZeroOut", "Condizionamento negativo neutro"),
-    "36": node({ low_threshold: 100, high_threshold: 200, resolution: 1024, image: ["22", 0] }, "CannyEdgePreprocessor", "Bordi strutturali"),
+    "36": node({ low_threshold: 100, high_threshold: 200, resolution: 1024, image: ["20", 0] }, "CannyEdgePreprocessor", "Bordi strutturali"),
     "37": node({
       model: ["30", 0], model_patch: ["33", 0], vae: ["32", 0],
       image: ["36", 0], strength: controlStrength,
     }, "QwenImageDiffsynthControlnet", "ControlNet · fedeltà struttura"),
-    "38": node({ pixels: ["22", 0], vae: ["32", 0] }, "VAEEncode", "Codifica tile originale"),
+    "38": node({ pixels: ["20", 0], vae: ["32", 0] }, "VAEEncode", "Codifica tile originale"),
     "39": node({
       seed, steps: 8, cfg: 1, sampler_name: "euler", scheduler: "simple",
       denoise, model: ["37", 0], positive: ["34", 0], negative: ["35", 0], latent_image: ["38", 0],
     }, "KSampler", "Restauro generativo Z-Image · 8 step"),
     "40": node({ samples: ["39", 0], vae: ["32", 0] }, "VAEDecode", "Decodifica tile restaurato"),
-    "41": node({ images: ["40", 0] }, "ImageListToImageBatch", "Riunisce i tile"),
-    "42": node({
-      tiles: ["41", 0], positions: ["21", 1], original_size: ["21", 2], grid_size: ["21", 3], padding: 64,
-    }, "TTP_Image_Assy", "Ricompone con fusione overlap"),
-    "43": node({ image: ["42", 0], sharpen_radius: 1, sigma: 0.4, alpha: 0.5 }, "ImageSharpen", "Micro-sharpen controllato"),
+    "42": node({ tiles: ["40", 0], layout: ["20", 2] },
+      "RemoteSuperUpscaleAssemble", "Ricompone restauro · overlap 128 px"),
+    "43": node({ image: ["42", 0], sharpen_radius: 1, sigma: 0.4, alpha: 0.2 }, "ImageSharpen", "Micro-sharpen controllato"),
     "44": node({ image_ref: ["1", 0], image_target: ["43", 0], method: "mkl", strength: 1, multithread: true }, "ColorMatch", "Ripristina i colori originali"),
-    "45": node({ image: ["44", 0], factor: 1.1 }, "JWImageSaturation", "Saturazione naturale"),
+    "45": node({ image: ["44", 0], factor: 1 }, "JWImageSaturation", "Saturazione originale"),
     "50": node({ model_name: SUPER_UPSCALE_FILES.upscaleModel }, "UpscaleModelLoader", "ClearReality 4×"),
     "51": node({ upscale_model: ["50", 0], image: ["45", 0] }, "ImageUpscaleWithModel", "ClearReality · dettaglio finale"),
     "52": node({ images: ["51", 0], size: preset.finalSize, mode: true }, "ImageScaleDownToSize", `Limite finale ${preset.name}`),
     "53": node({ image: ["52", 0] }, "RemoteImageTensorNormalize", "Normalizza output finale"),
     "99": node({ images: ["53", 0], filename_prefix: `Remote_SUPER_UPSCALE_${preset.id}` }, "SaveImage", "Salva SUPER UPSCALE"),
   };
+
+  const globalPrompt = String(rawOptions.superUpscaleVisionPrompt || "").trim() || DEFAULT_RESTORE_PROMPT;
+  // The final pass captions actual final-resolution tiles, anchored to the source.
+  // Every loader depends on the ready output: no GPU model loads during Vision.
+  workflow["60"] = node({ image: ["52", 0], reference: ["1", 0], global_prompt: globalPrompt,
+    tile_size: 1024, overlap: 128, vision: true,
+    caption_url: runtime.captionUrl || "", caption_token: runtime.captionToken || "" },
+  "RemoteSuperUpscaleTiles", "LM Studio · analisi locale e purge VRAM");
+  workflow["61"] = node({ ready: ["60", 3], unet: SUPER_UPSCALE_FILES.diffusionModel,
+    clip: SUPER_UPSCALE_FILES.clip, vae: SUPER_UPSCALE_FILES.vae, patch: modelPatch },
+  "RemoteSuperUpscaleModelNames", "Attende scaricamento LM Studio");
+  workflow["62"] = node({ unet_name: ["61", 0], weight_dtype: "default" }, "UNETLoader", "Rifinitura · Z-Image");
+  workflow["63"] = node({ clip_name: ["61", 1], type: "qwen_image", device: "default" }, "CLIPLoader", "Rifinitura · encoder");
+  workflow["64"] = node({ vae_name: ["61", 2] }, "VAELoader", "Rifinitura · VAE");
+  workflow["65"] = node({ name: ["61", 3] }, "ModelPatchLoader", "Rifinitura · ControlNet");
+  workflow["66"] = node({ text: ["60", 1], clip: ["63", 0] }, "CLIPTextEncode", "Prompt specifico per tile");
+  workflow["67"] = node({ conditioning: ["66", 0] }, "ConditioningZeroOut", "Negativo neutro");
+  workflow["68"] = node({ image: ["60", 0], low_threshold: 100, high_threshold: 200, resolution: 1024 }, "CannyEdgePreprocessor", "Rifinitura · bordi");
+  workflow["69"] = node({ model: ["62", 0], model_patch: ["65", 0], vae: ["64", 0], image: ["68", 0],
+    strength: Math.max(0.65, controlStrength) }, "QwenImageDiffsynthControlnet", "Rifinitura · preserva geometria");
+  workflow["70"] = node({ pixels: ["60", 0], vae: ["64", 0] }, "VAEEncode", "Codifica tile finale");
+  workflow["71"] = node({ seed, steps: 8, cfg: 1, sampler_name: "euler", scheduler: "simple",
+    denoise: refineDenoise, model: ["69", 0], positive: ["66", 0], negative: ["67", 0], latent_image: ["70", 0] },
+  "KSampler", "Rifinitura locale alla risoluzione finale");
+  workflow["72"] = node({ samples: ["71", 0], vae: ["64", 0] }, "VAEDecode", "Decodifica dettaglio finale");
+  workflow["73"] = node({ tiles: ["72", 0], layout: ["60", 2] }, "RemoteSuperUpscaleAssemble", "Ricompone dettaglio finale");
+  workflow["74"] = node({ image_ref: ["52", 0], image_target: ["73", 0], method: "mkl", strength: 0.5, multithread: true },
+    "ColorMatch", "Mantiene tonalità tra le due fasi");
+  workflow["53"].inputs.image = ["74", 0];
 
   return {
     workflow,
@@ -189,7 +210,14 @@ export function buildSuperUpscaleWorkflow(rawOptions = {}, upload, runtime = {})
         restoreSize: preset.restoreSize,
         denoise,
         controlStrength,
-        tileGrid: "2×2",
+        tileGrid: "adaptive-1024",
+        tileSize: 1024,
+        tileOverlap: 128,
+        refineDenoise,
+        localVision: true,
+        finalRefinement: true,
+        sourceDownscale: false,
+        pipelineVersion: 2,
         autoCaption: rawOptions.superUpscaleVisionPrompt ? SUPER_UPSCALE_FILES.visionModel : "Fallback universale",
         modelPatch,
         autoPurge: true,
@@ -223,7 +251,7 @@ export function superUpscaleConfig({
     missingFiles,
     modelPatch,
     presets: Object.values(SUPER_UPSCALE_PRESETS),
-    pipeline: ["LM Studio Vision", "SeedVR2 7B", "Z-Image ControlNet 8 step", "ClearReality 4×"],
+    pipeline: ["LM Studio Vision", "SeedVR2 7B", "Z-Image tile 1024", "ClearReality 4×", "Vision locale + rifinitura finale"],
     visionModel: SUPER_UPSCALE_FILES.visionModel,
   };
 }

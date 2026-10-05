@@ -70,13 +70,16 @@ function finalShotNumber(body) {
 function formatH3ThreeFieldPrompt(rawPrompt, {
   triggers = [], directives = [], mode = "text", effectiveDuration = 0,
 } = {}) {
-  const source = String(rawPrompt || "").trim().replace(/\\([_<>{}\[\]])/gu, "$1");
+  let source = String(rawPrompt || "").trim().replace(/\\([_<>{}\[\]])/gu, "$1");
+  const sceneTrigger = source.match(/^(prfight2(?:, prfin1)?|BUNNY)(?:\r?\n|$)/u)?.[1] || "";
+  if (sceneTrigger) source = source.slice(sceneTrigger.length).trim();
   const fields = parseH3PromptFields(source, mode === "references" ? H3_REFERENCE_FIELDS : H3_BASE_FIELDS);
   const baseFields = mode === "references" ? parseH3PromptFields(source, H3_BASE_FIELDS) : fields;
   let integrated = ensureFirstShot(mode === "references"
     ? fields.detailed_description || baseFields.integrated_multimodal_description || source
     : fields.integrated_multimodal_description || source);
-  const selectedTriggers = [...new Set(triggers.map((item) => String(item || "").trim()).filter(Boolean))];
+  const selectedTriggers = [...new Set(triggers.map((item) => String(item || "").trim()).filter(Boolean))]
+    .filter((trigger) => !sceneTrigger || !/^(?:prfight2|prfin1|BUNNY)$/iu.test(trigger));
   for (const trigger of [...selectedTriggers].reverse()) {
     if (!integrated.toLocaleLowerCase().includes(trigger.toLocaleLowerCase())) {
       integrated = `${trigger}.${integrated ? ` ${integrated}` : ""}`;
@@ -90,7 +93,7 @@ function formatH3ThreeFieldPrompt(rawPrompt, {
   const additions = directives.map((item) => String(item || "").trim()).filter(Boolean);
   if (additions.length) integrated = `${integrated}${integrated ? " " : ""}${additions.join(" ")}`;
   if (mode === "references") {
-    return [
+    const formatted = [
       `subject_definitions: ${fields.subject_definitions || "Referenced subjects use the supplied reference labels according to their stated roles."}`,
       `summary: ${fields.summary || "[reference generation] The target video follows the supplied reference roles and requested action."}`,
       `retention_analysis: ${fields.retention_analysis || "Supplied reference roles are preserved according to the user request."}`,
@@ -98,13 +101,15 @@ function formatH3ThreeFieldPrompt(rawPrompt, {
       `overall_soundscape: ${fields.overall_soundscape || baseFields.overall_soundscape || "N/A"}`,
       `non_diegetic_music: ${fields.non_diegetic_music || baseFields.non_diegetic_music || "N/A"}`,
     ].join("\n\n");
+    return sceneTrigger ? `${sceneTrigger}\n\n${formatted}` : formatted;
   }
   const formatted = [
     `integrated_multimodal_description: ${integrated}`,
     `overall_soundscape: ${fields.overall_soundscape || "N/A"}`,
     `non_diegetic_music: ${fields.non_diegetic_music || "N/A"}`,
   ].join("\n\n");
-  return alignment ? `${alignment}\n\n${formatted}` : formatted;
+  const result = alignment ? `${alignment}\n\n${formatted}` : formatted;
+  return sceneTrigger ? `${sceneTrigger}\n\n${result}` : result;
 }
 
 function inputPath(upload) {

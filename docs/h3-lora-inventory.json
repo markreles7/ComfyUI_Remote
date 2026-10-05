@@ -1,0 +1,303 @@
+{
+  "directory": "E:\\ComfyUI\\Data\\Models\\Lora\\H3",
+  "checkedAt": "2026-09-29T10:29:14.438Z",
+  "fileCount": 60,
+  "cataloguedCount": 37,
+  "prefixAliasesRecovered": [
+    "H3/NSFW_H3_Mis_Insrt_v07.safetensors",
+    "H3/NSFW_Vagina_minimax-h3_epoch20.safetensors"
+  ],
+  "filesWithoutVerifiedCatalogMetadata": [
+    "H3/NSFW-AIO-V2.5.safetensors",
+    "H3/NSFW_BbcRide_Minimax_Cvtai.safetensors",
+    "H3/NSFW_BreastGrab-H3_minimaxh3_3267477_epoch_6.safetensors",
+    "H3/NSFW_HMBreastsV2.safetensors",
+    "H3/NSFW_HMCumshot_V1.0.safetensors",
+    "H3/NSFW_MH3_Cum_05b.safetensors",
+    "H3/NSFW_MM-H3 - Blowjob v3.safetensors",
+    "H3/NSFW_MiniMax-H3_Futa_Transformations_LoRA_V5.1.safetensors",
+    "H3/NSFW_SexGod_NaughtyTimes_v3_rank64_unpruned.safetensors",
+    "H3/NSFW_SizeDiff-H3MiniMax-TestV1_minimaxh3_3267411_epoch_7.safetensors",
+    "H3/NSFW_Titjob - Titfuck v0.95.safetensors",
+    "H3/NSFW_epic_cumshots-MiniMaxH3-ALPHA-CUMSH0T.safetensors",
+    "H3/NSFW_front-doggy-mh3-e33-az420.safetensors",
+    "H3/NSFW_h3_Better_NSFW_Motion_V1.safetensors",
+    "H3/NSFW_h3_base_fingering_v1.1-6000.safetensors",
+    "H3/NSFW_riding_pose_H3_i2v_v1.0.safetensors",
+    "H3/NSFW_sagging-h3-v0.1fl.safetensors",
+    "H3/POV_NSFW_ Missionary.safetensors",
+    "H3/POV_NSFW_Doggy.safetensors",
+    "H3/STY_CINEMA1.safetensors",
+    "H3/STY_CINEMA2.safetensors",
+    "H3/STY_CINEMA3.safetensors",
+    "H3/STY_VBVR_H3.safetensors"
+  ],
+  "missingPresetFiles": [],
+  "presets": [
+    {
+      "id": "sfwCinema",
+      "files": [
+        "H3/STY_CINEMA1.safetensors"
+      ]
+    },
+    {
+      "id": "sfwCinemaV2",
+      "files": [
+        "H3/STY_CINEMA2.safetensors"
+      ]
+    },
+    {
+      "id": "sfwCinemaV3",
+      "files": [
+        "H3/STY_CINEMA3.safetensors"
+      ]
+    },
+    {
+      "id": "sfwMotion",
+      "files": [
+        "H3/STY_Motion_Booster.safetensors"
+      ]
+    },
+    {
+      "id": "sfwMotionV2",
+      "files": [
+        "H3/MOT_Better_Motion.safetensors"
+      ]
+    },
+    {
+      "id": "sfwVbvr",
+      "files": [
+        "H3/STY_VBVR_H3.safetensors"
+      ]
+    },
+    {
+      "id": "sfwVbvrV2",
+      "files": [
+        "H3/STY_H3_VBVR_Pro_attn_only.safetensors"
+      ]
+    },
+    {
+      "id": "sfwClay",
+      "files": [
+        "H3/STY_Claymation_H3.safetensors"
+      ]
+    },
+    {
+      "id": "sfwPixel",
+      "files": [
+        "H3/STY_Cutesy_Pixel_H3.safetensors"
+      ]
+    },
+    {
+      "id": "sfwFlatAnime",
+      "files": [
+        "H3/STY_Flat_Anime_H3.safetensors"
+      ]
+    },
+    {
+      "id": "sfwHanafuda",
+      "files": [
+        "H3/STY_Hanafuda_Retro_H3.safetensors"
+      ]
+    },
+    {
+      "id": "sfwPbr",
+      "files": [
+        "H3/STY_PBR_Animation_H3.safetensors"
+      ]
+    },
+    {
+      "id": "sfwDrone",
+      "files": [
+        "H3/CAM_Drone_Shot.safetensors"
+      ]
+    },
+    {
+      "id": "sfwWhisper",
+      "files": [
+        "H3/AUD_Whispering.safetensors"
+      ]
+    },
+    {
+      "id": "sfwLain",
+      "files": [
+        "H3/CHAR_Lain_Iwakura_H3.safetensors"
+      ]
+    },
+    {
+      "id": "sfwDance",
+      "files": [
+        "H3/MOT_Zero_Two_Dance.safetensors"
+      ]
+    },
+    {
+      "id": "sfwRealism",
+      "files": [
+        "H3/STY_Realism_People.safetensors"
+      ]
+    },
+    {
+      "id": "plagueGalaxyAce",
+      "files": [
+        "H3/STY_GalaxyAce.safetensors"
+      ]
+    },
+    {
+      "id": "plagueContinuityRepair",
+      "files": [
+        "H3/MOT_Continuity_Repair_H3_trigger-bunny_crisp_motion.safetensors"
+      ]
+    },
+    {
+      "id": "plagueHandheld",
+      "files": [
+        "H3/STY_handheld_h3_100.safetensors"
+      ]
+    },
+    {
+      "id": "plagueCinemaGrade",
+      "files": [
+        "H3/STY_cinemagrade_style_h3_ep50.safetensors"
+      ]
+    },
+    {
+      "id": "plagueHandheldCinemaGrade",
+      "files": [
+        "H3/STY_handheld_h3_100.safetensors",
+        "H3/STY_cinemagrade_style_h3_ep50.safetensors"
+      ]
+    },
+    {
+      "id": "realism",
+      "files": [
+        "H3/STY_Realism_People.safetensors"
+      ]
+    },
+    {
+      "id": "motion",
+      "files": [
+        "H3/STY_Motion_Booster.safetensors"
+      ]
+    },
+    {
+      "id": "betterMotion",
+      "files": [
+        "H3/MOT_Better_Motion.safetensors"
+      ]
+    },
+    {
+      "id": "zeroTwo",
+      "files": [
+        "H3/MOT_Zero_Two_Dance.safetensors"
+      ]
+    },
+    {
+      "id": "whisper",
+      "files": [
+        "H3/AUD_Whispering.safetensors"
+      ]
+    },
+    {
+      "id": "drone",
+      "files": [
+        "H3/CAM_Drone_Shot.safetensors"
+      ]
+    },
+    {
+      "id": "nsfwAio",
+      "files": [
+        "H3/NSFW_AIO.safetensors"
+      ]
+    },
+    {
+      "id": "mystic",
+      "files": [
+        "H3/NSFW_MysticXXX_MMH3-V4.safetensors"
+      ]
+    },
+    {
+      "id": "blowjob",
+      "files": [
+        "H3/NSFW_Blowjob.safetensors"
+      ]
+    },
+    {
+      "id": "deepthroat",
+      "files": [
+        "H3/NSFW_deepthroat.safetensors"
+      ]
+    },
+    {
+      "id": "boobPhysics",
+      "files": [
+        "H3/NSFW_Boob Physics.safetensors"
+      ]
+    },
+    {
+      "id": "bounce",
+      "files": [
+        "H3/NSFW_bouncetits.safetensors"
+      ]
+    },
+    {
+      "id": "bounceFl2va",
+      "files": [
+        "H3/NSFW_bounceV07_fl2va-000230_Intense.safetensors"
+      ]
+    },
+    {
+      "id": "bounceRef2va",
+      "files": [
+        "H3/NSFW_bouncetits.safetensors"
+      ]
+    },
+    {
+      "id": "breastPlay",
+      "files": [
+        "H3/NSFW_breastplayjiggle_h3_v2.safetensors"
+      ]
+    },
+    {
+      "id": "tiddiesRealism",
+      "files": [
+        "H3/NSFW_PlagueKind-tiddies-realismslider.safetensors"
+      ]
+    },
+    {
+      "id": "galaxyAce",
+      "files": [
+        "H3/STY_GalaxyAce.safetensors"
+      ]
+    },
+    {
+      "id": "vbvrPro",
+      "files": [
+        "H3/STY_H3_VBVR_Pro_attn_only.safetensors"
+      ]
+    },
+    {
+      "id": "bst",
+      "files": [
+        "H3/NSFW_MiniMax_bst_v1.safetensors"
+      ]
+    },
+    {
+      "id": "animeAdult",
+      "files": [
+        "H3/NSFW_General_Hentai_Anime_H3.safetensors"
+      ]
+    },
+    {
+      "id": "flatAnime",
+      "files": [
+        "H3/STY_Flat_Anime_H3.safetensors"
+      ]
+    },
+    {
+      "id": "penis",
+      "files": [
+        "H3/NSFW_PenisV2_minimax-h3_epoch60.safetensors"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,635 @@
+{
+  "date": "2026-10-05",
+  "settings": {
+    "top_p": 1,
+    "top_k": 40,
+    "min_p": 0,
+    "repeat_penalty": 1.05,
+    "temperature": 0.15
+  },
+  "totalGenerations": 288,
+  "baseline": {
+    "name": "baseline",
+    "count": 16,
+    "score": 7.841796875,
+    "metrics": {
+      "instructionAdherence": 8.4375,
+      "userActionPreservation": 9.84375,
+      "referenceContinuity": 10,
+      "timelineCoherence": 5.625,
+      "hallucinationAvoidance": 6.875,
+      "triggerCorrectness": 5,
+      "outputCompleteness": 10,
+      "unnecessaryCreativity": 9.375
+    },
+    "meanMs": 7421.5625,
+    "maxInput": 11088,
+    "maxOutput": 802
+  },
+  "final": {
+    "name": "repeat-low",
+    "count": 16,
+    "score": 9.8046875,
+    "metrics": {
+      "instructionAdherence": 9.6875,
+      "userActionPreservation": 9.6875,
+      "referenceContinuity": 10,
+      "timelineCoherence": 8.75,
+      "hallucinationAvoidance": 10,
+      "triggerCorrectness": 10,
+      "outputCompleteness": 10,
+      "unnecessaryCreativity": 10
+    },
+    "meanMs": 8046.625,
+    "maxInput": 11508,
+    "maxOutput": 943
+  },
+  "profiles": [
+    {
+      "name": "baseline",
+      "count": 16,
+      "score": 7.841796875,
+      "metrics": {
+        "instructionAdherence": 8.4375,
+        "userActionPreservation": 9.84375,
+        "referenceContinuity": 10,
+        "timelineCoherence": 5.625,
+        "hallucinationAvoidance": 6.875,
+        "triggerCorrectness": 5,
+        "outputCompleteness": 10,
+        "unnecessaryCreativity": 9.375
+      },
+      "meanMs": 7421.5625,
+      "maxInput": 11088,
+      "maxOutput": 802
+    },
+    {
+      "name": "contract005",
+      "count": 16,
+      "score": 9.21875,
+      "metrics": {
+        "instructionAdherence": 8.75,
+        "userActionPreservation": 10,
+        "referenceContinuity": 10,
+        "timelineCoherence": 8.125,
+        "hallucinationAvoidance": 10,
+        "triggerCorrectness": 8.75,
+        "outputCompleteness": 6.875,
+        "unnecessaryCreativity": 10
+      },
+      "meanMs": 6824.25,
+      "maxInput": 11406,
+      "maxOutput": 750
+    },
+    {
+      "name": "contract015",
+      "count": 16,
+      "score": 9.04296875,
+      "metrics": {
+        "instructionAdherence": 8.4375,
+        "userActionPreservation": 10,
+        "referenceContinuity": 10,
+        "timelineCoherence": 9.375,
+        "hallucinationAvoidance": 10,
+        "triggerCorrectness": 8.125,
+        "outputCompleteness": 5.625,
+        "unnecessaryCreativity": 10
+      },
+      "meanMs": 6741.75,
+      "maxInput": 11406,
+      "maxOutput": 891
+    },
+    {
+      "name": "contract2-005",
+      "count": 16,
+      "score": 8.505859375,
+      "metrics": {
+        "instructionAdherence": 7.96875,
+        "userActionPreservation": 9.6875,
+        "referenceContinuity": 10,
+        "timelineCoherence": 8.125,
+        "hallucinationAvoidance": 10,
+        "triggerCorrectness": 5,
+        "outputCompleteness": 10,
+        "unnecessaryCreativity": 10
+      },
+      "meanMs": 7311.5,
+      "maxInput": 11497,
+      "maxOutput": 729
+    },
+    {
+      "name": "contract2-015",
+      "count": 16,
+      "score": 8.583984375,
+      "metrics": {
+        "instructionAdherence": 8.59375,
+        "userActionPreservation": 9.6875,
+        "referenceContinuity": 10,
+        "timelineCoherence": 7.5,
+        "hallucinationAvoidance": 10,
+        "triggerCorrectness": 5,
+        "outputCompleteness": 10,
+        "unnecessaryCreativity": 10
+      },
+      "meanMs": 7546.375,
+      "maxInput": 11497,
+      "maxOutput": 775
+    },
+    {
+      "name": "contract3-005",
+      "count": 16,
+      "score": 9.6875,
+      "metrics": {
+        "instructionAdherence": 9.53125,
+        "userActionPreservation": 9.84375,
+        "referenceContinuity": 10,
+        "timelineCoherence": 9.375,
+        "hallucinationAvoidance": 9.375,
+        "triggerCorrectness": 10,
+        "outputCompleteness": 10,
+        "unnecessaryCreativity": 9.375
+      },
+      "meanMs": 7995.9375,
+      "maxInput": 11508,
+      "maxOutput": 873
+    },
+    {
+      "name": "contract3-015",
+      "count": 16,
+      "score": 9.833984375,
+      "metrics": {
+        "instructionAdherence": 9.84375,
+        "userActionPreservation": 9.6875,
+        "referenceContinuity": 10,
+        "timelineCoherence": 8.75,
+        "hallucinationAvoidance": 10,
+        "triggerCorrectness": 10,
+        "outputCompleteness": 10,
+        "unnecessaryCreativity": 10
+      },
+      "meanMs": 8038.4375,
+      "maxInput": 11508,
+      "maxOutput": 933
+    },
+    {
+      "name": "final",
+      "count": 16,
+      "score": 9.765625,
+      "metrics": {
+        "instructionAdherence": 9.53125,
+        "userActionPreservation": 9.84375,
+        "referenceContinuity": 10,
+        "timelineCoherence": 8.125,
+        "hallucinationAvoidance": 10,
+        "triggerCorrectness": 10,
+        "outputCompleteness": 10,
+        "unnecessaryCreativity": 10
+      },
+      "meanMs": 8109.1875,
+      "maxInput": 11508,
+      "maxOutput": 919
+    },
+    {
+      "name": "final-nucleus09",
+      "count": 16,
+      "score": 9.78515625,
+      "metrics": {
+        "instructionAdherence": 9.6875,
+        "userActionPreservation": 10,
+        "referenceContinuity": 10,
+        "timelineCoherence": 10,
+        "hallucinationAvoidance": 9.375,
+        "triggerCorrectness": 10,
+        "outputCompleteness": 10,
+        "unnecessaryCreativity": 9.375
+      },
+      "meanMs": 7847.1875,
+      "maxInput": 11508,
+      "maxOutput": 862
+    },
+    {
+      "name": "minp-neutral",
+      "count": 16,
+      "score": 9.794921875,
+      "metrics": {
+        "instructionAdherence": 9.6875,
+        "userActionPreservation": 9.84375,
+        "referenceContinuity": 10,
+        "timelineCoherence": 8.125,
+        "hallucinationAvoidance": 10,
+        "triggerCorrectness": 10,
+        "outputCompleteness": 10,
+        "unnecessaryCreativity": 10
+      },
+      "meanMs": 8502.9375,
+      "maxInput": 11508,
+      "maxOutput": 1032
+    },
+    {
+      "name": "nucleus09",
+      "count": 16,
+      "score": 9.84375,
+      "metrics": {
+        "instructionAdherence": 9.84375,
+        "userActionPreservation": 9.53125,
+        "referenceContinuity": 10,
+        "timelineCoherence": 9.375,
+        "hallucinationAvoidance": 10,
+        "triggerCorrectness": 10,
+        "outputCompleteness": 10,
+        "unnecessaryCreativity": 10
+      },
+      "meanMs": 7978.125,
+      "maxInput": 11508,
+      "maxOutput": 1107
+    },
+    {
+      "name": "nucleus1",
+      "count": 16,
+      "score": 9.66796875,
+      "metrics": {
+        "instructionAdherence": 9.84375,
+        "userActionPreservation": 9.84375,
+        "referenceContinuity": 10,
+        "timelineCoherence": 8.125,
+        "hallucinationAvoidance": 9.375,
+        "triggerCorrectness": 10,
+        "outputCompleteness": 10,
+        "unnecessaryCreativity": 9.375
+      },
+      "meanMs": 8002.8125,
+      "maxInput": 11508,
+      "maxOutput": 896
+    },
+    {
+      "name": "repeat-low",
+      "count": 16,
+      "score": 9.8046875,
+      "metrics": {
+        "instructionAdherence": 9.6875,
+        "userActionPreservation": 9.6875,
+        "referenceContinuity": 10,
+        "timelineCoherence": 8.75,
+        "hallucinationAvoidance": 10,
+        "triggerCorrectness": 10,
+        "outputCompleteness": 10,
+        "unnecessaryCreativity": 10
+      },
+      "meanMs": 8046.625,
+      "maxInput": 11508,
+      "maxOutput": 943
+    },
+    {
+      "name": "repeat-neutral",
+      "count": 16,
+      "score": 9.638671875,
+      "metrics": {
+        "instructionAdherence": 9.6875,
+        "userActionPreservation": 9.84375,
+        "referenceContinuity": 10,
+        "timelineCoherence": 8.125,
+        "hallucinationAvoidance": 9.375,
+        "triggerCorrectness": 10,
+        "outputCompleteness": 10,
+        "unnecessaryCreativity": 9.375
+      },
+      "meanMs": 7809.6875,
+      "maxInput": 11508,
+      "maxOutput": 999
+    },
+    {
+      "name": "temp005",
+      "count": 16,
+      "score": 7.939453125,
+      "metrics": {
+        "instructionAdherence": 8.125,
+        "userActionPreservation": 9.84375,
+        "referenceContinuity": 10,
+        "timelineCoherence": 3.125,
+        "hallucinationAvoidance": 8.75,
+        "triggerCorrectness": 5,
+        "outputCompleteness": 8.75,
+        "unnecessaryCreativity": 10
+      },
+      "meanMs": 7052.25,
+      "maxInput": 11088,
+      "maxOutput": 751
+    },
+    {
+      "name": "temp025",
+      "count": 16,
+      "score": 7.607421875,
+      "metrics": {
+        "instructionAdherence": 7.96875,
+        "userActionPreservation": 9.6875,
+        "referenceContinuity": 10,
+        "timelineCoherence": 4.375,
+        "hallucinationAvoidance": 6.875,
+        "triggerCorrectness": 5.625,
+        "outputCompleteness": 7.5,
+        "unnecessaryCreativity": 9.375
+      },
+      "meanMs": 7060.6875,
+      "maxInput": 11088,
+      "maxOutput": 778
+    },
+    {
+      "name": "topk40",
+      "count": 16,
+      "score": 9.833984375,
+      "metrics": {
+        "instructionAdherence": 9.84375,
+        "userActionPreservation": 9.6875,
+        "referenceContinuity": 10,
+        "timelineCoherence": 8.75,
+        "hallucinationAvoidance": 10,
+        "triggerCorrectness": 10,
+        "outputCompleteness": 10,
+        "unnecessaryCreativity": 10
+      },
+      "meanMs": 8018.5,
+      "maxInput": 11508,
+      "maxOutput": 924
+    },
+    {
+      "name": "topk80",
+      "count": 16,
+      "score": 9.6484375,
+      "metrics": {
+        "instructionAdherence": 9.53125,
+        "userActionPreservation": 9.84375,
+        "referenceContinuity": 10,
+        "timelineCoherence": 8.75,
+        "hallucinationAvoidance": 9.375,
+        "triggerCorrectness": 10,
+        "outputCompleteness": 10,
+        "unnecessaryCreativity": 9.375
+      },
+      "meanMs": 7775.875,
+      "maxInput": 11508,
+      "maxOutput": 897
+    }
+  ],
+  "decisions": {
+    "settings": {
+      "top_p": 1,
+      "top_k": 40,
+      "min_p": 0,
+      "repeat_penalty": 1.05,
+      "temperature": 0.15
+    },
+    "winner": {
+      "name": "topk40",
+      "count": 16,
+      "score": 9.833984375,
+      "metrics": {
+        "instructionAdherence": 9.84375,
+        "userActionPreservation": 9.6875,
+        "referenceContinuity": 10,
+        "timelineCoherence": 8.75,
+        "hallucinationAvoidance": 10,
+        "triggerCorrectness": 10,
+        "outputCompleteness": 10,
+        "unnecessaryCreativity": 10
+      },
+      "meanMs": 8018.5,
+      "maxInput": 11508,
+      "maxOutput": 924
+    },
+    "steps": [
+      {
+        "parameter": "top_p",
+        "candidates": [
+          {
+            "name": "nucleus1",
+            "count": 16,
+            "score": 9.53125,
+            "metrics": {
+              "instructionAdherence": 9.53125,
+              "userActionPreservation": 9.84375,
+              "referenceContinuity": 10,
+              "timelineCoherence": 6.875,
+              "hallucinationAvoidance": 9.375,
+              "triggerCorrectness": 10,
+              "outputCompleteness": 10,
+              "unnecessaryCreativity": 9.375
+            },
+            "meanMs": 8002.8125,
+            "maxInput": 11508,
+            "maxOutput": 896
+          },
+          {
+            "name": "nucleus09",
+            "count": 16,
+            "score": 9.609375,
+            "metrics": {
+              "instructionAdherence": 9.375,
+              "userActionPreservation": 9.375,
+              "referenceContinuity": 10,
+              "timelineCoherence": 7.5,
+              "hallucinationAvoidance": 10,
+              "triggerCorrectness": 10,
+              "outputCompleteness": 10,
+              "unnecessaryCreativity": 10
+            },
+            "meanMs": 7978.125,
+            "maxInput": 11508,
+            "maxOutput": 1107
+          }
+        ],
+        "winner": "nucleus1",
+        "settings": {
+          "temperature": 0.15,
+          "top_p": 1
+        }
+      },
+      {
+        "parameter": "min_p",
+        "candidate": {
+          "name": "minp-neutral",
+          "count": 16,
+          "score": 9.560546875,
+          "metrics": {
+            "instructionAdherence": 9.21875,
+            "userActionPreservation": 9.6875,
+            "referenceContinuity": 10,
+            "timelineCoherence": 6.25,
+            "hallucinationAvoidance": 10,
+            "triggerCorrectness": 10,
+            "outputCompleteness": 10,
+            "unnecessaryCreativity": 10
+          },
+          "meanMs": 8502.9375,
+          "maxInput": 11508,
+          "maxOutput": 1032
+        },
+        "winner": "minp-neutral",
+        "settings": {
+          "temperature": 0.15,
+          "top_p": 1,
+          "min_p": 0
+        }
+      },
+      {
+        "parameter": "top_k",
+        "candidates": [
+          {
+            "name": "topk40",
+            "count": 16,
+            "score": 9.833984375,
+            "metrics": {
+              "instructionAdherence": 9.84375,
+              "userActionPreservation": 9.6875,
+              "referenceContinuity": 10,
+              "timelineCoherence": 8.75,
+              "hallucinationAvoidance": 10,
+              "triggerCorrectness": 10,
+              "outputCompleteness": 10,
+              "unnecessaryCreativity": 10
+            },
+            "meanMs": 8018.5,
+            "maxInput": 11508,
+            "maxOutput": 924
+          },
+          {
+            "name": "topk80",
+            "count": 16,
+            "score": 9.6484375,
+            "metrics": {
+              "instructionAdherence": 9.53125,
+              "userActionPreservation": 9.84375,
+              "referenceContinuity": 10,
+              "timelineCoherence": 8.75,
+              "hallucinationAvoidance": 9.375,
+              "triggerCorrectness": 10,
+              "outputCompleteness": 10,
+              "unnecessaryCreativity": 9.375
+            },
+            "meanMs": 7775.875,
+            "maxInput": 11508,
+            "maxOutput": 897
+          }
+        ],
+        "winner": "topk40",
+        "settings": {
+          "temperature": 0.15,
+          "top_p": 1,
+          "min_p": 0,
+          "top_k": 40
+        },
+        "rejectedProbe": {
+          "value": 0,
+          "status": 400,
+          "reason": "Number must be greater than or equal to 1"
+        }
+      },
+      {
+        "parameter": "repeat_penalty",
+        "candidate": {
+          "name": "repeat-neutral",
+          "count": 16,
+          "score": 9.638671875,
+          "metrics": {
+            "instructionAdherence": 9.6875,
+            "userActionPreservation": 9.84375,
+            "referenceContinuity": 10,
+            "timelineCoherence": 8.125,
+            "hallucinationAvoidance": 9.375,
+            "triggerCorrectness": 10,
+            "outputCompleteness": 10,
+            "unnecessaryCreativity": 9.375
+          },
+          "meanMs": 7809.6875,
+          "maxInput": 11508,
+          "maxOutput": 999
+        },
+        "winner": "topk40",
+        "settings": {
+          "temperature": 0.15,
+          "top_p": 1,
+          "min_p": 0,
+          "top_k": 40
+        }
+      }
+    ],
+    "refinement": [
+      {
+        "parameter": "repeat_penalty",
+        "candidate": {
+          "name": "repeat-low",
+          "count": 16,
+          "score": 9.8046875,
+          "metrics": {
+            "instructionAdherence": 9.6875,
+            "userActionPreservation": 9.6875,
+            "referenceContinuity": 10,
+            "timelineCoherence": 8.75,
+            "hallucinationAvoidance": 10,
+            "triggerCorrectness": 10,
+            "outputCompleteness": 10,
+            "unnecessaryCreativity": 10
+          },
+          "meanMs": 8046.625,
+          "maxInput": 11508,
+          "maxOutput": 943
+        },
+        "accepted": true,
+        "settings": {
+          "top_p": 1,
+          "top_k": 40,
+          "min_p": 0,
+          "repeat_penalty": 1.05,
+          "temperature": 0.15
+        }
+      },
+      {
+        "parameter": "top_p",
+        "candidate": {
+          "name": "final-nucleus09",
+          "count": 16,
+          "score": 9.78515625,
+          "metrics": {
+            "instructionAdherence": 9.6875,
+            "userActionPreservation": 10,
+            "referenceContinuity": 10,
+            "timelineCoherence": 10,
+            "hallucinationAvoidance": 9.375,
+            "triggerCorrectness": 10,
+            "outputCompleteness": 10,
+            "unnecessaryCreativity": 9.375
+          },
+          "meanMs": 7847.1875,
+          "maxInput": 11508,
+          "maxOutput": 862
+        },
+        "accepted": false,
+        "settings": {
+          "top_p": 1,
+          "top_k": 40,
+          "min_p": 0,
+          "repeat_penalty": 1.05,
+          "temperature": 0.15
+        }
+      }
+    ],
+    "validationProfile": "repeat-low",
+    "validatedWinner": {
+      "name": "repeat-low",
+      "count": 16,
+      "score": 9.8046875,
+      "metrics": {
+        "instructionAdherence": 9.6875,
+        "userActionPreservation": 9.6875,
+        "referenceContinuity": 10,
+        "timelineCoherence": 8.75,
+        "hallucinationAvoidance": 10,
+        "triggerCorrectness": 10,
+        "outputCompleteness": 10,
+        "unnecessaryCreativity": 10
+      },
+      "meanMs": 8046.625,
+      "maxInput": 11508,
+      "maxOutput": 943
+    }
+  }
+}

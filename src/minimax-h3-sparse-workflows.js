@@ -8,6 +8,9 @@ const ASPECTS = Object.freeze({
   "3:4 (Portrait Standard)": [3, 4],
   "3:2 (Photo)": [3, 2],
   "2:3 (Portrait Photo)": [2, 3],
+  "1.85:1 (Cinema Flat)": [1.85, 1],
+  "2.39:1 (Cinema Scope)": [2.39, 1],
+  "21:9 (Ultrawide)": [21, 9],
 });
 
 const DIRECTOR_TASKS = Object.freeze({
@@ -28,7 +31,7 @@ function bool(value, fallback = false) {
 function number(value, fallback, min, max, integer = false) {
   const parsed = value === undefined || value === "" ? fallback : Number(value);
   if (!Number.isFinite(parsed) || parsed < min || parsed > max || (integer && !Number.isInteger(parsed))) {
-    throw new Error("Impostazione PlagueKind H3 Sparse V9 non valida.");
+    throw new Error("Impostazione PlagueKind H3 non valida.");
   }
   return parsed;
 }
@@ -112,7 +115,8 @@ function sequencePrompts(value) {
 function imageRef(upload, index = 0) {
   const file = inputPath(upload);
   return file ? {
-    index, imageFile: file, fileName: upload.name || "", type: "input", subfolder: upload.subfolder || "",
+    index: Number.isInteger(upload.referenceIndex) ? upload.referenceIndex : index,
+    imageFile: file, fileName: upload.name || "", type: "input", subfolder: upload.subfolder || "",
   } : null;
 }
 
@@ -211,7 +215,7 @@ function sparseSequenceTimeline({ mode, prompts, duration, width, height, megapi
 
 export function buildMiniMaxH3SparseV9Workflow(raw = {}, uploads = {}, loras = [], config = {}) {
   const sparse = config?.h3?.sparseV9;
-  if (!sparse?.available) throw new Error(sparse?.reason || "PlagueKind H3 Sparse V9 non è disponibile.");
+  if (!sparse?.available) throw new Error(sparse?.reason || "PlagueKind H3 non è disponibile.");
   const files = sparse.files || {};
   const mode = String(raw.h3SparseMode || "image");
   if (!["text", "image", "firstLast", "references"].includes(mode)) throw new Error("Modalità H3 Sparse V9 non valida.");
@@ -226,7 +230,7 @@ export function buildMiniMaxH3SparseV9Workflow(raw = {}, uploads = {}, loras = [
     throw new Error(`Il modello ${modelFile} non supporta la modalità ${mode} nel workflow PlagueKind.`);
   }
   const prompt = String(raw.prompt || "").trim();
-  if (!prompt) throw new Error("Inserisci il prompt per PlagueKind H3 Sparse V9.");
+  if (!prompt) throw new Error("Inserisci il prompt per PlagueKind H3.");
   const multiSequence = bool(raw.h3SparseMultiSequence, false);
   const prompts = sequencePrompts(prompt);
   if (multiSequence && mode === "firstLast") {
@@ -242,7 +246,17 @@ export function buildMiniMaxH3SparseV9Workflow(raw = {}, uploads = {}, loras = [
   const aspectRatio = String(raw.h3SparseAspectRatio || "4:3 (Standard)");
   const megapixels = number(raw.h3SparseMegapixels, 0.98, 0.2, 2);
   const { width, height } = dimensions(aspectRatio, megapixels);
-  const { width: upscaleWidth, height: upscaleHeight } = dimensions(aspectRatio, 1);
+  const defaultUpscale = dimensions(aspectRatio, 1);
+  const latentScale = number(raw.h3SparseLatentScale, 0, 0, 4);
+  const upscaleWidth = raw.h3SparseLatentWidth
+    ? number(raw.h3SparseLatentWidth, defaultUpscale.width, 64, 4096, true)
+    : latentScale > 0 ? Math.round((width * latentScale) / 32) * 32 : defaultUpscale.width;
+  const upscaleHeight = raw.h3SparseLatentHeight
+    ? number(raw.h3SparseLatentHeight, defaultUpscale.height, 64, 4096, true)
+    : latentScale > 0 ? Math.round((height * latentScale) / 32) * 32 : defaultUpscale.height;
+  if (upscaleWidth % 32 !== 0 || upscaleHeight % 32 !== 0) {
+    throw new Error("H3 Latent Upscale richiede larghezza e altezza multiple di 32 pixel.");
+  }
   const duration = number(raw.duration, 8, 4, 15);
   const length = framesForDuration(duration);
   const seed = seedValue(raw.seed);
@@ -251,18 +265,35 @@ export function buildMiniMaxH3SparseV9Workflow(raw = {}, uploads = {}, loras = [
   // for every PlagueKind mode, including requests restored from older drafts.
   const lowVramEnabled = true;
   const latentUpscale = bool(raw.h3SparseLatentUpscale, false);
-  if (multiSequence && latentUpscale) {
-    throw new Error("Il latent upscale MMH3 lavora sul latent di una singola clip: disattivalo per le sequenze continuative. FILM, RTX VSR e RCAS saranno disponibili dal pulsante di miglioramento sul video completato.");
-  }
   const temporalChunks = bool(raw.h3SparseTemporalChunks, true);
   const spatialTiling = bool(raw.h3SparseSpatialTiling, true);
   // FILM, RTX and RCAS run only as a separate, user-triggered finishing job.
   // The expensive H3 generation can therefore be judged before post-processing.
   const film = false;
   const rtx = false;
-  const sharpen = false;
+  const sharpen = latentUpscale && bool(raw.h3SparsePostRcas, false);
+  const rcasStrength = number(raw.h3SparseRcasStrength, 0.18, 0, 1);
   const sparsity = number(raw.h3SparseSparsity, 0.7, 0, 0.95);
   const steps = number(raw.h3SparseSteps, 8, 1, 50, true);
+  const sparseEnabled = bool(raw.h3SparseEnabled, true);
+  const engine = String(raw.h3SparseEngine || "comfy_kitchen");
+  if (!["comfy_kitchen", "triton"].includes(engine)) throw new Error("Engine Sparse Attention non valido.");
+  const denseLastSteps = number(raw.h3SparseDenseLastSteps, 0, 0, steps, true);
+  const denseSteps = String(raw.h3SparseDenseSteps ?? "1").trim();
+  if (denseSteps && !/^\d+(?:-\d+)?(?:\s*,\s*\d+(?:-\d+)?)*$/.test(denseSteps)) {
+    throw new Error("Step dense non validi: usa indici come 0,1 oppure 0-2, o lascia vuoto.");
+  }
+  for (const range of denseSteps ? denseSteps.split(",") : []) {
+    const [start, end = start] = range.trim().split("-").map(Number);
+    if (start > end || end >= steps) throw new Error("Gli indici degli step dense devono essere tra 0 e il numero di step meno uno.");
+  }
+  const stabilizeMotion = bool(raw.h3SparseStabilizeMotion, false);
+  if (sparseEnabled && stabilizeMotion && engine !== "triton") {
+    throw new Error("La stabilizzazione del movimento richiede l’engine Triton.");
+  }
+  const sparseSettings = { enabled: sparseEnabled, engine, sparsity, blockSize: 32,
+    denseSteps, denseLastSteps, protectAudio: false, stabilizeMotion: sparseEnabled && stabilizeMotion, int8Qk: true };
+
   const workflow = {
     "1": node("UNETLoader", { unet_name: modelFile, weight_dtype: "default" }, `PlagueKind V9 · ${modelFile}`),
     "2": node("VAELoader", { vae_name: files.videoVae }, "PlagueKind V9 · MiniMax H3 Video VAE INT8"),
@@ -270,9 +301,9 @@ export function buildMiniMaxH3SparseV9Workflow(raw = {}, uploads = {}, loras = [
     "4": node("CLIPLoader", { clip_name: files.clip, type: "minimax", device: "default" }, "PlagueKind V9 · Qwen3-VL 32B INT8"),
     "5": node("H3SLAAttention", {
       model: ["1", 0], sparsity_ratio: sparsity, block_size: "32", min_seq_len: 12288,
-      dense_last_steps: 0, protect_audio: false, enabled: true, dense_steps: "1",
-      dense_backend: "comfy_kitchen", disable_fp16_accum: true, stabilize_motion: false,
-      reference_protection: "Off", tail_correction: false, use_int8_qk: true, engine: "comfy_kitchen",
+      dense_last_steps: denseLastSteps, protect_audio: false, enabled: sparseEnabled, dense_steps: denseSteps,
+      dense_backend: "comfy_kitchen", disable_fp16_accum: true, stabilize_motion: sparseSettings.stabilizeMotion,
+      reference_protection: "Off", tail_correction: false, use_int8_qk: true, engine,
     }, "PlagueKind V9 · SLA Sparse Attention · sparsità originale 0,70"),
   };
   let modelLink = ["5", 0];
@@ -312,6 +343,14 @@ export function buildMiniMaxH3SparseV9Workflow(raw = {}, uploads = {}, loras = [
     const timeline = sparseSequenceTimeline({
       mode, prompts, duration, width, height, megapixels, aspectRatio, uploads, overlap,
     });
+    if (latentUpscale) {
+      workflow["41"] = node("MiniMaxH3DirectorRefine", {
+        mode: "latent_upscale", upscale_method: "h3_latent", latent_upscale_model: files.latentUpscaler,
+        sampler: "euler", passes: 1, seed_mode: "inherit",
+        aspect_ratio: "自定义", megapixels: 1, width: upscaleWidth, height: upscaleHeight,
+        skip_fl2v: false, confirm_first_pass: false,
+      }, "PlagueKind V9 · H3 latent upscale su ogni sequenza");
+    }
     workflow["20"] = node("MiniMaxH3Director", {
       // Director applies MiniMaxH3SigmaShift internally. Feed the unshifted
       // AdaLN-fixed model so the multi-sequence path receives the shift once.
@@ -321,6 +360,7 @@ export function buildMiniMaxH3SparseV9Workflow(raw = {}, uploads = {}, loras = [
       total_frames: timeline.totalFrames, timeline_data: JSON.stringify(timeline), bd_grp_advanced: "Advanced",
       steps, sampler: "er_sde", scheduler: "beta57", shift_video: 12, shift_audio: 3,
       bd_grp_perf: "Performance", clear_vram_between_segments: true, export_source_images: false,
+      ...(latentUpscale ? { refine: ["41", 0], clear_vram_before_refine: true } : {}),
     }, "PlagueKind V9 · Director · sequenze continuative");
     workflow["59"] = node("DisTorchPurgeVRAMV2", {
       anything: ["20", 0], purge_cache: true, purge_models: true,
@@ -355,7 +395,7 @@ export function buildMiniMaxH3SparseV9Workflow(raw = {}, uploads = {}, loras = [
       workflow,
       metadata: {
         workflowId: "videoStudio:h3SparseV9",
-        workflowName: "Video Studio · PlagueKind H3 Sparse V9 · Sequenze continuative",
+        workflowName: "Video Studio · PlagueKind H3 · Sequenze continuative",
         videoStudioMode: "h3SparseV9",
         videoStudioStage: "generation",
         videoStudioLabel: `H3 Sparse V9 · ${prompts.length} sequenze continuative · ${width}×${height}`,
@@ -364,9 +404,9 @@ export function buildMiniMaxH3SparseV9Workflow(raw = {}, uploads = {}, loras = [
         segmentCount: prompts.length, frames: timeline.totalFrames, fps: 24, seed, width, height, aspectRatio, megapixels,
         multiSequence: true, continuity: true, continuityFrames: overlap,
         startImageStrategy: mode === "image" ? "first-image-then-previous-segment" : mode === "references" ? "shared-references-and-previous-segment" : "previous-segment",
-        sparse: { engine: "comfy_kitchen", sparsity, blockSize: 32, denseSteps: "1", protectAudio: false, stabilizeMotion: false, int8Qk: true },
+        sparse: { ...sparseSettings },
         adalnMode: "strip", cacheEnabled, lowVramEnabled, steps, sampler: "er_sde", scheduler: "beta57",
-        stages: { latentUpscale: false, upscaleWidth, upscaleHeight, temporalChunks: false, spatialTiling: false, film, rtx, sharpen },
+        stages: { latentUpscale, upscaleWidth, upscaleHeight, temporalChunks: false, spatialTiling: false, film, rtx, sharpen },
         loras: [{ name: files.parasyteTurbo, strength: 1.5, automatic: true }, ...loras],
       },
     };
@@ -383,7 +423,10 @@ export function buildMiniMaxH3SparseV9Workflow(raw = {}, uploads = {}, loras = [
       clip: ["4", 0], vae: ["2", 0], audio_vae: ["3", 0], prompt,
       width, height, length, ref_image_size: String(raw.h3SparseReferenceSize || "match"),
     };
-    images.forEach((upload, index) => { inputs[`ref_images.ref_image_${index}`] = loadImage(workflow, String(100 + index), upload, `PlagueKind V9 · Picture ${index + 1}`); });
+    images.forEach((upload, index) => {
+      const slot = Number.isInteger(upload.referenceIndex) ? upload.referenceIndex : index;
+      inputs[`ref_images.ref_image_${slot}`] = loadImage(workflow, String(100 + slot), upload, `PlagueKind V9 · Picture ${slot + 1}`);
+    });
     videos.forEach((upload, index) => {
       const loaded = loadReferenceVideo(workflow, String(120 + index), upload, `PlagueKind V9 · Video ${index + 1}`);
       inputs[`ref_videos.ref_video_${index}`] = loaded.frames;
@@ -400,6 +443,15 @@ export function buildMiniMaxH3SparseV9Workflow(raw = {}, uploads = {}, loras = [
     workflow["20"] = node("MiniMaxH3ImageToVideo", inputs, `PlagueKind V9 · ${mode === "text" ? "Text to Video" : mode === "image" ? "Image to Video" : "First / Last Frame"}`);
     conditioningLink = ["20", 0];
     latentLink = ["20", 1];
+  }
+
+  if (uploads.h3ContinuityClip?.name) {
+    const clip = loadReferenceVideo(workflow, "70", uploads.h3ContinuityClip, "PlagueKind V9 · ultimi frame della sequenza precedente");
+    workflow["24"] = node("MiniMaxH3AddGuide", {
+      positive: conditioningLink, latent: latentLink, vae: ["2", 0],
+      image: clip.frames, frame_idx: 0,
+    }, "PlagueKind V9 · ancora movimento della sequenza precedente");
+    conditioningLink = ["24", 0];
   }
 
   // The conditioning is self-contained. Passing it through this node gives
@@ -459,7 +511,7 @@ export function buildMiniMaxH3SparseV9Workflow(raw = {}, uploads = {}, loras = [
     images = ["54", 0];
   }
   if (sharpen) {
-    workflow["55"] = node("RemoteChunkedRCAS", { image: images, strength: 0.3, chunk_size: 2 }, "PlagueKind V9 · FSR RCAS 0,3 · memory safe");
+    workflow["55"] = node("RemoteChunkedRCAS", { image: images, strength: rcasStrength, chunk_size: 2 }, `PlagueKind V9 · FSR RCAS ${rcasStrength.toFixed(2)} · memory safe`);
     images = ["55", 0];
   }
   workflow["56"] = node("CreateVideo", { images, audio: ["51", 0], fps, bit_depth: 8, color_space: "sRGB" }, "PlagueKind V9 · video e audio nativi");
@@ -472,19 +524,22 @@ export function buildMiniMaxH3SparseV9Workflow(raw = {}, uploads = {}, loras = [
     workflow,
     metadata: {
       workflowId: "videoStudio:h3SparseV9",
-      workflowName: "Video Studio · PlagueKind H3 Sparse V9",
+      workflowName: "Video Studio · PlagueKind H3",
       videoStudioMode: "h3SparseV9",
       videoStudioStage: "generation",
       videoStudioLabel: `H3 Sparse V9 · ${mode} · ${width}×${height}`,
       modelFile,
       prompt, mode, duration, frames: length, fps, seed, width, height, aspectRatio, megapixels,
-      sparse: {
-          engine: "comfy_kitchen", sparsity, blockSize: 32, denseSteps: "1",
-          protectAudio: false, stabilizeMotion: false, int8Qk: true,
-      },
+      sparse: { ...sparseSettings },
       adalnMode: "strip",
       cacheEnabled, lowVramEnabled, steps, sampler: "er_sde (ODE, eta 0)", scheduler: "beta57",
-      stages: { latentUpscale, upscaleWidth, upscaleHeight, temporalChunks: latentUpscale && temporalChunks, spatialTiling: latentUpscale && spatialTiling, film, rtx, sharpen },
+      stages: {
+        latentUpscale, upscaleWidth, upscaleHeight,
+        temporalChunks: latentUpscale && temporalChunks,
+        spatialTiling: latentUpscale && spatialTiling,
+        film, rtx, sharpen,
+        ...(latentUpscale ? { latentScale: upscaleWidth / width, rcasStrength: sharpen ? rcasStrength : 0 } : {}),
+      },
       loras: [{ name: files.parasyteTurbo, strength: 1.5, automatic: true }, ...loras],
     },
   };
